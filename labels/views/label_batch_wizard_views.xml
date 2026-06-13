@@ -4,15 +4,22 @@
         <field name="name">labels.batch.wizard.form</field>
         <field name="model">labels.batch.wizard</field>
         <field name="arch" type="xml">
-            <form string="יצירת טווח" class="labels-range-popup">
+            <form string="יצירת טווח" class="labels-range-popup labels-rtl">
                 <sheet>
-                    <group>
-                        <group>
-                            <field name="prefix" placeholder="A"/>
-                            <field name="first_number"/>
-                            <field name="last_number"/>
-                        </group>
-                    </group>
+                    <div class="labels-popup-layout">
+                        <div class="labels-popup-visual">
+                            <img src="/labels/static/src/img/red_label.svg" alt="Label" class="labels-popup-image"/>
+                        </div>
+                        <div class="labels-popup-fields">
+                            <group>
+                                <group>
+                                    <field name="prefix" placeholder="A"/>
+                                    <field name="first_number"/>
+                                    <field name="last_number"/>
+                                </group>
+                            </group>
+                        </div>
+                    </div>
                 </sheet>
                 <footer>
                     <button name="action_save" string="Save" type="object" class="btn-success labels-popup-button"/>

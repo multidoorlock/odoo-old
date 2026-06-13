@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="170" viewBox="0 0 240 170" role="img" aria-label="Red label">
+    <defs>
+        <linearGradient id="labelRed" x1="28" y1="20" x2="206" y2="148" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#ff5a52"/>
+            <stop offset="1" stop-color="#c5162e"/>
+        </linearGradient>
+        <filter id="shadow" x="0" y="0" width="240" height="170" filterUnits="userSpaceOnUse">
+            <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#8f0d20" flood-opacity="0.22"/>
+        </filter>
+    </defs>
+    <path d="M38 26h128c8 0 15 3 20 9l34 40c5 6 5 14 0 20l-34 40c-5 6-12 9-20 9H38c-11 0-20-9-20-20V46c0-11 9-20 20-20z" fill="url(#labelRed)" filter="url(#shadow)"/>
+    <circle cx="181" cy="85" r="14" fill="#fff" opacity="0.92"/>
+    <circle cx="181" cy="85" r="6" fill="#c5162e"/>
+    <rect x="42" y="53" width="102" height="18" rx="5" fill="#fff" opacity="0.94"/>
+    <rect x="42" y="83" width="88" height="10" rx="4" fill="#fff" opacity="0.76"/>
+    <rect x="42" y="106" width="8" height="26" rx="3" fill="#fff" opacity="0.9"/>
+    <rect x="57" y="106" width="4" height="26" rx="2" fill="#fff" opacity="0.9"/>
+    <rect x="68" y="106" width="10" height="26" rx="3" fill="#fff" opacity="0.9"/>
+    <rect x="86" y="106" width="5" height="26" rx="2" fill="#fff" opacity="0.9"/>
+    <rect x="99" y="106" width="12" height="26" rx="3" fill="#fff" opacity="0.9"/>
+    <rect x="119" y="106" width="4" height="26" rx="2" fill="#fff" opacity="0.9"/>
+    <text x="92" y="67" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#c5162e">A000001</text>
+</svg>

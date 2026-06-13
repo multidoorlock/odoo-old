@@ -4,7 +4,7 @@
         <field name="name">labels.label.list</field>
         <field name="model">labels.label</field>
         <field name="arch" type="xml">
-            <list string="תוויות">
+            <list string="תוויות" class="labels-rtl">
                 <field name="name"/>
                 <field name="prefix"/>
                 <field name="number"/>
@@ -18,7 +18,7 @@
         <field name="name">labels.label.form</field>
         <field name="model">labels.label</field>
         <field name="arch" type="xml">
-            <form string="תווית">
+            <form string="תווית" class="labels-rtl">
                 <sheet>
                     <group>
                         <group>
@@ -41,7 +41,7 @@
         <field name="name">labels.label.kanban</field>
         <field name="model">labels.label</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="status" class="o_kanban_small_column">
+            <kanban default_group_by="status" class="o_kanban_small_column labels-rtl">
                 <field name="name"/>
                 <field name="status"/>
                 <field name="prefix"/>
@@ -49,7 +49,7 @@
                 <field name="batch_id"/>
                 <templates>
                     <t t-name="card">
-                        <div class="d-flex flex-column gap-2">
+                        <div class="d-flex flex-column gap-2 labels-rtl">
                             <div class="fw-bold fs-5">
                                 <field name="name"/>
                             </div>

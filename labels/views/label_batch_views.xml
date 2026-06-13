@@ -4,7 +4,7 @@
         <field name="name">labels.batch.list</field>
         <field name="model">labels.batch</field>
         <field name="arch" type="xml">
-            <list string="יצירת טווח">
+            <list string="יצירת טווח" class="labels-rtl">
                 <field name="name"/>
                 <field name="prefix"/>
                 <field name="first_number"/>
@@ -20,7 +20,7 @@
         <field name="name">labels.batch.form</field>
         <field name="model">labels.batch</field>
         <field name="arch" type="xml">
-            <form string="יצירת טווח">
+            <form string="יצירת טווח" class="labels-rtl">
                 <header>
                     <button name="action_generate_labels" string="צור תוויות" type="object" class="btn-primary" invisible="state != 'draft'"/>
                     <button name="action_open_labels" string="פתח תוויות" type="object" invisible="generated_label_count == 0"/>
@@ -44,7 +44,7 @@
                     <notebook>
                         <page string="תוויות">
                             <field name="label_ids" readonly="1">
-                                <list>
+                                <list class="labels-rtl">
                                     <field name="name"/>
                                     <field name="prefix"/>
                                     <field name="number"/>
