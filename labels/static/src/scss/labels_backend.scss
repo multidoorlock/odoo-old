@@ -1,0 +1,32 @@
+.o_dialog .modal-content:has(.labels-range-popup) {
+    border: 3px solid #f2c94c;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.labels-range-popup {
+    border: 3px solid #f2c94c;
+    border-radius: 8px;
+    padding: 12px;
+
+    footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding-top: 14px;
+    }
+
+    .labels-popup-button {
+        min-width: 96px;
+        color: #fff;
+        background-color: #169b45;
+        border-color: #169b45;
+
+        &:hover,
+        &:focus {
+            color: #fff;
+            background-color: #12823a;
+            border-color: #12823a;
+        }
+    }
+}
