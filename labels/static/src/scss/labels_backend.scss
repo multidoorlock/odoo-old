@@ -1,17 +1,5 @@
-.o_dialog .modal-content:has(.labels-range-popup) {
-    border: 3px solid #f2c94c;
-    border-radius: 10px;
+.o_dialog .labels-range-popup {
     direction: rtl;
-    overflow: hidden;
-    text-align: right;
-}
-
-.o_dialog .modal-content:has(.labels-range-popup) .modal-header {
-    direction: rtl;
-}
-
-.o_dialog .modal-content:has(.labels-range-popup) .modal-title {
-    width: 100%;
     text-align: right;
 }
 
@@ -47,7 +35,8 @@
     direction: rtl;
     display: flex;
     gap: 24px;
-    min-width: min(520px, 100%);
+    max-width: 100%;
+    width: 520px;
 }
 
 .labels-popup-visual {
@@ -104,7 +93,8 @@
     }
 
     .labels-popup-image {
-        margin-inline: auto;
+        margin-left: auto;
+        margin-right: auto;
         max-width: 136px;
     }
 
