@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_labels_batch_list" model="ir.ui.view">
+        <field name="name">labels.batch.list</field>
+        <field name="model">labels.batch</field>
+        <field name="arch" type="xml">
+            <list string="יצירת טווח">
+                <field name="name"/>
+                <field name="prefix"/>
+                <field name="first_number"/>
+                <field name="last_number"/>
+                <field name="label_count"/>
+                <field name="generated_label_count"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_labels_batch_form" model="ir.ui.view">
+        <field name="name">labels.batch.form</field>
+        <field name="model">labels.batch</field>
+        <field name="arch" type="xml">
+            <form string="יצירת טווח">
+                <header>
+                    <button name="action_generate_labels" string="צור תוויות" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_open_labels" string="פתח תוויות" type="object" invisible="generated_label_count == 0"/>
+                    <button name="action_cancel" string="בטל" type="object" invisible="state != 'draft'"/>
+                    <button name="action_reset_to_draft" string="החזר לטיוטה" type="object" invisible="state == 'draft' or generated_label_count != 0"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,generated,cancelled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="prefix"/>
+                            <field name="first_number"/>
+                            <field name="last_number"/>
+                        </group>
+                        <group>
+                            <field name="label_count"/>
+                            <field name="generated_label_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="תוויות">
+                            <field name="label_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="prefix"/>
+                                    <field name="number"/>
+                                    <field name="status"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_labels_batch" model="ir.actions.act_window">
+        <field name="name">יצירת טווח</field>
+        <field name="res_model">labels.batch</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

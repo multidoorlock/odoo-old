@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_labels_label_list" model="ir.ui.view">
+        <field name="name">labels.label.list</field>
+        <field name="model">labels.label</field>
+        <field name="arch" type="xml">
+            <list string="תוויות">
+                <field name="name"/>
+                <field name="prefix"/>
+                <field name="number"/>
+                <field name="status"/>
+                <field name="batch_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_labels_label_form" model="ir.ui.view">
+        <field name="name">labels.label.form</field>
+        <field name="model">labels.label</field>
+        <field name="arch" type="xml">
+            <form string="תווית">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="prefix"/>
+                            <field name="number"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="batch_id"/>
+                            <field name="label_key"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_labels_label_kanban" model="ir.ui.view">
+        <field name="name">labels.label.kanban</field>
+        <field name="model">labels.label</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="status" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="status"/>
+                <field name="prefix"/>
+                <field name="number"/>
+                <field name="batch_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex flex-column gap-2">
+                            <div class="fw-bold fs-5">
+                                <field name="name"/>
+                            </div>
+                            <div class="text-muted">
+                                <field name="batch_id"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_labels_label_search" model="ir.ui.view">
+        <field name="name">labels.label.search</field>
+        <field name="model">labels.label</field>
+        <field name="arch" type="xml">
+            <search string="חיפוש תוויות">
+                <field name="name"/>
+                <field name="prefix"/>
+                <field name="number"/>
+                <field name="batch_id"/>
+                <filter name="status_draft" string="חדש" domain="[('status', '=', 'draft')]"/>
+                <filter name="status_printed" string="הודפס" domain="[('status', '=', 'printed')]"/>
+                <filter name="status_cancelled" string="מבוטל" domain="[('status', '=', 'cancelled')]"/>
+                <separator/>
+                <filter name="group_by_status" string="סטטוס" context="{'group_by': 'status'}"/>
+                <filter name="group_by_prefix" string="תחילית" context="{'group_by': 'prefix'}"/>
+                <filter name="group_by_batch" string="טווח" context="{'group_by': 'batch_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_labels_label" model="ir.actions.act_window">
+        <field name="name">כל התוויות</field>
+        <field name="res_model">labels.label</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="search_view_id" ref="view_labels_label_search"/>
+    </record>
+</odoo>
