@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_labels_root" name="תוויות" sequence="10"/>
+    <menuitem id="menu_labels_label" name="כל התוויות" parent="menu_labels_root" action="action_labels_label" sequence="10"/>
+    <menuitem id="menu_labels_batch" name="יצירת טווח" parent="menu_labels_root" action="action_labels_batch_wizard" sequence="20"/>
+</odoo>
