@@ -4,7 +4,7 @@
     "category": "Productivity",
     "summary": "מודול בסיס לתוויות",
     "depends": ["base"],
-    "application": True,s
+    "application": True,
     "installable": True,
     "license": "LGPL-3",
     "author": "itay.y@mdl.co.il",
