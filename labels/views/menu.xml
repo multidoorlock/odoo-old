@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_labels_root" name="תוויות" sequence="10"/>
+    <menuitem id="menu_labels_labels" name="תוויות" parent="menu_labels_root" action="action_labels_label" sequence="10"/>
+</odoo>
