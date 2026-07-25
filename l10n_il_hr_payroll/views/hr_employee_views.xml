@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_employee_view_form" model="ir.ui.view">
+        <field name="name">hr.employee.view.form.inherit.l10n.il.hr.payroll</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_payroll.payroll_hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <group name="payroll_group" position="inside">
+                <group name="l10n_il_employment" string="ישראל: העסקה" invisible="country_code != 'IL'">
+                    <field name="l10n_il_employee_category"/>
+                    <field name="l10n_il_has_advance"/>
+                    <field name="l10n_il_advance_amount" invisible="not l10n_il_has_advance" required="l10n_il_has_advance"/>
+                </group>
+                <group name="l10n_il_tax" string="ישראל: מס הכנסה" invisible="country_code != 'IL'">
+                    <field name="l10n_il_tax_residency"/>
+                    <field name="l10n_il_credit_points"/>
+                    <field name="l10n_il_main_employer"/>
+                    <field name="l10n_il_settlement_code"/>
+                </group>
+                <group name="l10n_il_form101" string="ישראל: טופס 101 ותיאום מס" invisible="country_code != 'IL'">
+                    <field name="l10n_il_form101_state"/>
+                    <field name="l10n_il_tax_coordination"/>
+                    <field name="l10n_il_tax_coordination_rate" invisible="not l10n_il_tax_coordination"/>
+                    <field name="l10n_il_tax_coordination_expiry" invisible="not l10n_il_tax_coordination" required="l10n_il_tax_coordination"/>
+                </group>
+                <group name="l10n_il_pension" string="ישראל: פנסיה ופיצויים" invisible="country_code != 'IL'">
+                    <field name="l10n_il_pension_fund_id"/>
+                    <field name="l10n_il_pension_member_no"/>
+                    <field name="l10n_il_pension_employee_rate"/>
+                    <field name="l10n_il_pension_employer_rate"/>
+                    <field name="l10n_il_severance_rate"/>
+                    <field name="l10n_il_section14"/>
+                </group>
+                <group name="l10n_il_hishtalmut" string="ישראל: קרן השתלמות" invisible="country_code != 'IL'">
+                    <field name="l10n_il_hishtalmut"/>
+                    <field name="l10n_il_hishtalmut_fund_id" invisible="not l10n_il_hishtalmut"/>
+                    <field name="l10n_il_hishtalmut_employee_rate" invisible="not l10n_il_hishtalmut"/>
+                    <field name="l10n_il_hishtalmut_employer_rate" invisible="not l10n_il_hishtalmut"/>
+                </group>
+            </group>
+        </field>
+    </record>
+
+    <!-- שדות אישיים-משפחתיים: מוצגים תחת הטאב "מידע אישי" הרגיל, לצד השדות המקבילים
+         שאודו כבר מציג שם (מצב משפחתי, פרטי בן/בת זוג, אזרחות) — ולא כקבוצה נפרדת. -->
+    <record id="hr_employee_view_form_personal_l10n_il" model="ir.ui.view">
+        <field name="name">hr.employee.view.form.inherit.l10n.il.personal</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <group name="citizenship" position="inside">
+                <field name="l10n_il_citizenship_code" invisible="1"/>
+                <field name="l10n_il_aliyah_date" invisible="l10n_il_citizenship_code == 'IL'"/>
+            </group>
+            <field name="spouse_birthdate" position="after">
+                <field name="l10n_il_spouse_id" invisible="marital not in ('married', 'cohabitant')"/>
+            </field>
+            <group name="hr_education_group" position="before">
+                <group string="ישראל: בריאות" name="l10n_il_health_group" invisible="country_code != 'IL'">
+                    <field name="l10n_il_kupat_holim"/>
+                </group>
+            </group>
+        </field>
+    </record>
+
+    <record id="hr_employee_view_form_button" model="ir.ui.view">
+        <field name="name">hr.employee.view.form.inherit.l10n.il.form101.button</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="%(action_l10n_il_form101)d" type="action" class="oe_stat_button" icon="fa-file-text-o"
+                    context="{'search_default_employee_id': id, 'default_employee_id': id}"
+                    groups="hr_payroll.group_hr_payroll_user">
+                    <field name="l10n_il_form101_count" widget="statinfo" string="טופסי 101"/>
+                </button>
+            </div>
+        </field>
+    </record>
+</odoo>

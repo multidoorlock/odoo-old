@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- תוספות: זמינות גם כ"התאמת שכר" (Salary Adjustment / hr.salary.attachment) -->
+    <record id="input_il_commission" model="hr.payslip.input.type">
+        <field name="name">עמלה</field>
+        <field name="code">IL_COMMISSION</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="available_in_attachments" eval="True"/>
+    </record>
+
+    <record id="input_il_travel" model="hr.payslip.input.type">
+        <field name="name">החזר נסיעות</field>
+        <field name="code">IL_TRAVEL</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="available_in_attachments" eval="True"/>
+    </record>
+
+    <record id="input_il_havraa" model="hr.payslip.input.type">
+        <field name="name">דמי הבראה</field>
+        <field name="code">IL_HAVRAA</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="available_in_attachments" eval="True"/>
+    </record>
+
+    <record id="input_il_other_addition" model="hr.payslip.input.type">
+        <field name="name">תוספת אחרת</field>
+        <field name="code">IL_OTHER_ADD</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="available_in_attachments" eval="True"/>
+    </record>
+
+    <!-- ניכויים: זמינות גם כ"התאמת שכר" -->
+    <record id="input_il_loan" model="hr.payslip.input.type">
+        <field name="name">החזר הלוואה</field>
+        <field name="code">IL_LOAN</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="available_in_attachments" eval="True"/>
+    </record>
+
+    <record id="input_il_meals" model="hr.payslip.input.type">
+        <field name="name">ניכוי ארוחות</field>
+        <field name="code">IL_MEALS</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="available_in_attachments" eval="True"/>
+    </record>
+
+    <record id="input_il_other_deduction" model="hr.payslip.input.type">
+        <field name="name">ניכוי אחר</field>
+        <field name="code">IL_OTHER_DED</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="available_in_attachments" eval="True"/>
+    </record>
+
+    <!-- סוג פנימי בלבד: שורת הניכוי הנגדית שנוצרת אוטומטית עבור התאמות שכר שסומנו
+         "שולם" (ראו l10n_il_salary_adjustment.py) - לא נבחר ידנית ע"י משתמש -->
+    <record id="input_il_salary_adj_paid_deduction" model="hr.payslip.input.type">
+        <field name="name">ניכוי התאמות שכר ששולמו</field>
+        <field name="code">IL_SALARY_ADJ_PAID_DED</field>
+        <field name="country_id" ref="base.il"/>
+    </record>
+
+    <!-- סוג פנימי בלבד: תשלומי עובד מהחשבונאות שמשפיעים על השכר (ראו account_payment.py) -->
+    <record id="input_il_payment_adj" model="hr.payslip.input.type">
+        <field name="name">תשלומי עובד</field>
+        <field name="code">IL_PAYMENT_ADJ</field>
+        <field name="country_id" ref="base.il"/>
+    </record>
+
+    <!-- Legacy - מפרעה מהתלוש הישן (הוחלף במנגנון תשלומים דרך account.payment).
+         נשמר כאן רק כי תלושים קיימים בהיסטוריה מפנים אליו (FK) - לא בשימוש בשום
+         כלל שכר או מסך חדש, אין לבחור אותו ידנית עוד. -->
+    <record id="input_il_advance" model="hr.payslip.input.type">
+        <field name="name">מפרעה (legacy)</field>
+        <field name="code">IL_ADVANCE</field>
+        <field name="country_id" ref="base.il"/>
+    </record>
+</odoo>

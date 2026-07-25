@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- הסוג הכללי "נוכחות" נשאר פעיל: הוא משמש עובדים שסוג רשומת הנוכחות שלהם הוא
+         "נוכחות רגילה" (att_record_type='regular'). רק עובדי "משמרות" מקבלים את הסוגים
+         הייעודיים (בוקר/ערב) - ה-override ב-hr_version.py מחליף את הסוג הכללי באחד מהם
+         רק כאשר הנוכחות המקורית סווגה (attendance_type מוגדר). -->
+    <function model="hr.work.entry.type" name="write"
+        eval="[[ref('hr_work_entry.work_entry_type_attendance')], {'active': True}]"/>
+
+    <record id="work_entry_type_morning_attendance" model="hr.work.entry.type">
+        <field name="name">משמרת בוקר</field>
+        <field name="code">IL_ATT_MORNING</field>
+        <field name="display_code">בוק</field>
+        <field name="color">3</field>
+        <field name="is_leave">False</field>
+        <field name="is_extra_hours">False</field>
+        <field name="amount_rate">1.0</field>
+    </record>
+
+    <record id="work_entry_type_afternoon_attendance" model="hr.work.entry.type">
+        <field name="name">משמרת ערב</field>
+        <field name="code">IL_ATT_AFTERNOON</field>
+        <field name="display_code">ערב</field>
+        <field name="color">2</field>
+        <field name="is_leave">False</field>
+        <field name="is_extra_hours">False</field>
+        <field name="amount_rate">1.0</field>
+    </record>
+
+    <!-- הסוג הייעודי "שעות נוספות - נוכחות" הוחלף בסוג המובנה של אודו "Overtime Hours"
+         (hr_work_entry.work_entry_type_overtime, קוד OVERTIME) - לכן מוסתר ולא בשימוש עוד. -->
+    <record id="work_entry_type_attendance_overtime" model="hr.work.entry.type">
+        <field name="active">False</field>
+    </record>
+
+    <!-- הסוג המובנה "Overtime Hours": שיעור התשלום מאופס כי התשלום בפועל על שעות נוספות
+         מנוכחות מחושב על ידי כלל שכר ייעודי (IL_OT_ATTENDANCE) לפי "שכר לשעה נוספת" קבוע
+         לעובד, ולא לפי אחוז מהשכר הרגיל. שינוי הזה משפיע על כל שימוש עתידי בסוג הזה במערכת,
+         לא רק על שעות נוספות מנוכחות.
+         הרשומה המובנית מסומנת noupdate="1" במודול המקורי, כך שעדכון רגיל דרך <record> לא
+         היה נשמר בשדרוגים חוזרים - לכן משתמשים כאן ב-<function> שרץ בכל התקנה/שדרוג. -->
+    <function model="hr.work.entry.type" name="write"
+        eval="[[ref('hr_work_entry.work_entry_type_overtime')], {'amount_rate': 0.0}]"/>
+</odoo>

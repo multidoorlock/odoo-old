@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- קבוצות הכללים החדשות, לצד ה-Overtime Ruleset הקיים -->
+    <record id="hr_employee_view_form_inherit_att" model="ir.ui.view">
+        <field name="name">hr.employee.view.form.inherit.attandences.customizations</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_attendance.view_employee_form_inherit_hr_attendance"/>
+        <field name="arch" type="xml">
+            <field name="ruleset_id" position="after">
+                <field name="att_record_type"/>
+                <field name="att_classification_ruleset_id"
+                    invisible="att_record_type != 'shifts'"
+                    required="att_record_type == 'shifts'"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- שכר לשעה נוספת - בעמוד השכר -->
+    <record id="hr_employee_view_form_inherit_att_payroll" model="ir.ui.view">
+        <field name="name">hr.employee.view.form.inherit.attandences.customizations.payroll</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_payroll.payroll_hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <group name="payroll_group" position="inside">
+                <group name="att_overtime_rate" string="שעות נוספות מנוכחות" invisible="att_record_type != 'shifts'">
+                    <field name="att_overtime_hourly_rate"/>
+                    <field name="att_record_type" invisible="1"/>
+                </group>
+            </group>
+        </field>
+    </record>
+</odoo>

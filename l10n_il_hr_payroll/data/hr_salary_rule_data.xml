@@ -1,0 +1,853 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ==== hr_payroll_structure_il_employee_salary ==== -->
+    <record id="rule_ilm_basic" model="hr.salary.rule">
+        <field name="name">שכר בסיס</field>
+        <field name="code">BASIC</field>
+        <field name="sequence">1</field>
+        <field name="category_id" ref="hr_payroll.BASIC"/>
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = sum(wd.amount for wd in payslip.worked_days_line_ids if not wd.work_entry_type_id.is_extra_hours)
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_ot" model="hr.salary.rule">
+        <field name="name">גמול שעות נוספות</field>
+        <field name="code">IL_OT</field>
+        <field name="sequence">25</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = any(wd.work_entry_type_id.is_extra_hours for wd in payslip.worked_days_line_ids)
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = sum(wd.amount for wd in payslip.worked_days_line_ids if wd.work_entry_type_id.is_extra_hours)
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_sick_adj" model="hr.salary.rule">
+        <field name="name">התאמת דמי מחלה</field>
+        <field name="code">IL_SICK_ADJ</field>
+        <field name="sequence">30</field>
+        <field name="category_id" ref="hr_payroll.BASIC"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = 'IL_SICK' in worked_days and worked_days['IL_SICK'].number_of_days &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# התאמת דמי מחלה לפי חוק דמי מחלה: יום 1 - 0%, ימים 2-3 - 50%, מהיום ה-4 - 100%
+wd = worked_days['IL_SICK']
+daily = wd.amount / wd.number_of_days
+tiers = payslip._rule_parameter('l10n_il_sick_pay_tiers')
+window_start = payslip.date_from + relativedelta(days=-60)
+entries = version.env['hr.work.entry'].search([
+    ('employee_id', '=', employee.id),
+    ('work_entry_type_id.code', '=', 'IL_SICK'),
+    ('state', '!=', 'cancelled'),
+    ('date', '&gt;=', window_start),
+    ('date', '&lt;=', payslip.date_to),
+])
+days = sorted(set(e.date for e in entries))
+deduction = 0.0
+run_start = None
+prev = None
+for d in days:
+    if prev is None or (d - prev).days &gt; 3:
+        run_start = d
+    prev = d
+    if d &lt; payslip.date_from or d &gt; payslip.date_to:
+        continue
+    idx = (d - run_start).days + 1
+    if idx == 1:
+        frac = tiers['day1']
+    elif idx &lt;= 3:
+        frac = tiers['day2_3']
+    else:
+        frac = tiers['day4_plus']
+    deduction += daily * (1.0 - frac)
+result = -deduction
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_commission" model="hr.salary.rule">
+        <field name="name">עמלה</field>
+        <field name="code">IL_COMMISSION</field>
+        <field name="sequence">41</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_commission"/>
+        <field name="amount_select">input</field>
+        <field name="amount_other_input_id" ref="input_il_commission"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_travel" model="hr.salary.rule">
+        <field name="name">החזר נסיעות</field>
+        <field name="code">IL_TRAVEL</field>
+        <field name="sequence">42</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_travel"/>
+        <field name="amount_select">input</field>
+        <field name="amount_other_input_id" ref="input_il_travel"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_havraa" model="hr.salary.rule">
+        <field name="name">דמי הבראה</field>
+        <field name="code">IL_HAVRAA</field>
+        <field name="sequence">43</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_havraa"/>
+        <field name="amount_select">input</field>
+        <field name="amount_other_input_id" ref="input_il_havraa"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_other_add" model="hr.salary.rule">
+        <field name="name">תוספת אחרת</field>
+        <field name="code">IL_OTHER_ADD</field>
+        <field name="sequence">44</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_other_addition"/>
+        <field name="amount_select">input</field>
+        <field name="amount_other_input_id" ref="input_il_other_addition"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_gross" model="hr.salary.rule">
+        <field name="name">שכר ברוטו</field>
+        <field name="code">GROSS</field>
+        <field name="sequence">100</field>
+        <field name="category_id" ref="hr_payroll.GROSS"/>
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = categories['BASIC'] + categories['ALW']
+</field>
+        <field name="bold" eval="True"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_pens_ee" model="hr.salary.rule">
+        <field name="name">פנסיה - חלק עובד</field>
+        <field name="code">IL_PENS_EE</field>
+        <field name="sequence">110</field>
+        <field name="category_id" ref="rule_category_il_statutory_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+rate = version.l10n_il_pension_employee_rate
+if not rate:
+    rate = payslip._rule_parameter('l10n_il_pension_min_rates')['employee'] * 100
+result = -categories['BASIC'] * rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_hisht_ee" model="hr.salary.rule">
+        <field name="name">קרן השתלמות - חלק עובד</field>
+        <field name="code">IL_HISHT_EE</field>
+        <field name="sequence">115</field>
+        <field name="category_id" ref="rule_category_il_other_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = version.l10n_il_hishtalmut and categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+ceiling = payslip._rule_parameter('l10n_il_hishtalmut_ceiling')
+base = min(categories['BASIC'], ceiling)
+result = -base * version.l10n_il_hishtalmut_employee_rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_inctax" model="hr.salary.rule">
+        <field name="name">מס הכנסה</field>
+        <field name="code">IL_INCTAX</field>
+        <field name="sequence">120</field>
+        <field name="category_id" ref="rule_category_il_statutory_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['GROSS'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# מס הכנסה: מדרגות + נקודות זיכוי + זיכוי פנסיה, או שיעור קבוע לפי תיאום מס
+taxable = categories['GROSS']
+if version.l10n_il_tax_coordination and version.l10n_il_tax_coordination_rate:
+    tax = taxable * version.l10n_il_tax_coordination_rate / 100.0
+elif not version.l10n_il_main_employer:
+    # מעסיק משני ללא תיאום מס: ניכוי מס מרבי
+    tax = taxable * 0.47
+else:
+    brackets = payslip._rule_parameter('l10n_il_tax_brackets')
+    tax = 0.0
+    for low, high, rate in brackets:
+        if taxable &gt; low:
+            top = min(taxable, high) if high else taxable
+            tax += (top - low) * rate
+    point_value = payslip._rule_parameter('l10n_il_credit_point_value')
+    credit = version.l10n_il_credit_points * point_value
+    pens_rate = version.l10n_il_pension_employee_rate
+    if not pens_rate:
+        pens_rate = payslip._rule_parameter('l10n_il_pension_min_rates')['employee'] * 100
+    credit_rate = payslip._rule_parameter('l10n_il_pension_tax_credit_rate')
+    credit += categories['BASIC'] * pens_rate / 100.0 * credit_rate
+    tax = max(tax - credit, 0.0)
+result = -tax
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_nii_ee" model="hr.salary.rule">
+        <field name="name">ביטוח לאומי - חלק עובד</field>
+        <field name="code">IL_NII_EE</field>
+        <field name="sequence">130</field>
+        <field name="category_id" ref="rule_category_il_statutory_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['GROSS'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+p = payslip._rule_parameter('l10n_il_nii_rates')
+base = min(categories['GROSS'], p['max_ceiling'])
+reduced = min(base, p['reduced_ceiling'])
+full = max(base - p['reduced_ceiling'], 0.0)
+result = -(reduced * p['employee_nii_reduced'] + full * p['employee_nii_full'])
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_health_ee" model="hr.salary.rule">
+        <field name="name">דמי ביטוח בריאות</field>
+        <field name="code">IL_HEALTH_EE</field>
+        <field name="sequence">131</field>
+        <field name="category_id" ref="rule_category_il_statutory_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['GROSS'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+p = payslip._rule_parameter('l10n_il_nii_rates')
+base = min(categories['GROSS'], p['max_ceiling'])
+reduced = min(base, p['reduced_ceiling'])
+full = max(base - p['reduced_ceiling'], 0.0)
+result = -(reduced * p['employee_health_reduced'] + full * p['employee_health_full'])
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_loan" model="hr.salary.rule">
+        <field name="name">החזר הלוואה</field>
+        <field name="code">IL_LOAN</field>
+        <field name="sequence">151</field>
+        <field name="category_id" ref="rule_category_il_other_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_loan"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -inputs['IL_LOAN'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_meals" model="hr.salary.rule">
+        <field name="name">ניכוי ארוחות</field>
+        <field name="code">IL_MEALS</field>
+        <field name="sequence">152</field>
+        <field name="category_id" ref="rule_category_il_other_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_meals"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -inputs['IL_MEALS'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_other_ded" model="hr.salary.rule">
+        <field name="name">ניכוי אחר</field>
+        <field name="code">IL_OTHER_DED</field>
+        <field name="sequence">153</field>
+        <field name="category_id" ref="rule_category_il_other_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_other_deduction"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -inputs['IL_OTHER_DED'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_net" model="hr.salary.rule">
+        <field name="name">שכר נטו</field>
+        <field name="code">NET</field>
+        <field name="sequence">200</field>
+        <field name="category_id" ref="hr_payroll.NET"/>
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = categories['GROSS'] + categories['DED']
+</field>
+        <field name="bold" eval="True"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_salary_adj_paid_ded" model="hr.salary.rule">
+        <field name="name">ניכוי התאמות שכר ששולמו (מהנטו לתשלום)</field>
+        <field name="code">IL_SALARY_ADJ_PAID_DED</field>
+        <field name="sequence">205</field>
+        <field name="category_id" ref="rule_category_il_net_to_pay_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_salary_adj_paid_deduction"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# חלק ה"שולם" מהתאמות שכר (Salary Adjustments / hr.salary.attachment עם שולם=True) -
+# נוסף כבר לנטו הרגיל דרך שורת ה-Input הרגילה של הסוג עצמו, ומנוכה כאן בחזרה - רק
+# מהנטו לתשלום (לא מהנטו הרגיל) כדי שלא ישולם פעמיים על מה שכבר שולם בפועל.
+result = -inputs['IL_SALARY_ADJ_PAID_DED'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_payment_adj" model="hr.salary.rule">
+        <field name="name">תשלומי עובד (מהנטו לתשלום)</field>
+        <field name="code">IL_PAYMENT_ADJ</field>
+        <field name="sequence">206</field>
+        <field name="category_id" ref="rule_category_il_net_to_pay_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_payment_adj"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# תשלומים לעובד (account.payment עם השפעה על שכר) שנאספו לתלוש הבא: תשלום ששלחנו
+# לעובד (Send) מנוכה מהנטו לתשלום; תשלום שהתקבל ממנו (Receive) נוסף לנטו לתשלום.
+result = inputs['IL_PAYMENT_ADJ'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_net_to_pay" model="hr.salary.rule">
+        <field name="name">נטו לתשלום</field>
+        <field name="code">NET_TO_PAY</field>
+        <field name="sequence">210</field>
+        <field name="category_id" ref="rule_category_il_net_to_pay"/>
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# נטו לתשלום = נטו רגיל, לאחר התאמות שכר ששולמו ותשלומי עובד (קטגוריה עומדת שלא
+# משפיעה על NET עצמו - ראו rule_category_il_net_to_pay_ded, ללא הורה תחת DED)
+result = categories['NET'] + categories['IL_NET_TO_PAY_DED']
+</field>
+        <field name="bold" eval="True"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_pens_er" model="hr.salary.rule">
+        <field name="name">פנסיה - חלק מעסיק</field>
+        <field name="code">IL_PENS_ER</field>
+        <field name="sequence">300</field>
+        <field name="category_id" ref="rule_category_il_employer"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+rate = version.l10n_il_pension_employer_rate
+if not rate:
+    rate = payslip._rule_parameter('l10n_il_pension_min_rates')['employer'] * 100
+result = categories['BASIC'] * rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_sev_er" model="hr.salary.rule">
+        <field name="name">פיצויים - חלק מעסיק</field>
+        <field name="code">IL_SEV_ER</field>
+        <field name="sequence">301</field>
+        <field name="category_id" ref="rule_category_il_employer"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+rate = version.l10n_il_severance_rate
+if not rate:
+    rate = payslip._rule_parameter('l10n_il_pension_min_rates')['severance'] * 100
+result = categories['BASIC'] * rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_hisht_er" model="hr.salary.rule">
+        <field name="name">קרן השתלמות - חלק מעסיק</field>
+        <field name="code">IL_HISHT_ER</field>
+        <field name="sequence">302</field>
+        <field name="category_id" ref="rule_category_il_employer"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = version.l10n_il_hishtalmut and categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+ceiling = payslip._rule_parameter('l10n_il_hishtalmut_ceiling')
+base = min(categories['BASIC'], ceiling)
+result = base * version.l10n_il_hishtalmut_employer_rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_nii_er" model="hr.salary.rule">
+        <field name="name">ביטוח לאומי - חלק מעסיק</field>
+        <field name="code">IL_NII_ER</field>
+        <field name="sequence">303</field>
+        <field name="category_id" ref="rule_category_il_employer"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['GROSS'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+p = payslip._rule_parameter('l10n_il_nii_rates')
+base = min(categories['GROSS'], p['max_ceiling'])
+reduced = min(base, p['reduced_ceiling'])
+full = max(base - p['reduced_ceiling'], 0.0)
+result = reduced * p['employer_reduced'] + full * p['employer_full']
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+    <record id="rule_ilm_advance" model="hr.salary.rule">
+        <field name="name">ניכוי מפרעה (legacy - הוחלף בתשלומים)</field>
+        <field name="code">IL_ADVANCE</field>
+        <field name="sequence">150</field>
+        <field name="category_id" ref="rule_category_il_net_to_pay_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_advance"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -inputs['IL_ADVANCE'].amount
+</field>
+        <field name="active" eval="False"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+
+    <!-- ==== hr_payroll_structure_il_worker_salary ==== -->
+    <record id="rule_ilh_basic" model="hr.salary.rule">
+        <field name="name">שכר בסיס</field>
+        <field name="code">BASIC</field>
+        <field name="sequence">1</field>
+        <field name="category_id" ref="hr_payroll.BASIC"/>
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = sum(wd.amount for wd in payslip.worked_days_line_ids if not wd.work_entry_type_id.is_extra_hours)
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_ot" model="hr.salary.rule">
+        <field name="name">גמול שעות נוספות</field>
+        <field name="code">IL_OT</field>
+        <field name="sequence">25</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = any(wd.work_entry_type_id.is_extra_hours for wd in payslip.worked_days_line_ids)
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = sum(wd.amount for wd in payslip.worked_days_line_ids if wd.work_entry_type_id.is_extra_hours)
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_sick_adj" model="hr.salary.rule">
+        <field name="name">התאמת דמי מחלה</field>
+        <field name="code">IL_SICK_ADJ</field>
+        <field name="sequence">30</field>
+        <field name="category_id" ref="hr_payroll.BASIC"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = 'IL_SICK' in worked_days and worked_days['IL_SICK'].number_of_days &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# התאמת דמי מחלה לפי חוק דמי מחלה: יום 1 - 0%, ימים 2-3 - 50%, מהיום ה-4 - 100%
+wd = worked_days['IL_SICK']
+daily = wd.amount / wd.number_of_days
+tiers = payslip._rule_parameter('l10n_il_sick_pay_tiers')
+window_start = payslip.date_from + relativedelta(days=-60)
+entries = version.env['hr.work.entry'].search([
+    ('employee_id', '=', employee.id),
+    ('work_entry_type_id.code', '=', 'IL_SICK'),
+    ('state', '!=', 'cancelled'),
+    ('date', '&gt;=', window_start),
+    ('date', '&lt;=', payslip.date_to),
+])
+days = sorted(set(e.date for e in entries))
+deduction = 0.0
+run_start = None
+prev = None
+for d in days:
+    if prev is None or (d - prev).days &gt; 3:
+        run_start = d
+    prev = d
+    if d &lt; payslip.date_from or d &gt; payslip.date_to:
+        continue
+    idx = (d - run_start).days + 1
+    if idx == 1:
+        frac = tiers['day1']
+    elif idx &lt;= 3:
+        frac = tiers['day2_3']
+    else:
+        frac = tiers['day4_plus']
+    deduction += daily * (1.0 - frac)
+result = -deduction
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_commission" model="hr.salary.rule">
+        <field name="name">עמלה</field>
+        <field name="code">IL_COMMISSION</field>
+        <field name="sequence">41</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_commission"/>
+        <field name="amount_select">input</field>
+        <field name="amount_other_input_id" ref="input_il_commission"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_travel" model="hr.salary.rule">
+        <field name="name">החזר נסיעות</field>
+        <field name="code">IL_TRAVEL</field>
+        <field name="sequence">42</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_travel"/>
+        <field name="amount_select">input</field>
+        <field name="amount_other_input_id" ref="input_il_travel"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_havraa" model="hr.salary.rule">
+        <field name="name">דמי הבראה</field>
+        <field name="code">IL_HAVRAA</field>
+        <field name="sequence">43</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_havraa"/>
+        <field name="amount_select">input</field>
+        <field name="amount_other_input_id" ref="input_il_havraa"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_other_add" model="hr.salary.rule">
+        <field name="name">תוספת אחרת</field>
+        <field name="code">IL_OTHER_ADD</field>
+        <field name="sequence">44</field>
+        <field name="category_id" ref="hr_payroll.ALW"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_other_addition"/>
+        <field name="amount_select">input</field>
+        <field name="amount_other_input_id" ref="input_il_other_addition"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_gross" model="hr.salary.rule">
+        <field name="name">שכר ברוטו</field>
+        <field name="code">GROSS</field>
+        <field name="sequence">100</field>
+        <field name="category_id" ref="hr_payroll.GROSS"/>
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = categories['BASIC'] + categories['ALW']
+</field>
+        <field name="bold" eval="True"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_pens_ee" model="hr.salary.rule">
+        <field name="name">פנסיה - חלק עובד</field>
+        <field name="code">IL_PENS_EE</field>
+        <field name="sequence">110</field>
+        <field name="category_id" ref="rule_category_il_statutory_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+rate = version.l10n_il_pension_employee_rate
+if not rate:
+    rate = payslip._rule_parameter('l10n_il_pension_min_rates')['employee'] * 100
+result = -categories['BASIC'] * rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_hisht_ee" model="hr.salary.rule">
+        <field name="name">קרן השתלמות - חלק עובד</field>
+        <field name="code">IL_HISHT_EE</field>
+        <field name="sequence">115</field>
+        <field name="category_id" ref="rule_category_il_other_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = version.l10n_il_hishtalmut and categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+ceiling = payslip._rule_parameter('l10n_il_hishtalmut_ceiling')
+base = min(categories['BASIC'], ceiling)
+result = -base * version.l10n_il_hishtalmut_employee_rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_inctax" model="hr.salary.rule">
+        <field name="name">מס הכנסה</field>
+        <field name="code">IL_INCTAX</field>
+        <field name="sequence">120</field>
+        <field name="category_id" ref="rule_category_il_statutory_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['GROSS'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# מס הכנסה: מדרגות + נקודות זיכוי + זיכוי פנסיה, או שיעור קבוע לפי תיאום מס
+taxable = categories['GROSS']
+if version.l10n_il_tax_coordination and version.l10n_il_tax_coordination_rate:
+    tax = taxable * version.l10n_il_tax_coordination_rate / 100.0
+elif not version.l10n_il_main_employer:
+    # מעסיק משני ללא תיאום מס: ניכוי מס מרבי
+    tax = taxable * 0.47
+else:
+    brackets = payslip._rule_parameter('l10n_il_tax_brackets')
+    tax = 0.0
+    for low, high, rate in brackets:
+        if taxable &gt; low:
+            top = min(taxable, high) if high else taxable
+            tax += (top - low) * rate
+    point_value = payslip._rule_parameter('l10n_il_credit_point_value')
+    credit = version.l10n_il_credit_points * point_value
+    pens_rate = version.l10n_il_pension_employee_rate
+    if not pens_rate:
+        pens_rate = payslip._rule_parameter('l10n_il_pension_min_rates')['employee'] * 100
+    credit_rate = payslip._rule_parameter('l10n_il_pension_tax_credit_rate')
+    credit += categories['BASIC'] * pens_rate / 100.0 * credit_rate
+    tax = max(tax - credit, 0.0)
+result = -tax
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_nii_ee" model="hr.salary.rule">
+        <field name="name">ביטוח לאומי - חלק עובד</field>
+        <field name="code">IL_NII_EE</field>
+        <field name="sequence">130</field>
+        <field name="category_id" ref="rule_category_il_statutory_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['GROSS'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+p = payslip._rule_parameter('l10n_il_nii_rates')
+base = min(categories['GROSS'], p['max_ceiling'])
+reduced = min(base, p['reduced_ceiling'])
+full = max(base - p['reduced_ceiling'], 0.0)
+result = -(reduced * p['employee_nii_reduced'] + full * p['employee_nii_full'])
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_health_ee" model="hr.salary.rule">
+        <field name="name">דמי ביטוח בריאות</field>
+        <field name="code">IL_HEALTH_EE</field>
+        <field name="sequence">131</field>
+        <field name="category_id" ref="rule_category_il_statutory_ded"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['GROSS'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+p = payslip._rule_parameter('l10n_il_nii_rates')
+base = min(categories['GROSS'], p['max_ceiling'])
+reduced = min(base, p['reduced_ceiling'])
+full = max(base - p['reduced_ceiling'], 0.0)
+result = -(reduced * p['employee_health_reduced'] + full * p['employee_health_full'])
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_loan" model="hr.salary.rule">
+        <field name="name">החזר הלוואה</field>
+        <field name="code">IL_LOAN</field>
+        <field name="sequence">151</field>
+        <field name="category_id" ref="rule_category_il_other_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_loan"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -inputs['IL_LOAN'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_meals" model="hr.salary.rule">
+        <field name="name">ניכוי ארוחות</field>
+        <field name="code">IL_MEALS</field>
+        <field name="sequence">152</field>
+        <field name="category_id" ref="rule_category_il_other_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_meals"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -inputs['IL_MEALS'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_other_ded" model="hr.salary.rule">
+        <field name="name">ניכוי אחר</field>
+        <field name="code">IL_OTHER_DED</field>
+        <field name="sequence">153</field>
+        <field name="category_id" ref="rule_category_il_other_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_other_deduction"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -inputs['IL_OTHER_DED'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_net" model="hr.salary.rule">
+        <field name="name">שכר נטו</field>
+        <field name="code">NET</field>
+        <field name="sequence">200</field>
+        <field name="category_id" ref="hr_payroll.NET"/>
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = categories['GROSS'] + categories['DED']
+</field>
+        <field name="bold" eval="True"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_salary_adj_paid_ded" model="hr.salary.rule">
+        <field name="name">ניכוי התאמות שכר ששולמו (מהנטו לתשלום)</field>
+        <field name="code">IL_SALARY_ADJ_PAID_DED</field>
+        <field name="sequence">205</field>
+        <field name="category_id" ref="rule_category_il_net_to_pay_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_salary_adj_paid_deduction"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# חלק ה"שולם" מהתאמות שכר (Salary Adjustments / hr.salary.attachment עם שולם=True) -
+# נוסף כבר לנטו הרגיל דרך שורת ה-Input הרגילה של הסוג עצמו, ומנוכה כאן בחזרה - רק
+# מהנטו לתשלום (לא מהנטו הרגיל) כדי שלא ישולם פעמיים על מה שכבר שולם בפועל.
+result = -inputs['IL_SALARY_ADJ_PAID_DED'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_payment_adj" model="hr.salary.rule">
+        <field name="name">תשלומי עובד (מהנטו לתשלום)</field>
+        <field name="code">IL_PAYMENT_ADJ</field>
+        <field name="sequence">206</field>
+        <field name="category_id" ref="rule_category_il_net_to_pay_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_payment_adj"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# תשלומים לעובד (account.payment עם השפעה על שכר) שנאספו לתלוש הבא: תשלום ששלחנו
+# לעובד (Send) מנוכה מהנטו לתשלום; תשלום שהתקבל ממנו (Receive) נוסף לנטו לתשלום.
+result = inputs['IL_PAYMENT_ADJ'].amount
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_net_to_pay" model="hr.salary.rule">
+        <field name="name">נטו לתשלום</field>
+        <field name="code">NET_TO_PAY</field>
+        <field name="sequence">210</field>
+        <field name="category_id" ref="rule_category_il_net_to_pay"/>
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# נטו לתשלום = נטו רגיל, לאחר התאמות שכר ששולמו ותשלומי עובד (קטגוריה עומדת שלא
+# משפיעה על NET עצמו - ראו rule_category_il_net_to_pay_ded, ללא הורה תחת DED)
+result = categories['NET'] + categories['IL_NET_TO_PAY_DED']
+</field>
+        <field name="bold" eval="True"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_pens_er" model="hr.salary.rule">
+        <field name="name">פנסיה - חלק מעסיק</field>
+        <field name="code">IL_PENS_ER</field>
+        <field name="sequence">300</field>
+        <field name="category_id" ref="rule_category_il_employer"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+rate = version.l10n_il_pension_employer_rate
+if not rate:
+    rate = payslip._rule_parameter('l10n_il_pension_min_rates')['employer'] * 100
+result = categories['BASIC'] * rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_sev_er" model="hr.salary.rule">
+        <field name="name">פיצויים - חלק מעסיק</field>
+        <field name="code">IL_SEV_ER</field>
+        <field name="sequence">301</field>
+        <field name="category_id" ref="rule_category_il_employer"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+rate = version.l10n_il_severance_rate
+if not rate:
+    rate = payslip._rule_parameter('l10n_il_pension_min_rates')['severance'] * 100
+result = categories['BASIC'] * rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_hisht_er" model="hr.salary.rule">
+        <field name="name">קרן השתלמות - חלק מעסיק</field>
+        <field name="code">IL_HISHT_ER</field>
+        <field name="sequence">302</field>
+        <field name="category_id" ref="rule_category_il_employer"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = version.l10n_il_hishtalmut and categories['BASIC'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+ceiling = payslip._rule_parameter('l10n_il_hishtalmut_ceiling')
+base = min(categories['BASIC'], ceiling)
+result = base * version.l10n_il_hishtalmut_employer_rate / 100.0
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_nii_er" model="hr.salary.rule">
+        <field name="name">ביטוח לאומי - חלק מעסיק</field>
+        <field name="code">IL_NII_ER</field>
+        <field name="sequence">303</field>
+        <field name="category_id" ref="rule_category_il_employer"/>
+        <field name="condition_select">python</field>
+        <field name="condition_python">
+result = categories['GROSS'] &gt; 0
+</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+p = payslip._rule_parameter('l10n_il_nii_rates')
+base = min(categories['GROSS'], p['max_ceiling'])
+reduced = min(base, p['reduced_ceiling'])
+full = max(base - p['reduced_ceiling'], 0.0)
+result = reduced * p['employer_reduced'] + full * p['employer_full']
+</field>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+    <record id="rule_ilh_advance" model="hr.salary.rule">
+        <field name="name">ניכוי מפרעה (legacy - הוחלף בתשלומים)</field>
+        <field name="code">IL_ADVANCE</field>
+        <field name="sequence">150</field>
+        <field name="category_id" ref="rule_category_il_net_to_pay_ded"/>
+        <field name="condition_select">input</field>
+        <field name="condition_other_input_id" ref="input_il_advance"/>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -inputs['IL_ADVANCE'].amount
+</field>
+        <field name="active" eval="False"/>
+        <field name="struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+</odoo>

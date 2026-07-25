@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- היעדרויות ללא תשלום -->
+    <record id="work_entry_type_il_unpaid" model="hr.work.entry.type">
+        <field name="name">חופשה ללא תשלום (חל״ת)</field>
+        <field name="code">IL_UNPAID</field>
+        <field name="display_code">חלת</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_leave" eval="True"/>
+        <field name="sequence">40</field>
+        <field name="color">5</field>
+    </record>
+
+    <record id="work_entry_type_il_unauth" model="hr.work.entry.type">
+        <field name="name">היעדרות בלתי מאושרת</field>
+        <field name="code">IL_UNAUTH</field>
+        <field name="display_code">הבמ</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_leave" eval="True"/>
+        <field name="is_unforeseen" eval="True"/>
+        <field name="sequence">41</field>
+        <field name="color">1</field>
+    </record>
+
+    <!-- היעדרויות בתשלום -->
+    <record id="work_entry_type_il_sick" model="hr.work.entry.type">
+        <field name="name">מחלה</field>
+        <field name="code">IL_SICK</field>
+        <field name="display_code">מחל</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_leave" eval="True"/>
+        <field name="amount_rate">1.0</field>
+        <field name="sequence">30</field>
+        <field name="color">7</field>
+    </record>
+
+    <record id="work_entry_type_il_annual" model="hr.work.entry.type">
+        <field name="name">חופשה שנתית</field>
+        <field name="code">IL_ANNUAL</field>
+        <field name="display_code">חופ</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_leave" eval="True"/>
+        <field name="amount_rate">1.0</field>
+        <field name="sequence">31</field>
+        <field name="color">10</field>
+    </record>
+
+    <record id="work_entry_type_il_reserve" model="hr.work.entry.type">
+        <field name="name">מילואים</field>
+        <field name="code">IL_RESERVE</field>
+        <field name="display_code">מיל</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_leave" eval="True"/>
+        <field name="amount_rate">1.0</field>
+        <field name="sequence">32</field>
+        <field name="color">4</field>
+    </record>
+
+    <!-- שעות נוספות: שתי השעות הראשונות 125%, מהשעה השלישית 150% -->
+    <record id="work_entry_type_il_ot125" model="hr.work.entry.type">
+        <field name="name">שעות נוספות 125%</field>
+        <field name="code">IL_OT125</field>
+        <field name="display_code">שנ1</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_extra_hours" eval="True"/>
+        <field name="amount_rate">1.25</field>
+        <field name="sequence">50</field>
+        <field name="color">2</field>
+    </record>
+
+    <record id="work_entry_type_il_ot150" model="hr.work.entry.type">
+        <field name="name">שעות נוספות 150%</field>
+        <field name="code">IL_OT150</field>
+        <field name="display_code">שנ2</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_extra_hours" eval="True"/>
+        <field name="amount_rate">1.5</field>
+        <field name="sequence">51</field>
+        <field name="color">2</field>
+    </record>
+
+    <!-- עבודה במנוחה השבועית: תוספת 50% לפחות לפי חוק שעות עבודה ומנוחה -->
+    <record id="work_entry_type_il_rest150" model="hr.work.entry.type">
+        <field name="name">עבודה במנוחה שבועית 150%</field>
+        <field name="code">IL_REST150</field>
+        <field name="display_code">שבת</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_extra_hours" eval="True"/>
+        <field name="amount_rate">1.5</field>
+        <field name="sequence">52</field>
+        <field name="color">1</field>
+    </record>
+
+    <!-- שעות נוספות במנוחה שבועית: 175% (שעתיים ראשונות) ו-200% (מהשלישית) -->
+    <record id="work_entry_type_il_rest175" model="hr.work.entry.type">
+        <field name="name">שעות נוספות במנוחה שבועית 175%</field>
+        <field name="code">IL_REST175</field>
+        <field name="display_code">שב1</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_extra_hours" eval="True"/>
+        <field name="amount_rate">1.75</field>
+        <field name="sequence">53</field>
+        <field name="color">1</field>
+    </record>
+
+    <record id="work_entry_type_il_rest200" model="hr.work.entry.type">
+        <field name="name">שעות נוספות במנוחה שבועית 200%</field>
+        <field name="code">IL_REST200</field>
+        <field name="display_code">שב2</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="is_extra_hours" eval="True"/>
+        <field name="amount_rate">2.0</field>
+        <field name="sequence">54</field>
+        <field name="color">1</field>
+    </record>
+</odoo>
