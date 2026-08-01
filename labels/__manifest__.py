@@ -1,13 +1,14 @@
 {
     "name": "תוויות",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.0.1",
     "category": "Productivity",
     "summary": "מודול בסיס לתוויות",
-    "depends": ["base"],
+    "depends": ["base", "web"],
     "data": [
         "security/ir.model.access.csv",
         "views/label_views.xml",
         "views/menu.xml",
+        "views/login_staging_poc.xml",
     ],
     "application": True,
     "installable": True,
