@@ -1,6 +1,6 @@
 {
     "name": "תוויות",
-    "version": "19.0.1.0.3",
+    "version": "19.0.1.0.4",
     "category": "Productivity",
     "summary": "מודול בסיס לתוויות",
     "depends": ["base", "web", "website"],
