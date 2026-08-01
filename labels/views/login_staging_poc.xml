@@ -2,8 +2,13 @@
 <odoo>
     <template id="login_staging_poc" inherit_id="web.login" name="Staging Login POC">
         <xpath expr="//form[contains(@class, 'oe_login_form')]" position="before">
-            <div class="alert alert-warning text-center fw-bold mb-3" role="alert">
-                STAGING ENVIRONMENT — ChatGPT POC
+            <div class="alert alert-danger text-center mb-4 p-4 shadow" role="alert" style="border: 3px solid #b02a37; border-radius: 14px;">
+                <div class="fs-3 fw-bold mb-2">
+                    CHATGPT POC — STAGING
+                </div>
+                <div class="fs-5">
+                    This message is visible before signing in to Odoo.
+                </div>
             </div>
         </xpath>
     </template>
