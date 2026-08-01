@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="login_staging_poc" inherit_id="web.login" name="Staging Login POC">
+        <xpath expr="//form[contains(@class, 'oe_login_form')]" position="before">
+            <div class="alert alert-warning text-center fw-bold mb-3" role="alert">
+                STAGING ENVIRONMENT — ChatGPT POC
+            </div>
+        </xpath>
+    </template>
+</odoo>
