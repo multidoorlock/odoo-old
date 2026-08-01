@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <template id="login_staging_poc" inherit_id="web.login" name="Staging Login POC">
-        <xpath expr="//form[contains(@class, 'oe_login_form')]" position="before">
-            <div class="alert alert-danger text-center mb-4 p-4 shadow" role="alert" style="border: 3px solid #b02a37; border-radius: 14px;">
-                <div class="fs-3 fw-bold mb-2">
-                    CHATGPT POC — STAGING
-                </div>
-                <div class="fs-5">
-                    This message is visible before signing in to Odoo.
+    <template id="login_staging_poc" inherit_id="website.login_layout" name="Staging Login POC" priority="100">
+        <xpath expr="//div[contains(@class, 'oe_website_login_container')]" position="before">
+            <style>
+                body {
+                    padding-top: 72px !important;
+                }
+            </style>
+            <div id="mdl_staging_poc_banner"
+                 style="position: fixed; top: 0; left: 0; right: 0; z-index: 99999; background: #b42318; color: #ffffff; text-align: center; padding: 16px 20px; font-size: 22px; font-weight: 800; line-height: 1.25; box-shadow: 0 3px 14px rgba(0, 0, 0, 0.35);">
+                STAGING TEST — CREATED BY CHATGPT
+                <div style="font-size: 14px; font-weight: 600; margin-top: 4px;">
+                    This banner is rendered before the user signs in.
                 </div>
             </div>
         </xpath>
