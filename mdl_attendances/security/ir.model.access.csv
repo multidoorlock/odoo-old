@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mdl_attendance_shift_weekday_hr_user,mdl.attendance.shift.weekday.hr.user,model_mdl_attendance_shift_weekday,hr.group_hr_user,1,1,1,1

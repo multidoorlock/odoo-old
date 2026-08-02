@@ -113,4 +113,17 @@
         <field name="sequence">54</field>
         <field name="color">1</field>
     </record>
+
+    <!-- יום נוסף: מספר-ימים (לא שעות) - amount_rate=0 כי הסכום לא מחושב לפי
+         המנגנון הילידי (שעה*amount_rate) אלא לפי number_of_days * תעריף-יום-נוסף
+         של החוזה (l10n_il_extra_day_rate) - ראו rule_ilm_extra_day/rule_ilh_extra_day. -->
+    <record id="work_entry_type_il_extra_day" model="hr.work.entry.type">
+        <field name="name">יום נוסף</field>
+        <field name="code">IL_EXTRA_DAY</field>
+        <field name="display_code">ימנ</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="amount_rate">0.0</field>
+        <field name="sequence">55</field>
+        <field name="color">3</field>
+    </record>
 </odoo>

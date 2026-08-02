@@ -16,7 +16,7 @@
     </record>
 
     <record id="hr_payroll_structure_il_worker_salary" model="hr.payroll.structure">
-        <field name="name">ישראל: שכר שעתי/יומי</field>
+        <field name="name">ישראל: שכר יומי</field>
         <field name="code">ILHOURLY</field>
         <field name="country_id" ref="base.il"/>
         <field name="type_id" ref="l10n_il_hr_payroll.structure_type_il_worker"/>

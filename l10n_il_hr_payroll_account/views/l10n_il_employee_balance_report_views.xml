@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- דוח יתרת עובד: שורה לכל עובד מול התלוש האחרון שאושר לו - ראו
+         l10n_il_employee_balance_report.py. דוח בלבד (לקריאה), לא ניתן ליצירה/עריכה. -->
+    <record id="l10n_il_employee_balance_report_view_list" model="ir.ui.view">
+        <field name="name">l10n.il.employee.balance.report.view.list</field>
+        <field name="model">l10n.il.employee.balance.report</field>
+        <field name="arch" type="xml">
+            <list string="דוח יתרת עובד" create="false" edit="false" delete="false">
+                <field name="employee_id"/>
+                <field name="payslip_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="net"/>
+                <field name="paid_so_far"/>
+                <field name="net_to_pay"/>
+                <field name="open_payment_count"/>
+                <field name="open_payment_total" sum="סה״כ"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="l10n_il_employee_balance_report_view_search" model="ir.ui.view">
+        <field name="name">l10n.il.employee.balance.report.view.search</field>
+        <field name="model">l10n.il.employee.balance.report</field>
+        <field name="arch" type="xml">
+            <search string="דוח יתרת עובד">
+                <field name="employee_id"/>
+                <group>
+                    <filter name="group_by_employee" string="עובד" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_l10n_il_employee_balance_report" model="ir.actions.act_window">
+        <field name="name">דוח יתרת עובד</field>
+        <field name="res_model">l10n.il.employee.balance.report</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="l10n_il_employee_balance_report_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">אין עדיין תלושים מאושרים</p>
+            <p>לכל עובד: מול התלוש האחרון שאושר לו - כמה שולם עד כה, כמה היה אמור להשתלם,
+               וכמות/סכום התשלומים הפתוחים שעדיין לא קושרו לאף תלוש.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_l10n_il_employee_balance_report"
+        name="דוח יתרת עובד"
+        action="action_l10n_il_employee_balance_report"
+        parent="hr_payroll.menu_hr_payroll_report"
+        sequence="54"/>
+</odoo>

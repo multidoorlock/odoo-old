@@ -1,7 +1,7 @@
 {
     "name": "Israel - Payroll",
     "countries": ["il"],
-    "version": "19.0.8.0.0",
+    "version": "19.0.9.0.0",
     "category": "Human Resources/Payroll",
     "summary":"",
     "description": """
@@ -15,9 +15,9 @@
     """,
     "depends": [
         "hr_payroll",
+        "hr_work_entry",
         "hr_work_entry_holidays",
         "hr_payroll_holidays",
-        "account",
     ],
     "auto_install": ["hr_payroll"],
     "data": [
@@ -35,10 +35,10 @@
         "data/ir_cron_data.xml",
         "report/l10n_il_form101_report.xml",
         "views/l10n_il_form101_views.xml",
-        "views/hr_salary_attachment_views.xml",
-        "views/l10n_il_account_payment_views.xml",
         "views/l10n_il_payslip_report_views.xml",
+        "views/hr_payslip_views.xml",
         "views/hr_employee_views.xml",
+        "views/hr_work_entry_type_views.xml",
         "views/res_company_views.xml",
     ],
     "installable": True,

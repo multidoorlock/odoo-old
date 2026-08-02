@@ -5,8 +5,6 @@ class HrEmployee(models.Model):
     _inherit = "hr.employee"
 
     l10n_il_employee_category = fields.Selection(readonly=False, related="version_id.l10n_il_employee_category", inherited=True, groups="hr_payroll.group_hr_payroll_user")
-    l10n_il_has_advance = fields.Boolean(readonly=False, related="version_id.l10n_il_has_advance", inherited=True, groups="hr_payroll.group_hr_payroll_user")
-    l10n_il_advance_amount = fields.Float(readonly=False, related="version_id.l10n_il_advance_amount", inherited=True, groups="hr_payroll.group_hr_payroll_user")
     l10n_il_tax_residency = fields.Selection(readonly=False, related="version_id.l10n_il_tax_residency", inherited=True, groups="hr_payroll.group_hr_payroll_user")
     l10n_il_credit_points = fields.Float(readonly=False, related="version_id.l10n_il_credit_points", inherited=True, groups="hr_payroll.group_hr_payroll_user")
     l10n_il_main_employer = fields.Boolean(readonly=False, related="version_id.l10n_il_main_employer", inherited=True, groups="hr_payroll.group_hr_payroll_user")
@@ -59,6 +57,16 @@ class HrEmployee(models.Model):
         compute="_compute_l10n_il_form101_count",
         groups="hr_payroll.group_hr_payroll_user",
     )
+    l10n_il_daily_wage = fields.Monetary(readonly=False, related="version_id.l10n_il_daily_wage", inherited=True, groups="hr_payroll.group_hr_payroll_user")
+    l10n_il_weekend_daily_wage = fields.Monetary(readonly=False, related="version_id.l10n_il_weekend_daily_wage", inherited=True, groups="hr_payroll.group_hr_payroll_user")
+    l10n_il_computed_daily_wage = fields.Monetary(related="version_id.l10n_il_computed_daily_wage", groups="hr_payroll.group_hr_payroll_user")
+    l10n_il_computed_weekly_wage = fields.Monetary(related="version_id.l10n_il_computed_weekly_wage", groups="hr_payroll.group_hr_payroll_user")
+    l10n_il_computed_monthly_wage = fields.Monetary(related="version_id.l10n_il_computed_monthly_wage", groups="hr_payroll.group_hr_payroll_user")
+    l10n_il_extra_day_rate = fields.Monetary(readonly=False, related="version_id.l10n_il_extra_day_rate", inherited=True, groups="hr_payroll.group_hr_payroll_user")
+    l10n_il_overtime_payment_type = fields.Selection(readonly=False, related="version_id.l10n_il_overtime_payment_type", inherited=True, groups="hr_payroll.group_hr_payroll_user")
+    l10n_il_overtime_percentage = fields.Float(readonly=False, related="version_id.l10n_il_overtime_percentage", inherited=True, groups="hr_payroll.group_hr_payroll_user")
+    l10n_il_overtime_fixed_rate = fields.Monetary(readonly=False, related="version_id.l10n_il_overtime_fixed_rate", inherited=True, groups="hr_payroll.group_hr_payroll_user")
+    l10n_il_computed_overtime_hour_rate = fields.Monetary(related="version_id.l10n_il_computed_overtime_hour_rate", groups="hr_payroll.group_hr_payroll_user")
 
     def _compute_l10n_il_form101_count(self):
         for employee in self:

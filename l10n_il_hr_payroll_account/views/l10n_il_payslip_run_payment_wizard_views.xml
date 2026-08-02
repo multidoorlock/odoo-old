@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==== "שלם" על Pay Run (hr.payslip.run) פותח את הפופאפ הזה, בדיוק כמו
+         מסך "עובדים וסכומים" של אשף מחזור התשלומים הרגיל - מציג את כל
+         העובדים המקושרים ל-Pay Run הזה (עם נטו-לתשלום זמין), סכום ניתן
+         לעריכה ותיבת "נכלל" - משלם רק את מי שנכלל (ראו
+         l10n_il_payslip_run_payment_wizard.py). ==== -->
+    <record id="l10n_il_payslip_run_payment_wizard_view_form" model="ir.ui.view">
+        <field name="name">l10n.il.payslip.run.payment.wizard.view.form</field>
+        <field name="model">l10n.il.payslip.run.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="תשלום מחזור תלושים">
+                <group>
+                    <field name="payslip_run_id" readonly="1" invisible="not payslip_run_id"/>
+                    <field name="journal_id"/>
+                    <field name="payment_method_line_id"/>
+                    <field name="currency_id" invisible="1"/>
+                </group>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <button name="action_set_all_amount" type="object" string="הגדר סכום לכולם" class="btn-secondary"/>
+                    <field name="set_all_amount" nolabel="1"/>
+                </div>
+                <field name="line_ids">
+                    <list editable="bottom" create="false">
+                        <field name="included"/>
+                        <field name="employee_id" widget="many2one_avatar_employee" readonly="1"/>
+                        <field name="net_to_pay" readonly="1"/>
+                        <field name="employee_bank_account_ids" column_invisible="1"/>
+                        <field name="partner_bank_id" required="included"/>
+                        <field name="amount" readonly="not included" required="included"/>
+                        <field name="currency_id" column_invisible="1"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_confirm" type="object" string="שלם" class="btn-primary"/>
+                    <button string="ביטול" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

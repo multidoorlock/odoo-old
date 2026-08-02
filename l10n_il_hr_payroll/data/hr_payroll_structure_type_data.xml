@@ -9,7 +9,7 @@
     </record>
 
     <record id="structure_type_il_worker" model="hr.payroll.structure.type">
-        <field name="name">ישראל: עובד שעתי/יומי</field>
+        <field name="name">ישראל: עובד יומי</field>
         <field name="wage_type">hourly</field>
         <field name="default_schedule_pay">monthly</field>
         <field name="default_resource_calendar_id" ref="resource_calendar_il_5day"/>

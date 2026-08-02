@@ -2,7 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_l10n_il_employee_child_hr_user,l10n.il.employee.child.hr.user,model_l10n_il_employee_child,hr.group_hr_user,1,1,1,1
 access_l10n_il_form101_payroll_user,l10n.il.form101.payroll.user,model_l10n_il_form101,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_l10n_il_form101_replace_wizard,l10n.il.form101.replace.wizard.payroll.user,model_l10n_il_form101_replace_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_payment_batch_payroll_user,l10n.il.payment.batch.payroll.user,model_l10n_il_payment_batch,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_payment_batch_wizard,l10n.il.payment.batch.wizard.payroll.user,model_l10n_il_payment_batch_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_payment_batch_wizard_line,l10n.il.payment.batch.wizard.line.payroll.user,model_l10n_il_payment_batch_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_l10n_il_payslip_report_payroll_user,l10n.il.payslip.report.payroll.user,model_l10n_il_payslip_report,hr_payroll.group_hr_payroll_user,1,0,0,0

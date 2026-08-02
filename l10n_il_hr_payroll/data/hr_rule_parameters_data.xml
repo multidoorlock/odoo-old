@@ -86,6 +86,70 @@
         <field name="date_from" eval="datetime(2026, 1, 1).date()"/>
     </record>
 
+    <!-- עובד תושב יהודה/שומרון/עזה (l10n_il_employee_category='palestinian') - ללא ביטוח
+         בריאות כלל (המעסיק רוכש עבורו ביטוח בריאות פרטי בנפרד, מחוץ לתלוש) ובשיעורי
+         ביטוח לאומי מופחתים משמעותית מתושב ישראל. מקור: btl.gov.il, "שיעורי דמי הביטוח
+         לתושב חוץ" + "ביטוח לאומי לעובדים פלסטינים" (כל-זכות), תוקף 01.01.2026. -->
+    <record id="rule_parameter_il_nii_rates_west_bank" model="hr.rule.parameter">
+        <field name="name">ישראל: ביטוח לאומי - עובד תושב יהודה/שומרון/עזה</field>
+        <field name="code">l10n_il_nii_rates_west_bank</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="description" type="html">
+            <p>שיעורי ביטוח לאומי לעובד תושב האזור (יהודה/שומרון/עזה) המועסק בישראל/באזור,
+            לפי לוחות ביטוח לאומי 2026. אין ביטוח בריאות במסגרת זו - המעסיק מחויב ברכישת
+            ביטוח בריאות פרטי נפרד עבור העובד.</p>
+            <ul>
+                <li>מדרגה מופחתת עד 8,261 ₪: עובד — 0.07%; מעסיק — 0.71%</li>
+                <li>מדרגה מלאה עד תקרה 51,910 ₪: עובד — 0.61%; מעסיק — 2.49%</li>
+            </ul>
+        </field>
+    </record>
+    <record id="rule_parameter_il_nii_rates_west_bank_2026" model="hr.rule.parameter.value">
+        <field name="parameter_value">{
+    'reduced_ceiling': 8261.0,
+    'max_ceiling': 51910.0,
+    'employee_nii_reduced': 0.0007,
+    'employee_nii_full': 0.0061,
+    'employee_health_reduced': 0.0,
+    'employee_health_full': 0.0,
+    'employer_reduced': 0.0071,
+    'employer_full': 0.0249,
+}</field>
+        <field name="rule_parameter_id" ref="rule_parameter_il_nii_rates_west_bank"/>
+        <field name="date_from" eval="datetime(2026, 1, 1).date()"/>
+    </record>
+
+    <!-- עובד זר (l10n_il_employee_category='foreign', תושב חוץ שאינו תושב האזור) - גם כאן
+         ללא ביטוח בריאות, בשיעורי ביטוח לאומי מופחתים אך שונים מתושב האזור. מקור: btl.gov.il,
+         "שיעורי דמי הביטוח לתושב חוץ", תוקף 01.01.2026. -->
+    <record id="rule_parameter_il_nii_rates_foreign" model="hr.rule.parameter">
+        <field name="name">ישראל: ביטוח לאומי - עובד זר (תושב חוץ)</field>
+        <field name="code">l10n_il_nii_rates_foreign</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="description" type="html">
+            <p>שיעורי ביטוח לאומי לעובד זר (תושב חוץ שאינו תושב יהודה/שומרון/עזה), לפי לוחות
+            ביטוח לאומי 2026. אין ביטוח בריאות במסגרת זו - כמו בעובד תושב האזור.</p>
+            <ul>
+                <li>מדרגה מופחתת עד 7,703 ₪: עובד — 0.1%; מעסיק — 0.75%</li>
+                <li>מדרגה מלאה עד תקרה 51,910 ₪: עובד — 0.87%; מעסיק — 2.65%</li>
+            </ul>
+        </field>
+    </record>
+    <record id="rule_parameter_il_nii_rates_foreign_2026" model="hr.rule.parameter.value">
+        <field name="parameter_value">{
+    'reduced_ceiling': 7703.0,
+    'max_ceiling': 51910.0,
+    'employee_nii_reduced': 0.001,
+    'employee_nii_full': 0.0087,
+    'employee_health_reduced': 0.0,
+    'employee_health_full': 0.0,
+    'employer_reduced': 0.0075,
+    'employer_full': 0.0265,
+}</field>
+        <field name="rule_parameter_id" ref="rule_parameter_il_nii_rates_foreign"/>
+        <field name="date_from" eval="datetime(2026, 1, 1).date()"/>
+    </record>
+
     <!-- ============ שכר מינימום ============ -->
 
     <record id="rule_parameter_il_minimum_wage" model="hr.rule.parameter">
@@ -155,6 +219,30 @@
         <field name="parameter_value">418</field>
         <field name="rule_parameter_id" ref="rule_parameter_il_havraa_day_value"/>
         <field name="date_from" eval="datetime(2024, 7, 1).date()"/>
+    </record>
+
+    <!-- ימי זכאות להבראה לפי ותק (שנות עבודה מושלמות), אותם דרגים המתועדים
+         כבר בתיאור הפרמטר למעלה - (משנה כוללת, עד שנה לא-כוללת, ימים) -->
+    <record id="rule_parameter_il_havraa_eligible_days" model="hr.rule.parameter">
+        <field name="name">ישראל: ימי זכאות הבראה לפי ותק</field>
+        <field name="code">l10n_il_havraa_eligible_days</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="description" type="html">
+            <p>מדרגות ימי זכאות לדמי הבראה לפי ותק (שנות עבודה מושלמות) במגזר הפרטי:
+            שנה 1: 5 ימים; שנים 2–3: 6; שנים 4–10: 7; שנים 11–15: 8; שנים 16–19: 9; שנה 20+: 10.</p>
+        </field>
+    </record>
+    <record id="rule_parameter_il_havraa_eligible_days_2017" model="hr.rule.parameter.value">
+        <field name="parameter_value">[
+    (0, 1, 5),
+    (1, 3, 6),
+    (3, 10, 7),
+    (10, 15, 8),
+    (15, 19, 9),
+    (19, None, 10),
+]</field>
+        <field name="rule_parameter_id" ref="rule_parameter_il_havraa_eligible_days"/>
+        <field name="date_from" eval="datetime(2017, 1, 1).date()"/>
     </record>
 
     <record id="rule_parameter_il_travel_daily_cap" model="hr.rule.parameter">

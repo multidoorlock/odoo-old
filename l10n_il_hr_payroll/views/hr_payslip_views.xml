@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_payslip_tree_l10n_il_net_to_pay" model="ir.ui.view">
+        <field name="name">hr.payslip.list.inherit.l10n.il.net.to.pay</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_tree"/>
+        <field name="arch" type="xml">
+            <field name="employee_id" position="before">
+                <field name="l10n_il_payment_status" string="סטטוס תשלום" widget="badge"
+                       decoration-success="l10n_il_payment_status == 'paid'"
+                       decoration-info="l10n_il_payment_status == 'partial'"
+                       decoration-danger="l10n_il_payment_status == 'unpaid'"
+                       decoration-warning="l10n_il_payment_status == 'overpaid'"
+                       optional="show"/>
+            </field>
+            <field name="net_wage" position="after">
+                <field name="l10n_il_net_to_pay" string="נטו לתשלום" widget="monetary"
+                       options="{'currency_field': 'currency_id'}" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- טאב נפרד "עלות מעסיק": שכר ברוטו קודם, ואז כל שורות ההפרשות/עלויות
+         מעסיק (rule_category_il_employer - פנסיה/פיצויים/ביטוח לאומי/קרן
+         השתלמות מעסיק, בסדר הזה - ראו סדר ה-sequence ב-hr_salary_rule_data.xml),
+         ואז השדה הילידי employer_cost (כבר מחושב נכון - GROSS + כל הכללים עם
+         appears_on_employee_cost_dashboard=True, ראו hr_salary_rule_data.xml). -->
+    <record id="view_hr_payslip_form_l10n_il_employer_cost" model="ir.ui.view">
+        <field name="name">hr.payslip.form.inherit.l10n.il.employer.cost</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_form"/>
+        <field name="arch" type="xml">
+            <!-- סטטוס תשלום כ"סרט" (ribbon) בדיוק כמו payment_state בחשבונית
+                 (account.move) - במקום badge קטן שישב ליד הסטטוסבר, שנראה כמו
+                 "עיגול קטן בפינה". במקום למקם אותו יחסית לתמונת העובד (שיושבת
+                 בפינה גם היא ומתנגשת איתו) - מוסרת תמונת העובד לגמרי מהטופס,
+                 והסרט חוזר להיות ילד ישיר של <sheet> (בדיוק כמו בחשבונית) -
+                 עכשיו שאין תמונה בפינה, אין יותר התנגשות. -->
+            <xpath expr="//sheet" position="inside">
+                <widget name="web_ribbon" title="שולם" bg_color="text-bg-success"
+                    invisible="l10n_il_payment_status != 'paid'"/>
+                <widget name="web_ribbon" title="שולם חלקית" bg_color="text-bg-info"
+                    invisible="l10n_il_payment_status != 'partial'"/>
+                <widget name="web_ribbon" title="לא שולם" bg_color="text-bg-danger"
+                    invisible="l10n_il_payment_status != 'unpaid'"/>
+                <widget name="web_ribbon" title="תשלום יתר" bg_color="text-bg-warning"
+                    invisible="l10n_il_payment_status != 'overpaid'"/>
+            </xpath>
+            <xpath expr="//div[hasclass('o_employee_avatar')]" position="replace"/>
+            <!-- "חישוב שכר" - שורות עלות מעסיק (rule_category_il_employer) לא
+                 מוצגות שם יותר, יש להן טאב נפרד ("עלות מעסיק", למטה). לא
+                 משתמשים ב-domain= על שדה line_ids עצמו - domain על x2many
+                 קיים (לא לבחירה/יצירה) לא מסנן בפועל את מה שהווידג'ט מציג
+                 (נצפה ישירות - שתי הטאבים הראו את כל השורות, ללא הבדל, למרות
+                 domain בתצוגה) - שדה Many2many מחושב נפרד (ראו
+                 l10n_il_payslip_calc.py, l10n_il_salary_computation_line_ids/
+                 l10n_il_employer_cost_line_ids) מבטיח סינון נכון בכל מקרה. -->
+            <xpath expr="//page[@name='salary_computation']//field[@name='line_ids']" position="replace">
+                <field name="l10n_il_salary_computation_line_ids" colspan="4" nolabel="1" readonly="1">
+                    <list string="Salary Structure" decoration-info="total == 0">
+                        <field name="name"/>
+                        <field name="code" readonly="1" force_save="1" optional="hide"/>
+                        <field name="category_id" readonly="1" force_save="1" optional="hide"/>
+                        <field name="sequence" readonly="1" column_invisible="True" force_save="1"/>
+                        <field name="quantity" readonly="1" force_save="1" optional="show"/>
+                        <field name="rate" readonly="1" force_save="1" optional="show"/>
+                        <field name="salary_rule_id" groups="base.group_no_one" readonly="1" force_save="1" optional="hide"/>
+                        <field name="amount" readonly="1" force_save="1" optional="show"/>
+                        <field name="total" readonly="1" force_save="1"/>
+                        <field name="currency_id" column_invisible="True"/>
+                    </list>
+                </field>
+                <!-- נטו לתשלום מוצג כאן כסה"כ מודגש מתחת לטבלה (לא כשורה
+                     בתוכה, ראו l10n_il_payslip_calc.py) - כותרת קטנה ואפורה
+                     מעל מספר גדול ומודגש, שתיהן ממורכזות (לא סגנון
+                     ה-oe_subtotal_footer הילידי - שורה אחת מיושרת-שוליים -
+                     אלא "כרטיס KPI" לפי בקשת המשתמש). אותה פריסה בדיוק כמו
+                     employer_cost בטאב "עלות מעסיק" למטה. -->
+                <div class="text-center mt-3 mb-2">
+                    <div class="text-muted">נטו לתשלום</div>
+                    <field name="l10n_il_net_to_pay" nolabel="1" widget="monetary"
+                           options="{'currency_field': 'currency_id'}" class="h2 fw-bold mb-0"/>
+                </div>
+            </xpath>
+            <page name="salary_computation" position="after">
+                <page string="עלות מעסיק" name="l10n_il_employer_cost">
+                    <field name="l10n_il_employer_cost_line_ids" colspan="4" nolabel="1" readonly="1">
+                        <list string="עלות מעסיק">
+                            <field name="name"/>
+                            <field name="total"/>
+                            <field name="currency_id" column_invisible="True"/>
+                        </list>
+                    </field>
+                    <div class="text-center mt-3 mb-2">
+                        <div class="text-muted">עלות למעסיק</div>
+                        <field name="employer_cost" nolabel="1" widget="monetary"
+                               options="{'currency_field': 'currency_id'}" class="h2 fw-bold mb-0"/>
+                    </div>
+                </page>
+            </page>
+        </field>
+    </record>
+</odoo>

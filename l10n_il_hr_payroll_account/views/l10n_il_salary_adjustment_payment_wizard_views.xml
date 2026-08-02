@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- פריסת 3 עמודות: מרכז (עובד/סכום/תאריך/הערה), שמאל ("התאמות שכר"),
+         ימין ("תשלומים") - אותה פריסה בדיוק כמו שלב 1 של "מחזור הוראות"
+         (l10n_il_payment_batch_wizard_view_form_step1), רק ליצירה בודדת:
+         עובד יחיד (לא רשימת עובדים) + שדה סכום ישיר, ובלי "סוג מחזור
+         תשלומים" (אין מושג כזה ביצירה בודדת). -->
+    <record id="l10n_il_salary_adjustment_payment_wizard_view_form" model="ir.ui.view">
+        <field name="name">l10n.il.salary.adjustment.payment.wizard.view.form</field>
+        <field name="model">l10n.il.salary.adjustment.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="יצירת הוראה">
+                <div class="row">
+                    <div class="col-4">
+                        <group string="תשלומים">
+                            <field name="journal_id"/>
+                            <field name="payment_method_line_id"/>
+                        </group>
+                    </div>
+                    <div class="col-4">
+                        <group string="פרטי ההוראה">
+                            <field name="employee_id"/>
+                            <field name="amount"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="date"/>
+                            <field name="memo"/>
+                        </group>
+                    </div>
+                    <div class="col-4">
+                        <group string="התאמות שכר">
+                            <field name="other_input_type_id"/>
+                            <field name="l10n_il_impact_type"/>
+                        </group>
+                    </div>
+                </div>
+                <group>
+                    <field name="l10n_il_batch_id"/>
+                </group>
+                <footer>
+                    <button name="action_create" type="object" string="יצירה" class="btn-primary"/>
+                    <button string="ביטול" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_l10n_il_salary_adjustment_payment_wizard" model="ir.actions.act_window">
+        <field name="name">יצירת הוראה</field>
+        <field name="res_model">l10n.il.salary.adjustment.payment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <!-- כפתור "יצירת הוראה" ליד "יצירת מחזור" מוגדר על l10n_il_payment_batch_view_list
+         ב-l10n_il_account_payment_views.xml (נטען אחרי הקובץ הזה). -->
+</odoo>
