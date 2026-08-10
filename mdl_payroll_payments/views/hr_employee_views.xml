@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- פרטים אישיים לצורכי שכר, הפרשות סוציאליות, ומחזורי תשלומים
+         (מפרעה/אוכל/הלוואה) בכרטיס העובד — סעיפים 1–3 ו-57–60 באפיון. -->
+    <record id="mdl_payroll_payments_hr_employee_view_form" model="ir.ui.view">
+        <field name="name">mdl.payroll.payments.hr.employee.view.form</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <group name="payroll_group" position="after">
+                <group>
+                    <group string="פרטים אישיים לשכר" name="il_personal">
+                        <field name="il_employee_type"/>
+                        <field name="il_tax_credit_points"/>
+                        <field name="il_primary_employer"/>
+                        <field name="il_tax_coordination"/>
+                        <field name="il_tax_coordination_valid_from"
+                               invisible="not il_tax_coordination"/>
+                        <field name="il_tax_coordination_valid_until"
+                               invisible="not il_tax_coordination"/>
+                        <field name="il_employment_sector"
+                               invisible="il_employee_type == 'israeli'"/>
+                        <field name="il_pal_organization_tax"
+                               invisible="il_employee_type != 'palestinian'"/>
+                        <field name="il_for_deposit_start_date"
+                               invisible="il_employee_type != 'foreign'"/>
+                    </group>
+                    <group string="הפרשות סוציאליות" name="il_social">
+                        <field name="il_pension_enabled"/>
+                        <field name="il_pension_start_date" invisible="not il_pension_enabled"/>
+                        <field name="il_employee_pension_rate" invisible="not il_pension_enabled"/>
+                        <field name="il_employer_pension_rate" invisible="not il_pension_enabled"/>
+                        <field name="il_severance_rate" invisible="not il_pension_enabled"/>
+                        <field name="il_study_fund_enabled"/>
+                        <field name="il_employee_study_fund_rate" invisible="not il_study_fund_enabled"/>
+                        <field name="il_employer_study_fund_rate" invisible="not il_study_fund_enabled"/>
+                    </group>
+                </group>
+            </group>
+            <page name="payroll_information" position="after">
+                <page name="il_payment_cycles" string="מחזורי תשלומים" groups="hr_payroll.group_hr_payroll_user">
+                    <field name="il_payment_cycle_setting_ids">
+                        <list editable="bottom" create="false" delete="false">
+                            <field name="cycle_type" readonly="1"/>
+                            <field name="enabled"/>
+                            <field name="amount" readonly="not enabled"/>
+                        </list>
+                    </field>
+                </page>
+            </page>
+        </field>
+    </record>
+</odoo>

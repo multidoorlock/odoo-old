@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- התפריט הילידי "Salary Adjustments" (תחת "עובדים") מוחלף כליל
+         במסך שלנו "התאמות שכר" (תחת "תשלומים") — מוסתר כדי שלא יופיעו
+         שני מסכים מקבילים לאותו מודל. -->
+    <record id="hr_payroll.hr_menu_salary_attachments" model="ir.ui.menu">
+        <field name="active">False</field>
+    </record>
+
+    <!-- הוספת סוג ההשפעה (ברוטו/נטו) בלבד. מיפוי הבסיסים (חייב מס/ב"ל/
+         פנסיה וכו') הוא נתון תצורה טכני שנקבע על סוג ההתאמה ופועל ברקע
+         בעת חישוב השכר — אינו מוצג במסך היצירה השוטף של התאמת שכר. -->
+    <record id="hr_salary_attachment_view_form" model="ir.ui.view">
+        <field name="name">mdl.payroll.hr.salary.attachment.view.form</field>
+        <field name="model">hr.salary.attachment</field>
+        <field name="inherit_id" ref="hr_payroll.hr_salary_attachment_view_form"/>
+        <field name="arch" type="xml">
+            <field name="other_input_type_id" position="after">
+                <field name="il_effect_type" widget="radio" options="{'horizontal': true}"
+                       required="1" readonly="has_done_payslip"/>
+            </field>
+            <!-- הכיווניות (חיובי/שלילי) נגזרת אך ורק מסוג ההתאמה (מחושבת,
+                 ללא inverse) — מוצגת לצפייה בלבד, אף פעם לא לעריכה. -->
+            <field name="is_refund" position="attributes">
+                <attribute name="readonly">1</attribute>
+                <attribute name="on_change">0</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="hr_salary_attachment_view_tree" model="ir.ui.view">
+        <field name="name">mdl.payroll.hr.salary.attachment.view.tree</field>
+        <field name="model">hr.salary.attachment</field>
+        <field name="inherit_id" ref="hr_payroll.hr_salary_attachment_view_tree"/>
+        <field name="arch" type="xml">
+            <field name="other_input_type_id" position="after">
+                <field name="il_effect_type" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- מסך "התאמות שכר" עצמאי תחת טאב "תשלומים" — יצירה נפתחת כ-Popup
+         (כמו כל שאר היצירות במודול) במקום ניווט מלא-עמוד. הטופס הילידי
+         (hr_payroll.hr_salary_attachment_view_form) כבר תומך ב-employee_ids
+         כ-m2m, כך שאין צורך לבנות טופס נפרד. -->
+    <record id="action_il_salary_adjustment_popup" model="ir.actions.act_window">
+        <field name="name">התאמת שכר חדשה</field>
+        <field name="res_model">hr.salary.attachment</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="hr_payroll.hr_salary_attachment_view_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <record id="il_salary_adjustment_view_list" model="ir.ui.view">
+        <field name="name">mdl.payroll.hr.salary.attachment.view.list.standalone</field>
+        <field name="model">hr.salary.attachment</field>
+        <field name="inherit_id" ref="hr_payroll.hr_salary_attachment_view_tree"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <list position="attributes">
+                <attribute name="create">0</attribute>
+            </list>
+            <list position="inside">
+                <header>
+                    <button name="%(action_il_salary_adjustment_popup)d" type="action"
+                            string="חדש" class="btn-primary" display="always"/>
+                </header>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_il_salary_adjustment" model="ir.actions.act_window">
+        <field name="name">התאמות שכר</field>
+        <field name="res_model">hr.salary.attachment</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('il_salary_adjustment_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('hr_payroll.hr_salary_attachment_view_form')}),
+        ]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">יצירת התאמת שכר ראשונה</p>
+        </field>
+    </record>
+</odoo>

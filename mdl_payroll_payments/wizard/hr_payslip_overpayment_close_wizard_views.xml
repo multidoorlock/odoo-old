@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_payslip_overpayment_close_wizard_view_form" model="ir.ui.view">
+        <field name="name">hr.payslip.overpayment.close.wizard.view.form</field>
+        <field name="model">hr.payslip.overpayment.close.wizard</field>
+        <field name="arch" type="xml">
+            <form string="סגירת תשלום יתר">
+                <field name="currency_id" invisible="1"/>
+                <div class="alert alert-info" role="alert">
+                    נמצאו תשלומים פתוחים מתלושים שבהם קיים תשלום ביתר של העובד הזה — ניתן
+                    לסגור (כולם, חלקם, או לדלג) באמצעות הנטו לתשלום הזמין בתלוש הנוכחי.
+                </div>
+                <group>
+                    <field name="employee_id" readonly="1"/>
+                    <field name="target_amount_due" readonly="1"/>
+                    <field name="available_overpayment" readonly="1"/>
+                </group>
+
+                <!-- שלב בחירה: מקובצות לפי תלוש-מקור — אותו תלוש עשוי להיות
+                     זכאי דרך כמה תשלומים שונים. -->
+                <div invisible="state != 'select'">
+                    <field name="line_ids" default_group_by="source_payslip_id">
+                        <list editable="bottom" create="false" delete="false">
+                            <field name="selected" widget="boolean_toggle"/>
+                            <field name="payment_id" readonly="1"/>
+                            <field name="payment_date" readonly="1"/>
+                            <field name="payment_amount" readonly="1"/>
+                            <field name="available_amount" readonly="1" avg="זמין"/>
+                            <field name="source_payslip_id" column_invisible="1"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                    <div class="alert alert-warning" role="alert" invisible="not partial_close_warning">
+                        <field name="partial_close_warning" nolabel="1" readonly="1"/>
+                    </div>
+                </div>
+
+                <!-- שלב חלוקה: מוצג רק כשהסכום הזמין מהנבחרים עולה על הנדרש. -->
+                <div invisible="state != 'split'">
+                    <div class="alert alert-warning" role="alert">
+                        הסכום הזמין מהתשלומים שנבחרו עולה על הנדרש — יש לחלק ידנית כמה
+                        לקחת מכל תשלום, בסה"כ שווה בדיוק לסכום לסגירה.
+                    </div>
+                    <group>
+                        <field name="amount_to_close" readonly="1"/>
+                        <field name="amount_allocated" readonly="1"/>
+                        <field name="difference" readonly="1"/>
+                    </group>
+                    <field name="line_ids" domain="[('selected', '=', True)]">
+                        <list editable="bottom" create="false" delete="false">
+                            <field name="source_payslip_id" readonly="1"/>
+                            <field name="payment_id" readonly="1"/>
+                            <field name="available_amount" readonly="1"/>
+                            <field name="amount_to_use"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                </div>
+
+                <footer>
+                    <button string="הבא" name="action_next" type="object"
+                            class="btn-primary" invisible="state != 'select'"/>
+                    <button string="אשר" name="action_confirm_split" type="object"
+                            class="btn-primary" invisible="state != 'split'"/>
+                    <button string="חזור" name="action_back_to_select" type="object"
+                            invisible="state != 'split'"/>
+                    <button string="ביטול" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

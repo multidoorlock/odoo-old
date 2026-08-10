@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- הגדרת מיפוי הבסיסים על סוג ההתאמה עצמו (סעיף "Applicability Fields
+         על Salary Input Type" באפיון) — מוצג רק כאשר Available in
+         Adjustments מסומן. -->
+    <record id="hr_payslip_input_type_view_form" model="ir.ui.view">
+        <field name="name">mdl.payroll.hr.payslip.input.type.view.form</field>
+        <field name="model">hr.payslip.input.type</field>
+        <field name="inherit_id" ref="hr_payroll.hr_payslip_input_type_view_form"/>
+        <field name="arch" type="xml">
+            <field name="default_no_end_date" position="after">
+                <field name="il_adjustment_direction" widget="radio"
+                       options="{'horizontal': true}"
+                       invisible="not available_in_attachments"/>
+                <field name="il_net_adjustment_treatment" widget="radio"
+                       options="{'horizontal': true}"
+                       invisible="not available_in_attachments"/>
+            </field>
+            <field name="struct_ids" position="after">
+                <field name="il_income_taxable" invisible="not available_in_attachments"/>
+                <field name="il_national_insurance_applicable" invisible="not available_in_attachments"/>
+                <field name="il_pensionable" invisible="not available_in_attachments"/>
+                <field name="il_severance_applicable" invisible="not available_in_attachments"/>
+                <field name="il_study_fund_applicable" invisible="not available_in_attachments"/>
+                <field name="il_equalization_levy_applicable" invisible="not available_in_attachments"/>
+                <field name="il_ni_payment_treatment" invisible="not available_in_attachments"/>
+            </field>
+        </field>
+    </record>
+</odoo>

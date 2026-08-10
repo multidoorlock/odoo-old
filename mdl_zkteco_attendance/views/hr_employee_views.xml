@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_employee_form_zkteco_payroll" model="ir.ui.view">
+        <field name="name">hr.employee.form.zkteco.payroll</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="priority">90</field>
+
+        <field name="arch" type="xml">
+
+            <xpath
+                expr="//page[@name='payroll_information']/group[@name='payroll_group']"
+                position="inside"
+            >
+                <group
+                    name="zkteco_attendance_group"
+                    string="שעון נוכחות ZKTeco"
+                >
+                    <field name="zk_attendance_enabled"/>
+
+                    <field
+                        name="zk_device_id"
+                        invisible="not zk_attendance_enabled"
+                        required="zk_attendance_enabled"
+                        options="{'no_create_edit': True}"
+                    />
+
+                    <field
+                        name="zk_user_id"
+                        invisible="not zk_attendance_enabled"
+                        required="zk_attendance_enabled"
+                        placeholder="לדוגמה: 1"
+                    />
+
+                    <!--
+                        Odoo's normal employee name and image remain the source
+                        of truth. We intentionally do not duplicate them here.
+                    -->
+
+                    <group
+                        string="סנכרון"
+                        invisible="not zk_attendance_enabled"
+                    >
+                        <!--
+                            One full-width flex row.
+                            Left: the two synchronization fields.
+                            Right: the button, vertically centered.
+                            text-nowrap/flex-shrink-0 prevent the button text
+                            from being clipped in a narrow group.
+                        -->
+                        <div
+                            colspan="2"
+                            class="d-flex align-items-center justify-content-between gap-4 flex-wrap"
+                        >
+                            <div class="flex-grow-1" style="min-width: 240px;">
+                                <div class="mb-2">
+                                    <label
+                                        for="zk_sync_state"
+                                        string="מצב סנכרון"
+                                        class="o_form_label"
+                                    />
+                                    <field
+                                        name="zk_sync_state"
+                                        widget="badge"
+                                        nolabel="1"
+                                        class="ms-2"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label
+                                        for="zk_last_sync_at"
+                                        string="סנכרון אחרון"
+                                        class="o_form_label"
+                                    />
+                                    <field
+                                        name="zk_last_sync_at"
+                                        nolabel="1"
+                                        class="ms-2"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center flex-shrink-0">
+                                <button
+                                    name="action_zk_push_user"
+                                    type="object"
+                                    string="שלח לשעון"
+                                    class="btn btn-primary text-nowrap"
+                                    invisible="not id"
+                                />
+                            </div>
+                        </div>
+
+                        <field
+                            name="zk_sync_error"
+                            invisible="not zk_sync_error"
+                        />
+                    </group>
+
+                    <field
+                        name="zk_photo_type"
+                        invisible="1"
+                    />
+
+                </group>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

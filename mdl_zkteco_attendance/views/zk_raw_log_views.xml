@@ -4,18 +4,21 @@
     <record id="view_mdl_zk_raw_log_list" model="ir.ui.view">
         <field name="name">mdl.zk.raw.log.list</field>
         <field name="model">mdl.zk.raw.log</field>
+
         <field name="arch" type="xml">
             <list
-                string="ZKTeco Raw Requests"
-                create="true"
-                edit="true"
-                delete="true"
+                create="false"
+                edit="false"
             >
                 <field name="received_at"/>
+                <field name="device_id"/>
                 <field name="device_sn"/>
+                <field name="remote_ip"/>
                 <field name="method"/>
                 <field name="endpoint"/>
-                <field name="remote_ip"/>
+                <field name="table_name"/>
+                <field name="processing_state"/>
+                <field name="command_id"/>
             </list>
         </field>
     </record>
@@ -23,32 +26,45 @@
     <record id="view_mdl_zk_raw_log_form" model="ir.ui.view">
         <field name="name">mdl.zk.raw.log.form</field>
         <field name="model">mdl.zk.raw.log</field>
+
         <field name="arch" type="xml">
             <form
-                string="ZKTeco Raw Request"
-                create="true"
-                edit="true"
-                delete="true"
+                create="false"
+                edit="false"
             >
                 <sheet>
+
                     <group>
                         <group>
                             <field name="received_at"/>
+                            <field name="device_id"/>
                             <field name="device_sn"/>
-                            <field name="method"/>
-                            <field name="endpoint"/>
+                            <field name="remote_ip"/>
                         </group>
 
                         <group>
-                            <field name="remote_ip"/>
-                            <field name="query_string"/>
+                            <field name="method"/>
+                            <field name="endpoint"/>
+                            <field name="table_name"/>
+                            <field name="processing_state"/>
+                            <field name="command_id"/>
                         </group>
                     </group>
 
+                    <field name="processing_message"/>
+
                     <notebook>
+
                         <page string="Request Body">
                             <field
                                 name="request_body"
+                                nolabel="1"
+                            />
+                        </page>
+
+                        <page string="Query String">
+                            <field
+                                name="query_string"
                                 nolabel="1"
                             />
                         </page>
@@ -59,7 +75,9 @@
                                 nolabel="1"
                             />
                         </page>
+
                     </notebook>
+
                 </sheet>
             </form>
         </field>
@@ -70,21 +88,5 @@
         <field name="res_model">mdl.zk.raw.log</field>
         <field name="view_mode">list,form</field>
     </record>
-
-    <menuitem
-        id="menu_mdl_zkteco_root"
-        name="ZKTeco"
-        sequence="90"
-        groups="base.group_system"
-    />
-
-    <menuitem
-        id="menu_mdl_zkteco_raw_log"
-        name="Raw Requests"
-        parent="menu_mdl_zkteco_root"
-        action="action_mdl_zk_raw_log"
-        sequence="10"
-        groups="base.group_system"
-    />
 
 </odoo>
