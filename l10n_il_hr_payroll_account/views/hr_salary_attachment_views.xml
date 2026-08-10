@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- התפריט הילידי "Salary Adjustments" (תחת "עובדים", ראו
+         hr_payroll/views/hr_payroll_menu.xml) מוחלף כליל במסך שלנו
+         "התאמות שכר" (action_l10n_il_salary_adjustment, תחת "התאמות
+         ותשלומים") - מסתירים אותו כדי שלא יופיעו שני מסכים מקבילים לאותו
+         מודל. -->
+    <record id="hr_payroll.hr_menu_salary_attachments" model="ir.ui.menu">
+        <field name="active">False</field>
+    </record>
+
+    <!-- "סוג השפעה" (ברוטו/נטו) זמין תמיד על כל התאמת שכר - אין יותר בידוד
+         מסכים (אין שדה "שולם"/תשלום מקושר יותר, אין יותר סיבה למסך ייעודי
+         נפרד). ירושה רגילה, פעם אחת בלבד, על הטופס המשותף
+         (hr_payroll.hr_salary_attachment_view_form) - הוא האב המשותף של גם
+         הטופס הכללי וגם hr_salary_attachment_employee_view_form (טופס הדיאלוג
+         בטאב העובד יורש ממנו), כך שהוספה גם שם בנפרד היתה מכפילה את השדה
+         פעמיים בדיאלוג הזה (באג אמיתי שנתפס ותוקן - היה כאן במקור שני
+         inherit-ים נפרדים). -->
+    <record id="hr_salary_attachment_view_form_inherit_l10n_il" model="ir.ui.view">
+        <field name="name">hr.salary.attachment.view.form.inherit.l10n.il</field>
+        <field name="model">hr.salary.attachment</field>
+        <field name="inherit_id" ref="hr_payroll.hr_salary_attachment_view_form"/>
+        <field name="arch" type="xml">
+            <field name="other_input_type_id" position="after">
+                <field name="l10n_il_impact_type"/>
+            </field>
+            <!-- "ערך שלילי" (is_refund) הפך למחושב+נגזר-אך-ורק-מהסוג (ראו
+                 l10n_il_salary_adjustment.py) - הכיתוב הילידי readonly="has_done_payslip"
+                 משאיר אותו נראה עריכתי (לא אפור) לכל רשומה חדשה שעוד לא נכללה
+                 באף תלוש, למרות ש-write אליו כבר מתעלם בשקט (computed, ללא
+                 inverse). כופה readonly תמיד, ללא תלות ב-has_done_payslip -
+                 מוצג לצפייה בלבד (תמונת מצב לפי הסוג), אף פעם לא לעריכה. -->
+            <field name="is_refund" position="attributes">
+                <attribute name="readonly">1</attribute>
+                <attribute name="on_change">0</attribute>
+            </field>
+            <field name="description" position="after">
+                <field name="l10n_il_batch_id" readonly="1"/>
+            </field>
+            <!-- אי אפשר לסגור/לפצל רשומה שעוד לא נוצרה - כל 3 כפתורי ה-header
+                 הבסיסיים לא בדקו "not id" בכלל (בניגוד לגרסת טאב-העובד,
+                 hr_salary_attachment_employee_view_form, שכבר עושה זאת נכון) -
+                 עכשיו נוצרת כברירת מחדל כ"רץ" (open, native default), אפשר
+                 לסגור רק אחרי השמירה הראשונה. -->
+            <button name="action_close" position="attributes">
+                <attribute name="invisible">state != 'open' or employee_count &gt; 1 or not id</attribute>
+            </button>
+            <button name="action_split" position="attributes">
+                <attribute name="invisible">state != 'open' or employee_count &lt;= 1 or not id</attribute>
+            </button>
+            <button name="action_open" position="attributes">
+                <attribute name="invisible">state != 'close' or employee_count &gt; 1 or not id</attribute>
+            </button>
+        </field>
+    </record>
+
+    <record id="hr_salary_attachment_view_tree_inherit_l10n_il" model="ir.ui.view">
+        <field name="name">hr.salary.attachment.view.tree.inherit.l10n.il</field>
+        <field name="model">hr.salary.attachment</field>
+        <field name="inherit_id" ref="hr_payroll.hr_salary_attachment_view_tree"/>
+        <field name="arch" type="xml">
+            <field name="other_input_type_id" position="after">
+                <field name="l10n_il_impact_type" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- מסך "התאמות שכר" עצמאי (כל העובדים) תחת טאב "התאמות ותשלומים" - יצירה
+         נפתחת כ-popup (כמו סוגי מחזורי תשלומים) במקום ניווט מלא-עמוד. הטופס
+         עצמו (hr_payroll.hr_salary_attachment_view_form) כבר תומך ב-employee_ids
+         כ-m2m - "בחירת עובד" ביצירה כבר קיימת שם, לא נבנה מחדש. -->
+    <record id="action_l10n_il_salary_adjustment_popup" model="ir.actions.act_window">
+        <field name="name">התאמת שכר חדשה</field>
+        <field name="res_model">hr.salary.attachment</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="hr_payroll.hr_salary_attachment_view_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- primary inherit על אותה תצוגת רשימה הילידית (שכבר כוללת l10n_il_impact_type
+         דרך hr_salary_attachment_view_tree_inherit_l10n_il למעלה, non-primary,
+         שממוזג לתוך הבסיס לפני שהתצוגה הזו - primary - נבנית עליו - לכן לא
+         מוסיפים אותו כאן שוב, זה היה מכפיל את השדה) - רק create="false" +
+         כפתור פופאפ. -->
+    <record id="l10n_il_salary_adjustment_view_list" model="ir.ui.view">
+        <field name="name">hr.salary.attachment.view.list.l10n.il.standalone</field>
+        <field name="model">hr.salary.attachment</field>
+        <field name="inherit_id" ref="hr_payroll.hr_salary_attachment_view_tree"/>
+        <field name="mode">primary</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list position="attributes">
+                <attribute name="create">false</attribute>
+            </list>
+            <list position="inside">
+                <header>
+                    <button name="%(action_l10n_il_salary_adjustment_popup)d" type="action"
+                            string="חדש" class="btn-primary" display="always"/>
+                </header>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_l10n_il_salary_adjustment" model="ir.actions.act_window">
+        <field name="name">התאמות שכר</field>
+        <field name="res_model">hr.salary.attachment</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">יצירת התאמת שכר ראשונה</p>
+        </field>
+    </record>
+    <record id="action_l10n_il_salary_adjustment_list_view" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="l10n_il_salary_adjustment_view_list"/>
+        <field name="act_window_id" ref="action_l10n_il_salary_adjustment"/>
+    </record>
+    <record id="action_l10n_il_salary_adjustment_form_view" model="ir.actions.act_window.view">
+        <field name="sequence">2</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="hr_payroll.hr_salary_attachment_view_form"/>
+        <field name="act_window_id" ref="action_l10n_il_salary_adjustment"/>
+    </record>
+</odoo>

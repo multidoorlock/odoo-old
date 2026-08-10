@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- ============================================================
+             הגדרות פרמטרים לחוקי השכר בלבד — ללא ערכים חוקיים.
+             האפיון אוסר במפורש הזנת ערכים חוקיים מומצאים (מדרגות מס,
+             שיעורי ביטוח לאומי, תקרות וכו'); יש להזין אותם ידנית לפי
+             המקור החוקי הרשמי (רשות המסים / ביטוח לאומי) לפני הרצת שכר.
+             כל עוד לא הוזן ערך, חוק השכר הרלוונטי ייכשל בבירור בזמן
+             החישוב (hr.rule.parameter._get_parameter_from_code).
+             ============================================================ -->
+
+        <!-- מס הכנסה (משותף לשלושת סוגי העובדים) -->
+        <record id="rule_parameter_il_tax_bracket_1_limit" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — תקרת מדרגה 1 (חודשי)</field>
+            <field name="code">IL_TAX_BRACKET_1_LIMIT</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_1_rate" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — שיעור מדרגה 1</field>
+            <field name="code">IL_TAX_BRACKET_1_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_2_limit" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — תקרת מדרגה 2 (חודשי)</field>
+            <field name="code">IL_TAX_BRACKET_2_LIMIT</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_2_rate" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — שיעור מדרגה 2</field>
+            <field name="code">IL_TAX_BRACKET_2_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_3_limit" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — תקרת מדרגה 3 (חודשי)</field>
+            <field name="code">IL_TAX_BRACKET_3_LIMIT</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_3_rate" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — שיעור מדרגה 3</field>
+            <field name="code">IL_TAX_BRACKET_3_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_4_limit" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — תקרת מדרגה 4 (חודשי)</field>
+            <field name="code">IL_TAX_BRACKET_4_LIMIT</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_4_rate" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — שיעור מדרגה 4</field>
+            <field name="code">IL_TAX_BRACKET_4_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_5_limit" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — תקרת מדרגה 5 (חודשי)</field>
+            <field name="code">IL_TAX_BRACKET_5_LIMIT</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_5_rate" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — שיעור מדרגה 5</field>
+            <field name="code">IL_TAX_BRACKET_5_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_bracket_6_rate" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — שיעור מדרגה עליונה</field>
+            <field name="code">IL_TAX_BRACKET_6_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_credit_point_value" model="hr.rule.parameter">
+            <field name="name">שווי נקודת זיכוי (חודשי)</field>
+            <field name="code">IL_TAX_CREDIT_POINT_VALUE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_max_withholding_rate" model="hr.rule.parameter">
+            <field name="name">מס הכנסה — שיעור ניכוי מרבי</field>
+            <field name="code">IL_TAX_MAX_WITHHOLDING_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_surtax_threshold" model="hr.rule.parameter">
+            <field name="name">מס יסף — סף תחולה (חודשי)</field>
+            <field name="code">IL_TAX_SURTAX_THRESHOLD</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_tax_surtax_rate" model="hr.rule.parameter">
+            <field name="name">מס יסף — שיעור</field>
+            <field name="code">IL_TAX_SURTAX_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+
+        <!-- פנסיה וקרן השתלמות (משותף) -->
+        <record id="rule_parameter_il_pension_mandatory_ceiling" model="hr.rule.parameter">
+            <field name="name">תקרת שכר להפרשות פנסיה חובה</field>
+            <field name="code">IL_PENSION_MANDATORY_CEILING</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_study_fund_tax_ceiling" model="hr.rule.parameter">
+            <field name="name">תקרת שכר פטורה ממס לקרן השתלמות</field>
+            <field name="code">IL_STUDY_FUND_TAX_CEILING</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+
+        <!-- ביטוח לאומי ובריאות — עובד ישראלי -->
+        <record id="rule_parameter_il_isr_ni_reduced_limit" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (ישראלי) — תקרת מדרגה מופחתת</field>
+            <field name="code">IL_ISR_NI_REDUCED_LIMIT</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_isr_ni_max_base" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (ישראלי) — תקרת שכר מבוטח</field>
+            <field name="code">IL_ISR_NI_MAX_BASE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_isr_ni_ee_reduced_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (ישראלי) — שיעור עובד מדרגה מופחתת</field>
+            <field name="code">IL_ISR_NI_EE_REDUCED_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_isr_ni_ee_full_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (ישראלי) — שיעור עובד מדרגה מלאה</field>
+            <field name="code">IL_ISR_NI_EE_FULL_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_isr_ni_er_reduced_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (ישראלי) — שיעור מעסיק מדרגה מופחתת</field>
+            <field name="code">IL_ISR_NI_ER_REDUCED_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_isr_ni_er_full_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (ישראלי) — שיעור מעסיק מדרגה מלאה</field>
+            <field name="code">IL_ISR_NI_ER_FULL_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_isr_health_reduced_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח בריאות (ישראלי) — שיעור מדרגה מופחתת</field>
+            <field name="code">IL_ISR_HEALTH_REDUCED_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_isr_health_full_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח בריאות (ישראלי) — שיעור מדרגה מלאה</field>
+            <field name="code">IL_ISR_HEALTH_FULL_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+
+        <!-- ביטוח לאומי, בולי בריאות, מס ארגון והיטל השוואה — עובד פלסטיני -->
+        <record id="rule_parameter_il_pal_ni_reduced_limit" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (פלסטיני) — תקרת מדרגה מופחתת</field>
+            <field name="code">IL_PAL_NI_REDUCED_LIMIT</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_ni_max_base" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (פלסטיני) — תקרת שכר מבוטח</field>
+            <field name="code">IL_PAL_NI_MAX_BASE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_ni_ee_reduced_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (פלסטיני) — שיעור עובד מדרגה מופחתת</field>
+            <field name="code">IL_PAL_NI_EE_REDUCED_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_ni_ee_full_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (פלסטיני) — שיעור עובד מדרגה מלאה</field>
+            <field name="code">IL_PAL_NI_EE_FULL_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_ni_er_reduced_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (פלסטיני) — שיעור מעסיק מדרגה מופחתת</field>
+            <field name="code">IL_PAL_NI_ER_REDUCED_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_ni_er_full_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (פלסטיני) — שיעור מעסיק מדרגה מלאה</field>
+            <field name="code">IL_PAL_NI_ER_FULL_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_health_stamp_amount" model="hr.rule.parameter">
+            <field name="name">בול בריאות (פלסטיני) — סכום חודשי</field>
+            <field name="code">IL_PAL_HEALTH_STAMP_AMOUNT</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_organization_tax_rate" model="hr.rule.parameter">
+            <field name="name">מס ארגון (פלסטיני) — שיעור</field>
+            <field name="code">IL_PAL_ORGANIZATION_TAX_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_organization_tax_ceiling" model="hr.rule.parameter">
+            <field name="name">מס ארגון (פלסטיני) — תקרת שכר</field>
+            <field name="code">IL_PAL_ORGANIZATION_TAX_CEILING</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_equalization_rate" model="hr.rule.parameter">
+            <field name="name">היטל השוואה (פלסטיני) — שיעור כללי</field>
+            <field name="code">IL_PAL_EQUALIZATION_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_equalization_construction_rate" model="hr.rule.parameter">
+            <field name="name">היטל השוואה (פלסטיני) — ענף בניין</field>
+            <field name="code">IL_PAL_EQUALIZATION_CONSTRUCTION_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_equalization_industry_rate" model="hr.rule.parameter">
+            <field name="name">היטל השוואה (פלסטיני) — ענף תעשייה</field>
+            <field name="code">IL_PAL_EQUALIZATION_INDUSTRY_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pal_equalization_agriculture_rate" model="hr.rule.parameter">
+            <field name="name">היטל השוואה (פלסטיני) — ענף חקלאות</field>
+            <field name="code">IL_PAL_EQUALIZATION_AGRICULTURE_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+
+        <!-- ביטוח לאומי, ניכויים ופיקדון — עובד זר -->
+        <record id="rule_parameter_il_for_ni_reduced_limit" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (זר) — תקרת מדרגה מופחתת</field>
+            <field name="code">IL_FOR_NI_REDUCED_LIMIT</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_ni_max_base" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (זר) — תקרת שכר מבוטח</field>
+            <field name="code">IL_FOR_NI_MAX_BASE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_ni_ee_reduced_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (זר) — שיעור עובד מדרגה מופחתת</field>
+            <field name="code">IL_FOR_NI_EE_REDUCED_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_ni_ee_full_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (זר) — שיעור עובד מדרגה מלאה</field>
+            <field name="code">IL_FOR_NI_EE_FULL_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_ni_er_reduced_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (זר) — שיעור מעסיק מדרגה מופחתת</field>
+            <field name="code">IL_FOR_NI_ER_REDUCED_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_ni_er_full_rate" model="hr.rule.parameter">
+            <field name="name">ביטוח לאומי (זר) — שיעור מעסיק מדרגה מלאה</field>
+            <field name="code">IL_FOR_NI_ER_FULL_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_private_health_max_deduction" model="hr.rule.parameter">
+            <field name="name">ביטוח רפואי פרטי (זר) — תקרת ניכוי חודשית</field>
+            <field name="code">IL_FOR_PRIVATE_HEALTH_MAX_DEDUCTION</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_housing_max_deduction" model="hr.rule.parameter">
+            <field name="name">ניכוי מגורים (זר) — תקרה חודשית</field>
+            <field name="code">IL_FOR_HOUSING_MAX_DEDUCTION</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_housing_expenses_max_deduction" model="hr.rule.parameter">
+            <field name="name">הוצאות נלוות למגורים (זר) — תקרה חודשית</field>
+            <field name="code">IL_FOR_HOUSING_EXPENSES_MAX_DEDUCTION</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_deposit_construction_rate" model="hr.rule.parameter">
+            <field name="name">פיקדון עובד זר — ענף בניין</field>
+            <field name="code">IL_FOR_DEPOSIT_CONSTRUCTION_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_deposit_industry_rate" model="hr.rule.parameter">
+            <field name="name">פיקדון עובד זר — ענף תעשייה</field>
+            <field name="code">IL_FOR_DEPOSIT_INDUSTRY_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_deposit_hospitality_rate" model="hr.rule.parameter">
+            <field name="name">פיקדון עובד זר — ענף מלונאות</field>
+            <field name="code">IL_FOR_DEPOSIT_HOSPITALITY_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_deposit_trade_services_rate" model="hr.rule.parameter">
+            <field name="name">פיקדון עובד זר — ענף מסחר ושירותים</field>
+            <field name="code">IL_FOR_DEPOSIT_TRADE_SERVICES_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_deposit_restaurants_rate" model="hr.rule.parameter">
+            <field name="name">פיקדון עובד זר — ענף מסעדות</field>
+            <field name="code">IL_FOR_DEPOSIT_RESTAURANTS_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_for_deposit_nursing_rate" model="hr.rule.parameter">
+            <field name="name">פיקדון עובד זר — ענף סיעוד</field>
+            <field name="code">IL_FOR_DEPOSIT_NURSING_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+    </data>
+</odoo>

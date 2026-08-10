@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="l10n_il_form101_view_form" model="ir.ui.view">
+        <field name="name">l10n.il.form101.view.form</field>
+        <field name="model">l10n.il.form101</field>
+        <field name="arch" type="xml">
+            <form string="טופס 101">
+                <header>
+                    <button name="action_send" type="object" string="שליחה לעובד" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_mark_signed" type="object" string="סימון כנחתם" class="btn-primary" invisible="state != 'sent'"/>
+                    <button name="action_apply" type="object" string="הפעלה בשכר" class="btn-primary" invisible="state != 'signed'"/>
+                    <button name="action_reset_to_draft" type="object" string="החזרה לטיוטה" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,sent,signed,applied"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="כללי">
+                            <field name="employee_id" readonly="state != 'draft'"/>
+                            <field name="tax_year" options="{'enable_formatting': false}"/>
+                            <field name="date_signed"/>
+                            <field name="valid_until" options="{'numeric': True}"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group string="חלק א: פרטי המעביד">
+                            <field name="employer_deduction_file"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="employee_details" string="חלק ב-ג: פרטי העובד וילדים">
+                            <group>
+                                <group>
+                                    <field name="identification_id"/>
+                                    <field name="birthday"/>
+                                    <field name="sex"/>
+                                    <field name="marital"/>
+                                    <field name="country_id"/>
+                                    <field name="l10n_il_aliyah_date"/>
+                                    <field name="kupat_holim"/>
+                                </group>
+                                <group>
+                                    <field name="private_street"/>
+                                    <field name="private_city"/>
+                                    <field name="private_zip"/>
+                                    <field name="private_phone"/>
+                                    <field name="private_email"/>
+                                </group>
+                            </group>
+                            <separator string="ילדים"/>
+                            <field name="child_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="identification_id"/>
+                                    <field name="birthdate"/>
+                                    <field name="in_custody"/>
+                                    <field name="receives_child_allowance"/>
+                                    <field name="employee_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page name="income" string="חלק ד-ה: הכנסה ובן/בת זוג">
+                            <group>
+                                <group string="הכנסה">
+                                    <field name="is_main_employer"/>
+                                    <field name="has_other_income"/>
+                                </group>
+                                <group string="בן/בת זוג" invisible="marital not in ('married', 'cohabitant')">
+                                    <field name="spouse_complete_name"/>
+                                    <field name="spouse_id_number"/>
+                                    <field name="spouse_birthdate"/>
+                                    <field name="spouse_has_income"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="credits" string="חלק ז-ח: פטורים, זיכויים ותיאום מס">
+                            <group>
+                                <group string="בקשות פטור וזיכוי">
+                                    <field name="is_resident"/>
+                                    <field name="is_disabled_blind"/>
+                                    <field name="is_settlement_resident"/>
+                                    <field name="settlement_code" invisible="not is_settlement_resident" required="is_settlement_resident"/>
+                                    <field name="settlement_date_from" invisible="not is_settlement_resident"/>
+                                    <field name="is_new_immigrant"/>
+                                    <field name="spouse_no_income"/>
+                                    <field name="is_single_parent"/>
+                                    <field name="pays_alimony"/>
+                                    <field name="is_discharged_soldier"/>
+                                    <field name="service_end_date" invisible="not is_discharged_soldier"/>
+                                    <field name="completed_degree"/>
+                                    <field name="has_disabled_child"/>
+                                </group>
+                                <group string="תיאום מס">
+                                    <field name="request_tax_coordination"/>
+                                    <field name="coordination_reason" invisible="not request_tax_coordination" required="request_tax_coordination"/>
+                                </group>
+                            </group>
+                            <group string="נקודות זיכוי">
+                                <group>
+                                    <field name="credit_points_base"/>
+                                    <field name="credit_points_woman"/>
+                                    <field name="credit_points_extra"/>
+                                </group>
+                                <group>
+                                    <field name="credit_points_total"/>
+                                    <field name="current_credit_points"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="l10n_il_form101_view_list" model="ir.ui.view">
+        <field name="name">l10n.il.form101.view.list</field>
+        <field name="model">l10n.il.form101</field>
+        <field name="arch" type="xml">
+            <list string="טופסי 101">
+                <field name="employee_id"/>
+                <field name="tax_year" options="{'enable_formatting': false}"/>
+                <field name="credit_points_total"/>
+                <field name="date_signed"/>
+                <field name="valid_until" options="{'numeric': True}"/>
+                <field name="state" widget="badge" decoration-success="state == 'applied'" decoration-info="state == 'signed'" decoration-warning="state == 'sent'" decoration-danger="state == 'expired'"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="l10n_il_form101_view_search" model="ir.ui.view">
+        <field name="name">l10n.il.form101.view.search</field>
+        <field name="model">l10n.il.form101</field>
+        <field name="arch" type="xml">
+            <search string="טופסי 101">
+                <field name="employee_id"/>
+                <field name="tax_year"/>
+                <filter name="filter_active" string="פעילים" domain="[('state', '=', 'applied')]"/>
+                <filter name="filter_not_active" string="לא פעילים" domain="[('state', '!=', 'applied')]"/>
+                <filter name="filter_expired" string="פגי תוקף" domain="[('state', '=', 'expired')]"/>
+                <group>
+                    <filter name="group_by_year" string="שנת מס" context="{'group_by': 'tax_year'}"/>
+                    <filter name="group_by_state" string="סטטוס" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_l10n_il_form101" model="ir.actions.act_window">
+        <field name="name">טופסי 101</field>
+        <field name="res_model">l10n.il.form101</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="l10n_il_form101_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">יצירת טופס 101 ראשון</p>
+            <p>כרטיס עובד שנתי: פרטי העובד נמשכים אוטומטית מכרטיס העובד — עריכה כאן מעדכנת את הכרטיס, ללא הזנה כפולה.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_l10n_il_form101"
+        name="טופסי 101"
+        action="action_l10n_il_form101"
+        parent="hr_payroll.menu_hr_payroll_employees"
+        sequence="25"/>
+
+    <record id="l10n_il_form101_replace_wizard_view_form" model="ir.ui.view">
+        <field name="name">l10n.il.form101.replace.wizard.view.form</field>
+        <field name="model">l10n.il.form101.replace.wizard</field>
+        <field name="arch" type="xml">
+            <form string="החלפת טופס 101 פעיל">
+                <div class="alert alert-warning" role="alert">
+                    לעובד כבר קיים טופס 101 פעיל. לא ייתכנו שני טפסים פעילים במקביל —
+                    אישור ההחלפה יסמן את הטופס הקיים כפג תוקף ויפעיל את הטופס החדש.
+                </div>
+                <group>
+                    <field name="form_id" readonly="1"/>
+                    <field name="old_form_ids" widget="many2many_tags"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="החלפה והפעלה" class="btn-primary"/>
+                    <button string="ביטול" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

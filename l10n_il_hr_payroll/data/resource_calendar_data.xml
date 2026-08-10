@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- שבוע עבודה ישראלי: ראשון-חמישי, 42 שעות שבועיות לפי צו ההרחבה לקיצור שבוע העבודה -->
+    <record id="resource_calendar_il_5day" model="resource.calendar">
+        <field name="name">ישראל: שבוע עבודה 5 ימים (42 שעות)</field>
+        <field name="hours_per_day">8.4</field>
+        <field name="full_time_required_hours">42</field>
+        <field name="attendance_ids" eval="[Command.clear(),
+            Command.create({'name': 'ראשון בוקר', 'dayofweek': '6', 'hour_from': 8, 'hour_to': 12, 'day_period': 'morning'}),
+            Command.create({'name': 'ראשון צהריים', 'dayofweek': '6', 'hour_from': 13, 'hour_to': 17.4, 'day_period': 'afternoon'}),
+            Command.create({'name': 'שני בוקר', 'dayofweek': '0', 'hour_from': 8, 'hour_to': 12, 'day_period': 'morning'}),
+            Command.create({'name': 'שני צהריים', 'dayofweek': '0', 'hour_from': 13, 'hour_to': 17.4, 'day_period': 'afternoon'}),
+            Command.create({'name': 'שלישי בוקר', 'dayofweek': '1', 'hour_from': 8, 'hour_to': 12, 'day_period': 'morning'}),
+            Command.create({'name': 'שלישי צהריים', 'dayofweek': '1', 'hour_from': 13, 'hour_to': 17.4, 'day_period': 'afternoon'}),
+            Command.create({'name': 'רביעי בוקר', 'dayofweek': '2', 'hour_from': 8, 'hour_to': 12, 'day_period': 'morning'}),
+            Command.create({'name': 'רביעי צהריים', 'dayofweek': '2', 'hour_from': 13, 'hour_to': 17.4, 'day_period': 'afternoon'}),
+            Command.create({'name': 'חמישי בוקר', 'dayofweek': '3', 'hour_from': 8, 'hour_to': 12, 'day_period': 'morning'}),
+            Command.create({'name': 'חמישי צהריים', 'dayofweek': '3', 'hour_from': 13, 'hour_to': 17.4, 'day_period': 'afternoon'}),
+        ]"/>
+    </record>
+</odoo>

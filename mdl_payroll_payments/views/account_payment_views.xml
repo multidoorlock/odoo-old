@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================
+         מסך ייעודי לתשלומי עובדים — mode="primary" יוצר View עצמאי
+         לגמרי מה-View הסטנדרטי; אינו משפיע על מסכי התשלומים הרגילים
+         של הנהלת החשבונות (לקוחות/ספקים). כל מה שקשור לעובד/שכר
+         (התוויות, האילוץ לשליחה בלבד, הקישור לתלוש) חי רק כאן.
+         עיצוב תואם למסך המקביל שנבנה בעבר במודול l10n_il_hr_payroll_account.
+         ============================================================ -->
+    <record id="view_account_payment_form_employee" model="ir.ui.view">
+        <field name="name">mdl.payroll.account.payment.view.form.employee</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <form position="attributes">
+                <attribute name="string">תשלום לעובד</attribute>
+            </form>
+
+            <!-- תשלום עובד הוא תמיד "שליחה" (outbound) — הבחירה מיותרת. -->
+            <field name="payment_type" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+
+            <!-- שדה הלקוח כלל לא רלוונטי לתשלום עובד. -->
+            <xpath expr="(//field[@name='partner_id'])[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- שדה הספק הופך ל"עובד", עם דומיין לאנשי קשר המקושרים לעובד. -->
+            <xpath expr="(//field[@name='partner_id'])[2]" position="attributes">
+                <attribute name="invisible">0</attribute>
+                <attribute name="string">עובד</attribute>
+                <attribute name="domain">[('employee_ids', '!=', False)]</attribute>
+                <attribute name="context">{}</attribute>
+            </xpath>
+
+            <!-- כפתור האישור הראשי למעלה מוחלף בכפתורי footer מפורשים למטה. -->
+            <button name="action_post" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </button>
+
+            <xpath expr="(//field[@name='partner_bank_id'])[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//field[@name='partner_bank_id'])[3]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//field[@name='partner_bank_id'])[2]" position="attributes">
+                <attribute name="invisible">0</attribute>
+                <attribute name="string">חשבון בנק (עובד)</attribute>
+            </xpath>
+
+            <!-- כפתורי חשבוניות/חשבוניות ספק/דפי בנק לא רלוונטיים לתשלום עובד. -->
+            <button name="button_open_invoices" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </button>
+            <button name="button_open_bills" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </button>
+            <button name="button_open_statement_lines" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </button>
+
+            <field name="company_id" position="after">
+                <field name="il_is_employee_payment" invisible="1"/>
+            </field>
+            <notebook name="payment_notebook" position="inside">
+                <page string="מעקב שכר" name="il_payroll">
+                    <!-- הסכום שהוזן גבוה מהנטו-לתשלום הזמין בתלוש — רלוונטי
+                         רק בטיוטה, לפני שהתשלום הזה עצמו נכלל בחישוב. -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state != 'draft' or not payslip_id or amount &lt;= il_payslip_net_to_pay">
+                        שים לב: הסכום שהוזן גבוה מהנטו לתשלום הזמין בתלוש המקושר (תשלום ביתר).
+                    </div>
+                    <group>
+                        <field name="payslip_id"
+                               domain="[('employee_id.work_contact_id', '=', partner_id)]"
+                               readonly="state != 'draft'"/>
+                        <field name="il_payslip_net_to_pay" invisible="1"/>
+                        <field name="payroll_cycle_id" readonly="1"/>
+                    </group>
+                </page>
+                <page string="פיצול בין תלושים" name="il_payslip_allocation"
+                      invisible="not payslip_allocation_ids">
+                    <field name="payslip_allocation_ids" readonly="1" nolabel="1">
+                        <list>
+                            <field name="payslip_id"/>
+                            <field name="amount"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                </page>
+            </notebook>
+            <xpath expr="//form" position="inside">
+                <footer>
+                    <button name="action_post" type="object" string="שמור" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button string="שמור כטיוטה" special="save"/>
+                </footer>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- יצירה בודדת = Popup, לא ניווט מלא-עמוד (חייב להיות מוגדר לפני
+         הרשימה למטה, שמפנה אליו דרך %(...)d). -->
+    <record id="action_il_account_payment_popup" model="ir.actions.act_window">
+        <field name="name">תשלום חדש</field>
+        <field name="res_model">account.payment</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_account_payment_form_employee"/>
+        <field name="target">new</field>
+        <field name="context">{'default_partner_type': 'supplier', 'default_payment_type': 'outbound'}</field>
+    </record>
+
+    <!-- זהה למבנה הליבה של Odoo עבור "Vendor Payments"
+         (account.view_account_supplier_payment_tree) — רק שינוי תווית +
+         כפתור "תשלום חדש" (פותח כ-Popup) במקום "New" הרגיל. -->
+    <record id="view_account_payment_list_employee" model="ir.ui.view">
+        <field name="name">mdl.payroll.account.payment.view.list.employee</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_tree"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <list position="attributes">
+                <attribute name="create">0</attribute>
+            </list>
+            <xpath expr="//header" position="inside">
+                <button name="%(action_il_account_payment_popup)d" type="action"
+                        string="תשלום חדש" class="btn-primary" display="always"/>
+            </xpath>
+            <field name="partner_id" position="attributes">
+                <attribute name="string">עובד</attribute>
+            </field>
+        </field>
+    </record>
+
+    <!-- מוסיפה פילטר "תשלומי עובדים" (ניתן להסרה) גם למסכי הנהלת
+         החשבונות הרגילים — ירושה רגילה (לא primary) על תצוגת החיפוש
+         המשותפת, לצד הפילטרים הקיימים "תשלומי לקוח"/"תשלומי ספק". -->
+    <record id="view_account_payment_search_employee_filter" model="ir.ui.view">
+        <field name="name">mdl.payroll.account.payment.view.search.employee.filter</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_search"/>
+        <field name="arch" type="xml">
+            <filter name="outbound_filter" position="after">
+                <filter name="il_filter_employee" string="תשלומי עובדים"
+                        domain="[('partner_id.employee_ids', '!=', False)]"/>
+            </filter>
+        </field>
+    </record>
+
+    <record id="view_account_payment_search_employee" model="ir.ui.view">
+        <field name="name">mdl.payroll.account.payment.view.search.employee</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_search"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="attributes">
+                <attribute name="string">עובד</attribute>
+            </field>
+        </field>
+    </record>
+
+    <!-- הפרדה אמיתית (Domain, לא רק פילטר-חיפוש הניתן להסרה) בין תשלומי
+         עובד למסכי הלקוחות/ספקים הרגילים של הנהלת החשבונות. -->
+    <function model="ir.actions.act_window" name="write"
+        eval="[[ref('account.action_account_payments')], {'domain': [('partner_id.employee_ids', '=', False)]}]"/>
+    <function model="ir.actions.act_window" name="write"
+        eval="[[ref('account.action_account_payments_payable')], {'domain': [('partner_id.employee_ids', '=', False)]}]"/>
+
+    <!-- רשימת תשלומי עובדים (סעיף 5 באפיון) — מסך ייעודי, לא מסך הספקים. -->
+    <record id="il_action_employee_payments" model="ir.actions.act_window">
+        <field name="name">תשלומי עובדים</field>
+        <field name="res_model">account.payment</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('il_is_employee_payment', '=', True)]</field>
+        <field name="context">{'default_payment_type': 'outbound', 'default_partner_type': 'supplier', 'il_employee_payment': True}</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_account_payment_list_employee')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_account_payment_form_employee')}),
+        ]"/>
+        <field name="search_view_id" ref="view_account_payment_search_employee"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">רישום תשלום עובד ראשון</p>
+            <p>תשלום במצב "בביצוע" שעוד לא מקושר לתלוש נאסף אוטומטית לתלוש השכר הבא של
+               העובד. ליצירה קבוצתית או ליצירת תשלום + התאמת שכר יחד השתמשו במסך
+               "מחזורים והוראות".</p>
+        </field>
+    </record>
+</odoo>

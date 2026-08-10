@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- לשונית השכר בכרטיס העובד: הסתרת שדות השכר הסטנדרטיים והצגת שכבת
+         ההגדרה העסקית (סעיפים 4–6, 8 באפיון). הנתונים נשמרים על גרסת
+         תנאי ההעסקה הפעילה (hr.version) באמצעות מנגנון הדלגציה הסטנדרטי. -->
+    <record id="mdl_payroll_hr_employee_view_form" model="ir.ui.view">
+        <field name="name">mdl.payroll.hr.employee.view.form</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_payroll.payroll_hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <!-- הסתרת השדות הסטנדרטיים (לא נמחקים — ממשיכים לשמש את Odoo).
+                 הסתרת שורת השכר כולה מסלקת גם את מפריד ה־"/" של מחזור התשלום. -->
+            <xpath expr="//field[@name='wage_type']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//label[@for='hourly_wage']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//div[@name='hourly_wage']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//label[@for='wage']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//div[@name='wage']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- תוויות בעברית לשדות הסטנדרטיים שנשארים -->
+            <xpath expr="//field[@name='structure_type_id']" position="attributes">
+                <attribute name="string">קטגוריית שכר</attribute>
+                <attribute name="placeholder">ללא קטגוריה — לא ייכלל בחישובי שכר</attribute>
+            </xpath>
+
+            <!-- עמודת "שכר" לצד עמודת החוזה -->
+            <xpath expr="//group[@name='contract']" position="after">
+                <group name="mdl_wage" string="שכר">
+                    <field name="mdl_resource_calendar_type" invisible="1"/>
+                    <field name="mdl_wage_type" widget="radio" options="{'horizontal': true}"/>
+                    <field name="mdl_monthly_wage" invisible="mdl_wage_type != 'mdl_monthly'"/>
+                    <field name="mdl_daily_wage"
+                           readonly="mdl_wage_type == 'mdl_monthly'" force_save="1"/>
+                    <field name="mdl_hourly_wage" readonly="1" force_save="1"/>
+                    <field name="schedule_pay" string="מחזור תשלום"/>
+                </group>
+            </xpath>
+
+            <!-- תעריפים מיוחדים ושעות נוספות — שורה נוספת מתחת -->
+            <xpath expr="//group[@name='payroll_group']" position="after">
+                <group>
+                    <group name="mdl_special_rates" string="תעריפים מיוחדים">
+                        <field name="mdl_weekend_wage"/>
+                        <field name="mdl_weekend_rate_type" widget="radio"
+                               options="{'horizontal': true}"
+                               invisible="not mdl_weekend_wage"
+                               required="mdl_weekend_wage &gt; 0"/>
+                        <field name="mdl_additional_day_wage"
+                               invisible="mdl_wage_type != 'mdl_monthly'"/>
+                        <field name="mdl_additional_day_rate_type" widget="radio"
+                               options="{'horizontal': true}"
+                               invisible="mdl_wage_type != 'mdl_monthly' or not mdl_additional_day_wage"
+                               required="mdl_wage_type == 'mdl_monthly' and mdl_additional_day_wage &gt; 0"/>
+                    </group>
+                    <!-- שעות נוספות — לא מוצג לעובדי משמרות (סעיף 8 באפיון) -->
+                    <group name="mdl_overtime" string="שעות נוספות"
+                           invisible="mdl_resource_calendar_type == 'shifts'">
+                        <field name="mdl_overtime_wage_type" widget="radio"
+                               options="{'horizontal': true}"/>
+                        <field name="mdl_overtime_fixed_wage"
+                               invisible="mdl_overtime_wage_type != 'fixed'"
+                               required="mdl_resource_calendar_type != 'shifts' and mdl_overtime_wage_type == 'fixed'"/>
+                        <field name="mdl_overtime_percentage"
+                               invisible="mdl_overtime_wage_type != 'percentage'"
+                               required="mdl_resource_calendar_type != 'shifts' and mdl_overtime_wage_type == 'percentage'"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mdl_zk_device_user,mdl.zk.device user,model_mdl_zk_device,base.group_user,1,0,0,0
+access_mdl_zk_device_hr_manager,mdl.zk.device HR manager,model_mdl_zk_device,hr.group_hr_manager,1,1,1,1
+access_mdl_zk_device_system,mdl.zk.device system,model_mdl_zk_device,base.group_system,1,1,1,1
+access_mdl_zk_command_hr_manager,mdl.zk.command HR manager,model_mdl_zk_command,hr.group_hr_manager,1,1,1,1
+access_mdl_zk_command_system,mdl.zk.command system,model_mdl_zk_command,base.group_system,1,1,1,1
+access_mdl_zk_raw_log_hr_manager,mdl.zk.raw.log HR manager,model_mdl_zk_raw_log,hr.group_hr_manager,1,0,0,1
+access_mdl_zk_raw_log_system,mdl.zk.raw.log system,model_mdl_zk_raw_log,base.group_system,1,1,1,1

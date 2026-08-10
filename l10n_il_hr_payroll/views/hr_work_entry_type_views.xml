@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- "Rate" (amount_rate) הוא המנגנון הילידי לחישוב סכום worked-day
+         (hourly_rate * hours * amount_rate, ראו hr_payslip_worked_days.py) -
+         עבור סוגי כניסת-עבודה שהתשלום שלהם בפועל נגזר מתעריף-ברמת-החוזה
+         במקום (OVERTIME - שעות נוספות, ו-IL_EXTRA_DAY - יום נוסף; שניהם כבר
+         amount_rate=0.0 בנתוני היסוד, ראו hr_work_entry_type_data.xml/
+         hr_attendance_overtime_data.xml), השדה מוסתר לגמרי כדי שלא ייצור
+         רושם מטעה שהוא עדיין המקור לחישוב - הוא לא נמחק מהמודל, לא משתנה
+         קוד Core, פשוט מוסתר לשתי הרשומות האלה בלבד. -->
+    <record id="hr_work_entry_type_view_form_l10n_il" model="ir.ui.view">
+        <field name="name">hr.work.entry.type.view.form.inherit.l10n.il</field>
+        <field name="model">hr.work.entry.type</field>
+        <field name="inherit_id" ref="hr_work_entry.hr_work_entry_type_view_form"/>
+        <field name="arch" type="xml">
+            <label for="amount_rate" position="attributes">
+                <attribute name="invisible">code in ('OVERTIME', 'IL_EXTRA_DAY')</attribute>
+            </label>
+            <div name="amount_rate" position="attributes">
+                <attribute name="invisible">code in ('OVERTIME', 'IL_EXTRA_DAY')</attribute>
+            </div>
+        </field>
+    </record>
+</odoo>
