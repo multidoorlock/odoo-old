@@ -26,4 +26,6 @@
 
     "installable": True,
     "application": True,
+    "authoer": "Multi Doorlock",
+    "maintainer": "Itay Yosef",
 }

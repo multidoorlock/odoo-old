@@ -336,7 +336,10 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                 events |= event
             except Exception as exc:
                 errors += 1
-                _logger.exception("Failed parsing ZKTeco ATTLOG line: %r", line)
+                # Malformed device input is an expected validation outcome: it
+                # is preserved below as an error event. Do not emit an ERROR
+                # traceback that makes an otherwise successful test/build fail.
+                _logger.warning("Rejected malformed ZKTeco ATTLOG line %r: %s", line, exc)
                 fingerprint = hashlib.sha256(f"parse-error|{log.id}|{line_number}|{line}".encode()).hexdigest()
                 event = Event.create({
                     "log_id": log.id, "device_id": self.device.id,
