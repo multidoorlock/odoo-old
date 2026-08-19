@@ -2,3 +2,8 @@ from . import zk_device
 from . import zk_command
 from . import hr_employee
 from . import zk_raw_log
+from . import attendance_device
+from . import device_employee
+from . import device_command
+from . import device_log
+from . import device_event
