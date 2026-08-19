@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_attendance_devices" model="ir.module.category">
+        <field name="name">שעוני נוכחות</field>
+        <field name="sequence">45</field>
+    </record>
+    <record id="privilege_attendance_devices" model="res.groups.privilege">
+        <field name="name">שעוני נוכחות</field>
+        <field name="sequence">10</field>
+        <field name="category_id" ref="module_category_attendance_devices"/>
+    </record>
+    <record id="group_attendance_device_user" model="res.groups">
+        <field name="name">משתמש שעוני נוכחות</field>
+        <field name="privilege_id" ref="privilege_attendance_devices"/>
+        <field name="sequence">10</field>
+        <field name="implied_ids" eval="[(4, ref('hr.group_hr_user'))]"/>
+    </record>
+    <record id="group_attendance_device_manager" model="res.groups">
+        <field name="name">מנהל שעוני נוכחות</field>
+        <field name="privilege_id" ref="privilege_attendance_devices"/>
+        <field name="sequence">20</field>
+        <field name="implied_ids" eval="[(4, ref('group_attendance_device_user'))]"/>
+    </record>
+    <record id="group_attendance_device_technical" model="res.groups">
+        <field name="name">טכני שעוני נוכחות</field>
+        <field name="privilege_id" ref="privilege_attendance_devices"/>
+        <field name="sequence">30</field>
+        <field name="implied_ids" eval="[(4, ref('group_attendance_device_manager'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+    <record id="rule_attendance_device_company" model="ir.rule">
+        <field name="name">Attendance device multi-company</field>
+        <field name="model_id" ref="model_mdl_attendance_device"/>
+        <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('group_attendance_device_user'))]"/>
+    </record>
+    <record id="rule_attendance_device_employee_company" model="ir.rule">
+        <field name="name">Attendance device card multi-company</field>
+        <field name="model_id" ref="model_mdl_attendance_device_employee"/>
+        <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('group_attendance_device_user'))]"/>
+    </record>
+    <record id="rule_attendance_command_company" model="ir.rule">
+        <field name="name">Attendance command multi-company</field>
+        <field name="model_id" ref="model_mdl_attendance_device_command"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_attendance_device_technical'))]"/>
+    </record>
+    <record id="rule_attendance_log_company" model="ir.rule">
+        <field name="name">Attendance log multi-company</field>
+        <field name="model_id" ref="model_mdl_attendance_device_log"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_attendance_device_technical'))]"/>
+    </record>
+    <record id="rule_attendance_event_company" model="ir.rule">
+        <field name="name">Attendance event multi-company</field>
+        <field name="model_id" ref="model_mdl_attendance_device_event"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_attendance_device_technical'))]"/>
+    </record>
+</odoo>

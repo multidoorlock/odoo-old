@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_device_event_list" model="ir.ui.view"><field name="name">mdl.attendance.device.event.list</field><field name="model">mdl.attendance.device.event</field><field name="arch" type="xml">
+        <list create="false" edit="false" delete="false"><field name="event_datetime"/><field name="device_id"/><field name="device_employee_id"/><field name="employee_id"/><field name="device_user_id"/><field name="punch_state"/><field name="raw_punch_state"/><field name="processing_state" widget="badge"/><field name="attendance_id"/></list>
+    </field></record>
+    <record id="view_device_event_form" model="ir.ui.view"><field name="name">mdl.attendance.device.event.form</field><field name="model">mdl.attendance.device.event</field><field name="arch" type="xml">
+        <form create="false" edit="false" delete="false"><sheet><group><group><field name="log_id"/><field name="device_id"/><field name="device_employee_id"/><field name="employee_id"/><field name="device_user_id"/></group><group><field name="event_datetime"/><field name="punch_state"/><field name="raw_punch_state"/><field name="attendance_id"/><field name="processing_state" widget="badge"/></group></group><field name="processing_message"/><field name="event_fingerprint"/><field name="raw_line"/></sheet></form>
+    </field></record>
+    <record id="view_device_event_search" model="ir.ui.view"><field name="name">mdl.attendance.device.event.search</field><field name="model">mdl.attendance.device.event</field><field name="arch" type="xml">
+        <search><field name="device_id"/><field name="employee_id"/><field name="device_user_id"/><filter name="processed" string="עובד" domain="[('processing_state','=','processed')]"/><filter name="waiting" string="ממתין לקישור" domain="[('processing_state','=','waiting_employee_link')]"/><filter name="not_applied" string="לא יושם" domain="[('processing_state','=','not_applied')]"/><filter name="ignored" string="התעלם" domain="[('processing_state','=','ignored')]"/><filter name="error" string="שגיאה" domain="[('processing_state','=','error')]"/></search>
+    </field></record>
+    <record id="action_device_event" model="ir.actions.act_window"><field name="name">אירועי נוכחות</field><field name="res_model">mdl.attendance.device.event</field><field name="view_mode">list,form</field></record>
+</odoo>
