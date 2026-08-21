@@ -363,8 +363,20 @@ class ProductTemplate(models.Model):
         remaining = None if not limit else max(limit - len(results), 0)
         if remaining == 0:
             return results
+        variant_domain = Domain.OR(
+            [
+                Domain("default_code", operator, name),
+                Domain("mdl_generated_sku", operator, name),
+                Domain("mdl_generated_name", operator, name),
+            ]
+        )
         extra_domain = Domain(domain or Domain.TRUE)
-        extra_domain &= Domain("mdl_model_lookup", operator, name)
+        extra_domain &= Domain.OR(
+            [
+                Domain("mdl_model_lookup", operator, name),
+                Domain("product_variant_ids", "any", variant_domain),
+            ]
+        )
         if existing_ids:
             extra_domain &= Domain("id", "not in", existing_ids)
         extra_templates = self.search(extra_domain, limit=remaining)
