@@ -87,7 +87,12 @@ class ProductProduct(models.Model):
         if remaining == 0:
             return results
         extra_domain = Domain(domain or Domain.TRUE)
-        extra_domain &= Domain("mdl_generated_name", operator, name)
+        extra_domain &= Domain.OR(
+            [
+                Domain("mdl_generated_sku", operator, name),
+                Domain("mdl_generated_name", operator, name),
+            ]
+        )
         if existing_ids:
             extra_domain &= Domain("id", "not in", existing_ids)
         extra_products = self.search(extra_domain, limit=remaining)
