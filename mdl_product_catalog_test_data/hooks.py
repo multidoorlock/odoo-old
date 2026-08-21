@@ -1,3 +1,5 @@
+import base64
+import gzip
 import hashlib
 import json
 import logging
@@ -10,7 +12,7 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 MODULE = "mdl_product_catalog_test_data"
-DATA_FILE = Path(__file__).parent / "data" / "catalog.json"
+DATA_FILE = Path(__file__).parent / "data" / "catalog.json.gz.b64"
 
 
 def _clean(value):
@@ -35,8 +37,8 @@ def _register_xmlid(env, prefix, key, record):
 
 
 def _load_source():
-    with DATA_FILE.open("r", encoding="utf-8") as source_file:
-        return json.load(source_file)
+    compressed = base64.b64decode(DATA_FILE.read_text(encoding="ascii"))
+    return json.loads(gzip.decompress(compressed).decode("utf-8"))
 
 
 def _check_existing_skus(env, data):
