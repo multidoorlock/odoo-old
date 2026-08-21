@@ -56,6 +56,12 @@
                             <field name="mdl_name_format"
                                    placeholder="[שם קבוצת פריטים] [דגם] [רוחב]/[גובה] +ידית"
                                    class="text-end"/>
+                            <field name="mdl_group_name_component"
+                                   placeholder="ריק = שם קבוצת הפריטים"/>
+                            <field name="mdl_model_name_component"
+                                   placeholder="ריק = שם הדגם"
+                                   invisible="mdl_suppress_model_name"/>
+                            <field name="mdl_suppress_model_name"/>
                             <field name="mdl_sku_prefix" readonly="1"/>
                             <field name="mdl_first_item_example" readonly="1"/>
                         </group>
