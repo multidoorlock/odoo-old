@@ -96,3 +96,25 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(template.mdl_catalog_status, "error")
         self.assertIn("[צבע]", template.mdl_catalog_errors)
 
+    def test_group_and_model_name_components(self):
+        template = self._create_template()
+        template.write(
+            {
+                "mdl_group_name_component": "סט דלת",
+                "mdl_model_name_component": "כנף מיוחדת",
+            }
+        )
+        self.assertTrue(
+            all(
+                product.mdl_generated_name.startswith("סט דלת כנף מיוחדת")
+                for product in template.product_variant_ids
+            )
+        )
+        template.mdl_suppress_model_name = True
+        self.assertTrue(
+            all(
+                product.mdl_generated_name.startswith("סט דלת 80")
+                or product.mdl_generated_name.startswith("סט דלת 90")
+                for product in template.product_variant_ids
+            )
+        )
