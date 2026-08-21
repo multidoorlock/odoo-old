@@ -79,6 +79,43 @@ class TestProductCatalog(TransactionCase):
             "דלת כנף 80/100 +ידית",
         )
 
+    def test_final_product_display_and_search(self):
+        template = self._create_template()
+        product = template.product_variant_ids.filtered(
+            lambda variant: variant.default_code == "100180100"
+        )
+        self.assertEqual(
+            product.display_name,
+            "[100180100] דלת כנף 80/100 +ידית",
+        )
+        product_results = dict(
+            self.env["product.product"].name_search("100180100")
+        )
+        self.assertIn(product.id, product_results)
+        template_results = dict(
+            self.env["product.template"].name_search("100180100")
+        )
+        self.assertIn(template.id, template_results)
+
+    def test_quotation_uses_final_product_name(self):
+        template = self._create_template()
+        product = template.product_variant_ids.filtered(
+            lambda variant: variant.default_code == "100180100"
+        )
+        partner = self.env["res.partner"].create({"name": "לקוח בדיקה"})
+        order = self.env["sale.order"].create({"partner_id": partner.id})
+        line = self.env["sale.order.line"].create(
+            {
+                "order_id": order.id,
+                "product_id": product.id,
+                "product_uom_qty": 1,
+            }
+        )
+        self.assertEqual(
+            line.name.splitlines()[0],
+            "דלת כנף 80/100 +ידית",
+        )
+
     def test_model_specific_name_override(self):
         template = self._create_template()
         template.mdl_template_value_ids.filtered(
