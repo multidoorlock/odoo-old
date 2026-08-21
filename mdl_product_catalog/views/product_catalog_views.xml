@@ -183,7 +183,7 @@
         <field name="inherit_id" ref="product.product_product_tree_view"/>
         <field name="arch" type="xml">
             <field name="default_code" position="after">
-                <field name="mdl_generated_name" string="שם פריט מחושב" optional="show"/>
+                <field name="mdl_generated_name" string="שם הפריט הסופי" optional="show"/>
                 <field name="mdl_generated_sku" string="מק״ט מחושב" optional="hide"/>
             </field>
         </field>
