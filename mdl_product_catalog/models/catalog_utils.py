@@ -30,11 +30,10 @@ def render_format(format_value, replacements):
     def replace(match):
         token = clean_text(match.group(1))
         key = normalize_token(token)
-        if key not in normalized or not normalized[key]:
+        if key not in normalized:
             unresolved.append(token)
             return match.group(0)
         return normalized[key]
 
     rendered = TOKEN_RE.sub(replace, format_value or "")
     return clean_text(rendered), unresolved
-
