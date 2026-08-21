@@ -32,6 +32,21 @@ class ProductTemplate(models.Model):
             "כל טקסט קבוע, כגון /, -, או +ידית, נכתב ישירות בפורמט."
         ),
     )
+    mdl_group_name_component = fields.Char(
+        string="מלל קבוצת הפריטים בשם",
+        copy=True,
+        help="אופציונלי. אם ריק, ייעשה שימוש בשם קטגוריית המוצר.",
+    )
+    mdl_model_name_component = fields.Char(
+        string="מלל הדגם בשם",
+        copy=True,
+        help="אופציונלי. אם ריק, ייעשה שימוש בשם הדגם.",
+    )
+    mdl_suppress_model_name = fields.Boolean(
+        string="אל תציג את שם הדגם בשם הפריט",
+        copy=True,
+        help="מאפשר להשאיר את המציין [דגם] בפורמט ולהחליף אותו במלל ריק.",
+    )
     mdl_sku_prefix = fields.Char(
         string="קידומת מק״ט",
         compute="_compute_mdl_model_identity",
@@ -73,7 +88,12 @@ class ProductTemplate(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            for field_name in ("mdl_model_code", "mdl_name_format"):
+            for field_name in (
+                "mdl_model_code",
+                "mdl_name_format",
+                "mdl_group_name_component",
+                "mdl_model_name_component",
+            ):
                 if field_name in vals:
                     vals[field_name] = clean_text(vals[field_name])
         templates = super().create(vals_list)
@@ -81,7 +101,12 @@ class ProductTemplate(models.Model):
         return templates
 
     def write(self, vals):
-        for field_name in ("mdl_model_code", "mdl_name_format"):
+        for field_name in (
+            "mdl_model_code",
+            "mdl_name_format",
+            "mdl_group_name_component",
+            "mdl_model_name_component",
+        ):
             if field_name in vals:
                 vals[field_name] = clean_text(vals[field_name])
         result = super().write(vals)
@@ -92,6 +117,9 @@ class ProductTemplate(models.Model):
                 "categ_id",
                 "mdl_model_code",
                 "mdl_name_format",
+                "mdl_group_name_component",
+                "mdl_model_name_component",
+                "mdl_suppress_model_name",
             )
         ):
             self._mdl_sync_variant_codes()
@@ -102,7 +130,7 @@ class ProductTemplate(models.Model):
         for template in self:
             group_code = clean_text(template.categ_id.mdl_group_code)
             model_code = clean_text(template.mdl_model_code)
-            prefix = f"{group_code}{model_code}" if group_code and model_code else ""
+            prefix = f"{group_code}{model_code}" if group_code else ""
             names = clean_text(
                 " ".join(part for part in (template.categ_id.name, template.name) if part)
             )
@@ -137,6 +165,9 @@ class ProductTemplate(models.Model):
         "categ_id.mdl_group_code",
         "mdl_model_code",
         "mdl_name_format",
+        "mdl_group_name_component",
+        "mdl_model_name_component",
+        "mdl_suppress_model_name",
         "attribute_line_ids.attribute_id.name",
         "attribute_line_ids.attribute_id.create_variant",
         "mdl_template_value_ids.mdl_effective_sku_component",
@@ -157,10 +188,18 @@ class ProductTemplate(models.Model):
     def _mdl_catalog_replacements(self, combination):
         self.ensure_one()
         replacements = {
-            "שם קבוצת פריטים": self.categ_id.name,
-            "קבוצת פריטים": self.categ_id.name,
-            "דגם": self.name,
-            "שם דגם": self.name,
+            "שם קבוצת פריטים": (
+                self.mdl_group_name_component or self.categ_id.name
+            ),
+            "קבוצת פריטים": (
+                self.mdl_group_name_component or self.categ_id.name
+            ),
+            "דגם": "" if self.mdl_suppress_model_name else (
+                self.mdl_model_name_component or self.name
+            ),
+            "שם דגם": "" if self.mdl_suppress_model_name else (
+                self.mdl_model_name_component or self.name
+            ),
         }
         for value in combination.sorted(
             lambda item: (
@@ -206,8 +245,6 @@ class ProductTemplate(models.Model):
             issues.append("לא נבחרה קבוצת פריטים (קטגוריית מוצר).")
         elif not clean_text(self.categ_id.mdl_group_code):
             issues.append("לקבוצת הפריטים חסר קוד.")
-        if not clean_text(self.mdl_model_code):
-            issues.append("לדגם חסר קוד דגם.")
         if not clean_text(self.mdl_name_format):
             issues.append("לדגם חסר פורמט שם.")
 
@@ -229,31 +266,6 @@ class ProductTemplate(models.Model):
             normalized = normalize_token(token)
             if normalized not in BASE_TOKEN_ALIASES and normalized not in normalized_attributes:
                 issues.append(f"המציין [{token}] אינו מאפיין המשויך לדגם.")
-
-        variant_values = self.mdl_template_value_ids.filtered(
-            lambda value: value.ptav_active
-            and value.attribute_id.create_variant != "no_variant"
-        )
-        for value in variant_values:
-            if not clean_text(value.mdl_effective_sku_component):
-                issues.append(
-                    "חסר רכיב מק״ט עבור "
-                    f"{value.attribute_id.name}: {value.product_attribute_value_id.name}."
-                )
-
-        other_model = self.with_context(active_test=False).search(
-            [
-                ("id", "!=", self.id),
-                ("categ_id", "=", self.categ_id.id),
-                ("mdl_model_code", "=", self.mdl_model_code),
-            ],
-            limit=1,
-        ) if self.categ_id and self.mdl_model_code else self.env["product.template"]
-        if other_model:
-            issues.append(
-                "קוד הדגם כבר משויך לדגם נוסף באותה קבוצת פריטים: "
-                f"{other_model.name}."
-            )
 
         variants = self.with_context(active_test=False).product_variant_ids
         generated_skus = [
