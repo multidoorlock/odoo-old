@@ -2,6 +2,8 @@ import re
 
 
 TOKEN_RE = re.compile(r"\[([^\[\]]+)\]")
+DIRECTION_MARKER_RE = re.compile(r"(?<![A-Za-z])([LRD])(?![A-Za-z])", re.IGNORECASE)
+HEBREW_RE = re.compile(r"[\u0590-\u05ff]")
 DEFAULT_VARIANT_DISPLAY_FORMAT = "[מק״ט] [שם הפריט]"
 VARIANT_DISPLAY_FORMAT_PARAM = "mdl_product_catalog.variant_display_format"
 BASE_NAME_TOKENS = {
@@ -27,6 +29,22 @@ def ltr_isolate(value):
     """Keep identifiers readable when embedded inside right-to-left text."""
     value = clean_text(value)
     return f"\u2066{value}\u2069" if value else ""
+
+
+def split_direction_marker(value):
+    """Return Hebrew opening text and a deferred L/R/D display marker.
+
+    MasterProducts stores opening values in forms such as ``L שמאל`` and
+    ``הזזה ימין R``. In mixed RTL/LTR interfaces the browser moves that marker
+    unpredictably. Keeping the Hebrew wording in place and appending the
+    marker after the complete generated name produces one stable reading order.
+    """
+    value = clean_text(value)
+    markers = DIRECTION_MARKER_RE.findall(value)
+    if not HEBREW_RE.search(value) or len(markers) != 1:
+        return value, ""
+    text = clean_text(DIRECTION_MARKER_RE.sub(" ", value))
+    return text, markers[0].upper()
 
 
 def extract_tokens(format_value):

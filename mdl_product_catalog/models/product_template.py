@@ -4,7 +4,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Domain
 
-from .catalog_utils import clean_text
+from .catalog_utils import clean_text, normalize_token, split_direction_marker
 
 
 def _name_without_group(group_name, model_name):
@@ -158,6 +158,7 @@ class ProductTemplate(models.Model):
                 missing_components.append(value.display_name)
 
         final_name = clean_text(self.mdl_variant_base_name or self.name)
+        deferred_name_markers = []
         for line in self.attribute_line_ids.filtered("active").sorted(
             lambda item: (item.sequence, item.attribute_id.sequence, item.id)
         ):
@@ -165,6 +166,10 @@ class ProductTemplate(models.Model):
             if not value or line.mdl_name_mode == "hidden":
                 continue
             value_name = value._mdl_get_name_component()
+            if "פתיחה" in normalize_token(line.attribute_id.name):
+                value_name, marker = split_direction_marker(value_name)
+                if marker:
+                    deferred_name_markers.append(marker)
             if line.mdl_name_mode == "attribute_value":
                 value_name = clean_text(f"{line.attribute_id.name} {value_name}")
             final_name += (
@@ -173,6 +178,8 @@ class ProductTemplate(models.Model):
                 f"{line.mdl_name_suffix or ''}"
             )
         final_name += self.mdl_name_suffix or ""
+        if deferred_name_markers:
+            final_name += " " + " ".join(deferred_name_markers)
         return "".join(sku_parts), clean_text(final_name), missing_components
 
     def _mdl_get_catalog_issues(self, include_sync_state=False):

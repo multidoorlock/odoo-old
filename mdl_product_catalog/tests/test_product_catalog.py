@@ -131,6 +131,57 @@ class TestProductCatalog(TransactionCase):
             "[מק״ט] [שם הפריט]",
         )
 
+    def test_opening_direction_marker_is_displayed_at_the_end(self):
+        opening = self.env["product.attribute"].create(
+            {"name": "צורת פתיחה לדלת", "create_variant": "always"}
+        )
+        left = self.env["product.attribute.value"].create(
+            {
+                "name": "L שמאל",
+                "attribute_id": opening.id,
+                "mdl_sku_component": "1",
+            }
+        )
+        template = self.env["product.template"].create(
+            {
+                "name": "כנף",
+                "categ_id": self.category.id,
+                "mdl_sku_prefix": "1001",
+                "attribute_line_ids": [
+                    Command.create(
+                        {
+                            "attribute_id": opening.id,
+                            "sequence": 5,
+                            "value_ids": [Command.set([left.id])],
+                        }
+                    ),
+                    Command.create(
+                        {
+                            "attribute_id": self.width.id,
+                            "sequence": 10,
+                            "mdl_name_suffix": "/",
+                            "value_ids": [Command.set([self.width_80.id])],
+                        }
+                    ),
+                    Command.create(
+                        {
+                            "attribute_id": self.height.id,
+                            "sequence": 20,
+                            "mdl_name_prefix": "",
+                            "value_ids": [Command.set([self.height_100.id])],
+                        }
+                    ),
+                ],
+            }
+        )
+        product = template.product_variant_id
+        self.assertEqual(product.default_code, "1001180100")
+        self.assertEqual(product.mdl_generated_name, "דלת כנף שמאל 80/100 L")
+        self.assertEqual(
+            product.display_name.replace("\u2066", "").replace("\u2069", ""),
+            "[1001180100] דלת כנף שמאל 80/100 L",
+        )
+
     def test_quotation_uses_final_product_name(self):
         template = self._create_template()
         product = template.product_variant_ids.filtered(

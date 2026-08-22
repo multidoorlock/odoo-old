@@ -10,6 +10,7 @@ from odoo import Command
 from odoo.exceptions import UserError
 from odoo.addons.mdl_product_catalog.models.catalog_utils import (
     normalize_token,
+    split_direction_marker,
     split_legacy_name_format,
 )
 
@@ -171,7 +172,11 @@ def _validate_and_register_variants(env, template, template_data, values):
         product = actual_by_tuple[value_tuple]
         actual_sku = _clean(product.default_code)
         actual_name = _clean(product.mdl_generated_name)
-        if actual_sku != expected["sku"] or actual_name != _clean(expected["name"]):
+        expected_name, expected_marker = split_direction_marker(expected["name"])
+        expected_name = _clean(
+            f"{expected_name} {expected_marker}" if expected_marker else expected_name
+        )
+        if actual_sku != expected["sku"] or actual_name != expected_name:
             raise UserError(
                 "אי־התאמה בנתוני הבדיקה עבור "
                 f"{expected['sku']}: התקבל {actual_sku} - {actual_name}."
