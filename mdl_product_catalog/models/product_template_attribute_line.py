@@ -1,8 +1,29 @@
-from odoo import api, models
+from odoo import api, fields, models
 
 
 class ProductTemplateAttributeLine(models.Model):
     _inherit = "product.template.attribute.line"
+
+    mdl_name_mode = fields.Selection(
+        selection=[
+            ("value", "ערך המאפיין"),
+            ("attribute_value", "שם המאפיין + הערך"),
+            ("hidden", "לא להציג בשם"),
+        ],
+        string="הצגה בשם",
+        default="value",
+        required=True,
+        help="קובע כיצד המאפיין יוצג בשם הסופי של הווריאנט.",
+    )
+    mdl_name_prefix = fields.Char(
+        string="טקסט לפני",
+        default=" ",
+        help="רווח, /, +, -, או כל טקסט קבוע שיופיע לפני ערך המאפיין.",
+    )
+    mdl_name_suffix = fields.Char(
+        string="טקסט אחרי",
+        help="טקסט קבוע שיופיע מיד אחרי ערך המאפיין.",
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -24,4 +45,3 @@ class ProductTemplateAttributeLine(models.Model):
         if not self.env.context.get("skip_mdl_catalog_sync"):
             templates._mdl_sync_variant_codes()
         return result
-
