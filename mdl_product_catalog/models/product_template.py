@@ -4,15 +4,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Domain
 
-from .catalog_utils import clean_text, extract_tokens, normalize_token, render_format
-
-
-BASE_TOKEN_ALIASES = {
-    normalize_token("שם קבוצת פריטים"): "group_name",
-    normalize_token("קבוצת פריטים"): "group_name",
-    normalize_token("דגם"): "model_name",
-    normalize_token("שם דגם"): "model_name",
-}
+from .catalog_utils import clean_text
 
 
 def _name_without_group(group_name, model_name):
@@ -35,82 +27,37 @@ def _name_with_group(group_name, model_name):
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
-    mdl_model_code = fields.Char(
-        string="קוד דגם",
+    mdl_sku_prefix = fields.Char(
+        string="קידומת מק״ט לווריאנטים",
         index=True,
         copy=False,
-        help="החלק במק״ט שמגיע מיד אחרי קוד קבוצת הפריטים.",
-    )
-    mdl_name_format = fields.Char(
-        string="פורמט שם הפריט",
-        copy=True,
         help=(
-            "השתמשו ב-[שם קבוצת פריטים], [דגם] ובשם כל מאפיין בסוגריים מרובעים. "
-            "כל טקסט קבוע, כגון /, -, או +ידית, נכתב ישירות בפורמט."
+            "החלק הקבוע בתחילת כל מק״ט של הדגם, לדוגמה 1001. "
+            "המק״ט הסופי נשמר בשדה המקורי 'מק״ט פנימי' של הווריאנט."
         ),
     )
-    mdl_group_name_component = fields.Char(
-        string="מלל קבוצת הפריטים בשם",
+    mdl_variant_base_name = fields.Char(
+        string="שם בסיס לפריטים הסופיים",
         copy=True,
-        help="אופציונלי. אם ריק, ייעשה שימוש בשם קטגוריית המוצר.",
+        help=(
+            "אופציונלי. אם ריק, שם הדגם הרגיל של Odoo משמש כבסיס. "
+            "מיועד רק למקרה שבו שם הפריט הסופי צריך להיות שונה משם הדגם."
+        ),
     )
-    mdl_model_name_component = fields.Char(
-        string="מלל הדגם בשם",
+    mdl_name_suffix = fields.Char(
+        string="טקסט קבוע בסוף השם",
         copy=True,
-        help="אופציונלי. אם ריק, ייעשה שימוש בשם הדגם.",
-    )
-    mdl_suppress_model_name = fields.Boolean(
-        string="אל תציג את שם הדגם בשם הפריט",
-        copy=True,
-        help="מאפשר להשאיר את המציין [דגם] בפורמט ולהחליף אותו במלל ריק.",
-    )
-    mdl_sku_prefix = fields.Char(
-        string="קידומת מק״ט",
-        compute="_compute_mdl_model_identity",
-        store=True,
-    )
-    mdl_model_lookup = fields.Char(
-        string="Lookup דגם מלא",
-        compute="_compute_mdl_model_identity",
-        store=True,
+        help="אופציונלי, לדוגמה: [+ידית] או ***כולל מנגנון***.",
     )
     mdl_first_item_example = fields.Char(
         string="דוגמת פריט ראשון",
         compute="_compute_mdl_first_item_example",
     )
-    mdl_catalog_status = fields.Selection(
-        selection=[("ok", "תקין"), ("error", "נדרשת בדיקה")],
-        string="תקינות",
-        compute="_compute_mdl_catalog_status",
-    )
-    mdl_catalog_error_count = fields.Integer(
-        string="מספר שגיאות",
-        compute="_compute_mdl_catalog_status",
-    )
-    mdl_catalog_errors = fields.Text(
-        string="שגיאות וקונפליקטים",
-        compute="_compute_mdl_catalog_status",
-    )
-    mdl_template_value_ids = fields.One2many(
-        comodel_name="product.template.attribute.value",
-        inverse_name="product_tmpl_id",
-        string="שיוך ערכי מאפיינים",
-    )
-    mdl_exclusion_ids = fields.One2many(
-        comodel_name="product.template.attribute.exclusion",
-        inverse_name="product_tmpl_id",
-        string="שילובים לא מורשים",
-    )
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            for field_name in (
-                "mdl_model_code",
-                "mdl_name_format",
-                "mdl_group_name_component",
-                "mdl_model_name_component",
-            ):
+            for field_name in ("mdl_sku_prefix", "mdl_variant_base_name"):
                 if field_name in vals:
                     vals[field_name] = clean_text(vals[field_name])
         templates = super().create(vals_list)
@@ -124,12 +71,7 @@ class ProductTemplate(models.Model):
             if "categ_id" in vals
             else {}
         )
-        for field_name in (
-            "mdl_model_code",
-            "mdl_name_format",
-            "mdl_group_name_component",
-            "mdl_model_name_component",
-        ):
+        for field_name in ("mdl_sku_prefix", "mdl_variant_base_name"):
             if field_name in vals:
                 vals[field_name] = clean_text(vals[field_name])
         result = super().write(vals)
@@ -138,11 +80,9 @@ class ProductTemplate(models.Model):
             for field_name in (
                 "name",
                 "categ_id",
-                "mdl_model_code",
-                "mdl_name_format",
-                "mdl_group_name_component",
-                "mdl_model_name_component",
-                "mdl_suppress_model_name",
+                "mdl_sku_prefix",
+                "mdl_variant_base_name",
+                "mdl_name_suffix",
             )
         ):
             self._mdl_ensure_full_model_names(previous_group_names)
@@ -151,31 +91,30 @@ class ProductTemplate(models.Model):
 
     def _mdl_ensure_full_model_names(self, previous_group_names=None):
         previous_group_names = previous_group_names or {}
-        for template in self.filtered("mdl_name_format"):
-            model_name = _name_without_group(
-                previous_group_names.get(template.id), template.name
-            )
+        for template in self.filtered("mdl_sku_prefix"):
+            previous_group = previous_group_names.get(template.id)
+            model_name = _name_without_group(previous_group, template.name)
             full_name = _name_with_group(template.categ_id.name, model_name)
+            updates = {}
             if full_name and template.name != full_name:
+                updates["name"] = full_name
+            if previous_group and template.mdl_variant_base_name:
+                previous_base = clean_text(template.mdl_variant_base_name)
+                if previous_base == previous_group or previous_base.startswith(
+                    f"{previous_group} "
+                ):
+                    updates["mdl_variant_base_name"] = _name_with_group(
+                        template.categ_id.name,
+                        _name_without_group(previous_group, previous_base),
+                    )
+            if updates:
                 super(
                     ProductTemplate,
                     template.with_context(skip_mdl_catalog_sync=True),
-                ).write({"name": full_name})
-
-    @api.depends("name", "categ_id.name", "categ_id.mdl_group_code", "mdl_model_code")
-    def _compute_mdl_model_identity(self):
-        for template in self:
-            group_code = clean_text(template.categ_id.mdl_group_code)
-            model_code = clean_text(template.mdl_model_code)
-            prefix = f"{group_code}{model_code}" if group_code else ""
-            names = _name_with_group(template.categ_id.name, template.name)
-            template.mdl_sku_prefix = prefix or False
-            template.mdl_model_lookup = (
-                f"{prefix} - {names}" if prefix and names else names or prefix or False
-            )
+                ).write(updates)
 
     @api.depends(
-        "product_variant_ids.mdl_generated_sku",
+        "product_variant_ids.default_code",
         "product_variant_ids.mdl_generated_name",
     )
     def _compute_mdl_first_item_example(self):
@@ -184,7 +123,7 @@ class ProductTemplate(models.Model):
                 lambda product: (product.combination_indices or "", product.id)
             )[:1]
             if variant:
-                sku = clean_text(variant.mdl_generated_sku)
+                sku = clean_text(variant.default_code)
                 name = clean_text(variant.mdl_generated_name)
             else:
                 sku, name, _missing = template._mdl_render_catalog_values(
@@ -193,58 +132,6 @@ class ProductTemplate(models.Model):
             template.mdl_first_item_example = (
                 f"{sku} - {name}" if sku and name else sku or name or False
             )
-
-    @api.depends(
-        "name",
-        "categ_id.name",
-        "categ_id.mdl_group_code",
-        "mdl_model_code",
-        "mdl_name_format",
-        "mdl_group_name_component",
-        "mdl_model_name_component",
-        "mdl_suppress_model_name",
-        "attribute_line_ids.attribute_id.name",
-        "attribute_line_ids.attribute_id.create_variant",
-        "mdl_template_value_ids.mdl_effective_sku_component",
-        "mdl_template_value_ids.mdl_effective_name_component",
-        "product_variant_ids.default_code",
-        "product_variant_ids.mdl_generated_sku",
-        "product_variant_ids.mdl_generated_name",
-    )
-    def _compute_mdl_catalog_status(self):
-        for template in self:
-            issues = template._mdl_get_catalog_issues(include_sync_state=True)
-            template.mdl_catalog_status = "error" if issues else "ok"
-            template.mdl_catalog_error_count = len(issues)
-            template.mdl_catalog_errors = "\n".join(
-                f"• {issue}" for issue in issues
-            ) or False
-
-    def _mdl_catalog_replacements(self, combination):
-        self.ensure_one()
-        model_name = self.mdl_model_name_component or _name_without_group(
-            self.categ_id.name, self.name
-        )
-        replacements = {
-            "שם קבוצת פריטים": (
-                self.mdl_group_name_component or self.categ_id.name
-            ),
-            "קבוצת פריטים": (
-                self.mdl_group_name_component or self.categ_id.name
-            ),
-            "דגם": "" if self.mdl_suppress_model_name else model_name,
-            "שם דגם": "" if self.mdl_suppress_model_name else model_name,
-        }
-        for value in combination.sorted(
-            lambda item: (
-                item.attribute_line_id.sequence,
-                item.attribute_id.sequence,
-                item.attribute_id.id,
-                item.id,
-            )
-        ):
-            replacements[value.attribute_id.name] = value.mdl_effective_name_component
-        return replacements
 
     def _mdl_render_catalog_values(self, combination):
         self.ensure_one()
@@ -257,35 +144,44 @@ class ProductTemplate(models.Model):
             )
         )
         sku_parts = [clean_text(self.mdl_sku_prefix)]
-        sku_parts.extend(
-            clean_text(value.mdl_effective_sku_component)
-            for value in ordered_values
-            if value.attribute_id.create_variant != "no_variant"
-        )
-        sku = "".join(part for part in sku_parts if part)
-        name, missing_tokens = render_format(
-            self.mdl_name_format,
-            self._mdl_catalog_replacements(ordered_values),
-        )
-        return sku, name, missing_tokens
+        missing_components = []
+        values_by_line = {value.attribute_line_id.id: value for value in ordered_values}
+        for value in ordered_values:
+            if value.attribute_id.create_variant == "no_variant":
+                continue
+            component = value._mdl_get_sku_component()
+            if component:
+                sku_parts.append(component)
+            else:
+                missing_components.append(value.display_name)
+
+        final_name = clean_text(self.mdl_variant_base_name or self.name)
+        for line in self.attribute_line_ids.filtered("active").sorted(
+            lambda item: (item.sequence, item.attribute_id.sequence, item.id)
+        ):
+            value = values_by_line.get(line.id)
+            if not value or line.mdl_name_mode == "hidden":
+                continue
+            value_name = value._mdl_get_name_component()
+            if line.mdl_name_mode == "attribute_value":
+                value_name = clean_text(f"{line.attribute_id.name} {value_name}")
+            final_name += (
+                f"{line.mdl_name_prefix or ''}"
+                f"{value_name}"
+                f"{line.mdl_name_suffix or ''}"
+            )
+        final_name += self.mdl_name_suffix or ""
+        return "".join(sku_parts), clean_text(final_name), missing_components
 
     def _mdl_get_catalog_issues(self, include_sync_state=False):
         self.ensure_one()
-        if not self.mdl_name_format and not self.mdl_model_code:
+        if not self.mdl_sku_prefix:
             return []
 
         issues = []
         if not self.categ_id:
             issues.append("לא נבחרה קבוצת פריטים (קטגוריית מוצר).")
-        elif not clean_text(self.categ_id.mdl_group_code):
-            issues.append("לקבוצת הפריטים חסר קוד.")
-        if not clean_text(self.mdl_name_format):
-            issues.append("לדגם חסר פורמט שם.")
 
-        normalized_attributes = {
-            normalize_token(line.attribute_id.name): line.attribute_id.name
-            for line in self.attribute_line_ids
-        }
         dynamic_attributes = self.attribute_line_ids.attribute_id.filtered(
             lambda attribute: attribute.create_variant == "dynamic"
         )
@@ -296,20 +192,30 @@ class ProductTemplate(models.Model):
                 + ", ".join(dynamic_attributes.mapped("name"))
                 + "."
             )
-        for token in extract_tokens(self.mdl_name_format):
-            normalized = normalize_token(token)
-            if normalized not in BASE_TOKEN_ALIASES and normalized not in normalized_attributes:
-                issues.append(f"המציין [{token}] אינו מאפיין המשויך לדגם.")
 
-        variants = self.with_context(active_test=False).product_variant_ids
-        generated_skus = [
-            clean_text(product.mdl_generated_sku)
+        variants = self.product_variant_ids
+        rendered = {
+            product: self._mdl_render_catalog_values(
+                product.product_template_attribute_value_ids
+            )
             for product in variants
-            if clean_text(product.mdl_generated_sku)
-        ]
+        }
+        generated_skus = [sku for sku, _name, _missing in rendered.values() if sku]
         for sku, count in Counter(generated_skus).items():
             if count > 1:
                 issues.append(f"המק״ט {sku} נוצר ל-{count} וריאנטים בדגם.")
+
+        for product, (sku, _name, missing) in rendered.items():
+            if missing:
+                issues.append(
+                    f"בפריט {product.id} חסר רכיב מק״ט לערכים: "
+                    + ", ".join(missing)
+                    + "."
+                )
+            if include_sync_state and sku and product.default_code != sku:
+                issues.append(
+                    f"המק״ט של פריט {product.id} טרם עודכן ל-{sku}."
+                )
 
         if generated_skus:
             external_products = self.env["product.product"].with_context(
@@ -325,30 +231,13 @@ class ProductTemplate(models.Model):
                     f"המק״ט {product.default_code} כבר נמצא בפריט אחר: "
                     f"{product.product_tmpl_id.name}."
                 )
-
-        for product in variants:
-            _sku, _name, missing = self._mdl_render_catalog_values(
-                product.product_template_attribute_value_ids
-            )
-            for token in missing:
-                issues.append(
-                    f"בפריט {product.id} אין ערך עבור המציין [{token}] שבפורמט."
-                )
-            if include_sync_state and product.mdl_generated_sku and (
-                product.default_code != product.mdl_generated_sku
-            ):
-                issues.append(
-                    f"המק״ט של פריט {product.id} טרם עודכן ל-{product.mdl_generated_sku}."
-                )
-
         return list(dict.fromkeys(issues))
 
     def _mdl_sync_variant_codes(self):
         if self.env.context.get("skip_mdl_catalog_sync"):
             return
-        for template in self.filtered("mdl_name_format"):
-            variants = template.with_context(active_test=False).product_variant_ids
-            variants._mdl_sync_default_code()
+        for template in self.filtered("mdl_sku_prefix"):
+            template.product_variant_ids._mdl_sync_default_code()
 
     def action_mdl_check_and_rebuild(self):
         self.ensure_one()
@@ -400,14 +289,13 @@ class ProductTemplate(models.Model):
         variant_domain = Domain.OR(
             [
                 Domain("default_code", operator, name),
-                Domain("mdl_generated_sku", operator, name),
                 Domain("mdl_generated_name", operator, name),
             ]
         )
         extra_domain = Domain(domain or Domain.TRUE)
         extra_domain &= Domain.OR(
             [
-                Domain("mdl_model_lookup", operator, name),
+                Domain("mdl_sku_prefix", operator, name),
                 Domain("product_variant_ids", "any", variant_domain),
             ]
         )
@@ -418,10 +306,12 @@ class ProductTemplate(models.Model):
             (template.id, template.display_name) for template in extra_templates
         ]
 
-    @api.depends("name", "default_code", "mdl_model_lookup", "mdl_name_format")
+    @api.depends("name", "default_code", "mdl_sku_prefix")
     @api.depends_context("formatted_display_name", "display_default_code")
     def _compute_display_name(self):
         super()._compute_display_name()
         for template in self:
-            if template.mdl_name_format and template.mdl_model_lookup:
-                template.display_name = template.mdl_model_lookup
+            if template.mdl_sku_prefix:
+                template.display_name = (
+                    f"{template.mdl_sku_prefix} - {template.name}"
+                )
