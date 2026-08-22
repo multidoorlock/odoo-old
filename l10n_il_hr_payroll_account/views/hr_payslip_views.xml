@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- hr_payroll_account (הרחבת הנה"ח הילידית) מסתירה כברירת מחדל את כפתור
+         "Mark as paid" הילידי (action_payslip_paid) ומציגה במקומו כפתור "Pay"
+         (action_register_payment) - זרימה מבוססת התאמת תנועת יומן/account.payment.register,
+         שמתעלמת לגמרי מכל המנגנון שלנו (partner_id=work_contact_id, יצירת
+         account.payment ישירה, l10n_il_net_to_pay, סגירת התאמות שכר חד-פעמיות -
+         ראו account_payment.py.action_payslip_paid). לחיצה על "Pay" הילידי
+         משאירה את כל הלוגיקה הישראלית שלנו לא-מופעלת בלי שום שגיאה/אזהרה -
+         בדיוק מה שקרה בפועל (תשלומים קיימים לא נמשכו, התאמות שכר חד-פעמיות
+         לא נסגרו). לכן: מחזירים את "Mark as paid" להיות גלוי (כמו בליבת
+         hr_payroll המקורית), ומסתירים את "Pay" הילידי לגמרי כדי שלא ילחצו
+         עליו בטעות. -->
+    <record id="view_hr_payslip_form_l10n_il_payment_buttons" model="ir.ui.view">
+        <field name="name">hr.payslip.form.inherit.l10n.il.payment.buttons</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_form"/>
+        <field name="arch" type="xml">
+            <button name="action_payslip_paid" position="attributes">
+                <attribute name="invisible">state != 'validated'</attribute>
+            </button>
+            <button name="action_register_payment" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </button>
+            <!-- הכיתוב הילידי "Unpaid" מטעה - הכפתור בפועל (ראו action_payslip_unpaid
+                 למעלה) מרענן תשלומים+התאמות שכר חדשות ומאשר מחדש, לא "מבטל תשלום". -->
+            <button name="action_payslip_unpaid" position="attributes">
+                <attribute name="string">עדכון וחישוב מחדש</attribute>
+            </button>
+        </field>
+    </record>
+</odoo>

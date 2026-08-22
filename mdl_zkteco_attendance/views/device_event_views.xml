@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_device_event_list" model="ir.ui.view"><field name="name">mdl.attendance.device.event.list</field><field name="model">mdl.attendance.device.event</field><field name="arch" type="xml">
+        <list create="false" edit="false" delete="false"><field name="event_datetime"/><field name="device_id"/><field name="device_employee_id"/><field name="employee_id"/><field name="device_user_id"/><field name="punch_state"/><field name="raw_punch_state"/><field name="processing_state" widget="badge"/><field name="attendance_id"/></list>
+    </field></record>
+    <record id="view_device_event_form" model="ir.ui.view"><field name="name">mdl.attendance.device.event.form</field><field name="model">mdl.attendance.device.event</field><field name="arch" type="xml">
+        <form create="false" edit="true" delete="false"><sheet><group><group><field name="log_id" readonly="1"/><field name="device_id" readonly="1"/><field name="device_employee_id" readonly="1"/><field name="employee_id" readonly="processing_state == 'ignored'"/><field name="device_user_id" readonly="1"/></group><group><field name="event_datetime" readonly="processing_state == 'ignored'"/><field name="effective_punch_state" string="סוג" readonly="processing_state == 'ignored'"/><field name="punch_state" string="סוג מקורי" readonly="1"/><field name="raw_punch_state" readonly="1"/><field name="attendance_id" readonly="1"/><field name="processing_state" widget="badge" readonly="1"/></group></group><field name="processing_message" readonly="1"/><field name="event_fingerprint" readonly="1"/><field name="raw_line" readonly="1"/></sheet></form>
+    </field></record>
+    <record id="view_device_event_readonly_form" model="ir.ui.view">
+        <field name="name">mdl.attendance.device.event.form.readonly</field>
+        <field name="model">mdl.attendance.device.event</field>
+        <field name="inherit_id" ref="view_device_event_form"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="create">false</attribute>
+                <attribute name="edit">false</attribute>
+                <attribute name="delete">false</attribute>
+                <attribute name="duplicate">false</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_device_event_search" model="ir.ui.view"><field name="name">mdl.attendance.device.event.search</field><field name="model">mdl.attendance.device.event</field><field name="arch" type="xml">
+        <search><field name="device_id"/><field name="employee_id"/><field name="device_user_id"/><filter name="processed" string="עובד" domain="[('processing_state','=','processed')]"/><filter name="waiting" string="ממתין לקישור" domain="[('processing_state','=','waiting_employee_link')]"/><filter name="not_applied" string="לא יושם" domain="[('processing_state','=','not_applied')]"/><filter name="ignored" string="התעלם" domain="[('processing_state','=','ignored')]"/><filter name="error" string="שגיאה" domain="[('processing_state','=','error')]"/></search>
+    </field></record>
+    <record id="action_device_event" model="ir.actions.act_window"><field name="name">אירועי נוכחות</field><field name="res_model">mdl.attendance.device.event</field><field name="view_mode">list,form</field></record>
+</odoo>

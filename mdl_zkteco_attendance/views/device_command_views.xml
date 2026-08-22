@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_device_command_list" model="ir.ui.view"><field name="name">mdl.attendance.device.command.list</field><field name="model">mdl.attendance.device.command</field><field name="arch" type="xml">
+        <list create="false"><field name="device_id"/><field name="device_employee_id"/><field name="command_type"/><field name="state" widget="badge"/><field name="create_date"/><field name="sent_at"/><field name="completed_at"/></list>
+    </field></record>
+    <record id="view_device_command_form" model="ir.ui.view"><field name="name">mdl.attendance.device.command.form</field><field name="model">mdl.attendance.device.command</field><field name="arch" type="xml">
+        <form create="false"><header><button name="action_retry" type="object" string="נסה שוב" invisible="state not in ['failed','cancelled','sent']"/><button name="action_cancel" type="object" string="בטל" invisible="state not in ['queued','sent']"/></header><sheet><group><group><field name="device_id"/><field name="device_employee_id"/><field name="command_type"/><field name="state" widget="badge"/></group><group><field name="create_date"/><field name="sent_at"/><field name="completed_at"/><field name="retry_count"/></group></group><notebook><page string="פקודה"><field name="raw_command" nolabel="1"/></page><page string="תשובה"><field name="raw_response" nolabel="1"/><field name="response_log_id"/><field name="return_code"/></page><page string="שגיאה"><field name="error_message" nolabel="1"/></page></notebook></sheet></form>
+    </field></record>
+    <record id="view_device_command_search" model="ir.ui.view"><field name="name">mdl.attendance.device.command.search</field><field name="model">mdl.attendance.device.command</field><field name="arch" type="xml">
+        <search><field name="device_id"/><field name="device_employee_id"/><filter name="queued_sent" string="ממתינות/נשלחו" domain="[('state','in',['queued','sent'])]"/><filter name="finished" string="הסתיימו" domain="[('state','in',['done','failed','cancelled'])]"/><group><filter name="group_state" string="מצב" context="{'group_by':'state'}"/><filter name="group_device" string="שעון" context="{'group_by':'device_id'}"/></group></search>
+    </field></record>
+    <record id="action_device_command" model="ir.actions.act_window"><field name="name">פקודות</field><field name="res_model">mdl.attendance.device.command</field><field name="view_mode">list,form</field></record>
+</odoo>

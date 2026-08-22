@@ -1,0 +1,161 @@
+.o_gantt_view {
+    .o_mdl_attendance_event_tile_wrapper {
+        position: relative;
+        align-self: start;
+        z-index: 4;
+        cursor: pointer;
+        user-select: none;
+        overflow: visible;
+
+        &:hover,
+        &:focus-within {
+            z-index: 8;
+
+            .o_mdl_attendance_tooltip {
+                display: block;
+            }
+        }
+    }
+
+    .o_mdl_attendance_summary_wrapper {
+        position: relative;
+        z-index: 4;
+        min-width: 0;
+        overflow: visible;
+    }
+
+    .o_mdl_attendance_summary {
+        box-sizing: border-box !important;
+        border: 0 !important;
+        background-color: #efbebe !important;
+        color: #000 !important;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .o_mdl_attendance_event_tile {
+        position: relative;
+        overflow: hidden;
+        border: 0 !important;
+        outline: 0 !important;
+        box-sizing: border-box !important;
+        padding: 4px;
+        line-height: 1;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+        transition: filter 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+
+        .o_mdl_attendance_event_tile_title {
+            width: 100%;
+            max-width: 100%;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .o_mdl_attendance_event_kind {
+            font-size: 10px;
+            font-weight: 500;
+            line-height: 1.05;
+        }
+
+        .o_mdl_attendance_event_time {
+            margin-top: 2px;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        strong {
+            font-size: inherit;
+            font-variant-numeric: tabular-nums;
+        }
+
+        &:hover {
+            box-shadow: 0 2px 5px rgba(0, 0, 0, .18);
+            border: 0 !important;
+            outline: 0 !important;
+        }
+    }
+
+    .o_mdl_attendance_event_tile_success {
+        background-color: #00e07b !important;
+        color: #000 !important;
+    }
+
+    .o_mdl_attendance_event_tile_danger {
+        background-color: #efbebe !important;
+        color: #000 !important;
+    }
+
+    .o_mdl_attendance_event_fold {
+        position: absolute;
+        display: block;
+        z-index: 5;
+        inset-inline-end: 2px;
+        top: 2px;
+        width: 11px;
+        height: 11px;
+        background-color: currentColor !important;
+        clip-path: polygon(0 0, 100% 0, 100% 100%);
+        filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .18));
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: none;
+    }
+
+    // `inset-inline-end` points to the left in RTL, so the dog-ear triangle
+    // must be mirrored as well. Keeping it slightly inside the tile prevents
+    // the rounded corner from clipping it away.
+    &.o_rtl .o_mdl_attendance_event_fold,
+    .o_rtl & .o_mdl_attendance_event_fold {
+        clip-path: polygon(0 0, 100% 0, 0 100%);
+    }
+
+    .o_mdl_attendance_tooltip {
+        display: block;
+        position: absolute;
+        z-index: 20;
+        inset-inline-start: 50%;
+        top: calc(100% + 6px);
+        width: 220px;
+        padding: 8px 10px;
+        border: 1px solid var(--border-color, #d8dadd);
+        border-radius: var(--border-radius, .375rem);
+        background: var(--o-view-background-color, #fff);
+        color: var(--o-main-text-color, #212529);
+        font-size: 12px;
+        font-weight: normal;
+        line-height: 1.4;
+        text-align: start;
+        white-space: normal;
+        pointer-events: none;
+        transform: translateX(-50%);
+    }
+
+    .o_mdl_attendance_tooltip_line + .o_mdl_attendance_tooltip_line {
+        margin-top: 2px;
+    }
+
+    .o_mdl_attendance_connector {
+        position: relative;
+        z-index: 5;
+        overflow: visible;
+        pointer-events: none;
+        transition: opacity 120ms ease;
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+    }
+}
+
+.o_mdl_attendance_context_menu {
+    position: fixed;
+    z-index: 1100;
+    min-width: 220px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+}

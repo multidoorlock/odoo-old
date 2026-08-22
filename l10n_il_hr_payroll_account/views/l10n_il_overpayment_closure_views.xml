@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==== פופאפ סגירת תשלומי יתר - נפתח אוטומטית בלחיצה על "אישור" כשנמצאו
+         תלושי תשלום-יתר פתוחים של אותו עובד שניתן לסגור (ראו account_payment.py
+         action_payslip_done, l10n_il_overpayment_closure.py). ==== -->
+    <record id="l10n_il_overpayment_closure_wizard_view_form" model="ir.ui.view">
+        <field name="name">l10n.il.overpayment.closure.wizard.view.form</field>
+        <field name="model">l10n.il.overpayment.closure.wizard</field>
+        <field name="arch" type="xml">
+            <form string="סגירת תשלומי יתר">
+                <div class="alert alert-info" role="alert">
+                    נמצאו תשלומים פתוחים מתלושי תשלום-יתר של העובד הזה - ניתן לסגור (כולם, חלקם, או לדלג)
+                    באמצעות הנטו לתשלום הזמין בתלוש הנוכחי.
+                </div>
+                <group>
+                    <field name="net_to_pay"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="total_selected"/>
+                </group>
+                <div class="alert alert-warning" role="alert" invisible="not l10n_il_fewer_payments_warning">
+                    <field name="l10n_il_fewer_payments_warning" nolabel="1" readonly="1"/>
+                </div>
+                <!-- מקובצות לפי תלוש-מקור - אותו תלוש עשוי להיות זכאי דרך כמה
+                     תשלומים שונים (כל אחד עם סכום משלו), אבל "יתרה לסגירה"
+                     היא תכונה של התלוש-המקור עצמו (זהה לכל השורות שלו) - לכן
+                     מוצגת פעם אחת ברמת הקבוצה (avg, לא sum - הערכים בקבוצה
+                     זהים), ולא נראית כאילו "3 יתרות נפרדות". כל שורה מציגה את
+                     הסכום של אותו תשלום עצמו (payment_amount) - לא היתרה. -->
+                <field name="line_ids">
+                    <list editable="bottom" create="false" default_group_by="source_payslip_id">
+                        <field name="selected"/>
+                        <field name="payment_id" readonly="1"/>
+                        <field name="payment_amount" readonly="1"/>
+                        <field name="source_payslip_id" readonly="1"/>
+                        <field name="balance" readonly="1" avg="יתרה לסגירה"/>
+                        <field name="currency_id" column_invisible="1"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_confirm" type="object" string="סגור ואשר תלוש" class="btn-primary"/>
+                    <button name="action_skip" type="object" string="דלג - אשר בלי לסגור"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ==== תוספת לטופס התלוש: כפתור חכם לתלוש/ים שסגר (בתלוש שנסגר). ה"נסגר
+         על ידי" נגזר עכשיו מהתשלומים המקוריים של התלוש הזה (l10n_il_payment_ids)
+         ששימשו גם לסגירת תלוש אחר - ראו l10n_il_overpayment_closure.py. אין
+         יותר עמוד נפרד ב"תלוש הסוגר" - התשלום המשותף כבר מופיע ב-tab
+         "תשלומים" הרגיל (l10n_il_payment_ids כולל אותו ממילא). ==== -->
+    <record id="view_hr_payslip_form_l10n_il_overpayment" model="ir.ui.view">
+        <field name="name">hr.payslip.form.inherit.l10n.il.overpayment</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button type="object" class="oe_stat_button" name="action_open_l10n_il_overpayment_closed_by"
+                    icon="fa-exchange" invisible="not l10n_il_overpayment_closed_by_ids">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">נסגר על ידי תלוש</span>
+                    </div>
+                </button>
+            </div>
+            <field name="state" position="after">
+                <field name="l10n_il_overpayment_closed_by_ids" invisible="1"/>
+            </field>
+        </field>
+    </record>
+</odoo>

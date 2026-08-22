@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_payroll_structure_il_employee_salary" model="hr.payroll.structure">
+        <field name="name">ישראל: שכר חודשי</field>
+        <field name="code">ILMONTHLY</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="type_id" ref="l10n_il_hr_payroll.structure_type_il_employee"/>
+        <field name="unpaid_work_entry_type_ids" eval="[Command.set([
+            ref('l10n_il_hr_payroll.work_entry_type_il_unpaid'),
+            ref('l10n_il_hr_payroll.work_entry_type_il_unauth'),
+        ])]"/>
+        <field name="rule_ids" eval="[]"/>
+    </record>
+    <record id="l10n_il_hr_payroll.structure_type_il_employee" model="hr.payroll.structure.type">
+        <field name="default_struct_id" ref="hr_payroll_structure_il_employee_salary"/>
+    </record>
+
+    <record id="hr_payroll_structure_il_worker_salary" model="hr.payroll.structure">
+        <field name="name">ישראל: שכר יומי</field>
+        <field name="code">ILHOURLY</field>
+        <field name="country_id" ref="base.il"/>
+        <field name="type_id" ref="l10n_il_hr_payroll.structure_type_il_worker"/>
+        <field name="unpaid_work_entry_type_ids" eval="[Command.set([
+            ref('l10n_il_hr_payroll.work_entry_type_il_unpaid'),
+            ref('l10n_il_hr_payroll.work_entry_type_il_unauth'),
+        ])]"/>
+        <field name="rule_ids" eval="[]"/>
+    </record>
+    <record id="l10n_il_hr_payroll.structure_type_il_worker" model="hr.payroll.structure.type">
+        <field name="default_struct_id" ref="hr_payroll_structure_il_worker_salary"/>
+    </record>
+</odoo>

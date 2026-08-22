@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- קבוצת שעות נוספות לפי משמרות: משתמשת במודל hr.attendance.overtime.ruleset/rule
+         הקיים של hr_attendance - רק מוסיפה כאן את הכללים בפועל. -->
+    <record id="overtime_ruleset_shifts" model="hr.attendance.overtime.ruleset">
+        <field name="name">שעות נוספות - משמרות</field>
+        <field name="country_id" eval="False"/>
+        <field name="company_id" eval="False"/>
+        <field name="rate_combination_mode">max</field>
+    </record>
+
+    <!-- משמרת בוקר: הגעה בזמן - לא שעות נוספות; עזיבה אחרי 16:00 - שעות נוספות בתשלום.
+         (att_attendance_type='morning' מגביל את הכלל לרישומי נוכחות שסווגו כמשמרת בוקר בלבד) -->
+    <record id="overtime_rule_morning_after_11" model="hr.attendance.overtime.rule">
+        <field name="ruleset_id" ref="overtime_ruleset_shifts"/>
+        <field name="name">משמרת בוקר: עזיבה אחרי 16:00</field>
+        <field name="att_attendance_type">morning</field>
+        <field name="base_off">timing</field>
+        <field name="timing_type">work_days</field>
+        <field name="timing_start">16.0</field>
+        <field name="timing_stop">24.0</field>
+        <field name="paid">True</field>
+        <field name="work_entry_type_id" ref="hr_work_entry.work_entry_type_overtime"/>
+    </record>
+
+    <!-- משמרת ערב: הגעה בזמן ועזיבה אחרי הזמן - אף פעם לא שעות נוספות, ולכן אין צורך בכלל
+         נוסף עבורה: קבוצת הכללים הזו פשוט לא כוללת כלל שמוגבל לסוג 'afternoon'. -->
+</odoo>

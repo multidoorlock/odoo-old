@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_mdl_zk_command_list" model="ir.ui.view">
+        <field name="name">mdl.zk.command.list</field>
+        <field name="model">mdl.zk.command</field>
+        <field name="arch" type="xml">
+            <list create="false">
+                <field name="id"/>
+                <field name="device_id"/>
+                <field name="employee_id"/>
+                <field name="command_type"/>
+                <field name="state"/>
+                <field name="sent_at"/>
+                <field name="completed_at"/>
+                <field name="return_code"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mdl_zk_command_form" model="ir.ui.view">
+        <field name="name">mdl.zk.command.form</field>
+        <field name="model">mdl.zk.command</field>
+
+        <field name="arch" type="xml">
+            <form create="false" edit="false">
+                <sheet>
+
+                    <group>
+                        <group>
+                            <field name="device_id"/>
+                            <field name="employee_id"/>
+                            <field name="command_type"/>
+                            <field name="state"/>
+                        </group>
+
+                        <group>
+                            <field name="sent_at"/>
+                            <field name="completed_at"/>
+                            <field name="return_code"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+
+                        <page string="פקודה">
+                            <field
+                                name="command_text"
+                                nolabel="1"
+                            />
+                        </page>
+
+                        <page string="תשובת השעון">
+                            <field
+                                name="response_body"
+                                nolabel="1"
+                            />
+                        </page>
+
+                        <page string="שגיאה">
+                            <field
+                                name="error_message"
+                                nolabel="1"
+                            />
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mdl_zk_command" model="ir.actions.act_window">
+        <field name="name">פקודות</field>
+        <field name="res_model">mdl.zk.command</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

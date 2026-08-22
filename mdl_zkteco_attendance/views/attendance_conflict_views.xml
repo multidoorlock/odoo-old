@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_attendance_conflict_readonly_form" model="ir.ui.view">
+        <field name="name">hr.attendance.form.conflict.readonly</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="create">false</attribute>
+                <attribute name="edit">false</attribute>
+                <attribute name="delete">false</attribute>
+                <attribute name="duplicate">false</attribute>
+            </xpath>
+            <xpath expr="//form/header" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_attendance_conflict_list" model="ir.ui.view">
+        <field name="name">mdl.attendance.device.event.conflict.list</field>
+        <field name="model">mdl.attendance.device.event</field>
+        <field name="arch" type="xml">
+            <list string="קונפליקטים" create="false" edit="false" delete="false">
+                <field name="employee_id" string="עובד"/>
+                <field name="device_id" string="שעון"/>
+                <field name="punch_state" string="כניסה / יציאה"/>
+                <field name="event_datetime" string="שעה"/>
+                <field name="conflict_reason" string="הסיבה שלא נכנס"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_attendance_conflict_form" model="ir.ui.view">
+        <field name="name">mdl.attendance.device.event.conflict.form</field>
+        <field name="model">mdl.attendance.device.event</field>
+        <field name="arch" type="xml">
+            <form string="קונפליקט נוכחות" create="false" edit="true" delete="false">
+                <sheet>
+                    <field name="processing_state" invisible="1"/>
+                    <group>
+                        <group>
+                            <field name="employee_id" string="עובד"
+                                   readonly="processing_state == 'ignored'"/>
+                            <field name="device_id" string="שעון" readonly="1"/>
+                            <field name="effective_punch_state" string="כניסה / יציאה"
+                                   readonly="processing_state == 'ignored'"/>
+                        </group>
+                        <group>
+                            <field name="event_datetime" string="שעה"
+                                   readonly="processing_state == 'ignored'"/>
+                            <field name="conflict_reason" string="הסיבה שלא נכנס" readonly="1"/>
+                            <field name="log_id" string="לוג מקור" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="פרטים נוספים">
+                        <field name="device_employee_id" string="כרטיס עובד" readonly="1"/>
+                        <field name="processing_message" string="פירוט טכני" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_attendance_conflict_search" model="ir.ui.view">
+        <field name="name">mdl.attendance.device.event.conflict.search</field>
+        <field name="model">mdl.attendance.device.event</field>
+        <field name="arch" type="xml">
+            <search string="חיפוש קונפליקטים">
+                <field name="employee_id"/>
+                <field name="device_id"/>
+                <filter name="punch_in" string="כניסות" domain="[('punch_state', '=', 'in')]"/>
+                <filter name="punch_out" string="יציאות" domain="[('punch_state', '=', 'out')]"/>
+                <group>
+                    <filter name="group_employee" string="עובד" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_attendance_conflict_gantt" model="ir.ui.view">
+        <field name="name">mdl.attendance.device.event.conflict.gantt</field>
+        <field name="model">mdl.attendance.device.event</field>
+        <field name="arch" type="xml">
+            <gantt
+                js_class="attendance_conflict_gantt"
+                class="o_mdl_attendance_conflict_gantt"
+                string="קונפליקטים"
+                date_start="event_datetime"
+                date_stop="event_datetime"
+                default_group_by="employee_id"
+                default_scale="day"
+                default_range="day"
+                scales="day,week,month"
+                precision="{'day': 'hour:quarter', 'week': 'day:quarter', 'month': 'day:half'}"
+                create="1"
+                edit="0"
+                delete="0"
+                cell_create="0"
+                plan="0"
+                disable_drag_drop="1"
+                display_unavailability="1"
+                on_create="%(action_attendance_conflict_event_wizard)d"
+            >
+                <field name="employee_id"/>
+                <field name="device_id"/>
+                <field name="effective_punch_state"/>
+                <field name="processing_state"/>
+            </gantt>
+        </field>
+    </record>
+
+    <record id="action_attendance_conflicts" model="ir.actions.act_window">
+        <field name="name">קונפליקטים</field>
+        <field name="res_model">mdl.attendance.device.event</field>
+        <field name="view_mode">gantt,list,form</field>
+        <field name="search_view_id" ref="view_attendance_conflict_search"/>
+        <field name="domain">[('processing_state', 'in', ['new', 'not_applied', 'waiting_employee_link', 'error']), ('punch_state', 'in', ['in', 'out']), ('employee_id', '!=', False), ('conflict_dismissed', '=', False)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">אין כרגע קונפליקטים באירועי הנוכחות.</p>
+        </field>
+    </record>
+    <record id="action_attendance_conflicts_gantt" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">gantt</field>
+        <field name="view_id" ref="view_attendance_conflict_gantt"/>
+        <field name="act_window_id" ref="action_attendance_conflicts"/>
+    </record>
+    <record id="action_attendance_conflicts_list" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_attendance_conflict_list"/>
+        <field name="act_window_id" ref="action_attendance_conflicts"/>
+    </record>
+    <record id="action_attendance_conflicts_form" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_attendance_conflict_form"/>
+        <field name="act_window_id" ref="action_attendance_conflicts"/>
+    </record>
+
+    <!-- Turn Odoo's Management entry into a parent menu so both screens are
+         visible side by side underneath it. -->
+    <record id="hr_attendance.menu_hr_attendance_view_attendances_management" model="ir.ui.menu">
+        <field name="action" eval="False"/>
+    </record>
+
+    <menuitem id="menu_attendance_management_regular" name="ניהול נוכחות"
+              parent="hr_attendance.menu_hr_attendance_view_attendances_management"
+              action="hr_attendance.hr_attendance_management_action" sequence="10"
+              groups="hr_attendance.group_hr_attendance_officer"/>
+
+    <menuitem id="menu_attendance_conflicts" name="קונפליקטים"
+              parent="hr_attendance.menu_hr_attendance_view_attendances_management"
+              action="action_attendance_conflicts" sequence="20"
+              groups="mdl_zkteco_attendance.group_attendance_device_manager"/>
+</odoo>

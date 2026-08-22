@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem
+        id="menu_mdl_zkteco_root"
+        name="ZKTeco"
+        sequence="90"
+        groups="hr.group_hr_manager,base.group_system"
+    />
+
+    <menuitem
+        id="menu_mdl_zkteco_devices"
+        name="שעונים"
+        parent="menu_mdl_zkteco_root"
+        action="action_mdl_zk_device"
+        sequence="10"
+    />
+
+    <menuitem
+        id="menu_mdl_zkteco_commands"
+        name="פקודות"
+        parent="menu_mdl_zkteco_root"
+        action="action_mdl_zk_command"
+        sequence="20"
+    />
+
+    <menuitem
+        id="menu_mdl_zkteco_raw_logs"
+        name="Raw Requests"
+        parent="menu_mdl_zkteco_root"
+        action="action_mdl_zk_raw_log"
+        sequence="30"
+    />
+
+</odoo>

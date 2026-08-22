@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="structure_type_il_employee" model="hr.payroll.structure.type">
+        <field name="name">ישראל: עובד חודשי</field>
+        <field name="wage_type">monthly</field>
+        <field name="default_schedule_pay">monthly</field>
+        <field name="default_resource_calendar_id" ref="resource_calendar_il_5day"/>
+        <field name="country_id" ref="base.il"/>
+    </record>
+
+    <record id="structure_type_il_worker" model="hr.payroll.structure.type">
+        <field name="name">ישראל: עובד יומי</field>
+        <field name="wage_type">hourly</field>
+        <field name="default_schedule_pay">monthly</field>
+        <field name="default_resource_calendar_id" ref="resource_calendar_il_5day"/>
+        <field name="country_id" ref="base.il"/>
+    </record>
+</odoo>

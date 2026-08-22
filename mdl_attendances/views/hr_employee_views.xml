@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- "סוג נוכחות עובד" (נוכחות/משמרות) - מגביל את בחירת לוח הזמנים
+         (resource_calendar_id) ללוחות מאותו סוג בלבד (ראו
+         resource.calendar.l10n_il_schedule_type). hr_payroll.payroll_hr_employee_view_form
+         כבר מוסיף שדה resource_calendar_id שני (עבור משתמשים שאינם
+         hr.group_hr_manager) - ה-domain חייב לחול על שניהם, לכן xpath
+         מפורש עם אינדקס במקום position="attributes" הרגיל (שהיה תופס רק
+         את הראשון). -->
+    <record id="hr_employee_view_form_schedule_type_l10n_il" model="ir.ui.view">
+        <field name="name">hr.employee.view.form.inherit.l10n.il.schedule.type</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_payroll.payroll_hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <field name="resource_calendar_id" position="before">
+                <field name="l10n_il_employee_schedule_type" widget="radio"/>
+            </field>
+            <xpath expr="//field[@name='resource_calendar_id'][1]" position="attributes">
+                <attribute name="domain">[('l10n_il_schedule_type', '=', l10n_il_employee_schedule_type)]</attribute>
+            </xpath>
+            <xpath expr="//field[@name='resource_calendar_id'][2]" position="attributes">
+                <attribute name="domain">[('l10n_il_schedule_type', '=', l10n_il_employee_schedule_type)]</attribute>
+            </xpath>
+            <!-- רלוונטי לעובד שאינו עובד משמרות (חודשי/יומי/שעתי כאחד) -
+                 איך מטפלים ביום שאין לו שום נוכחות/חופשה/מחלה מאושרת (ראו
+                 hr_version.py._l10n_il_create_absence_entries +
+                 hr_payslip_worked_days.py). -->
+            <group name="l10n_il_wage_type" position="inside">
+                <field name="l10n_il_missing_days_policy" invisible="l10n_il_employee_schedule_type == 'shifts'"/>
+                <field name="l10n_il_missing_days_other_kind"
+                       invisible="l10n_il_employee_schedule_type == 'shifts' or l10n_il_missing_days_policy != 'other'"
+                       required="l10n_il_employee_schedule_type != 'shifts' and l10n_il_missing_days_policy == 'other'"/>
+                <field name="l10n_il_missing_days_other_percentage"
+                       invisible="l10n_il_employee_schedule_type == 'shifts' or l10n_il_missing_days_policy != 'other' or l10n_il_missing_days_other_kind != 'percentage'"/>
+                <field name="l10n_il_missing_days_other_amount"
+                       invisible="l10n_il_employee_schedule_type == 'shifts' or l10n_il_missing_days_policy != 'other' or l10n_il_missing_days_other_kind != 'amount'"/>
+            </group>
+        </field>
+    </record>
+</odoo>
