@@ -9,7 +9,9 @@ class TestProductCatalog(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.category = cls.env["product.category"].create({"name": "דלת"})
+        cls.category = cls.env["product.category"].create(
+            {"name": "דלת", "mdl_sku_component": "10"}
+        )
         cls.width = cls.env["product.attribute"].create(
             {"name": "רוחב", "create_variant": "always"}
         )
@@ -43,15 +45,13 @@ class TestProductCatalog(TransactionCase):
             {
                 "name": "כנף",
                 "categ_id": self.category.id,
-                "mdl_sku_prefix": "1001",
-                "mdl_name_suffix": " +ידית",
+                "mdl_model_sku_component": "01",
                 "attribute_line_ids": [
                     Command.create(
                         {
                             "attribute_id": self.width.id,
                             "sequence": 10,
                             "mdl_name_mode": "value",
-                            "mdl_name_prefix": " ",
                             "mdl_name_suffix": "/",
                             "value_ids": [
                                 Command.set([self.width_80.id, self.width_90.id])
@@ -63,7 +63,7 @@ class TestProductCatalog(TransactionCase):
                             "attribute_id": self.height.id,
                             "sequence": 20,
                             "mdl_name_mode": "value",
-                            "mdl_name_prefix": "",
+                            "mdl_name_suffix": " +ידית",
                             "value_ids": [Command.set([self.height_100.id])],
                         }
                     ),
@@ -86,10 +86,6 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(
             by_width["80"].mdl_generated_name,
             "דלת כנף 80/100 +ידית",
-        )
-        self.assertEqual(
-            template.mdl_first_item_example,
-            "100180100 - דלת כנף 80/100 +ידית",
         )
 
     def test_final_product_display_and_search(self):
@@ -146,12 +142,13 @@ class TestProductCatalog(TransactionCase):
             {
                 "name": "כנף",
                 "categ_id": self.category.id,
-                "mdl_sku_prefix": "1001",
+                "mdl_model_sku_component": "01",
                 "attribute_line_ids": [
                     Command.create(
                         {
                             "attribute_id": opening.id,
                             "sequence": 5,
+                            "mdl_name_suffix": " ",
                             "value_ids": [Command.set([left.id])],
                         }
                     ),
@@ -167,7 +164,6 @@ class TestProductCatalog(TransactionCase):
                         {
                             "attribute_id": self.height.id,
                             "sequence": 20,
-                            "mdl_name_prefix": "",
                             "value_ids": [Command.set([self.height_100.id])],
                         }
                     ),
@@ -219,6 +215,53 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(product.default_code, "1001080100")
         self.assertEqual(product.mdl_generated_name, "דלת כנף 80 ס״מ/100 +ידית")
 
+    def test_base_defaults_and_overrides_drive_the_result(self):
+        template = self._create_template()
+        self.assertEqual(template.mdl_group_default_name, "דלת")
+        self.assertEqual(template.mdl_group_default_sku, "10")
+        self.assertEqual(template.mdl_model_default_name, "כנף")
+        self.assertEqual(template.mdl_model_sku_component, "01")
+        self.assertEqual(template.mdl_effective_base_name, "דלת כנף")
+        self.assertEqual(template.mdl_sku_prefix, "1001")
+
+        template.write(
+            {
+                "mdl_group_name_override": "סט דלת",
+                "mdl_group_sku_override": "90",
+                "mdl_model_name_override": "מיוחדת",
+                "mdl_model_sku_override": "07",
+            }
+        )
+        self.assertEqual(template.mdl_effective_base_name, "סט דלת מיוחדת")
+        self.assertEqual(template.mdl_sku_prefix, "9007")
+        self.assertTrue(
+            all(
+                product.default_code.startswith("9007")
+                and product.mdl_generated_name.startswith("סט דלת מיוחדת")
+                for product in template.product_variant_ids
+            )
+        )
+
+    def test_attribute_value_defaults_are_editable_from_the_model_table(self):
+        template = self._create_template()
+        template_value = template.mdl_attribute_value_ids.filtered(
+            lambda item: item.product_attribute_value_id == self.width_80
+        )
+        template_value.write(
+            {
+                "mdl_default_name_component": "80 ס״מ",
+                "mdl_default_sku_component": "080",
+            }
+        )
+        product = template.product_variant_ids.filtered(
+            lambda variant: self.width_80
+            in variant.product_template_attribute_value_ids.product_attribute_value_id
+        )
+        self.assertEqual(self.width_80.name, "80 ס״מ")
+        self.assertEqual(self.width_80.mdl_sku_component, "080")
+        self.assertEqual(product.default_code, "1001080100")
+        self.assertEqual(product.mdl_generated_name, "דלת כנף 80 ס״מ/100 +ידית")
+
     def test_native_attribute_line_controls_name(self):
         template = self._create_template()
         width_line = template.attribute_line_ids.filtered(
@@ -230,7 +273,7 @@ class TestProductCatalog(TransactionCase):
         width_line.write(
             {
                 "mdl_name_mode": "attribute_value",
-                "mdl_name_suffix": "",
+                "mdl_name_suffix": " +ידית",
             }
         )
         height_line.mdl_name_mode = "hidden"
@@ -247,7 +290,9 @@ class TestProductCatalog(TransactionCase):
 
     def test_group_change_updates_model_and_final_names(self):
         template = self._create_template()
-        frame_category = self.env["product.category"].create({"name": "משקוף"})
+        frame_category = self.env["product.category"].create(
+            {"name": "משקוף", "mdl_sku_component": "11"}
+        )
         template.categ_id = frame_category
         self.assertEqual(template.name, "משקוף כנף")
         self.assertTrue(
@@ -302,12 +347,12 @@ class TestProductCatalog(TransactionCase):
             {
                 "name": "צינור 4\"",
                 "categ_id": self.category.id,
-                "mdl_sku_prefix": "TEST-NO-COMPONENT-3040",
+                "mdl_group_sku_override": "—",
+                "mdl_model_sku_component": "TEST-NO-COMPONENT-3040",
                 "attribute_line_ids": [
                     Command.create(
                         {
                             "attribute_id": finish.id,
-                            "mdl_name_prefix": " ",
                             "value_ids": [Command.set([drawing.id])],
                         }
                     )
@@ -320,7 +365,12 @@ class TestProductCatalog(TransactionCase):
 
     def test_variant_base_name_can_differ_from_model_name(self):
         template = self._create_template()
-        template.mdl_variant_base_name = "סט דלת מיוחדת"
+        template.write(
+            {
+                "mdl_group_name_override": "סט דלת",
+                "mdl_model_name_override": "מיוחדת",
+            }
+        )
         self.assertTrue(
             all(
                 product.mdl_generated_name.startswith("סט דלת מיוחדת")

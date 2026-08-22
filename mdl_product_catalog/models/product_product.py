@@ -22,12 +22,9 @@ class ProductProduct(models.Model):
 
     @api.depends(
         "product_tmpl_id.mdl_sku_prefix",
-        "product_tmpl_id.name",
-        "product_tmpl_id.mdl_variant_base_name",
-        "product_tmpl_id.mdl_name_suffix",
+        "product_tmpl_id.mdl_effective_base_name",
         "product_tmpl_id.attribute_line_ids.sequence",
         "product_tmpl_id.attribute_line_ids.mdl_name_mode",
-        "product_tmpl_id.attribute_line_ids.mdl_name_prefix",
         "product_tmpl_id.attribute_line_ids.mdl_name_suffix",
         "product_template_attribute_value_ids",
         "product_template_attribute_value_ids.product_attribute_value_id.name",

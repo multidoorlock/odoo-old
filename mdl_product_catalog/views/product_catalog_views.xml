@@ -5,6 +5,9 @@
         <field name="model">product.attribute</field>
         <field name="inherit_id" ref="product.product_attribute_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="attributes">
+                <attribute name="string">טקסט ברירת מחדל</attribute>
+            </xpath>
             <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="after">
                 <field name="mdl_sku_component" optional="show"/>
             </xpath>
@@ -17,8 +20,10 @@
         <field name="inherit_id" ref="product.product_template_attribute_value_view_form"/>
         <field name="arch" type="xml">
             <field name="price_extra" position="after">
-                <field name="mdl_sku_component_override"/>
+                <field name="mdl_default_name_component"/>
                 <field name="mdl_name_component_override"/>
+                <field name="mdl_default_sku_component"/>
+                <field name="mdl_sku_component_override"/>
             </field>
             <field name="exclude_for" position="attributes">
                 <attribute name="invisible">1</attribute>
@@ -33,17 +38,30 @@
         <field name="arch" type="xml">
             <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']"
                    position="before">
-                <group string="חישוב שמות ומק״טים">
+                <group string="בסיס השם והמק״ט">
+                    <group string="קבוצת פריטים">
+                        <field name="mdl_group_default_name"/>
+                        <field name="mdl_group_name_override"
+                               placeholder="ריק = ברירת המחדל"/>
+                        <field name="mdl_group_default_sku"/>
+                        <field name="mdl_group_sku_override"
+                               placeholder="ריק = ברירת המחדל"/>
+                    </group>
+                    <group string="דגם">
+                        <field name="mdl_model_default_name"/>
+                        <field name="mdl_model_name_override"
+                               placeholder="ריק = ברירת המחדל"/>
+                        <field name="mdl_model_sku_component"/>
+                        <field name="mdl_model_sku_override"
+                               placeholder="ריק = ברירת המחדל"/>
+                    </group>
+                </group>
+                <group string="התוצאה הבסיסית">
                     <group>
-                        <field name="mdl_sku_prefix"
-                               placeholder="לדוגמה: 1001"/>
-                        <field name="mdl_variant_base_name"
-                               placeholder="ריק = שם הדגם"/>
-                        <field name="mdl_name_suffix"
-                               placeholder="לדוגמה: [+ידית]"/>
+                        <field name="mdl_effective_base_name" readonly="1"/>
+                        <field name="mdl_sku_prefix" readonly="1"/>
                     </group>
                     <group>
-                        <field name="mdl_first_item_example" readonly="1"/>
                         <button name="action_mdl_check_and_rebuild"
                                 type="object"
                                 string="בדוק ועדכן את כל הפריטים"
@@ -60,16 +78,33 @@
                 </group>
                 <div class="alert alert-info" role="alert" invisible="not mdl_sku_prefix">
                     סדר השורות קובע את סדר המאפיינים בשם. את הערכים משייכים בשדה
-                    "ערכים" הרגיל של Odoo; "/" או "+" נכתבים בשדות "טקסט לפני/אחרי".
-                    התאמה חריגה לערך מסוים נמצאת בכפתור "הגדר".
+                    "ערכים" הרגיל של Odoo. רווח, "/", "+" או כל מלל שמפריד בין
+                    מאפיינים נכתב רק ב"טקסט אחרי" של השורה הקודמת. שינוי חריג
+                    לערך מסוים בדגם נעשה בטבלת ערכי המאפיינים שמתחת.
                 </div>
             </xpath>
 
             <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']/list/field[@name='value_ids']"
                    position="after">
                 <field name="mdl_name_mode" optional="show"/>
-                <field name="mdl_name_prefix" optional="show"/>
                 <field name="mdl_name_suffix" optional="show"/>
+            </xpath>
+
+            <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']"
+                   position="after">
+                <separator string="ערכי מאפיינים בדגם"/>
+                <field name="mdl_attribute_value_ids" nolabel="1">
+                    <list editable="bottom" create="0" delete="0">
+                        <field name="attribute_id" string="מאפיין" readonly="1"/>
+                        <field name="product_attribute_value_id"
+                               string="ערך המאפיין"
+                               readonly="1"/>
+                        <field name="mdl_default_name_component"/>
+                        <field name="mdl_name_component_override"/>
+                        <field name="mdl_default_sku_component"/>
+                        <field name="mdl_sku_component_override"/>
+                    </list>
+                </field>
             </xpath>
         </field>
     </record>
@@ -81,11 +116,8 @@
         <field name="arch" type="xml">
             <field name="name" position="after">
                 <field name="mdl_sku_prefix"
-                       string="קידומת מק״ט"
+                       string="מק״ט בסיס"
                        optional="show"/>
-                <field name="mdl_first_item_example"
-                       string="דוגמת פריט"
-                       optional="hide"/>
             </field>
         </field>
     </record>
@@ -96,7 +128,7 @@
         <field name="inherit_id" ref="product.product_template_search_view"/>
         <field name="arch" type="xml">
             <field name="name" position="after">
-                <field name="mdl_sku_prefix" string="קידומת מק״ט"/>
+                <field name="mdl_sku_prefix" string="מק״ט בסיס"/>
             </field>
         </field>
     </record>

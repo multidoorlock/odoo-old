@@ -73,6 +73,7 @@ def _create_categories(env, data):
             {
                 "name": item["name"],
                 "parent_id": parent.id,
+                "mdl_sku_component": item["code"],
             }
         )
         _register_xmlid(env, "category", item["key"], category)
@@ -195,17 +196,35 @@ def _create_templates(env, data, categories, attributes, values):
         name_rules, final_suffix = split_legacy_name_format(
             item["name_format"], attribute_names
         )
+        visible_rules = sorted(
+            (
+                (rule["sequence"], key, rule)
+                for key, rule in name_rules.items()
+                if rule["sequence"] is not None
+            ),
+            key=lambda row: row[0],
+        )
+        first_visible_key = visible_rules[0][1] if visible_rules else None
+        last_visible_key = visible_rules[-1][1] if visible_rules else None
+        leading_text = (
+            _clean(name_rules[first_visible_key]["prefix"])
+            if first_visible_key
+            else ""
+        )
         lines = []
         for line in item["attribute_lines"]:
-            rule = name_rules[normalize_token(line["attribute_key"])]
+            rule_key = normalize_token(line["attribute_key"])
+            rule = name_rules[rule_key]
+            suffix = rule["suffix"]
+            if rule_key == last_visible_key and final_suffix:
+                suffix += final_suffix
             lines.append(
                 Command.create(
                     {
                         "attribute_id": attributes[line["attribute_key"]].id,
                         "sequence": line["sequence"],
                         "mdl_name_mode": rule["name_mode"],
-                        "mdl_name_prefix": rule["prefix"],
-                        "mdl_name_suffix": rule["suffix"],
+                        "mdl_name_suffix": suffix or False,
                         "value_ids": [
                             Command.set(
                                 [values[value["value_key"]].id for value in line["values"]]
@@ -215,30 +234,33 @@ def _create_templates(env, data, categories, attributes, values):
                 )
             )
         group = categories[item["group_key"]]
-        full_template_name = _clean(f"{group.name} {item['name']}")
-        variant_base_name = _clean(
+        group_name_override = (
+            item["group_name_component"]
+            if _clean(item["group_name_component"]) != _clean(group.name)
+            else False
+        )
+        model_name_component = _clean(
             " ".join(
-                part
-                for part in (
-                    item["group_name_component"],
+                part for part in (
                     "" if item["suppress_model_name"] else item["model_name_component"],
-                )
-                if part
+                    leading_text,
+                ) if part
             )
         )
+        model_name_override = (
+            model_name_component
+            if model_name_component != _clean(item["name"])
+            else False
+        )
+        if not model_name_component:
+            model_name_override = "—"
         template = Template.create(
             {
                 "name": item["name"],
                 "categ_id": group.id,
-                "mdl_sku_prefix": (
-                    f"{item['group_key'].split(' - ', 1)[0]}{item['model_code']}"
-                ),
-                "mdl_variant_base_name": (
-                    variant_base_name
-                    if variant_base_name != full_template_name
-                    else False
-                ),
-                "mdl_name_suffix": final_suffix or False,
+                "mdl_group_name_override": group_name_override,
+                "mdl_model_sku_component": item["model_code"],
+                "mdl_model_name_override": model_name_override,
                 "attribute_line_ids": lines,
             }
         )

@@ -24,40 +24,154 @@ def _name_with_group(group_name, model_name):
     return clean_text(" ".join(part for part in (group_name, model_name) if part))
 
 
+def _resolved_component(default_value, override_value):
+    """Return an optional override, with an em dash meaning intentional blank."""
+    override_value = clean_text(override_value)
+    if override_value == "—":
+        return ""
+    return override_value or clean_text(default_value)
+
+
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
     mdl_sku_prefix = fields.Char(
-        string="קידומת מק״ט לווריאנטים",
+        string="מק״ט בסיס בפועל",
+        compute="_compute_mdl_sku_prefix",
+        store=True,
         index=True,
         copy=False,
         help=(
-            "החלק הקבוע בתחילת כל מק״ט של הדגם, לדוגמה 1001. "
+            "מחושב מרכיב המק״ט של קבוצת הפריטים ומרכיב המק״ט של הדגם. "
             "המק״ט הסופי נשמר בשדה המקורי 'מק״ט פנימי' של הווריאנט."
         ),
     )
+    mdl_group_default_name = fields.Char(
+        related="categ_id.name",
+        string="טקסט ברירת מחדל",
+        readonly=False,
+        help="שם קבוצת הפריטים. שינוי כאן משנה את הקבוצה ואת כל הדגמים שבה.",
+    )
+    mdl_group_default_sku = fields.Char(
+        related="categ_id.mdl_sku_component",
+        string="מק״ט ברירת מחדל",
+        readonly=False,
+        help="רכיב המק״ט של קבוצת הפריטים לכל הדגמים בקבוצה.",
+    )
+    mdl_group_name_override = fields.Char(
+        string="שינוי טקסט",
+        help="אופציונלי לדגם זה בלבד. הזן — כדי לא להציג את הקבוצה בשם.",
+    )
+    mdl_group_sku_override = fields.Char(
+        string="שינוי מק״ט",
+        help="אופציונלי לדגם זה בלבד. הזן — כדי לא להוסיף את רכיב הקבוצה.",
+    )
+    mdl_model_default_name = fields.Char(
+        string="טקסט ברירת מחדל",
+        compute="_compute_mdl_model_default_name",
+        inverse="_inverse_mdl_model_default_name",
+        help="שם הדגם ללא שם קבוצת הפריטים.",
+    )
+    mdl_model_sku_component = fields.Char(
+        string="מק״ט ברירת מחדל",
+        index=True,
+        help="רכיב המק״ט הבסיסי של הדגם.",
+    )
+    mdl_model_name_override = fields.Char(
+        string="שינוי טקסט",
+        help="אופציונלי. הזן — כדי לא להציג את הדגם בשם הפריט הסופי.",
+    )
+    mdl_model_sku_override = fields.Char(
+        string="שינוי מק״ט",
+        help="אופציונלי. הזן — כדי לא להוסיף את רכיב הדגם למק״ט.",
+    )
+    mdl_effective_base_name = fields.Char(
+        string="שם בסיס בפועל",
+        compute="_compute_mdl_effective_base_name",
+        store=True,
+    )
+    mdl_attribute_value_ids = fields.One2many(
+        comodel_name="product.template.attribute.value",
+        inverse_name="product_tmpl_id",
+        string="ערכי מאפיינים בדגם",
+    )
+
+    # Kept as technical migration fields for databases created by earlier
+    # versions. They are no longer shown or used to render new catalog names.
     mdl_variant_base_name = fields.Char(
-        string="שם בסיס לפריטים הסופיים",
+        string="שם בסיס ישן (לא בשימוש)",
         copy=True,
-        help=(
-            "אופציונלי. אם ריק, שם הדגם הרגיל של Odoo משמש כבסיס. "
-            "מיועד רק למקרה שבו שם הפריט הסופי צריך להיות שונה משם הדגם."
-        ),
     )
     mdl_name_suffix = fields.Char(
-        string="טקסט קבוע בסוף השם",
+        string="טקסט קבוע ישן (לא בשימוש)",
         copy=True,
-        help="אופציונלי, לדוגמה: [+ידית] או ***כולל מנגנון***.",
     )
-    mdl_first_item_example = fields.Char(
-        string="דוגמת פריט ראשון",
-        compute="_compute_mdl_first_item_example",
+
+    @api.depends(
+        "categ_id.mdl_sku_component",
+        "mdl_group_sku_override",
+        "mdl_model_sku_component",
+        "mdl_model_sku_override",
     )
+    def _compute_mdl_sku_prefix(self):
+        for template in self:
+            group_sku = _resolved_component(
+                template.categ_id.mdl_sku_component,
+                template.mdl_group_sku_override,
+            )
+            model_sku = _resolved_component(
+                template.mdl_model_sku_component,
+                template.mdl_model_sku_override,
+            )
+            template.mdl_sku_prefix = f"{group_sku}{model_sku}" or False
+
+    @api.depends("name", "categ_id.name")
+    def _compute_mdl_model_default_name(self):
+        for template in self:
+            template.mdl_model_default_name = _name_without_group(
+                template.categ_id.name,
+                template.name,
+            )
+
+    def _inverse_mdl_model_default_name(self):
+        for template in self:
+            full_name = _name_with_group(
+                template.categ_id.name,
+                template.mdl_model_default_name,
+            )
+            if full_name and template.name != full_name:
+                template.with_context(skip_mdl_catalog_sync=True).name = full_name
+
+    @api.depends(
+        "name",
+        "categ_id.name",
+        "mdl_group_name_override",
+        "mdl_model_name_override",
+    )
+    def _compute_mdl_effective_base_name(self):
+        for template in self:
+            group_name = _resolved_component(
+                template.categ_id.name,
+                template.mdl_group_name_override,
+            )
+            model_name = _resolved_component(
+                _name_without_group(template.categ_id.name, template.name),
+                template.mdl_model_name_override,
+            )
+            template.mdl_effective_base_name = clean_text(
+                " ".join(part for part in (group_name, model_name) if part)
+            )
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            for field_name in ("mdl_sku_prefix", "mdl_variant_base_name"):
+            for field_name in (
+                "mdl_group_name_override",
+                "mdl_group_sku_override",
+                "mdl_model_sku_component",
+                "mdl_model_name_override",
+                "mdl_model_sku_override",
+            ):
                 if field_name in vals:
                     vals[field_name] = clean_text(vals[field_name])
         templates = super().create(vals_list)
@@ -71,7 +185,13 @@ class ProductTemplate(models.Model):
             if "categ_id" in vals
             else {}
         )
-        for field_name in ("mdl_sku_prefix", "mdl_variant_base_name"):
+        for field_name in (
+            "mdl_group_name_override",
+            "mdl_group_sku_override",
+            "mdl_model_sku_component",
+            "mdl_model_name_override",
+            "mdl_model_sku_override",
+        ):
             if field_name in vals:
                 vals[field_name] = clean_text(vals[field_name])
         result = super().write(vals)
@@ -80,9 +200,12 @@ class ProductTemplate(models.Model):
             for field_name in (
                 "name",
                 "categ_id",
-                "mdl_sku_prefix",
-                "mdl_variant_base_name",
-                "mdl_name_suffix",
+                "mdl_model_default_name",
+                "mdl_group_name_override",
+                "mdl_group_sku_override",
+                "mdl_model_sku_component",
+                "mdl_model_name_override",
+                "mdl_model_sku_override",
             )
         ):
             self._mdl_ensure_full_model_names(previous_group_names)
@@ -98,40 +221,11 @@ class ProductTemplate(models.Model):
             updates = {}
             if full_name and template.name != full_name:
                 updates["name"] = full_name
-            if previous_group and template.mdl_variant_base_name:
-                previous_base = clean_text(template.mdl_variant_base_name)
-                if previous_base == previous_group or previous_base.startswith(
-                    f"{previous_group} "
-                ):
-                    updates["mdl_variant_base_name"] = _name_with_group(
-                        template.categ_id.name,
-                        _name_without_group(previous_group, previous_base),
-                    )
             if updates:
                 super(
                     ProductTemplate,
                     template.with_context(skip_mdl_catalog_sync=True),
                 ).write(updates)
-
-    @api.depends(
-        "product_variant_ids.default_code",
-        "product_variant_ids.mdl_generated_name",
-    )
-    def _compute_mdl_first_item_example(self):
-        for template in self:
-            variant = template.product_variant_ids.sorted(
-                lambda product: (product.combination_indices or "", product.id)
-            )[:1]
-            if variant:
-                sku = clean_text(variant.default_code)
-                name = clean_text(variant.mdl_generated_name)
-            else:
-                sku, name, _missing = template._mdl_render_catalog_values(
-                    self.env["product.template.attribute.value"]
-                )
-            template.mdl_first_item_example = (
-                f"{sku} - {name}" if sku and name else sku or name or False
-            )
 
     def _mdl_render_catalog_values(self, combination):
         self.ensure_one()
@@ -157,8 +251,9 @@ class ProductTemplate(models.Model):
             else:
                 missing_components.append(value.display_name)
 
-        final_name = clean_text(self.mdl_variant_base_name or self.name)
+        final_name = clean_text(self.mdl_effective_base_name)
         deferred_name_markers = []
+        displayed_values = 0
         for line in self.attribute_line_ids.filtered("active").sorted(
             lambda item: (item.sequence, item.attribute_id.sequence, item.id)
         ):
@@ -172,12 +267,10 @@ class ProductTemplate(models.Model):
                     deferred_name_markers.append(marker)
             if line.mdl_name_mode == "attribute_value":
                 value_name = clean_text(f"{line.attribute_id.name} {value_name}")
-            final_name += (
-                f"{line.mdl_name_prefix or ''}"
-                f"{value_name}"
-                f"{line.mdl_name_suffix or ''}"
-            )
-        final_name += self.mdl_name_suffix or ""
+            if not displayed_values and final_name:
+                final_name += " "
+            final_name += f"{value_name}{line.mdl_name_suffix or ''}"
+            displayed_values += 1
         if deferred_name_markers:
             final_name += " " + " ".join(deferred_name_markers)
         return "".join(sku_parts), clean_text(final_name), missing_components

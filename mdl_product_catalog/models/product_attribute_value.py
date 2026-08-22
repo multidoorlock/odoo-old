@@ -7,7 +7,7 @@ class ProductAttributeValue(models.Model):
     _inherit = "product.attribute.value"
 
     mdl_sku_component = fields.Char(
-        string="רכיב מק״ט",
+        string="מק״ט ברירת מחדל",
         help=(
             "החלק שיתווסף למק״ט של הווריאנט כאשר הערך נבחר. "
             "יש להזין — כאשר הערך אינו אמור להוסיף דבר למק״ט. "

@@ -6,16 +6,30 @@ from .catalog_utils import clean_text
 class ProductTemplateAttributeValue(models.Model):
     _inherit = "product.template.attribute.value"
 
+    mdl_default_name_component = fields.Char(
+        related="product_attribute_value_id.name",
+        string="טקסט ברירת מחדל",
+        readonly=False,
+        help="שינוי כאן משנה את ערך המאפיין בכל הדגמים המשתמשים בו.",
+    )
+    mdl_default_sku_component = fields.Char(
+        related="product_attribute_value_id.mdl_sku_component",
+        string="מק״ט ברירת מחדל",
+        readonly=False,
+        help="שינוי כאן משנה את רכיב המק״ט בכל הדגמים המשתמשים בערך.",
+    )
     mdl_sku_component_override = fields.Char(
-        string="דריסת רכיב מק״ט בדגם",
+        string="שינוי מק״ט",
         help=(
-            "אופציונלי. אם ריק, ייעשה שימוש ברכיב המק״ט של ערך המאפיין."
+            "אופציונלי לדגם זה בלבד. אם ריק, ייעשה שימוש במק״ט ברירת "
+            "המחדל של ערך המאפיין."
         ),
     )
     mdl_name_component_override = fields.Char(
-        string="דריסת מלל בדגם",
+        string="שינוי טקסט",
         help=(
-            "אופציונלי. אם ריק, ייעשה שימוש בשם הרגיל של ערך המאפיין."
+            "אופציונלי לדגם זה בלבד. אם ריק, ייעשה שימוש בטקסט ברירת "
+            "המחדל של ערך המאפיין."
         ),
     )
 

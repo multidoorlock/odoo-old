@@ -16,13 +16,15 @@ class ProductTemplateAttributeLine(models.Model):
         help="קובע כיצד המאפיין יוצג בשם הסופי של הווריאנט.",
     )
     mdl_name_prefix = fields.Char(
-        string="טקסט לפני",
-        default=" ",
-        help="רווח, /, +, -, או כל טקסט קבוע שיופיע לפני ערך המאפיין.",
+        string="טקסט לפני ישן (לא בשימוש)",
+        help="שדה טכני לגרסאות קודמות; סדר השורות והטקסט שאחרי משמשים כעת.",
     )
     mdl_name_suffix = fields.Char(
         string="טקסט אחרי",
-        help="טקסט קבוע שיופיע מיד אחרי ערך המאפיין.",
+        help=(
+            "רווח, /, +, -, או כל טקסט קבוע שיופיע אחרי ערך המאפיין "
+            "ולפני המאפיין הבא."
+        ),
     )
 
     @api.model_create_multi
