@@ -100,7 +100,6 @@ class TestProductCatalog(TransactionCase):
         clean_display_name = (
             product.display_name
             .replace("\u2066", "")
-            .replace("\u2067", "")
             .replace("\u2069", "")
         )
         self.assertEqual(
@@ -124,7 +123,6 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(
             product.display_name
             .replace("\u2066", "")
-            .replace("\u2067", "")
             .replace("\u2069", ""),
             "[100180100] | דלת כנף 80/100 +ידית",
         )

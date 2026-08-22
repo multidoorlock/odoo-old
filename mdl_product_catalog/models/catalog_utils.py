@@ -29,12 +29,6 @@ def ltr_isolate(value):
     return f"\u2066{value}\u2069" if value else ""
 
 
-def rtl_isolate(value):
-    """Keep a complete Hebrew product name together beside identifiers."""
-    value = clean_text(value)
-    return f"\u2067{value}\u2069" if value else ""
-
-
 def extract_tokens(format_value):
     return [clean_text(token) for token in TOKEN_RE.findall(format_value or "")]
 

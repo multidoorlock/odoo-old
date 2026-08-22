@@ -8,7 +8,6 @@ from .catalog_utils import (
     ltr_isolate,
     normalize_token,
     render_format,
-    rtl_isolate,
 )
 
 
@@ -37,9 +36,7 @@ class ResConfigSettings(models.TransientModel):
                 or DEFAULT_VARIANT_DISPLAY_FORMAT,
                 {
                     "מק״ט": ltr_isolate("[1001110020]"),
-                    "שם הפריט": rtl_isolate(
-                        "דלת הדף מוסדית שמאל 100/20 L"
-                    ),
+                    "שם הפריט": "דלת הדף מוסדית שמאל 100/20 L",
                 },
             )
             settings.mdl_variant_display_example = example

@@ -7,7 +7,6 @@ from .catalog_utils import (
     clean_text,
     ltr_isolate,
     render_format,
-    rtl_isolate,
 )
 
 
@@ -126,7 +125,7 @@ class ProductProduct(models.Model):
                 display_name, missing = render_format(
                     display_format or DEFAULT_VARIANT_DISPLAY_FORMAT,
                     {
-                        "שם הפריט": rtl_isolate(product.mdl_generated_name),
+                        "שם הפריט": product.mdl_generated_name,
                         "מק״ט": ltr_isolate(f"[{product.default_code}]"),
                     },
                 )
@@ -134,7 +133,7 @@ class ProductProduct(models.Model):
                     display_name
                     if display_name and not missing
                     else f"{ltr_isolate(f'[{product.default_code}]')} "
-                    f"{rtl_isolate(product.mdl_generated_name)}"
+                    f"{product.mdl_generated_name}"
                 )
             else:
                 product.display_name = product.mdl_generated_name
