@@ -65,6 +65,8 @@ class TestProductCatalog(TransactionCase):
 
     def test_generates_sku_and_name_from_format(self):
         template = self._create_template()
+        self.assertEqual(template.name, "דלת כנף")
+        self.assertEqual(template.mdl_model_lookup, "1001 - דלת כנף")
         self.assertEqual(len(template.product_variant_ids), 2)
         by_width = {
             product.product_template_attribute_value_ids.filtered(
@@ -85,8 +87,8 @@ class TestProductCatalog(TransactionCase):
             lambda variant: variant.default_code == "100180100"
         )
         self.assertEqual(
-            product.display_name,
-            "[100180100] דלת כנף 80/100 +ידית",
+            product.display_name.replace("\u2066", "").replace("\u2069", ""),
+            "מק״ט 100180100 — דלת כנף 80/100 +ידית",
         )
         product_results = dict(
             self.env["product.product"].name_search("100180100")
@@ -96,6 +98,20 @@ class TestProductCatalog(TransactionCase):
             self.env["product.template"].name_search("100180100")
         )
         self.assertIn(template.id, template_results)
+
+        self.env["ir.config_parameter"].sudo().set_param(
+            "mdl_product_catalog.variant_display_format",
+            "[מק״ט] | [שם הפריט]",
+        )
+        product.invalidate_recordset(["display_name"])
+        self.assertEqual(
+            product.display_name.replace("\u2066", "").replace("\u2069", ""),
+            "100180100 | דלת כנף 80/100 +ידית",
+        )
+        self.env["ir.config_parameter"].sudo().set_param(
+            "mdl_product_catalog.variant_display_format",
+            "מק״ט [מק״ט] — [שם הפריט]",
+        )
 
     def test_quotation_uses_final_product_name(self):
         template = self._create_template()
@@ -126,6 +142,32 @@ class TestProductCatalog(TransactionCase):
             in variant.product_template_attribute_value_ids.product_attribute_value_id
         )
         self.assertEqual(product.mdl_generated_name, "דלת כנף 80 ס״מ/100 +ידית")
+
+    def test_group_change_updates_full_model_name_without_duplication(self):
+        template = self._create_template()
+        frame_category = self.env["product.category"].create(
+            {"name": "משקוף", "mdl_group_code": "11"}
+        )
+        template.categ_id = frame_category
+        self.assertEqual(template.name, "משקוף כנף")
+        self.assertEqual(template.mdl_model_lookup, "1101 - משקוף כנף")
+        self.assertTrue(
+            all(
+                product.mdl_generated_name.startswith("משקוף כנף")
+                for product in template.product_variant_ids
+            )
+        )
+
+    def test_group_rename_updates_model_and_final_product_names(self):
+        template = self._create_template()
+        self.category.name = "דלתות"
+        self.assertEqual(template.name, "דלתות כנף")
+        self.assertTrue(
+            all(
+                product.mdl_generated_name.startswith("דלתות כנף")
+                for product in template.product_variant_ids
+            )
+        )
 
     def test_unknown_token_is_reported(self):
         template = self._create_template()
