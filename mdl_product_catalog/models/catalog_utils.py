@@ -2,6 +2,8 @@ import re
 
 
 TOKEN_RE = re.compile(r"\[([^\[\]]+)\]")
+DEFAULT_VARIANT_DISPLAY_FORMAT = "מק״ט [מק״ט] — [שם הפריט]"
+VARIANT_DISPLAY_FORMAT_PARAM = "mdl_product_catalog.variant_display_format"
 
 
 def clean_text(value):
@@ -13,6 +15,12 @@ def clean_text(value):
 
 def normalize_token(value):
     return clean_text(value).casefold()
+
+
+def ltr_isolate(value):
+    """Keep identifiers readable when embedded inside right-to-left text."""
+    value = clean_text(value)
+    return f"\u2066{value}\u2069" if value else ""
 
 
 def extract_tokens(format_value):
