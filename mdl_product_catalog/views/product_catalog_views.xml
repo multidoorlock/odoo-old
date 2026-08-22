@@ -106,6 +106,7 @@
                         <field name="attribute_id" string="מאפיין" readonly="1"/>
                         <field name="product_attribute_value_id"
                                string="ערך המאפיין"
+                               context="{'show_attribute': False}"
                                readonly="1"/>
                         <field name="mdl_default_name_component"/>
                         <field name="mdl_name_component_override"/>
