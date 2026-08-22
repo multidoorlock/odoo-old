@@ -40,19 +40,27 @@
                    position="before">
                 <group string="בסיס השם והמק״ט">
                     <group string="קבוצת פריטים">
-                        <field name="mdl_group_default_name"/>
+                        <field name="mdl_group_default_name"
+                               string="טקסט ברירת מחדל"/>
                         <field name="mdl_group_name_override"
+                               string="שינוי טקסט"
                                placeholder="ריק = ברירת המחדל"/>
-                        <field name="mdl_group_default_sku"/>
+                        <field name="mdl_group_default_sku"
+                               string="מק״ט ברירת מחדל"/>
                         <field name="mdl_group_sku_override"
+                               string="שינוי מק״ט"
                                placeholder="ריק = ברירת המחדל"/>
                     </group>
                     <group string="דגם">
-                        <field name="mdl_model_default_name"/>
+                        <field name="mdl_model_default_name"
+                               string="טקסט ברירת מחדל"/>
                         <field name="mdl_model_name_override"
+                               string="שינוי טקסט"
                                placeholder="ריק = ברירת המחדל"/>
-                        <field name="mdl_model_sku_component"/>
+                        <field name="mdl_model_sku_component"
+                               string="מק״ט ברירת מחדל"/>
                         <field name="mdl_model_sku_override"
+                               string="שינוי מק״ט"
                                placeholder="ריק = ברירת המחדל"/>
                     </group>
                 </group>

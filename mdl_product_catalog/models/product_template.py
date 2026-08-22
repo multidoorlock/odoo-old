@@ -48,41 +48,41 @@ class ProductTemplate(models.Model):
     )
     mdl_group_default_name = fields.Char(
         related="categ_id.name",
-        string="טקסט ברירת מחדל",
+        string="טקסט ברירת מחדל לקבוצה",
         readonly=False,
         help="שם קבוצת הפריטים. שינוי כאן משנה את הקבוצה ואת כל הדגמים שבה.",
     )
     mdl_group_default_sku = fields.Char(
         related="categ_id.mdl_sku_component",
-        string="מק״ט ברירת מחדל",
+        string="מק״ט ברירת מחדל לקבוצה",
         readonly=False,
         help="רכיב המק״ט של קבוצת הפריטים לכל הדגמים בקבוצה.",
     )
     mdl_group_name_override = fields.Char(
-        string="שינוי טקסט",
+        string="שינוי טקסט לקבוצה",
         help="אופציונלי לדגם זה בלבד. הזן — כדי לא להציג את הקבוצה בשם.",
     )
     mdl_group_sku_override = fields.Char(
-        string="שינוי מק״ט",
+        string="שינוי מק״ט לקבוצה",
         help="אופציונלי לדגם זה בלבד. הזן — כדי לא להוסיף את רכיב הקבוצה.",
     )
     mdl_model_default_name = fields.Char(
-        string="טקסט ברירת מחדל",
+        string="טקסט ברירת מחדל לדגם",
         compute="_compute_mdl_model_default_name",
         inverse="_inverse_mdl_model_default_name",
         help="שם הדגם ללא שם קבוצת הפריטים.",
     )
     mdl_model_sku_component = fields.Char(
-        string="מק״ט ברירת מחדל",
+        string="מק״ט ברירת מחדל לדגם",
         index=True,
         help="רכיב המק״ט הבסיסי של הדגם.",
     )
     mdl_model_name_override = fields.Char(
-        string="שינוי טקסט",
+        string="שינוי טקסט לדגם",
         help="אופציונלי. הזן — כדי לא להציג את הדגם בשם הפריט הסופי.",
     )
     mdl_model_sku_override = fields.Char(
-        string="שינוי מק״ט",
+        string="שינוי מק״ט לדגם",
         help="אופציונלי. הזן — כדי לא להוסיף את רכיב הדגם למק״ט.",
     )
     mdl_effective_base_name = fields.Char(
