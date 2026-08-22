@@ -15,6 +15,23 @@ BASE_TOKEN_ALIASES = {
 }
 
 
+def _name_without_group(group_name, model_name):
+    group_name = clean_text(group_name)
+    model_name = clean_text(model_name)
+    if group_name and model_name == group_name:
+        return ""
+    prefix = f"{group_name} " if group_name else ""
+    if prefix and model_name.startswith(prefix):
+        return model_name[len(prefix):]
+    return model_name
+
+
+def _name_with_group(group_name, model_name):
+    group_name = clean_text(group_name)
+    model_name = _name_without_group(group_name, model_name)
+    return clean_text(" ".join(part for part in (group_name, model_name) if part))
+
+
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
@@ -97,10 +114,16 @@ class ProductTemplate(models.Model):
                 if field_name in vals:
                     vals[field_name] = clean_text(vals[field_name])
         templates = super().create(vals_list)
+        templates._mdl_ensure_full_model_names()
         templates._mdl_sync_variant_codes()
         return templates
 
     def write(self, vals):
+        previous_group_names = (
+            {template.id: clean_text(template.categ_id.name) for template in self}
+            if "categ_id" in vals
+            else {}
+        )
         for field_name in (
             "mdl_model_code",
             "mdl_name_format",
@@ -122,8 +145,22 @@ class ProductTemplate(models.Model):
                 "mdl_suppress_model_name",
             )
         ):
+            self._mdl_ensure_full_model_names(previous_group_names)
             self._mdl_sync_variant_codes()
         return result
+
+    def _mdl_ensure_full_model_names(self, previous_group_names=None):
+        previous_group_names = previous_group_names or {}
+        for template in self.filtered("mdl_name_format"):
+            model_name = _name_without_group(
+                previous_group_names.get(template.id), template.name
+            )
+            full_name = _name_with_group(template.categ_id.name, model_name)
+            if full_name and template.name != full_name:
+                super(
+                    ProductTemplate,
+                    template.with_context(skip_mdl_catalog_sync=True),
+                ).write({"name": full_name})
 
     @api.depends("name", "categ_id.name", "categ_id.mdl_group_code", "mdl_model_code")
     def _compute_mdl_model_identity(self):
@@ -131,9 +168,7 @@ class ProductTemplate(models.Model):
             group_code = clean_text(template.categ_id.mdl_group_code)
             model_code = clean_text(template.mdl_model_code)
             prefix = f"{group_code}{model_code}" if group_code else ""
-            names = clean_text(
-                " ".join(part for part in (template.categ_id.name, template.name) if part)
-            )
+            names = _name_with_group(template.categ_id.name, template.name)
             template.mdl_sku_prefix = prefix or False
             template.mdl_model_lookup = (
                 f"{prefix} - {names}" if prefix and names else names or prefix or False
@@ -187,6 +222,9 @@ class ProductTemplate(models.Model):
 
     def _mdl_catalog_replacements(self, combination):
         self.ensure_one()
+        model_name = self.mdl_model_name_component or _name_without_group(
+            self.categ_id.name, self.name
+        )
         replacements = {
             "שם קבוצת פריטים": (
                 self.mdl_group_name_component or self.categ_id.name
@@ -194,12 +232,8 @@ class ProductTemplate(models.Model):
             "קבוצת פריטים": (
                 self.mdl_group_name_component or self.categ_id.name
             ),
-            "דגם": "" if self.mdl_suppress_model_name else (
-                self.mdl_model_name_component or self.name
-            ),
-            "שם דגם": "" if self.mdl_suppress_model_name else (
-                self.mdl_model_name_component or self.name
-            ),
+            "דגם": "" if self.mdl_suppress_model_name else model_name,
+            "שם דגם": "" if self.mdl_suppress_model_name else model_name,
         }
         for value in combination.sorted(
             lambda item: (
