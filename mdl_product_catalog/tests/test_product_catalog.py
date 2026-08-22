@@ -97,9 +97,15 @@ class TestProductCatalog(TransactionCase):
         product = template.product_variant_ids.filtered(
             lambda variant: variant.default_code == "100180100"
         )
+        clean_display_name = (
+            product.display_name
+            .replace("\u2066", "")
+            .replace("\u2067", "")
+            .replace("\u2069", "")
+        )
         self.assertEqual(
-            product.display_name.replace("\u2066", "").replace("\u2069", ""),
-            "מק״ט 100180100 — דלת כנף 80/100 +ידית",
+            clean_display_name,
+            "[100180100] דלת כנף 80/100 +ידית",
         )
         self.assertIn(
             product.id,
@@ -116,12 +122,15 @@ class TestProductCatalog(TransactionCase):
         )
         product.invalidate_recordset(["display_name"])
         self.assertEqual(
-            product.display_name.replace("\u2066", "").replace("\u2069", ""),
-            "100180100 | דלת כנף 80/100 +ידית",
+            product.display_name
+            .replace("\u2066", "")
+            .replace("\u2067", "")
+            .replace("\u2069", ""),
+            "[100180100] | דלת כנף 80/100 +ידית",
         )
         self.env["ir.config_parameter"].sudo().set_param(
             "mdl_product_catalog.variant_display_format",
-            "מק״ט [מק״ט] — [שם הפריט]",
+            "[מק״ט] [שם הפריט]",
         )
 
     def test_quotation_uses_final_product_name(self):

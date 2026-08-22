@@ -2,7 +2,7 @@ import re
 
 
 TOKEN_RE = re.compile(r"\[([^\[\]]+)\]")
-DEFAULT_VARIANT_DISPLAY_FORMAT = "מק״ט [מק״ט] — [שם הפריט]"
+DEFAULT_VARIANT_DISPLAY_FORMAT = "[מק״ט] [שם הפריט]"
 VARIANT_DISPLAY_FORMAT_PARAM = "mdl_product_catalog.variant_display_format"
 BASE_NAME_TOKENS = {
     "שם קבוצת פריטים",
@@ -27,6 +27,12 @@ def ltr_isolate(value):
     """Keep identifiers readable when embedded inside right-to-left text."""
     value = clean_text(value)
     return f"\u2066{value}\u2069" if value else ""
+
+
+def rtl_isolate(value):
+    """Keep a complete Hebrew product name together beside identifiers."""
+    value = clean_text(value)
+    return f"\u2067{value}\u2069" if value else ""
 
 
 def extract_tokens(format_value):
