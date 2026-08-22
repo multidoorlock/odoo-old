@@ -20,6 +20,7 @@ class AttendanceDeviceCommand(models.Model):
         ("request_profile_photo", "בקשת תמונת פרופיל"),
         ("request_biometric_photo", "בקשת תמונה ביומטרית"),
         ("request_users", "בקשת כל המשתמשים מהשעון"),
+        ("request_attendance_logs", "בקשת השלמת רשומות נוכחות"),
         ("delete_user", "מחיקת משתמש"), ("custom", "פקודה אחרת"),
     ], required=True, default="custom", index=True)
     state = fields.Selection([

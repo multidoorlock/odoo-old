@@ -1,3 +1,7 @@
+from datetime import timedelta
+
+import pytz
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
@@ -42,6 +46,17 @@ class AttendanceDevice(models.Model):
     auto_sync_name = fields.Boolean(default=True)
     auto_sync_profile_photo = fields.Boolean(default=True)
     auto_sync_biometric_photo = fields.Boolean(default=False)
+    auto_reconcile_attendance = fields.Boolean(
+        string="סנכרון השלמת נוכחות שעתי", default=True,
+        help="מבקש מהשעון מדי שעה רשומות נוכחות שאולי לא הגיעו בזמן ניתוק.",
+    )
+    attendance_reconcile_lookback_days = fields.Integer(
+        string="ימי משיכה ראשונית", default=30,
+        help="מספר הימים למשיכה כאשר עדיין לא התקבלה אף רשומת נוכחות מהשעון.",
+    )
+    last_attendance_sync_at = fields.Datetime(
+        string="סנכרון נוכחות אחרון", readonly=True,
+    )
 
     # Explicit firmware mapping. Never infer a direction from open attendance.
     punch_in_values = fields.Char(
@@ -138,6 +153,78 @@ class AttendanceDevice(models.Model):
                 "sticky": False,
             },
         }
+
+    def _attendance_reconcile_command(self):
+        self.ensure_one()
+        now = fields.Datetime.now()
+        start = self.last_attendance_sync_at or (
+            now - timedelta(days=max(self.attendance_reconcile_lookback_days, 1))
+        )
+        # Re-read an overlap window. Event fingerprints make this idempotent
+        # and protect records posted around a disconnect/reconnect boundary.
+        start -= timedelta(hours=1)
+        timezone = pytz.timezone(self.timezone or "UTC")
+
+        def local_text(value):
+            aware = pytz.utc.localize(value).astimezone(timezone)
+            return aware.strftime("%Y-%m-%d %H:%M:%S")
+
+        return (
+            f"DATA QUERY ATTLOG StartTime={local_text(start)}"
+            f"\tEndTime={local_text(now)}"
+        )
+
+    def _queue_attendance_reconciliation(self):
+        Command = self.env["mdl.attendance.device.command"].sudo()
+        queued = Command.browse()
+        for device in self.filtered(lambda item: item.active and item.manufacturer == "zkteco"):
+            existing = Command.search([
+                ("device_id", "=", device.id),
+                ("command_type", "=", "request_attendance_logs"),
+                ("state", "in", ["queued", "sent"]),
+            ], order="id desc", limit=1)
+            if existing:
+                # A sent command can be stranded if the terminal disconnects
+                # before acknowledging it. Retry it after two hours.
+                if existing.state == "sent" and existing.sent_at and existing.sent_at < fields.Datetime.now() - timedelta(hours=2):
+                    existing.write({
+                        "state": "queued", "sent_at": False,
+                        "retry_count": existing.retry_count + 1,
+                        "raw_command": device._attendance_reconcile_command(),
+                        "error_message": False,
+                    })
+                queued |= existing
+                continue
+            queued |= Command.create({
+                "device_id": device.id,
+                "command_type": "request_attendance_logs",
+                "state": "queued",
+                "raw_command": device._attendance_reconcile_command(),
+            })
+        return queued
+
+    def action_reconcile_attendance(self):
+        self.ensure_one()
+        command = self._queue_attendance_reconciliation()
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("סנכרון רשומות נוכחות"),
+                "message": _("בקשת ההשלמה ממתינה לשעון ותישלח כשהוא מחובר."),
+                "type": "success" if command else "warning",
+                "sticky": False,
+            },
+        }
+
+    @api.model
+    def _cron_reconcile_attendance(self):
+        devices = self.sudo().search([
+            ("active", "=", True),
+            ("manufacturer", "=", "zkteco"),
+            ("auto_reconcile_attendance", "=", True),
+        ])
+        devices._queue_attendance_reconciliation()
 
     @api.ondelete(at_uninstall=False)
     def _prevent_history_deletion(self):

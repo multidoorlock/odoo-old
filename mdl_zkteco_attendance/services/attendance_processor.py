@@ -17,11 +17,16 @@ class AttendanceProcessor:
             except Exception as exc:
                 _logger.exception("Attendance event %s failed", event.id)
                 event.sudo().write({"processing_state": "error", "processing_message": str(exc)})
+        affected_employee_ids = events.sudo().mapped("employee_id").ids
+        if affected_employee_ids:
+            self.env["mdl.attendance.device.event"]._timeline_reconcile_employee_ids(
+                affected_employee_ids,
+            )
 
     def _process_one(self, event):
         if event.processing_state in ("processed", "ignored"):
             return
-        if event.punch_state == "unknown" and event.raw_punch_state:
+        if not event.manual_punch_state and event.punch_state == "unknown" and event.raw_punch_state:
             mapped_state = event.device_id._adapter().map_punch_state(event.raw_punch_state)
             if mapped_state != "unknown":
                 event.sudo().write({"punch_state": mapped_state})
@@ -43,13 +48,16 @@ class AttendanceProcessor:
         if not card or not card.employee_id:
             event.sudo().write({"processing_state": "waiting_employee_link", "processing_message": "Device card is not linked to an employee"})
             return
-        event.sudo().write({"employee_id": card.employee_id.id})
-        if event.punch_state == "unknown":
+        event.sudo().with_context(attendance_event_system_write=True).write({
+            "employee_id": card.employee_id.id,
+        })
+        effective_punch_state = event.manual_punch_state or event.punch_state
+        if effective_punch_state == "unknown":
             event.sudo().write({"processing_state": "not_applied", "processing_message": f"Unmapped punch state: {event.raw_punch_state}"})
             return
         Attendance = self.env["hr.attendance"].sudo()
         open_attendance = Attendance.search([("employee_id", "=", card.employee_id.id), ("check_out", "=", False)], order="check_in desc", limit=1)
-        if event.punch_state == "in":
+        if effective_punch_state == "in":
             if open_attendance:
                 event.sudo().write({"processing_state": "not_applied", "processing_message": "Employee already has an open attendance", "attendance_id": open_attendance.id})
                 return

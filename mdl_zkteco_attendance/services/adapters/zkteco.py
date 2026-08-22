@@ -362,4 +362,6 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         else:
             state = "ignored" if states else "processed"
         log.sudo().write({"processing_state": state, "processing_message": f"Created {len(events)} event(s); {errors} parse error(s)"})
+        if not errors:
+            self.device.sudo().write({"last_attendance_sync_at": log.received_at or fields.Datetime.now()})
         return len(events)
