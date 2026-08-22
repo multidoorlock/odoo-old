@@ -244,7 +244,7 @@ class TestProductCatalog(TransactionCase):
             {
                 "name": "צינור 4\"",
                 "categ_id": self.category.id,
-                "mdl_sku_prefix": "3040",
+                "mdl_sku_prefix": "TEST-NO-COMPONENT-3040",
                 "attribute_line_ids": [
                     Command.create(
                         {
@@ -257,7 +257,7 @@ class TestProductCatalog(TransactionCase):
             }
         )
         product = template.product_variant_id
-        self.assertEqual(product.default_code, "3040")
+        self.assertEqual(product.default_code, "TEST-NO-COMPONENT-3040")
         self.assertFalse(template._mdl_get_catalog_issues())
 
     def test_variant_base_name_can_differ_from_model_name(self):
