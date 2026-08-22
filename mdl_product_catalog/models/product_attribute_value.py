@@ -29,5 +29,5 @@ class ProductAttributeValue(models.Model):
         if not self.env.context.get("skip_mdl_catalog_sync") and any(
             field_name in vals for field_name in ("name", "mdl_sku_component")
         ):
-            self.template_value_ids.product_tmpl_id._mdl_sync_variant_codes()
+            self.pav_attribute_line_ids.product_tmpl_id._mdl_sync_variant_codes()
         return result
