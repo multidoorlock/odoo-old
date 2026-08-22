@@ -186,6 +186,64 @@
                 <field name="mdl_generated_name" string="שם הפריט הסופי" optional="show"/>
                 <field name="mdl_generated_sku" string="מק״ט מחושב" optional="hide"/>
             </field>
+            <field name="name" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="mdl_product_product_form_final_name" model="ir.ui.view">
+        <field name="name">product.product.form.mdl.final.name</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('oe_title')]/label[@for='name']"
+                   position="replace">
+                <label for="mdl_generated_name"
+                       string="שם הפריט הסופי"
+                       invisible="not mdl_generated_name"/>
+                <label for="name"
+                       string="שם המוצר"
+                       invisible="mdl_generated_name"/>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]//field[@name='name']"
+                   position="replace">
+                <field name="mdl_generated_name"
+                       class="text-break"
+                       readonly="1"
+                       invisible="not mdl_generated_name"/>
+                <field name="name"
+                       class="text-break"
+                       options="{'line_breaks': False}"
+                       widget="text"
+                       invisible="mdl_generated_name"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="mdl_product_variant_easy_form_final_name" model="ir.ui.view">
+        <field name="name">product.product.easy.form.mdl.final.name</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_variant_easy_edit_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('oe_title')]/label[@for='name']"
+                   position="replace">
+                <label for="mdl_generated_name"
+                       string="שם הפריט הסופי"
+                       invisible="not mdl_generated_name"/>
+                <label for="name"
+                       string="שם המוצר"
+                       invisible="mdl_generated_name"/>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]/h1/field[@name='name']"
+                   position="replace">
+                <field name="mdl_generated_name"
+                       readonly="1"
+                       invisible="not mdl_generated_name"/>
+                <field name="name"
+                       readonly="1"
+                       invisible="mdl_generated_name"/>
+            </xpath>
         </field>
     </record>
 
