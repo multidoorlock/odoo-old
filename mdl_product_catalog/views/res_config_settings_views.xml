@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mdl_res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.form.mdl.product.catalog</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="קטלוג מוצרים MDL" name="mdl_product_catalog">
+                    <block title="תצוגת פריטים סופיים">
+                        <setting string="פורמט תצוגה בחיפוש ובמסמכים"
+                                 help="הגדרה מערכתית אחת לכל הדגמים. השתמשו ב-[מק״ט] וב-[שם הפריט].">
+                            <field name="mdl_variant_display_format"
+                                   class="text-end"
+                                   placeholder="מק״ט [מק״ט] — [שם הפריט]"/>
+                            <div class="text-muted mt-2">
+                                <span>תצוגה לדוגמה: </span>
+                                <field name="mdl_variant_display_example"
+                                       class="oe_inline"
+                                       readonly="1"/>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>
