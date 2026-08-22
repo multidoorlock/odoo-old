@@ -150,6 +150,8 @@ class ProductTemplate(models.Model):
             if value.attribute_id.create_variant == "no_variant":
                 continue
             component = value._mdl_get_sku_component()
+            if component == "—":
+                continue
             if component:
                 sku_parts.append(component)
             else:

@@ -106,7 +106,11 @@ def _create_attributes_and_values(env, data):
                 "name": item["name"],
                 "attribute_id": attributes[item["attribute_key"]].id,
                 "sequence": item["sequence"],
-                "mdl_sku_component": item["sku_component"] or False,
+                # In the legacy source, an empty component is intentional: the
+                # value changes the name but does not add digits to the SKU.
+                # The catalog module uses an em dash to distinguish that case
+                # from a genuinely missing code.
+                "mdl_sku_component": item["sku_component"] or "—",
             }
         )
         _register_xmlid(env, "attribute_value", item["key"], value)

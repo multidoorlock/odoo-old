@@ -229,6 +229,37 @@ class TestProductCatalog(TransactionCase):
         with self.assertRaises(UserError):
             template.action_mdl_check_and_rebuild()
 
+    def test_dash_attribute_code_intentionally_adds_nothing_to_sku(self):
+        finish = self.env["product.attribute"].create(
+            {"name": "גימור", "create_variant": "always"}
+        )
+        drawing = self.env["product.attribute.value"].create(
+            {
+                "name": "מיוחד על פי שרטוט",
+                "attribute_id": finish.id,
+                "mdl_sku_component": "—",
+            }
+        )
+        template = self.env["product.template"].create(
+            {
+                "name": "צינור 4\"",
+                "categ_id": self.category.id,
+                "mdl_sku_prefix": "3040",
+                "attribute_line_ids": [
+                    Command.create(
+                        {
+                            "attribute_id": finish.id,
+                            "mdl_name_prefix": " ",
+                            "value_ids": [Command.set([drawing.id])],
+                        }
+                    )
+                ],
+            }
+        )
+        product = template.product_variant_id
+        self.assertEqual(product.default_code, "3040")
+        self.assertFalse(template._mdl_get_catalog_issues())
+
     def test_variant_base_name_can_differ_from_model_name(self):
         template = self._create_template()
         template.mdl_variant_base_name = "סט דלת מיוחדת"
