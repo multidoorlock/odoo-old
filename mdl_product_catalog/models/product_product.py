@@ -13,14 +13,8 @@ from .catalog_utils import (
 class ProductProduct(models.Model):
     _inherit = "product.product"
 
-    mdl_generated_sku = fields.Char(
-        string="מק״ט מחושב",
-        compute="_compute_mdl_catalog_values",
-        store=True,
-        index=True,
-    )
     mdl_generated_name = fields.Char(
-        string="שם פריט מחושב",
+        string="שם פריט סופי",
         compute="_compute_mdl_catalog_values",
         store=True,
         index="trigram",
@@ -28,31 +22,26 @@ class ProductProduct(models.Model):
 
     @api.depends(
         "product_tmpl_id.mdl_sku_prefix",
-        "product_tmpl_id.mdl_name_format",
         "product_tmpl_id.name",
-        "product_tmpl_id.mdl_group_name_component",
-        "product_tmpl_id.mdl_model_name_component",
-        "product_tmpl_id.mdl_suppress_model_name",
-        "product_tmpl_id.categ_id.name",
+        "product_tmpl_id.mdl_variant_base_name",
+        "product_tmpl_id.mdl_name_suffix",
+        "product_tmpl_id.attribute_line_ids.sequence",
+        "product_tmpl_id.attribute_line_ids.mdl_name_mode",
+        "product_tmpl_id.attribute_line_ids.mdl_name_prefix",
+        "product_tmpl_id.attribute_line_ids.mdl_name_suffix",
         "product_template_attribute_value_ids",
-        "product_template_attribute_value_ids.attribute_id.name",
-        "product_template_attribute_value_ids.attribute_id.sequence",
-        "product_template_attribute_value_ids.attribute_id.create_variant",
-        "product_template_attribute_value_ids.attribute_line_id.sequence",
-        "product_template_attribute_value_ids.mdl_effective_sku_component",
-        "product_template_attribute_value_ids.mdl_effective_name_component",
+        "product_template_attribute_value_ids.product_attribute_value_id.name",
+        "product_template_attribute_value_ids.mdl_name_component_override",
     )
     def _compute_mdl_catalog_values(self):
         for product in self:
             template = product.product_tmpl_id
-            if not template.mdl_name_format:
-                product.mdl_generated_sku = False
+            if not template.mdl_sku_prefix:
                 product.mdl_generated_name = False
                 continue
-            sku, name, _missing = template._mdl_render_catalog_values(
+            _sku, name, _missing = template._mdl_render_catalog_values(
                 product.product_template_attribute_value_ids
             )
-            product.mdl_generated_sku = sku or False
             product.mdl_generated_name = name or False
 
     @api.model_create_multi
@@ -72,12 +61,13 @@ class ProductProduct(models.Model):
 
     def _mdl_sync_default_code(self):
         for product in self:
-            generated_sku = clean_text(product.mdl_generated_sku)
-            if (
-                product.product_tmpl_id.mdl_name_format
-                and generated_sku
-                and product.default_code != generated_sku
-            ):
+            template = product.product_tmpl_id
+            if not template.mdl_sku_prefix:
+                continue
+            generated_sku, _name, missing = template._mdl_render_catalog_values(
+                product.product_template_attribute_value_ids
+            )
+            if generated_sku and not missing and product.default_code != generated_sku:
                 product.with_context(skip_mdl_catalog_sync=True).write(
                     {"default_code": generated_sku}
                 )
@@ -93,12 +83,7 @@ class ProductProduct(models.Model):
         if remaining == 0:
             return results
         extra_domain = Domain(domain or Domain.TRUE)
-        extra_domain &= Domain.OR(
-            [
-                Domain("mdl_generated_sku", operator, name),
-                Domain("mdl_generated_name", operator, name),
-            ]
-        )
+        extra_domain &= Domain("mdl_generated_name", operator, name)
         if existing_ids:
             extra_domain &= Domain("id", "not in", existing_ids)
         extra_products = self.search(extra_domain, limit=remaining)
@@ -111,7 +96,7 @@ class ProductProduct(models.Model):
         "default_code",
         "product_tmpl_id",
         "mdl_generated_name",
-        "product_tmpl_id.mdl_name_format",
+        "product_tmpl_id.mdl_sku_prefix",
     )
     @api.depends_context(
         "display_default_code",
@@ -132,7 +117,7 @@ class ProductProduct(models.Model):
         )
         for product in self:
             if not (
-                product.product_tmpl_id.mdl_name_format
+                product.product_tmpl_id.mdl_sku_prefix
                 and product.mdl_generated_name
             ):
                 continue
