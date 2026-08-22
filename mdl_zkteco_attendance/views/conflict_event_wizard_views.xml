@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_attendance_conflict_event_wizard_form" model="ir.ui.view">
+        <field name="name">mdl.attendance.conflict.event.wizard.form</field>
+        <field name="model">mdl.attendance.conflict.event.wizard</field>
+        <field name="arch" type="xml">
+            <form string="אירוע נוכחות חדש">
+                <group>
+                    <field name="employee_id"/>
+                    <field name="device_id" domain="[('company_id', '=', employee_id.company_id)]"/>
+                    <field name="punch_state" widget="radio"/>
+                    <field name="event_datetime"/>
+                    <field name="attendance_id" invisible="1"/>
+                </group>
+                <footer>
+                    <button name="action_create_event" type="object" string="צור אירוע" class="btn-primary"/>
+                    <button string="ביטול" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_attendance_conflict_event_wizard" model="ir.actions.act_window">
+        <field name="name">אירוע נוכחות חדש</field>
+        <field name="res_model">mdl.attendance.conflict.event.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_attendance_conflict_event_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+</odoo>

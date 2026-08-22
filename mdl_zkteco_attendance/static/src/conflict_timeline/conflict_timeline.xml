@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="mdl_zkteco_attendance.AttendanceTooltip">
+        <div class="o_mdl_attendance_tooltip shadow">
+            <div class="o_mdl_attendance_tooltip_line">
+                <strong>סיבה:</strong>
+                <span class="ms-1" t-esc="props.item.reason"/>
+            </div>
+            <div class="o_mdl_attendance_tooltip_line">
+                <strong>תאריך ושעה:</strong>
+                <span class="ms-1" t-esc="props.item.tooltipDate"/>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="mdl_zkteco_attendance.AttendanceEventTile">
+        <div class="o_mdl_attendance_event_tile_wrapper"
+             t-att-style="props.style"
+             t-att-data-mdl-timeline-item-id="props.item.id"
+             t-att-class="{
+                'o_mdl_attendance_event_tile_compact': props.item.compact,
+             }"
+             t-att-aria-label="ariaLabel"
+             role="button"
+             tabindex="0"
+             t-on-click="onClick"
+             t-on-keydown="onKeydown"
+             t-on-mouseenter="() => this.state.hovered = true"
+             t-on-mouseleave="() => this.state.hovered = false"
+             t-on-focusin="() => this.state.hovered = true"
+             t-on-focusout="() => this.state.hovered = false"
+             t-on-contextmenu="onContextMenu">
+            <div t-att-class="`o_gantt_pill o_mdl_attendance_event_tile o_mdl_attendance_event_tile_${props.item.variant} h-100 w-100 d-flex align-items-center justify-content-center rounded-2 text-dark`">
+                <span t-if="props.item.edited" class="o_mdl_attendance_event_fold" aria-label="נערך ידנית"/>
+                <span class="o_gantt_pill_title o_mdl_attendance_event_tile_title d-flex flex-column align-items-center justify-content-center">
+                    <span class="o_mdl_attendance_event_kind" t-esc="props.item.label"/>
+                    <strong class="o_mdl_attendance_event_time" t-esc="props.item.displayTime"/>
+                </span>
+            </div>
+            <AttendanceTooltip t-if="state.hovered" item="props.item"/>
+        </div>
+    </t>
+
+    <t t-name="mdl_zkteco_attendance.AttendanceTreatmentSummary">
+        <div class="o_mdl_attendance_summary_wrapper" t-att-style="props.style">
+            <div class="o_gantt_pill o_mdl_attendance_summary h-100 w-100 d-flex align-items-center justify-content-center rounded-2 text-dark">
+                <span class="o_gantt_pill_title text-truncate px-2" t-esc="props.summary.label"/>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="mdl_zkteco_attendance.AttendanceConnector">
+        <div class="o_mdl_attendance_connector" t-ref="root"
+             t-att-style="props.connection.style">
+            <t t-set="geometry" t-value="renderedGeometry"/>
+            <svg t-att-viewBox="`0 0 ${geometry.width} ${geometry.height}`"
+                 preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                    <linearGradient t-att-id="`mdl_gradient_${props.connection.id}`"
+                                    gradientUnits="userSpaceOnUse"
+                                    t-att-x1="geometry.x1" t-att-y1="geometry.y1"
+                                    t-att-x2="geometry.x2" t-att-y2="geometry.y2">
+                        <stop offset="0%" t-att-stop-color="props.connection.fromColor"/>
+                        <stop offset="50%" t-att-stop-color="props.connection.fromColor"/>
+                        <stop offset="50%" t-att-stop-color="props.connection.toColor"/>
+                        <stop offset="100%" t-att-stop-color="props.connection.toColor"/>
+                    </linearGradient>
+                </defs>
+                <path t-att-d="geometry.path"
+                      fill="none"
+                      t-att-stroke="`url(#mdl_gradient_${props.connection.id})`"
+                      stroke-width="1.8"
+                      stroke-linecap="round"/>
+                <circle t-att-cx="geometry.x1" t-att-cy="geometry.y1"
+                        r="2.5" t-att-fill="props.connection.fromColor"/>
+                <circle t-att-cx="geometry.x2" t-att-cy="geometry.y2"
+                        r="2.5" t-att-fill="props.connection.toColor"/>
+            </svg>
+        </div>
+    </t>
+
+    <t t-name="mdl_zkteco_attendance.AttendanceContextMenu">
+        <div class="o_mdl_attendance_context_menu dropdown-menu show"
+             t-att-style="`left:${props.menu.x}px;top:${props.menu.y}px`"
+             t-on-click.stop="() => {}">
+            <button t-foreach="props.menu.actions" t-as="action" t-key="action_index"
+                    type="button" class="dropdown-item"
+                    t-on-click="() => props.onSelect(action)">
+                <t t-esc="action.label"/>
+            </button>
+        </div>
+    </t>
+
+    <t t-name="mdl_zkteco_attendance.AttendanceConflictGanttRenderer.RowContent">
+        <t t-call="web_gantt.GanttRenderer.RowContent"/>
+        <t t-set="timelineRow" t-value="getTimelineRow(row)"/>
+        <t t-if="timelineRow">
+            <t t-if="timelineRow.detailed">
+                <t t-foreach="timelineRow.connections" t-as="connection" t-key="connection.id">
+                    <t t-set="connector" t-value="getTimelineConnection(connection, row, timelineRow)"/>
+                    <AttendanceConnector t-if="connector" connection="connector"/>
+                </t>
+                <t t-foreach="timelineRow.items" t-as="item" t-key="item.id">
+                    <t t-set="itemStyle" t-value="getTimelineItemStyle(item, row)"/>
+                    <AttendanceEventTile t-if="itemStyle"
+                                         item="item"
+                                         style="itemStyle"
+                                         onOpen="(selectedItem) => this.openTimelineItem(selectedItem)"
+                                         onContextMenu="(ev, selectedItem) => this.onTimelineContextMenu(ev, selectedItem)"/>
+                </t>
+            </t>
+            <t t-else="">
+                <t t-foreach="timelineRow.summaries" t-as="summary" t-key="summary.id">
+                    <t t-set="summaryStyle" t-value="getTimelineSummaryStyle(summary, row)"/>
+                    <AttendanceTreatmentSummary t-if="summaryStyle" summary="summary" style="summaryStyle"/>
+                </t>
+            </t>
+        </t>
+    </t>
+
+    <t t-name="mdl_zkteco_attendance.AttendanceConflictGanttRenderer"
+       t-inherit="web_gantt.GanttRenderer" t-inherit-mode="primary">
+        <xpath expr="//div[@t-ref='grid']" position="after">
+            <AttendanceContextMenu t-if="contextMenuState.menu"
+                                   menu="contextMenuState.menu"
+                                   onSelect="(action) => this.onContextAction(action)"/>
+        </xpath>
+    </t>
+</templates>
