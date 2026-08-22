@@ -9,6 +9,12 @@
                    position="attributes">
                 <attribute name="string">פריט סופי</attribute>
                 <attribute name="optional">show</attribute>
+                <attribute name="options">{
+                    'show_label_warning': True,
+                    'no_create': True,
+                    'no_quick_create': True,
+                    'no_create_edit': True
+                }</attribute>
             </xpath>
             <xpath expr="//field[@name='order_line']/list/field[@name='product_template_id']"
                    position="attributes">
