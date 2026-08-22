@@ -1,7 +1,13 @@
 from odoo import api, fields, models
 from odoo.fields import Domain
 
-from .catalog_utils import clean_text
+from .catalog_utils import (
+    DEFAULT_VARIANT_DISPLAY_FORMAT,
+    VARIANT_DISPLAY_FORMAT_PARAM,
+    clean_text,
+    ltr_isolate,
+    render_format,
+)
 
 
 class ProductProduct(models.Model):
@@ -120,7 +126,10 @@ class ProductProduct(models.Model):
         if self.env.context.get("seller_id"):
             return
         display_default_code = self.env.context.get("display_default_code", True)
-        formatted = self.env.context.get("formatted_display_name")
+        display_format = self.env["ir.config_parameter"].sudo().get_param(
+            VARIANT_DISPLAY_FORMAT_PARAM,
+            DEFAULT_VARIANT_DISPLAY_FORMAT,
+        )
         for product in self:
             if not (
                 product.product_tmpl_id.mdl_name_format
@@ -128,10 +137,18 @@ class ProductProduct(models.Model):
             ):
                 continue
             if display_default_code and product.default_code:
+                display_name, missing = render_format(
+                    display_format or DEFAULT_VARIANT_DISPLAY_FORMAT,
+                    {
+                        "שם הפריט": product.mdl_generated_name,
+                        "מק״ט": ltr_isolate(product.default_code),
+                    },
+                )
                 product.display_name = (
-                    f"{product.mdl_generated_name}\t--{product.default_code}--"
-                    if formatted
-                    else f"[{product.default_code}] {product.mdl_generated_name}"
+                    display_name
+                    if display_name and not missing
+                    else f"מק״ט {ltr_isolate(product.default_code)} — "
+                    f"{product.mdl_generated_name}"
                 )
             else:
                 product.display_name = product.mdl_generated_name
