@@ -8,6 +8,10 @@ from pathlib import Path
 
 from odoo import Command
 from odoo.exceptions import UserError
+from odoo.addons.mdl_product_catalog.models.catalog_utils import (
+    normalize_token,
+    split_legacy_name_format,
+)
 
 
 _logger = logging.getLogger(__name__)
@@ -68,7 +72,6 @@ def _create_categories(env, data):
             {
                 "name": item["name"],
                 "parent_id": parent.id,
-                "mdl_group_code": item["code"],
             }
         )
         _register_xmlid(env, "category", item["key"], category)
@@ -104,7 +107,6 @@ def _create_attributes_and_values(env, data):
                 "attribute_id": attributes[item["attribute_key"]].id,
                 "sequence": item["sequence"],
                 "mdl_sku_component": item["sku_component"] or False,
-                "mdl_name_component": item["name_component"] or False,
             }
         )
         _register_xmlid(env, "attribute_value", item["key"], value)
@@ -117,7 +119,7 @@ def _create_exclusions(env, template, template_data, values):
         return
     template_values = {
         item.product_attribute_value_id.id: item
-        for item in template.mdl_template_value_ids
+        for item in template.attribute_line_ids.product_template_value_ids
     }
     excluded_by_source = defaultdict(set)
     for pair in template_data["forbidden_pairs"]:
@@ -163,7 +165,7 @@ def _validate_and_register_variants(env, template, template_data, values):
         )
     for value_tuple, expected in expected_by_tuple.items():
         product = actual_by_tuple[value_tuple]
-        actual_sku = _clean(product.mdl_generated_sku)
+        actual_sku = _clean(product.default_code)
         actual_name = _clean(product.mdl_generated_name)
         if actual_sku != expected["sku"] or actual_name != _clean(expected["name"]):
             raise UserError(
@@ -180,13 +182,21 @@ def _create_templates(env, data, categories, attributes, values):
     Template = env["product.template"].with_context(skip_mdl_catalog_sync=True)
     templates = []
     for item in data["templates"]:
+        attribute_names = [line["attribute_key"] for line in item["attribute_lines"]]
+        name_rules, final_suffix = split_legacy_name_format(
+            item["name_format"], attribute_names
+        )
         lines = []
         for line in item["attribute_lines"]:
+            rule = name_rules[normalize_token(line["attribute_key"])]
             lines.append(
                 Command.create(
                     {
                         "attribute_id": attributes[line["attribute_key"]].id,
                         "sequence": line["sequence"],
+                        "mdl_name_mode": rule["name_mode"],
+                        "mdl_name_prefix": rule["prefix"],
+                        "mdl_name_suffix": rule["suffix"],
                         "value_ids": [
                             Command.set(
                                 [values[value["value_key"]].id for value in line["values"]]
@@ -195,18 +205,44 @@ def _create_templates(env, data, categories, attributes, values):
                     }
                 )
             )
+        group = categories[item["group_key"]]
+        full_template_name = _clean(f"{group.name} {item['name']}")
+        variant_base_name = _clean(
+            " ".join(
+                part
+                for part in (
+                    item["group_name_component"],
+                    "" if item["suppress_model_name"] else item["model_name_component"],
+                )
+                if part
+            )
+        )
         template = Template.create(
             {
                 "name": item["name"],
-                "categ_id": categories[item["group_key"]].id,
-                "mdl_model_code": item["model_code"] or False,
-                "mdl_name_format": item["name_format"],
-                "mdl_group_name_component": item["group_name_component"] or False,
-                "mdl_model_name_component": item["model_name_component"] or False,
-                "mdl_suppress_model_name": item["suppress_model_name"],
+                "categ_id": group.id,
+                "mdl_sku_prefix": (
+                    f"{item['group_key'].split(' - ', 1)[0]}{item['model_code']}"
+                ),
+                "mdl_variant_base_name": (
+                    variant_base_name
+                    if variant_base_name != full_template_name
+                    else False
+                ),
+                "mdl_name_suffix": final_suffix or False,
                 "attribute_line_ids": lines,
             }
         )
+        template_values = {
+            value.product_attribute_value_id.id: value
+            for value in template.attribute_line_ids.product_template_value_ids
+        }
+        for line in item["attribute_lines"]:
+            for value_data in line["values"]:
+                if value_data.get("name_override"):
+                    template_values[
+                        values[value_data["value_key"]].id
+                    ].mdl_name_component_override = value_data["name_override"]
         _register_xmlid(env, "template", item["key"], template)
         _create_exclusions(env, template, item, values)
         _validate_and_register_variants(env, template, item, values)
