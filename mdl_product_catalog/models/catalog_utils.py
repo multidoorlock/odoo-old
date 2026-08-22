@@ -4,6 +4,12 @@ import re
 TOKEN_RE = re.compile(r"\[([^\[\]]+)\]")
 DEFAULT_VARIANT_DISPLAY_FORMAT = "מק״ט [מק״ט] — [שם הפריט]"
 VARIANT_DISPLAY_FORMAT_PARAM = "mdl_product_catalog.variant_display_format"
+BASE_NAME_TOKENS = {
+    "שם קבוצת פריטים",
+    "קבוצת פריטים",
+    "דגם",
+    "שם דגם",
+}
 
 
 def clean_text(value):
@@ -45,3 +51,61 @@ def render_format(format_value, replacements):
 
     rendered = TOKEN_RE.sub(replace, format_value or "")
     return clean_text(rendered), unresolved
+
+
+def split_legacy_name_format(format_value, attribute_names):
+    """Convert the old token format to native attribute-line presentation rules.
+
+    Unknown bracketed text is intentionally kept as literal text. This preserves
+    names such as ``[+ידית]`` from MasterProducts without pretending that they
+    are attributes.
+    """
+    format_value = str(format_value or "")
+    attributes_by_key = {
+        normalize_token(name): clean_text(name) for name in attribute_names
+    }
+    base_keys = {normalize_token(name) for name in BASE_NAME_TOKENS}
+    recognized = []
+    for match in TOKEN_RE.finditer(format_value):
+        key = normalize_token(match.group(1))
+        if key in base_keys or key in attributes_by_key:
+            recognized.append((match, key))
+
+    base_end = max(
+        (match.end() for match, key in recognized if key in base_keys),
+        default=0,
+    )
+    attribute_matches = [
+        (match, key)
+        for match, key in recognized
+        if key in attributes_by_key
+    ]
+    rules = {
+        normalize_token(name): {
+            "name_mode": "hidden",
+            "prefix": "",
+            "suffix": "",
+            "sequence": None,
+        }
+        for name in attribute_names
+    }
+    previous_match = None
+    previous_key = None
+    for index, (match, key) in enumerate(attribute_matches):
+        if previous_match is None:
+            rules[key]["prefix"] = format_value[base_end:match.start()]
+        else:
+            rules[previous_key]["suffix"] = format_value[
+                previous_match.end():match.start()
+            ]
+        rules[key]["name_mode"] = "value"
+        rules[key]["sequence"] = (index + 1) * 10
+        previous_match = match
+        previous_key = key
+
+    final_suffix = (
+        format_value[previous_match.end():]
+        if previous_match is not None
+        else format_value[base_end:]
+    )
+    return rules, final_suffix
