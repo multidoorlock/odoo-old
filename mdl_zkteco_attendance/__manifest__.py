@@ -1,7 +1,7 @@
 {
-    "name": "Multi Doorlock - ZKTeco Attendance",
-    "version": "19.0.5.9.28",
-    "summary": "Generic attendance device management with ZKTeco ADMS support",
+    "name": "Multi Doorlock - Clock Attendance",
+    "version": "19.0.5.9.29",
+    "summary": "Generic attendance device management",
     "category": "Human Resources/Attendances",
     "license": "LGPL-3",
 
@@ -28,6 +28,7 @@
         "views/device_sync_wizard_views.xml",
         "views/pending_attendance_wizard_views.xml",
         "views/menu_views.xml",
+        'views/menu.xml',
     ],
 
     "assets": {
