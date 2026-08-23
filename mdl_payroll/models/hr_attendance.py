@@ -12,6 +12,12 @@ class HrAttendance(models.Model):
         """עבור עובדי השכבה המנורמלת אין ליצור רשומת עבודה פר החתמה — יש
         לחולל מחדש את כל רשומות היום העסקי, כדי שהקיבוץ, העיגול והסיווג
         יבוצעו תמיד על כלל החתמות היום (סעיף 23 באפיון)."""
+        # Odoo.sh loads demo attendances after all custom modules are already
+        # installed.  They are sample records only and must not trigger the
+        # custom payroll work-entry regeneration used for real attendances.
+        if self.env.context.get('install_demo'):
+            return
+
         mdl_attendances = self.filtered(
             lambda attendance: attendance.employee_id.sudo().version_id.work_entry_source == 'attendance'
             and attendance.employee_id.sudo().version_id.resource_calendar_id)

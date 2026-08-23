@@ -1,6 +1,6 @@
 {
     "name": "Multi Doorlock - Attendances",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.0.1",
     "category": "Human Resources/Attendances",
     "summary": "סיווג משמרות ושכר שעות נוספות לפי נוכחות",
     "description": """

@@ -15,12 +15,12 @@ class HrVersion(models.Model):
     mdl_wage_type = fields.Selection([
         ('mdl_monthly', 'חודשי'),
         ('mdl_daily', 'יומי'),
-    ], string='סוג שכר', required=True, default='mdl_monthly',
+    ], string='סוג שכר מותאם', required=True, default='mdl_monthly',
         groups=PAYROLL_GROUP, tracking=True)
     mdl_monthly_wage = fields.Monetary(
         related='wage', readonly=False, string='שכר חודשי', groups=PAYROLL_GROUP)
     mdl_daily_wage = fields.Monetary(
-        string='שכר יומי', compute='_compute_mdl_daily_wage', store=True,
+        string='שכר יומי מותאם', compute='_compute_mdl_daily_wage', store=True,
         readonly=False, copy=True, groups=PAYROLL_GROUP, tracking=True)
     mdl_hourly_wage = fields.Monetary(
         related='hourly_wage', string='תעריף שעה', groups=PAYROLL_GROUP)
@@ -33,7 +33,7 @@ class HrVersion(models.Model):
         groups=PAYROLL_GROUP)
 
     mdl_additional_day_wage = fields.Monetary(
-        string='תעריף יום נוסף', groups=PAYROLL_GROUP, tracking=True)
+        string='תעריף יום נוסף מותאם', groups=PAYROLL_GROUP, tracking=True)
     mdl_additional_day_rate_type = fields.Selection([
         ('gross', 'ברוטו'),
         ('net', 'נטו'),

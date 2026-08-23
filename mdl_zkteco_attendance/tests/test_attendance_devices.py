@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from odoo import fields
 from odoo.tests.common import TransactionCase, new_test_user, tagged
+from odoo.tools import mute_logger
 
 
 @tagged("post_install", "-at_install")
@@ -48,6 +49,50 @@ class TestAttendanceDevices(TransactionCase):
             [self.employee.id],
         )
 
+    def test_new_card_copies_employee_name_and_profile_photo(self):
+        self.employee.image_1920 = (
+            b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+            b"+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+
+        draft = self.env["mdl.attendance.device.employee"].new({
+            "device_id": self.device.id,
+        })
+        draft.employee_id = self.employee
+        draft._onchange_employee_id_set_card_identity()
+        self.assertEqual(draft.device_name, self.employee.name)
+        self.assertEqual(draft.profile_photo, self.employee.image_1920)
+
+        card = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": self.device.id,
+            "employee_id": self.employee.id,
+        })
+        self.assertEqual(card.device_name, self.employee.name)
+        self.assertEqual(card.profile_photo, self.employee.image_1920)
+
+    def test_device_name_sync_uses_selected_translation(self):
+        language = self.env["res.lang"].search([
+            ("code", "!=", self.env.lang),
+        ], limit=1)
+        if not language:
+            self.skipTest("A second active language is required for this test")
+
+        card = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": self.device.id,
+            "device_name": "Default card name",
+        })
+        translated_name = "Selected language card name"
+        card.with_context(lang=language.code).write({"device_name": translated_name})
+        card.set_device_name_language_code(language.code)
+
+        command = self.device._adapter().build_command("update_name", card)
+        self.assertIn(f"Name={translated_name}", command)
+        self.assertEqual(card.get_device_name_language_code(), language.code)
+
     def test_in_out_and_duplicate(self):
         adapter = self.device._adapter()
         log = self._log()
@@ -61,6 +106,49 @@ class TestAttendanceDevices(TransactionCase):
         duplicate_log = self._log()
         adapter.process_payload(duplicate_log, "ATTLOG", b"", "74\t2026-08-11 08:00:00\t255\t1\t0")
         self.assertEqual(duplicate_log.event_ids.processing_state, "ignored")
+
+    def test_new_zkteco_device_maps_standard_zero_and_one_punch_values(self):
+        self.assertEqual(self.device._adapter().map_punch_state("0"), "unknown")
+        device = self.env["mdl.attendance.device"].create({
+            "name": "Default mapping clock",
+            "manufacturer": "zkteco",
+            "device_identifier": "DEFAULT-MAPPING-SN",
+            "company_id": self.env.company.id,
+            "timezone": "UTC",
+        })
+        self.assertEqual(device.punch_in_values, "0")
+        self.assertEqual(device.punch_out_values, "1")
+        self.assertEqual(device._adapter().map_punch_state("0"), "in")
+        self.assertEqual(device._adapter().map_punch_state("1"), "out")
+
+        card = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": device.id,
+            "device_user_id": "901",
+            "device_name": self.employee.name,
+            "employee_id": self.employee.id,
+        })
+        log = self.env["mdl.attendance.device.log"].create({
+            "device_id": device.id,
+            "device_identifier": device.device_identifier,
+            "request_type": "ATTLOG",
+            "http_method": "POST",
+            "endpoint": "/iclock/cdata",
+        })
+        device._adapter().process_payload(
+            log, "ATTLOG", b"", "901\t2026-08-10 08:00:00\t0\t1\t0",
+        )
+        event = log.event_ids
+        self.assertEqual(event.device_employee_id, card)
+        self.assertEqual(event.punch_state, "in")
+        self.assertEqual(event.processing_state, "processed")
+        self.assertTrue(event.attendance_id)
+        self.assertEqual(event.attendance_id.check_in, event.event_datetime)
+
+        device.write({"punch_in_values": False, "punch_out_values": False})
+        self.assertEqual(device._adapter().map_punch_state("0"), "in")
+        self.assertEqual(device._adapter().map_punch_state("1"), "out")
 
     def test_attendance_timeline_tiles_point_to_the_matching_source_events(self):
         log = self._log()
@@ -640,6 +728,7 @@ class TestAttendanceDevices(TransactionCase):
             before,
         )
 
+    @mute_logger("odoo.addons.mdl_zkteco_attendance.services.adapters.zkteco")
     def test_malformed_line_is_preserved_as_error_event(self):
         log = self._log()
         self.device._adapter().process_payload(log, "ATTLOG", b"", "malformed-attlog-line")

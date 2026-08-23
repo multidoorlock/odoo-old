@@ -27,7 +27,7 @@ class HrVersion(models.Model):
         ('foreign', 'עובד זר'),
     ], string='סוג עובד בישראל', default='israeli', tracking=True)
     il_tax_credit_points = fields.Float(string='נקודות זיכוי במס', digits=(6, 2))
-    il_primary_employer = fields.Boolean(string='מעסיק עיקרי', default=True)
+    il_primary_employer = fields.Boolean(string='מעסיק עיקרי לתשלומי שכר', default=True)
     il_tax_coordination = fields.Boolean(string='יש תיאום מס')
     il_tax_coordination_valid_from = fields.Date(string='תוקף תיאום מס מ-')
     il_tax_coordination_valid_until = fields.Date(string='תוקף תיאום מס עד-')
@@ -41,7 +41,7 @@ class HrVersion(models.Model):
     il_employer_pension_rate = fields.Float(string='הפרשת מעסיק לפנסיה (%)', digits=(6, 2))
     il_severance_rate = fields.Float(string='הפרשה לפיצויים (%)', digits=(6, 2))
 
-    il_study_fund_enabled = fields.Boolean(string='קרן השתלמות')
+    il_study_fund_enabled = fields.Boolean(string='קרן השתלמות פעילה')
     il_employee_study_fund_rate = fields.Float(string='הפרשת עובד לקרן השתלמות (%)', digits=(6, 2))
     il_employer_study_fund_rate = fields.Float(string='הפרשת מעסיק לקרן השתלמות (%)', digits=(6, 2))
 

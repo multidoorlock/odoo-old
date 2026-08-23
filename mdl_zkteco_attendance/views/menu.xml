@@ -1,0 +1,7 @@
+<odoo>
+    <menuitem
+        id="menu_root"
+        name="My App"
+        web_icon="mdl_zkteco_attendance\static\description\logo.png"
+    />
+</odoo>

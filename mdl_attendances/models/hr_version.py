@@ -144,6 +144,9 @@ class HrVersion(models.Model):
         06:30) ממשיכים להתעגל לחצי שעה כרגיל - הן עדיין לא משולמות בפועל
         (ראו rule_ilm/ilh_ot_attendance ב-hr_salary_rule_data.xml, מאופסות
         זמנית לפי בקשת הלקוח)."""
+        if self.env.context.get("install_demo"):
+            return super()._get_real_attendance_work_entry_vals(intervals)
+
         vals = super()._get_real_attendance_work_entry_vals(intervals)
         generic_type = self.env.ref("hr_work_entry.work_entry_type_attendance", raise_if_not_found=False)
         overtime_type = self.env.ref("hr_work_entry.work_entry_type_overtime", raise_if_not_found=False)
@@ -279,6 +282,9 @@ class HrVersion(models.Model):
         לעיגול היציאה מעלה בקובץ (הקטע מתחיל בדיוק בגבול המשמרת 16:00/06:30,
         כך ש"משך מעוגל מעלה" == "יציאה מעוגלת מעלה פחות הגבול"). סובלנות של
         שנייה כדי שקטע שכבר בדיוק על חצי שעה לא יקפוץ חצי שעה מיותרת."""
+        if self.env.context.get("install_demo"):
+            return super()._generate_work_entries_postprocess(vals_list)
+
         overtime_type = self.env.ref("hr_work_entry.work_entry_type_overtime", raise_if_not_found=False)
         overtime_type_id = overtime_type.id if overtime_type else None
         # shift_type_ids תלוי בלוח של כל גרסה בנפרד (סוג רשומת בוקר/ערב
@@ -343,6 +349,9 @@ class HrVersion(models.Model):
         return super()._generate_work_entries_postprocess(vals_list)
 
     def _generate_work_entries(self, date_start, date_stop, force=False):
+        if self.env.context.get("install_demo"):
+            return super()._generate_work_entries(date_start, date_stop, force=force)
+
         new_entries = super()._generate_work_entries(date_start, date_stop, force=force)
         self._l10n_il_create_absence_entries(date_start, date_stop)
         return new_entries

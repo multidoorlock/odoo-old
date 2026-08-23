@@ -45,7 +45,7 @@ const VARIANT_BY_STATE = {
 };
 
 const COLOR_BY_VARIANT = {
-    success: "#00e07b",
+    success: "#afffdb",
     danger: "#efbebe",
 };
 

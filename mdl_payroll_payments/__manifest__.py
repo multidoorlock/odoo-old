@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'MDL Payroll — תלושים ותשלומים (חלק ב\')',
-    'version': '1.0',
+    'version': '1.0.1',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
     'summary': 'חוקי שכר ישראליים, התאמות שכר, תשלומי עובדים, מחזורי תשלום והוראות',
