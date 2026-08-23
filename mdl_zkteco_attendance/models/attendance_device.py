@@ -61,10 +61,12 @@ class AttendanceDevice(models.Model):
     # Explicit firmware mapping. Never infer a direction from open attendance.
     punch_in_values = fields.Char(
         string="ערכי Punch לכניסה",
+        default="0",
         help="ערכים מופרדים בפסיקים כפי שנשלחים בעמודת Punch State.",
     )
     punch_out_values = fields.Char(
         string="ערכי Punch ליציאה",
+        default="1",
         help="ערכים מופרדים בפסיקים כפי שנשלחים בעמודת Punch State.",
     )
     punch_state_column = fields.Integer(

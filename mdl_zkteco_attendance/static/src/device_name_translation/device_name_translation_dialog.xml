@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="mdl_zkteco_attendance.DeviceNameTranslationDialog"
+       t-inherit="web.TranslationDialog"
+       t-inherit-mode="extension">
+        <xpath expr="//div[contains(@class, 'o_translation_dialog')]/t/div/div[1]/t[@t-esc='term.langName']" position="replace">
+            <label t-if="isMdlDeviceNameTranslation"
+                   class="d-inline-flex align-items-center gap-2 mb-0 fw-normal"
+                   style="direction: ltr;">
+                <span dir="auto"><t t-esc="term.langName"/></span>
+                <input type="radio"
+                       class="form-check-input mt-0"
+                       name="mdl_device_name_clock_language"
+                       t-att-value="term.lang"
+                       t-att-checked="mdlDeviceNameLanguage.code === term.lang"
+                       t-on-change="onMdlDeviceNameLanguageChange"/>
+            </label>
+            <t t-else="" t-esc="term.langName"/>
+        </xpath>
+    </t>
+</templates>
