@@ -204,10 +204,14 @@ class TestProductCatalog(TransactionCase):
         )
         value.write(
             {
-                "mdl_sku_component_override": "080",
-                "mdl_name_component_override": "80 ס״מ",
+                "mdl_sku_component_value": "080",
+                "mdl_name_component_value": "80 ס״מ",
             }
         )
+        self.assertEqual(value.mdl_sku_component_override, "080")
+        self.assertEqual(value.mdl_name_component_override, "80 ס״מ")
+        self.assertEqual(self.width_80.mdl_sku_component, "80")
+        self.assertEqual(self.width_80.name, "80")
         product = template.product_variant_ids.filtered(
             lambda variant: self.width_80
             in variant.product_template_attribute_value_ids.product_attribute_value_id
@@ -215,23 +219,35 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(product.default_code, "1001080100")
         self.assertEqual(product.mdl_generated_name, "דלת כנף 80 ס״מ/100 +ידית")
 
+        value.action_mdl_reset_components()
+        self.assertFalse(value.mdl_sku_component_override)
+        self.assertFalse(value.mdl_name_component_override)
+        self.assertEqual(value.mdl_sku_component_value, "80")
+        self.assertEqual(value.mdl_name_component_value, "80")
+        self.assertEqual(product.default_code, "100180100")
+        self.assertEqual(product.mdl_generated_name, "דלת כנף 80/100 +ידית")
+
     def test_base_defaults_and_overrides_drive_the_result(self):
         template = self._create_template()
-        self.assertEqual(template.mdl_group_default_name, "דלת")
-        self.assertEqual(template.mdl_group_default_sku, "10")
-        self.assertEqual(template.mdl_model_default_name, "כנף")
-        self.assertEqual(template.mdl_model_sku_component, "01")
+        self.assertEqual(template.mdl_group_name_value, "דלת")
+        self.assertEqual(template.mdl_group_sku_value, "10")
+        self.assertEqual(template.mdl_model_name_value, "כנף")
+        self.assertEqual(template.mdl_model_sku_value, "01")
         self.assertEqual(template.mdl_effective_base_name, "דלת כנף")
         self.assertEqual(template.mdl_sku_prefix, "1001")
 
         template.write(
             {
-                "mdl_group_name_override": "סט דלת",
-                "mdl_group_sku_override": "90",
-                "mdl_model_name_override": "מיוחדת",
-                "mdl_model_sku_override": "07",
+                "mdl_group_name_value": "סט דלת",
+                "mdl_group_sku_value": "90",
+                "mdl_model_name_value": "מיוחדת",
+                "mdl_model_sku_value": "07",
             }
         )
+        self.assertEqual(template.mdl_group_name_override, "סט דלת")
+        self.assertEqual(template.mdl_group_sku_override, "90")
+        self.assertEqual(template.mdl_model_name_override, "מיוחדת")
+        self.assertEqual(template.mdl_model_sku_override, "07")
         self.assertEqual(template.mdl_effective_base_name, "סט דלת מיוחדת")
         self.assertEqual(template.mdl_sku_prefix, "9007")
         self.assertTrue(
@@ -242,23 +258,38 @@ class TestProductCatalog(TransactionCase):
             )
         )
 
-    def test_attribute_value_defaults_are_editable_from_the_model_table(self):
+        template.action_mdl_reset_group_values()
+        template.action_mdl_reset_model_values()
+        self.assertFalse(template.mdl_group_name_override)
+        self.assertFalse(template.mdl_group_sku_override)
+        self.assertFalse(template.mdl_model_name_override)
+        self.assertFalse(template.mdl_model_sku_override)
+        self.assertEqual(template.mdl_group_name_value, "דלת")
+        self.assertEqual(template.mdl_group_sku_value, "10")
+        self.assertEqual(template.mdl_model_name_value, "כנף")
+        self.assertEqual(template.mdl_model_sku_value, "01")
+        self.assertEqual(template.mdl_effective_base_name, "דלת כנף")
+        self.assertEqual(template.mdl_sku_prefix, "1001")
+
+    def test_attribute_value_edit_in_model_does_not_change_the_source(self):
         template = self._create_template()
         template_value = template.mdl_attribute_value_ids.filtered(
             lambda item: item.product_attribute_value_id == self.width_80
         )
         template_value.write(
             {
-                "mdl_default_name_component": "80 ס״מ",
-                "mdl_default_sku_component": "080",
+                "mdl_name_component_value": "80 ס״מ",
+                "mdl_sku_component_value": "080",
             }
         )
         product = template.product_variant_ids.filtered(
             lambda variant: self.width_80
             in variant.product_template_attribute_value_ids.product_attribute_value_id
         )
-        self.assertEqual(self.width_80.name, "80 ס״מ")
-        self.assertEqual(self.width_80.mdl_sku_component, "080")
+        self.assertEqual(self.width_80.name, "80")
+        self.assertEqual(self.width_80.mdl_sku_component, "80")
+        self.assertEqual(template_value.mdl_name_component_value, "80 ס״מ")
+        self.assertEqual(template_value.mdl_sku_component_value, "080")
         self.assertEqual(product.default_code, "1001080100")
         self.assertEqual(product.mdl_generated_name, "דלת כנף 80 ס״מ/100 +ידית")
 

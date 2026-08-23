@@ -239,24 +239,30 @@ def _create_templates(env, data, categories, attributes, values):
             if _clean(item["group_name_component"]) != _clean(group.name)
             else False
         )
-        model_name_component = _clean(
+        source_model_name = _clean(
+            item["model_name_component"] or item["name"]
+        )
+        effective_model_name = _clean(
             " ".join(
                 part for part in (
-                    "" if item["suppress_model_name"] else item["model_name_component"],
+                    "" if item["suppress_model_name"] else source_model_name,
                     leading_text,
                 ) if part
             )
         )
         model_name_override = (
-            model_name_component
-            if model_name_component != _clean(item["name"])
+            effective_model_name
+            if effective_model_name != source_model_name
             else False
         )
-        if not model_name_component:
+        if item["suppress_model_name"]:
             model_name_override = "—"
         template = Template.create(
             {
-                "name": item["name"],
+                # The native model record holds the real model source value.
+                # Descriptions such as "מידה משתנה" belong to the legacy
+                # grouping logic and must not become the model name.
+                "name": source_model_name,
                 "categ_id": group.id,
                 "mdl_group_name_override": group_name_override,
                 "mdl_model_sku_component": item["model_code"],

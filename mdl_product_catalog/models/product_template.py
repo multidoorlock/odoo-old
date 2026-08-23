@@ -32,6 +32,20 @@ def _resolved_component(default_value, override_value):
     return override_value or clean_text(default_value)
 
 
+def _override_from_effective_value(default_value, effective_value):
+    """Store only a real deviation from the source value.
+
+    An empty effective value is an intentional omission and is represented by
+    an em dash internally.  This keeps an empty override available to mean
+    "inherit from the source" while the user works with one effective field.
+    """
+    default_value = clean_text(default_value)
+    effective_value = clean_text(effective_value)
+    if effective_value == default_value:
+        return False
+    return effective_value or "—"
+
+
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
@@ -84,6 +98,42 @@ class ProductTemplate(models.Model):
     mdl_model_sku_override = fields.Char(
         string="שינוי מק״ט לדגם",
         help="אופציונלי. הזן — כדי לא להוסיף את רכיב הדגם למק״ט.",
+    )
+    mdl_group_name_value = fields.Char(
+        string="שם קבוצת פריטים",
+        compute="_compute_mdl_group_name_value",
+        inverse="_inverse_mdl_group_name_value",
+        help=(
+            "מציג את שם הקבוצה שבפועל ייכנס לשם הפריט. עריכה יוצרת שינוי "
+            "לדגם הזה בלבד; איפוס מחזיר לשם הקטגוריה."
+        ),
+    )
+    mdl_group_sku_value = fields.Char(
+        string="מק״ט קבוצת פריטים",
+        compute="_compute_mdl_group_sku_value",
+        inverse="_inverse_mdl_group_sku_value",
+        help=(
+            "מציג את רכיב המק״ט הקבוצתי שבפועל. עריכה יוצרת שינוי לדגם "
+            "הזה בלבד; איפוס מחזיר למק״ט שבקטגוריה."
+        ),
+    )
+    mdl_model_name_value = fields.Char(
+        string="שם הדגם",
+        compute="_compute_mdl_model_name_value",
+        inverse="_inverse_mdl_model_name_value",
+        help=(
+            "מציג את שם הדגם שבפועל ללא שם הקבוצה. עריכה יוצרת שינוי "
+            "לדגם הזה בלבד; איפוס מחזיר לשם המקור של הדגם."
+        ),
+    )
+    mdl_model_sku_value = fields.Char(
+        string="מק״ט הדגם",
+        compute="_compute_mdl_model_sku_value",
+        inverse="_inverse_mdl_model_sku_value",
+        help=(
+            "מציג את רכיב המק״ט של הדגם שבפועל. עריכה יוצרת שינוי לדגם "
+            "הזה בלבד; איפוס מחזיר לרכיב המקור."
+        ),
     )
     mdl_effective_base_name = fields.Char(
         string="שם בסיס בפועל",
@@ -141,6 +191,82 @@ class ProductTemplate(models.Model):
             )
             if full_name and template.name != full_name:
                 template.with_context(skip_mdl_catalog_sync=True).name = full_name
+
+    @api.depends("categ_id.name", "mdl_group_name_override")
+    def _compute_mdl_group_name_value(self):
+        for template in self:
+            template.mdl_group_name_value = _resolved_component(
+                template.categ_id.name,
+                template.mdl_group_name_override,
+            )
+
+    def _inverse_mdl_group_name_value(self):
+        for template in self:
+            override = _override_from_effective_value(
+                template.categ_id.name,
+                template.mdl_group_name_value,
+            )
+            if template.mdl_group_name_override != override:
+                template.with_context(skip_mdl_catalog_sync=True).write(
+                    {"mdl_group_name_override": override}
+                )
+
+    @api.depends("categ_id.mdl_sku_component", "mdl_group_sku_override")
+    def _compute_mdl_group_sku_value(self):
+        for template in self:
+            template.mdl_group_sku_value = _resolved_component(
+                template.categ_id.mdl_sku_component,
+                template.mdl_group_sku_override,
+            )
+
+    def _inverse_mdl_group_sku_value(self):
+        for template in self:
+            override = _override_from_effective_value(
+                template.categ_id.mdl_sku_component,
+                template.mdl_group_sku_value,
+            )
+            if template.mdl_group_sku_override != override:
+                template.with_context(skip_mdl_catalog_sync=True).write(
+                    {"mdl_group_sku_override": override}
+                )
+
+    @api.depends("name", "categ_id.name", "mdl_model_name_override")
+    def _compute_mdl_model_name_value(self):
+        for template in self:
+            template.mdl_model_name_value = _resolved_component(
+                _name_without_group(template.categ_id.name, template.name),
+                template.mdl_model_name_override,
+            )
+
+    def _inverse_mdl_model_name_value(self):
+        for template in self:
+            override = _override_from_effective_value(
+                _name_without_group(template.categ_id.name, template.name),
+                template.mdl_model_name_value,
+            )
+            if template.mdl_model_name_override != override:
+                template.with_context(skip_mdl_catalog_sync=True).write(
+                    {"mdl_model_name_override": override}
+                )
+
+    @api.depends("mdl_model_sku_component", "mdl_model_sku_override")
+    def _compute_mdl_model_sku_value(self):
+        for template in self:
+            template.mdl_model_sku_value = _resolved_component(
+                template.mdl_model_sku_component,
+                template.mdl_model_sku_override,
+            )
+
+    def _inverse_mdl_model_sku_value(self):
+        for template in self:
+            override = _override_from_effective_value(
+                template.mdl_model_sku_component,
+                template.mdl_model_sku_value,
+            )
+            if template.mdl_model_sku_override != override:
+                template.with_context(skip_mdl_catalog_sync=True).write(
+                    {"mdl_model_sku_override": override}
+                )
 
     @api.depends(
         "name",
@@ -206,11 +332,35 @@ class ProductTemplate(models.Model):
                 "mdl_model_sku_component",
                 "mdl_model_name_override",
                 "mdl_model_sku_override",
+                "mdl_group_name_value",
+                "mdl_group_sku_value",
+                "mdl_model_name_value",
+                "mdl_model_sku_value",
             )
         ):
             self._mdl_ensure_full_model_names(previous_group_names)
             self._mdl_sync_variant_codes()
         return result
+
+    def action_mdl_reset_group_values(self):
+        self.ensure_one()
+        self.write(
+            {
+                "mdl_group_name_override": False,
+                "mdl_group_sku_override": False,
+            }
+        )
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_mdl_reset_model_values(self):
+        self.ensure_one()
+        self.write(
+            {
+                "mdl_model_name_override": False,
+                "mdl_model_sku_override": False,
+            }
+        )
+        return {"type": "ir.actions.client", "tag": "reload"}
 
     def _mdl_ensure_full_model_names(self, previous_group_names=None):
         previous_group_names = previous_group_names or {}
