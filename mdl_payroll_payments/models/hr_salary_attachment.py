@@ -23,7 +23,7 @@ class HrSalaryAttachment(models.Model):
     il_effect_type = fields.Selection([
         ('gross', 'ברוטו'),
         ('net', 'נטו'),
-    ], string='סוג השפעה', required=True, tracking=True,
+    ], string='סוג השפעה על התשלום', required=True, tracking=True,
        compute='_compute_il_effect_type', store=True, readonly=False, precompute=True)
 
     # "Salary Adjustment זה נוצר במחזור X" — קישור תיעודי בלבד, ללא קשר

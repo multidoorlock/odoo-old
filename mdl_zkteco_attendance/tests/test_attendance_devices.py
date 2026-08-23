@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from odoo import fields
 from odoo.tests.common import TransactionCase, new_test_user, tagged
+from odoo.tools import mute_logger
 
 
 @tagged("post_install", "-at_install")
@@ -727,6 +728,7 @@ class TestAttendanceDevices(TransactionCase):
             before,
         )
 
+    @mute_logger("odoo.addons.mdl_zkteco_attendance.services.adapters.zkteco")
     def test_malformed_line_is_preserved_as_error_event(self):
         log = self._log()
         self.device._adapter().process_payload(log, "ATTLOG", b"", "malformed-attlog-line")

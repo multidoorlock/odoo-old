@@ -83,7 +83,7 @@
             <!-- ה"/" בין wage ל-schedule_pay (הוסף ע"י hr_payroll, span בלי name)
                  נשאר גלוי כתו יתום כשמסתירים את שני השדות משני צדדיו ל-IL -
                  מוסתר גם הוא כאן, כדי שלא יישאר "/" בודד על המסך. -->
-            <xpath expr="//field[@name='wage']/following-sibling::span[@class='mx-2'][1]" position="attributes">
+            <xpath expr="//field[@name='wage']/following-sibling::span[hasclass('mx-2')][1]" position="attributes">
                 <attribute name="invisible">country_code == 'IL'</attribute>
             </xpath>
             <group name="contract" position="inside">

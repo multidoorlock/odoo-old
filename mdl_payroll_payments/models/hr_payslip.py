@@ -28,7 +28,7 @@ class HrPayslip(models.Model):
     il_paid_amount = fields.Monetary(
         string='סכום ששולם', compute='_compute_il_payment_amounts')
     il_net_amount_to_pay = fields.Monetary(
-        string='נטו לתשלום', compute='_compute_il_payment_amounts')
+        string='יתרת נטו לתשלום', compute='_compute_il_payment_amounts')
     il_overpayment_balance = fields.Monetary(
         string='יתרת תשלום יתר', compute='_compute_il_payment_amounts')
     il_payment_count = fields.Integer(
