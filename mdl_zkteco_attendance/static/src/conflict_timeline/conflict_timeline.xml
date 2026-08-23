@@ -69,12 +69,12 @@
                 <path t-att-d="geometry.path"
                       fill="none"
                       t-att-stroke="`url(#mdl_gradient_${props.connection.id})`"
-                      stroke-width="1.8"
+                      stroke-width="2"
                       stroke-linecap="round"/>
                 <circle t-att-cx="geometry.x1" t-att-cy="geometry.y1"
-                        r="2.5" t-att-fill="props.connection.fromColor"/>
+                        r="3" t-att-fill="props.connection.fromColor"/>
                 <circle t-att-cx="geometry.x2" t-att-cy="geometry.y2"
-                        r="2.5" t-att-fill="props.connection.toColor"/>
+                        r="3" t-att-fill="props.connection.toColor"/>
             </svg>
         </div>
     </t>

@@ -1,0 +1,17 @@
+# AI & ASSISTANT
+
+.agents/
+.claude/settings.local.json
+.codex/
+
+
+# PERSONAL
+
+.claude/instructions/claude-personal.md
+
+# API KEYS / CREDENTIALS / SECRETS
+
+#Those are'nt real files, just saving for later.
+.env 
+.env.local
+.env.*.local

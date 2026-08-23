@@ -8,6 +8,10 @@ class AttendanceDeviceEmployee(models.Model):
     _order = "device_id, device_user_id, id"
     _check_company_auto = True
 
+    def _default_device_name_lang_id(self):
+        language = self.env["res.lang"]._lang_get(self.env.lang)
+        return language or self.env["res.lang"].search([], limit=1)
+
     employee_id = fields.Many2one(
         "hr.employee", string="עובד", ondelete="set null", index=True, check_company=True,
     )
@@ -17,7 +21,14 @@ class AttendanceDeviceEmployee(models.Model):
     )
     company_id = fields.Many2one(related="device_id.company_id", store=True, index=True)
     device_user_id = fields.Char(string="מזהה בשעון", required=True, readonly=True, copy=False, index=True)
-    device_name = fields.Char(string="שם בכרטיס")
+    device_name = fields.Char(string="שם בכרטיס", translate=True)
+    device_name_lang_id = fields.Many2one(
+        "res.lang",
+        string="שפת השם בשעון",
+        required=True,
+        default=_default_device_name_lang_id,
+        domain=[("active", "=", True)],
+    )
     profile_photo = fields.Image(string="תמונת פרופיל", max_width=1920, max_height=1920)
     device_privilege = fields.Selection(
         [("0", "משתמש רגיל"), ("14", "מנהל מערכת")],
@@ -156,6 +167,10 @@ class AttendanceDeviceEmployee(models.Model):
             if not vals.get("device_user_id"):
                 vals["device_user_id"] = self._allocate_user_id(device)
             if vals.get("employee_id"):
+                employee = self.env["hr.employee"].browse(vals["employee_id"]).exists()
+                if employee:
+                    vals.setdefault("device_name", employee.name)
+                    vals.setdefault("profile_photo", employee.image_1920)
                 vals["link_state"] = "linked"
         cards = super().create(vals_list)
         if not self.env.context.get("attendance_device_discovery"):
@@ -180,6 +195,30 @@ class AttendanceDeviceEmployee(models.Model):
     def _onchange_device_id_allocate_user_id(self):
         if self.device_id and not self._origin.id:
             self.device_user_id = self._allocate_user_id(self.device_id)
+
+    @api.onchange("employee_id")
+    def _onchange_employee_id_set_card_identity(self):
+        if not self._origin.id:
+            self.device_name = self.employee_id.name if self.employee_id else False
+            self.profile_photo = self.employee_id.image_1920 if self.employee_id else False
+
+    def get_device_name_language_code(self):
+        self.ensure_one()
+        language = self.device_name_lang_id or self.env["res.lang"]._lang_get(self.env.lang)
+        return language.code
+
+    def set_device_name_language_code(self, lang_code):
+        self.ensure_one()
+        language = self.env["res.lang"]._lang_get(lang_code)
+        if not language:
+            raise ValidationError(_("השפה שנבחרה אינה פעילה במערכת."))
+        self.write({"device_name_lang_id": language.id})
+        return True
+
+    def _device_name_for_clock(self):
+        self.ensure_one()
+        language_code = self.get_device_name_language_code()
+        return self.with_context(lang=language_code).device_name
 
     def write(self, vals):
         employee_changed = "employee_id" in vals
