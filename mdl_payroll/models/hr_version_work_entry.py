@@ -16,6 +16,9 @@ class HrVersion(models.Model):
     _inherit = 'hr.version'
 
     def _get_work_entries_values(self, date_start, date_stop):
+        if self.env.context.get('install_demo'):
+            return super()._get_work_entries_values(date_start, date_stop)
+
         vals_list = super()._get_work_entries_values(date_start, date_stop)
         mdl_versions = self.sudo().filtered(
             lambda v: v.work_entry_source == 'attendance' and v.resource_calendar_id)
