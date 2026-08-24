@@ -24,6 +24,8 @@ WHITE_WING_TEMPLATE_COUNTS = {
     '1201 - כנף לדלת ממ"ד לבן — פתיחה רגילה': 22,
     '1201 - כנף לדלת ממ"ד לבן — הזזה': 16,
 }
+ALUMINUM_WINDOW_GROUP = "41 - חלון אלומיניום"
+ALUMINUM_WINDOW_KEY = "41 - חלון אלומיניום"
 TOKEN_RE = re.compile(r"\[([^\[\]]+)\]")
 DIRECTION_MARKER_RE = re.compile(
     r"(?<![A-Za-z])([LRD])(?![A-Za-z])", re.IGNORECASE
@@ -34,6 +36,11 @@ BASE_NAME_TOKENS = {"שם קבוצת פריטים", "קבוצת פריטים", "
 
 def clean(value):
     return " ".join(str(value or "").split())
+
+
+def name_separator(value):
+    separator = str(value or "")
+    return separator if separator.strip() else " "
 
 
 def normalize_token(value):
@@ -253,7 +260,7 @@ def validate_rendered_output(data):
                     last_had_text = True
                 else:
                     last_had_text = False
-                previous_suffix = rule["suffix"]
+                previous_suffix = name_separator(rule["suffix"])
             terminal_text = final_suffix
             if not terminal_text and last_had_text:
                 terminal_text = previous_suffix
@@ -330,6 +337,36 @@ def validate_white_mamad_wings(data):
             fail(f"Wrong wing axes in {key}")
 
 
+def validate_aluminum_windows(data):
+    templates = [
+        item
+        for item in data["templates"]
+        if item["group_key"] == ALUMINUM_WINDOW_GROUP
+    ]
+    if len(templates) != 1 or templates[0]["key"] != ALUMINUM_WINDOW_KEY:
+        fail("Aluminium windows should use one logical template")
+    template = templates[0]
+    if template["name"] != "חלון אלומיניום":
+        fail("The aluminium-window template name contains a technical explanation")
+    if [line["attribute_key"] for line in template["attribute_lines"]] != [
+        "רוחב חלון", "גובה חלון", "גוון", "חברה"
+    ]:
+        fail("Wrong aluminium-window variant axes")
+    if len(template["variants"]) != 112:
+        fail("The aluminium-window template should contain 112 variants")
+    if not template["exclusions_exact"]:
+        fail("Native pair exclusions must exactly describe aluminium windows")
+    forbidden = {
+        (pair["value_key"], pair["excluded_value_key"])
+        for pair in template["forbidden_pairs"]
+    }
+    if (
+        "10 - 100 | רוחב חלון",
+        "08 - 80 | גובה חלון",
+    ) not in forbidden:
+        fail("The impossible 100x80 window size is not excluded")
+
+
 def validate_source_workbook(data, workbook_path):
     try:
         from openpyxl import load_workbook
@@ -392,6 +429,7 @@ def main():
     validate_rendered_output(data)
     validate_filters(data)
     validate_white_mamad_wings(data)
+    validate_aluminum_windows(data)
     validate_idempotency(args.json_path)
     if args.workbook:
         validate_source_workbook(data, args.workbook)
@@ -407,6 +445,8 @@ def main():
                 "filter_variants": 18,
                 "white_mamad_wing_templates": 2,
                 "white_mamad_wing_variants": 38,
+                "aluminum_window_templates": 1,
+                "aluminum_window_variants": 112,
             },
             ensure_ascii=False,
         )

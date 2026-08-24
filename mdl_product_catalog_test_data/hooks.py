@@ -193,12 +193,9 @@ def _validate_and_register_variants(env, template, template_data, values):
             "נתוני הבדיקה אינם מייצרים את כל השילובים בדגם "
             f"{template_data['key']}: חסרים {len(missing)} שילובים."
         )
-    # Keep the model in one native Odoo template and archive combinations that
-    # were not present in MasterProducts.  We intentionally do not create
-    # ``Exclude For`` records: they are not part of the requested workflow and
-    # can over-restrict legacy catalogs whose rules depend on three or more
-    # values.  Archived variants remain visible to Odoo's configurator as
-    # unavailable combinations while all attribute editing stays native.
+    # Standard Odoo exclusions cover every pairwise rule.  If a legacy rule
+    # depends on three or more values, archive only the remaining exact
+    # combinations that cannot be expressed by ``Exclude for``.
     extra_products = env["product.product"].browse(
         [
             actual_by_tuple[value_tuple].id
@@ -247,6 +244,31 @@ def _validate_and_register_variants(env, template, template_data, values):
             product.with_context(skip_mdl_catalog_sync=True).write(
                 technical_values
             )
+
+
+def _create_standard_exclusions(env, template, template_data, values):
+    """Create Odoo's native ``Exclude for`` rules from safe value pairs."""
+    if not template_data.get("forbidden_pairs"):
+        return
+    template_values = {
+        value.product_attribute_value_id.id: value
+        for value in template.attribute_line_ids.product_template_value_ids
+    }
+    excluded_by_value = {}
+    for pair in template_data["forbidden_pairs"]:
+        source = template_values[values[pair["value_key"]].id]
+        excluded = template_values[values[pair["excluded_value_key"]].id]
+        excluded_by_value.setdefault(source.id, set()).add(excluded.id)
+    env["product.template.attribute.exclusion"].create(
+        [
+            {
+                "product_template_attribute_value_id": source_id,
+                "product_tmpl_id": template.id,
+                "value_ids": [Command.set(sorted(excluded_ids))],
+            }
+            for source_id, excluded_ids in excluded_by_value.items()
+        ]
+    )
 
 
 def _create_templates(env, data, categories, attributes, values):
@@ -345,6 +367,7 @@ def _create_templates(env, data, categories, attributes, values):
                     template_value.mdl_sku_component_override = value_data[
                         "sku_override"
                     ]
+        _create_standard_exclusions(env, template, item, values)
         _register_xmlid(env, "template", item["key"], template)
         _validate_and_register_variants(env, template, item, values)
         templates.append(template)

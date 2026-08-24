@@ -88,6 +88,16 @@ class TestProductCatalog(TransactionCase):
             "דלת כנף 80/100 +ידית",
         )
 
+    def test_empty_text_after_adds_a_natural_space(self):
+        template = self._create_template()
+        width_line = template.attribute_line_ids.filtered(
+            lambda line: line.attribute_id == self.width
+        )
+        width_line.mdl_name_suffix = False
+        names = set(template.product_variant_ids.mapped("mdl_generated_name"))
+        self.assertIn("דלת כנף 80 100 +ידית", names)
+        self.assertIn("דלת כנף 90 100 +ידית", names)
+
     def test_final_product_display_and_search(self):
         template = self._create_template()
         product = template.product_variant_ids.filtered(

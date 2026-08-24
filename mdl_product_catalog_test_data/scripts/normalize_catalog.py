@@ -88,6 +88,21 @@ FILTER_TARGET_SPECS = (
 )
 FILTER_FORMAT = "[שם קבוצת פריטים] [דגם] [קיבולת נפשות]"
 
+ALUMINUM_WINDOW_GROUP = "41 - חלון אלומיניום"
+ALUMINUM_WINDOW_TARGET_KEY = "41 - חלון אלומיניום"
+ALUMINUM_WINDOW_ATTRIBUTES = {
+    "רוחב חלון": 20,
+    "גובה חלון": 30,
+    "גוון": 40,
+    "חברה": 70,
+}
+NO_WINDOW_WIDTH_KEY = "— - ללא מידה | רוחב חלון"
+NO_WINDOW_HEIGHT_KEY = "— - ללא מידה | גובה חלון"
+GENERIC_COMPANY_KEY = "— - כללי | חברה"
+ALUMINUM_WINDOW_FORMAT = (
+    "[שם קבוצת פריטים] [דגם] [רוחב חלון]/[גובה חלון] [גוון] [חברה]"
+)
+
 STANDARD_WING_HEIGHT_KEY = "— - גובה רגיל | גובה כנף"
 SWING_WING_SOURCE_KEYS = {
     '1201 - כנף לדלת ממ"ד לבן — +ידית',
@@ -858,6 +873,129 @@ def consolidate_windows(data):
     ]
 
 
+def merge_aluminum_windows(data):
+    """Keep every aluminium-window SKU under one logical Odoo template."""
+    source_templates = [
+        item
+        for item in data["templates"]
+        if item["group_key"] == ALUMINUM_WINDOW_GROUP
+    ]
+    if len(source_templates) <= 1:
+        return
+
+    values = {item["key"]: item for item in data["values"]}
+    technical_values = (
+        {
+            "key": NO_WINDOW_WIDTH_KEY,
+            "attribute_key": "רוחב חלון",
+            "name": "ללא מידה",
+            "name_component": "ללא מידה",
+            "sku_component": "",
+        },
+        {
+            "key": NO_WINDOW_HEIGHT_KEY,
+            "attribute_key": "גובה חלון",
+            "name": "ללא מידה",
+            "name_component": "ללא מידה",
+            "sku_component": "",
+        },
+        {
+            "key": GENERIC_COMPANY_KEY,
+            "attribute_key": "חברה",
+            "name": "כללי",
+            "name_component": "כללי",
+            "sku_component": "",
+        },
+    )
+    next_sequence = max(item["sequence"] for item in data["values"]) + 10
+    for value_data in technical_values:
+        if value_data["key"] in values:
+            continue
+        value_data = {**value_data, "sequence": next_sequence}
+        next_sequence += 10
+        data["values"].append(value_data)
+        values[value_data["key"]] = value_data
+
+    values_by_attribute = {
+        key: {} for key in ALUMINUM_WINDOW_ATTRIBUTES
+    }
+    variants = []
+    for source in source_templates:
+        for line in source["attribute_lines"]:
+            for value_data in line["values"]:
+                values_by_attribute[line["attribute_key"]].setdefault(
+                    value_data["value_key"], deepcopy(value_data)
+                )
+        for variant in source["variants"]:
+            updated = deepcopy(variant)
+            selected = {
+                key.split(" | ")[-1]: key for key in updated["value_keys"]
+            }
+            selected.setdefault("רוחב חלון", NO_WINDOW_WIDTH_KEY)
+            selected.setdefault("גובה חלון", NO_WINDOW_HEIGHT_KEY)
+            selected.setdefault("חברה", GENERIC_COMPANY_KEY)
+            updated["value_keys"] = [
+                selected[attribute_key]
+                for attribute_key in ALUMINUM_WINDOW_ATTRIBUTES
+            ]
+            variants.append(updated)
+
+    for attribute_key, value_key in (
+        ("רוחב חלון", NO_WINDOW_WIDTH_KEY),
+        ("גובה חלון", NO_WINDOW_HEIGHT_KEY),
+        ("חברה", GENERIC_COMPANY_KEY),
+    ):
+        values_by_attribute[attribute_key].setdefault(
+            value_key,
+            {
+                "value_key": value_key,
+                "name_override": "—",
+                "sku_override": "—",
+            },
+        )
+
+    target = source_templates[0]
+    target.update(
+        {
+            "key": ALUMINUM_WINDOW_TARGET_KEY,
+            "source_model_lookup": "4100 - חלון אלומיניום",
+            "model_code": "",
+            "name": "חלון אלומיניום",
+            "model_name_component": "",
+            "suppress_model_name": True,
+            "name_format": ALUMINUM_WINDOW_FORMAT,
+            "variants": sorted(
+                variants, key=lambda item: (item["source_row"], item["sku"])
+            ),
+        }
+    )
+    target["attribute_lines"] = []
+    for attribute_key, sequence in ALUMINUM_WINDOW_ATTRIBUTES.items():
+        line_values = list(values_by_attribute[attribute_key].values())
+        line_values.sort(
+            key=lambda item: (
+                values[item["value_key"]]["sequence"], item["value_key"]
+            )
+        )
+        target["attribute_lines"].append(
+            {
+                "attribute_key": attribute_key,
+                "sequence": sequence,
+                "values": line_values,
+            }
+        )
+    if len({item["sku"] for item in variants}) != len(variants):
+        raise RuntimeError("Duplicate SKU after merging aluminium windows")
+    if len({tuple(item["value_keys"]) for item in variants}) != len(variants):
+        raise RuntimeError("Duplicate combination after merging aluminium windows")
+    recompute_pairs(target)
+
+    source_keys = {item["key"] for item in source_templates[1:]}
+    data["templates"] = [
+        item for item in data["templates"] if item["key"] not in source_keys
+    ]
+
+
 def refresh_metadata(data):
     skus = [
         variant["sku"]
@@ -922,6 +1060,7 @@ def main():
     normalize_filter_model_labels(data)
     split_filter_systems(data)
     consolidate_windows(data)
+    merge_aluminum_windows(data)
     merge_white_mamad_wings(data)
     for template in data["templates"]:
         recompute_pairs(template)

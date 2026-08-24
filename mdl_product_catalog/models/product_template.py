@@ -46,6 +46,12 @@ def _override_from_effective_value(default_value, effective_value):
     return effective_value or "—"
 
 
+def _name_separator(value):
+    """Return a natural separator between two displayed attribute values."""
+    separator = str(value or "")
+    return separator if separator.strip() else " "
+
+
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
@@ -493,7 +499,7 @@ class ProductTemplate(models.Model):
             # "טקסט אחרי" is the separator before the next row.  Deferring
             # it until the next non-empty value keeps optional values such as
             # "ללא הלבשה" from leaving a dangling '+' in the final name.
-            previous_line_suffix = line.mdl_name_suffix or ""
+            previous_line_suffix = _name_separator(line.mdl_name_suffix)
         terminal_text = self.mdl_name_suffix or ""
         if not terminal_text and last_line_had_text:
             # Backward compatibility for formats created before terminal text

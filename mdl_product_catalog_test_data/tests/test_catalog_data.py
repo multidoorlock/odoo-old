@@ -87,6 +87,46 @@ class TestGeneratedCatalog(TransactionCase):
                 expected_count,
             )
 
+    def test_aluminum_windows_use_one_template_and_native_exclusions(self):
+        template = self.env.ref(
+            f"{MODULE}.{_xmlid_name('template', '41 - חלון אלומיניום')}"
+        )
+        self.assertEqual(template.name, "חלון אלומיניום")
+        self.assertNotIn("בסיס", template.name)
+        self.assertNotIn("לפי", template.name)
+        self.assertEqual(
+            [
+                line.attribute_id.name
+                for line in template.attribute_line_ids.sorted(
+                    lambda line: (line.sequence, line.id)
+                )
+            ],
+            ["רוחב חלון", "גובה חלון", "גוון", "חברה"],
+        )
+        self.assertEqual(
+            len(template.product_variant_ids.filtered("active")),
+            112,
+        )
+
+        template_values = template.attribute_line_ids.product_template_value_ids
+        width_100 = template_values.filtered(
+            lambda value: value.attribute_id.name == "רוחב חלון"
+            and value.product_attribute_value_id.name == "100"
+        )
+        height_80 = template_values.filtered(
+            lambda value: value.attribute_id.name == "גובה חלון"
+            and value.product_attribute_value_id.name == "80"
+        )
+        self.assertEqual(len(width_100), 1)
+        self.assertEqual(len(height_80), 1)
+        excluded_values = width_100.exclude_for.filtered(
+            lambda rule: rule.product_tmpl_id == template
+        ).value_ids
+        self.assertIn(height_80, excluded_values)
+        self.assertFalse(
+            template._is_combination_possible_by_config(width_100 | height_80)
+        )
+
     def test_master_product_categories_have_no_test_parent(self):
         category_xmlids = self.env["ir.model.data"].search(
             [("module", "=", MODULE), ("model", "=", "product.category")]
