@@ -53,13 +53,24 @@ class ProductTemplateAttributeValue(models.Model):
     )
     mdl_excluded_value_ids = fields.Many2many(
         comodel_name="product.template.attribute.value",
+        relation="mdl_ptav_excluded_value_rel",
+        column1="source_ptav_id",
+        column2="excluded_ptav_id",
         string="לא תואם עם",
         compute="_compute_mdl_excluded_value_ids",
         inverse="_inverse_mdl_excluded_value_ids",
+        store=True,
         help=(
             "ערכים בדגם שלא ניתן לבחור יחד עם הערך הזה. "
             "הכלל נשמר במנגנון התאימות הרגיל של Odoo."
         ),
+    )
+    mdl_attribute_group_label = fields.Char(
+        string="מאפיין",
+        compute="_compute_mdl_attribute_group",
+    )
+    mdl_is_attribute_group_start = fields.Boolean(
+        compute="_compute_mdl_attribute_group",
     )
 
     @staticmethod
@@ -163,6 +174,22 @@ class ProductTemplateAttributeValue(models.Model):
     def _compute_mdl_excluded_value_ids(self):
         for value in self:
             value.mdl_excluded_value_ids = value._mdl_local_excluded_values()
+
+    @api.depends(
+        "attribute_id.name",
+        "attribute_line_id.product_template_value_ids",
+    )
+    def _compute_mdl_attribute_group(self):
+        for value in self:
+            line_values = value.attribute_line_id.product_template_value_ids
+            first_value = line_values.sorted(
+                lambda item: (item.product_attribute_value_id.id, item.id)
+            )[:1]
+            is_first = value == first_value
+            value.mdl_is_attribute_group_start = is_first
+            value.mdl_attribute_group_label = (
+                value.attribute_id.display_name if is_first else False
+            )
 
     def _inverse_mdl_excluded_value_ids(self):
         Exclusion = self.env["product.template.attribute.exclusion"]
