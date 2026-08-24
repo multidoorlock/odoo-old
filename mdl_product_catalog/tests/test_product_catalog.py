@@ -237,6 +237,44 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(product.default_code, "100180100")
         self.assertEqual(product.mdl_generated_name, "דלת כנף 80/100 +ידית")
 
+    def test_inline_incompatible_values_manage_native_exclusions(self):
+        template = self._create_template()
+        width_value = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.width_80
+        )
+        height_value = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.height_100
+        )
+
+        width_value.write(
+            {"mdl_excluded_value_ids": [Command.set(height_value.ids)]}
+        )
+        template.mdl_attribute_value_ids.invalidate_recordset(
+            ["mdl_excluded_value_ids"]
+        )
+        self.assertIn(height_value, width_value.mdl_excluded_value_ids)
+        self.assertIn(width_value, height_value.mdl_excluded_value_ids)
+        native_rule = self.env[
+            "product.template.attribute.exclusion"
+        ].search(
+            [
+                ("product_template_attribute_value_id", "=", width_value.id),
+                ("product_tmpl_id", "=", template.id),
+                ("value_ids", "in", height_value.ids),
+            ]
+        )
+        self.assertTrue(native_rule)
+        self.assertEqual(len(template.product_variant_ids), 1)
+
+        width_value.write({"mdl_excluded_value_ids": [Command.clear()]})
+        template.mdl_attribute_value_ids.invalidate_recordset(
+            ["mdl_excluded_value_ids"]
+        )
+        self.assertNotIn(height_value, width_value.mdl_excluded_value_ids)
+        self.assertNotIn(width_value, height_value.mdl_excluded_value_ids)
+        self.assertFalse(native_rule.exists())
+        self.assertEqual(len(template.product_variant_ids), 2)
+
     def test_base_defaults_and_overrides_drive_the_result(self):
         template = self._create_template()
         self.assertEqual(template.mdl_group_name_value, "דלת")
