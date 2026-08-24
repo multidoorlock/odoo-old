@@ -46,7 +46,7 @@ class TestProductCatalog(TransactionCase):
                 "name": "כנף",
                 "categ_id": self.category.id,
                 "mdl_model_sku_component": "01",
-                "mdl_name_suffix": "+ידית",
+                "mdl_name_suffix": " +ידית",
                 "attribute_line_ids": [
                     Command.create(
                         {

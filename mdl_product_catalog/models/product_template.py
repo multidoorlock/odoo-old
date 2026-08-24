@@ -494,13 +494,13 @@ class ProductTemplate(models.Model):
             # it until the next non-empty value keeps optional values such as
             # "ללא הלבשה" from leaving a dangling '+' in the final name.
             previous_line_suffix = line.mdl_name_suffix or ""
-        terminal_text = clean_text(self.mdl_name_suffix)
+        terminal_text = self.mdl_name_suffix or ""
         if not terminal_text and last_line_had_text:
             # Backward compatibility for formats created before terminal text
             # was stored on the template itself.
             terminal_text = previous_line_suffix
         if terminal_text:
-            final_name += f" {terminal_text}" if not terminal_text.startswith(" ") else terminal_text
+            final_name += terminal_text
         if deferred_name_markers:
             final_name += " " + " ".join(deferred_name_markers)
         return "".join(sku_parts), clean_text(final_name), missing_components
