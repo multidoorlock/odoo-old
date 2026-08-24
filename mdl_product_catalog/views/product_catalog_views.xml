@@ -48,6 +48,42 @@
         </field>
     </record>
 
+    <record id="mdl_product_template_attribute_value_list_view" model="ir.ui.view">
+        <field name="name">product.template.attribute.value.list.mdl.catalog</field>
+        <field name="model">product.template.attribute.value</field>
+        <field name="inherit_id" ref="product.product_template_attribute_value_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="editable">bottom</attribute>
+            </xpath>
+            <field name="name" position="attributes">
+                <attribute name="string">ערך המאפיין</attribute>
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="name" position="after">
+                <field name="mdl_name_component_override" column_invisible="True"/>
+                <field name="mdl_sku_component_override" column_invisible="True"/>
+                <field name="mdl_name_component_value" string="טקסט בדגם"/>
+                <field name="mdl_sku_component_value" string="מק״ט בדגם"/>
+                <button name="action_mdl_reset_components"
+                        type="object"
+                        string="אפס למקור"
+                        icon="fa-undo"
+                        class="btn-secondary"
+                        invisible="not mdl_name_component_override and not mdl_sku_component_override"/>
+            </field>
+            <field name="html_color" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </field>
+            <field name="image" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </field>
+            <field name="price_extra" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </field>
+        </field>
+    </record>
+
     <record id="mdl_product_template_form_view" model="ir.ui.view">
         <field name="name">product.template.form.mdl.native.catalog</field>
         <field name="model">product.template</field>
