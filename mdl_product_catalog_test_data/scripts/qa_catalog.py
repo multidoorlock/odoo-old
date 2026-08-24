@@ -14,7 +14,16 @@ from pathlib import Path
 
 
 FILTER_GROUP = "40 - מערכת סינון"
-FILTER_ATTRIBUTES = ["קיבולת נפשות", "חברה", "דגם מערכת סינון"]
+FILTER_TEMPLATE_COUNTS = {
+    "40 - מערכת סינון — רב בריח — לביא PRO": 1,
+    "40 - מערכת סינון — רב בריח — כפיר+": 11,
+    "40 - מערכת סינון — בית אל — Rainbow": 1,
+    "40 - מערכת סינון — בית אל — Hidden": 5,
+}
+WHITE_WING_TEMPLATE_COUNTS = {
+    '1201 - כנף לדלת ממ"ד לבן — פתיחה רגילה': 22,
+    '1201 - כנף לדלת ממ"ד לבן — הזזה': 16,
+}
 TOKEN_RE = re.compile(r"\[([^\[\]]+)\]")
 DIRECTION_MARKER_RE = re.compile(
     r"(?<![A-Za-z])([LRD])(?![A-Za-z])", re.IGNORECASE
@@ -267,24 +276,33 @@ def validate_rendered_output(data):
 
 
 def validate_filters(data):
-    templates = [
-        item for item in data["templates"] if item["group_key"] == FILTER_GROUP
-    ]
-    if len(templates) != 1:
-        fail(f"Expected one filter template, found {len(templates)}")
-    template = templates[0]
-    if template["name"] != "מערכת סינון":
-        fail("The filter template name is not concise")
-    if [line["attribute_key"] for line in template["attribute_lines"]] != FILTER_ATTRIBUTES:
-        fail("The filter template does not use the three expected variant axes")
-    if template["cartesian_count"] != 120:
-        fail("The filter template should generate 120 mathematical combinations")
-    if len(template["variants"]) != 18:
-        fail("The filter template should keep exactly 18 active source variants")
-    if template["allowed_count_after_exclusions"] != 18:
-        fail("The filter template's allowed source count should be 18")
-    forbidden_name_fragments = ("למרחב מוגן", "לממ\"מ", "בהתקנה")
-    for variant in template["variants"]:
+    templates = {
+        item["key"]: item
+        for item in data["templates"]
+        if item["group_key"] == FILTER_GROUP
+    }
+    if set(templates) != set(FILTER_TEMPLATE_COUNTS):
+        fail(
+            f"Expected four logical filter templates, found {sorted(templates)}"
+        )
+
+    all_variants = []
+    for key, expected_count in FILTER_TEMPLATE_COUNTS.items():
+        template = templates[key]
+        if [line["attribute_key"] for line in template["attribute_lines"]] != [
+            "קיבולת נפשות"
+        ]:
+            fail(f"{key} should use capacity as its only variant axis")
+        if template["cartesian_count"] != expected_count:
+            fail(f"Wrong Cartesian count in {key}")
+        if len(template["variants"]) != expected_count:
+            fail(f"Wrong active variant count in {key}")
+        all_variants.extend(template["variants"])
+
+    if len(all_variants) != 18:
+        fail("The four filter templates should contain exactly 18 variants")
+    forbidden_name_fragments = ("למרחב מוגן", 'לממ"מ', "בהתקנה")
+    for variant in all_variants:
         if any(part in variant["name"] for part in forbidden_name_fragments):
             fail(f"A technical description remains in {variant['sku']}")
         if variant["sku"] not in {"400601", "400609"}:
@@ -292,6 +310,24 @@ def validate_filters(data):
                 fail(f"Protected area is missing from {variant['sku']}")
             if variant.get("installation_type") != "overhead":
                 fail(f"Installation type is missing from {variant['sku']}")
+
+
+def validate_white_mamad_wings(data):
+    templates = {
+        item["key"]: item
+        for item in data["templates"]
+        if item["key"] in WHITE_WING_TEMPLATE_COUNTS
+    }
+    if set(templates) != set(WHITE_WING_TEMPLATE_COUNTS):
+        fail("The white MAMAD wings should use exactly two logical templates")
+    for key, expected_count in WHITE_WING_TEMPLATE_COUNTS.items():
+        template = templates[key]
+        if len(template["variants"]) != expected_count:
+            fail(f"Wrong wing variant count in {key}")
+        if [line["attribute_key"] for line in template["attribute_lines"]] != [
+            "צורת פתיחה לדלת", "פתח אור לדלת", "גובה כנף"
+        ]:
+            fail(f"Wrong wing axes in {key}")
 
 
 def validate_source_workbook(data, workbook_path):
@@ -355,6 +391,7 @@ def main():
     skus = validate_references(data)
     validate_rendered_output(data)
     validate_filters(data)
+    validate_white_mamad_wings(data)
     validate_idempotency(args.json_path)
     if args.workbook:
         validate_source_workbook(data, args.workbook)
@@ -366,8 +403,10 @@ def main():
                 "templates": len(data["templates"]),
                 "attributes": len(data["attributes"]),
                 "values": len(data["values"]),
-                "filter_templates": 1,
+                "filter_templates": 4,
                 "filter_variants": 18,
+                "white_mamad_wing_templates": 2,
+                "white_mamad_wing_variants": 38,
             },
             ensure_ascii=False,
         )
