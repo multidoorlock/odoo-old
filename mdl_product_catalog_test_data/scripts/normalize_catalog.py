@@ -56,10 +56,51 @@ FILTER_MODEL_ATTRIBUTE = "דגם מערכת סינון"
 FILTER_CAPACITY_ATTRIBUTE = "קיבולת נפשות"
 FILTER_GROUP = "40 - מערכת סינון"
 FILTER_TEMPLATE_KEY = "40 - מערכת סינון"
-FILTER_FORMAT = (
-    "[שם קבוצת פריטים] [דגם] [קיבולת נפשות] "
-    "[חברה] [דגם מערכת סינון]"
+FILTER_TARGET_SPECS = (
+    {
+        "company_key": "01 - רב בריח | חברה",
+        "model_key": "— - לביא PRO | דגם מערכת סינון",
+        "company_name": "רב בריח",
+        "model_name": "לביא PRO",
+        "company_code": "01",
+    },
+    {
+        "company_key": "01 - רב בריח | חברה",
+        "model_key": "— - כפיר+ | דגם מערכת סינון",
+        "company_name": "רב בריח",
+        "model_name": "כפיר+",
+        "company_code": "01",
+    },
+    {
+        "company_key": "09 - בית אל | חברה",
+        "model_key": "— - Rainbow | דגם מערכת סינון",
+        "company_name": "בית אל",
+        "model_name": "Rainbow",
+        "company_code": "09",
+    },
+    {
+        "company_key": "09 - בית אל | חברה",
+        "model_key": "— - Hidden | דגם מערכת סינון",
+        "company_name": "בית אל",
+        "model_name": "Hidden",
+        "company_code": "09",
+    },
 )
+FILTER_FORMAT = "[שם קבוצת פריטים] [דגם] [קיבולת נפשות]"
+
+STANDARD_WING_HEIGHT_KEY = "— - גובה רגיל | גובה כנף"
+SWING_WING_SOURCE_KEYS = {
+    '1201 - כנף לדלת ממ"ד לבן — +ידית',
+    '1201 - כנף לדלת ממ"ד לבן — +ידית, גובה משתנה, מקוצר',
+    '1201 - כנף לדלת ממ"ד לבן — +ידית, גובה משתנה',
+}
+SLIDING_WING_SOURCE_KEYS = {
+    '1201 - כנף לדלת ממ"ד לבן — כולל מנגנון',
+    '1201 - כנף לדלת ממ"ד לבן — כולל מנגנון, גובה משתנה, מקוצר',
+    '1201 - כנף לדלת ממ"ד לבן — כולל מנגנון, גובה משתנה',
+}
+SWING_WING_TARGET_KEY = '1201 - כנף לדלת ממ"ד לבן — פתיחה רגילה'
+SLIDING_WING_TARGET_KEY = '1201 - כנף לדלת ממ"ד לבן — הזזה'
 RAV_BARIACH_KEY = "01 - רב בריח | חברה"
 BEIT_EL_KEY = "09 - בית אל | חברה"
 FILTER_MODEL_MAPPING = {
@@ -403,154 +444,269 @@ def _filter_area(source_name):
     return float(match.group(1)) if match else None
 
 
-def consolidate_filter_systems(data):
-    """Keep all filter systems under one template and archive invalid variants.
+def split_filter_systems(data):
+    """Create one Odoo template for each manufacturer/model combination.
 
-    Capacity, manufacturer and system model are the commercial choices. The
-    protected area and installation method describe the final variant and do
-    not generate further combinations.
+    Capacity remains the only variant axis. The company code stays at the end
+    of the historical SKU through a model-specific capacity override.
     """
+    target_keys = {
+        f"{FILTER_GROUP} — {spec['company_name']} — {spec['model_name']}"
+        for spec in FILTER_TARGET_SPECS
+    }
     source_templates = [
         item for item in data["templates"] if item["group_key"] == FILTER_GROUP
     ]
-    if not source_templates:
+    if {item["key"] for item in source_templates} == target_keys:
         return
-    if (
-        len(source_templates) == 1
-        and source_templates[0]["key"] == FILTER_TEMPLATE_KEY
-        and any(
-            line["attribute_key"] == FILTER_CAPACITY_ATTRIBUTE
-            for line in source_templates[0]["attribute_lines"]
-        )
-    ):
-        return
-
-    if not any(
-        item["key"] == FILTER_CAPACITY_ATTRIBUTE for item in data["attributes"]
-    ):
-        data["attributes"].append(
-            {
-                "key": FILTER_CAPACITY_ATTRIBUTE,
-                "name": FILTER_CAPACITY_ATTRIBUTE,
-                "sequence": 60,
-                "display_type": "select",
-            }
+    if len(source_templates) != 1:
+        raise RuntimeError(
+            f"Expected one consolidated filter template, got {len(source_templates)}"
         )
 
-    global_values = {item["key"]: item for item in data["values"]}
-    capacity_values = {}
-    company_values = {}
-    model_values = {}
-    variants = []
-    for source in source_templates:
-        capacity_code = str(source["model_code"])
-        capacity_key = _filter_capacity_key(capacity_code)
-        if capacity_key not in global_values:
-            capacity_value = {
-                "key": capacity_key,
-                "attribute_key": FILTER_CAPACITY_ATTRIBUTE,
-                "name": f"{int(capacity_code)} נפשות",
-                "name_component": f"{int(capacity_code)} נפשות",
-                "sku_component": capacity_code,
-                "sequence": int(capacity_code),
-            }
-            data["values"].append(capacity_value)
-            global_values[capacity_key] = capacity_value
-        capacity_values[capacity_key] = {"value_key": capacity_key}
-
-        source_lines = {
-            line["attribute_key"]: line for line in source["attribute_lines"]
-        }
-        for value_data in source_lines["חברה"]["values"]:
-            company_values.setdefault(
-                value_data["value_key"], deepcopy(value_data)
-            )
-        for value_data in source_lines[FILTER_MODEL_ATTRIBUTE]["values"]:
-            model_values.setdefault(
-                value_data["value_key"], deepcopy(value_data)
-            )
-
-        area = _filter_area(source["model_name_component"])
-        installation_type = (
-            "overhead"
-            if "התקנה עילית" in clean(source["model_name_component"])
-            else None
-        )
+    source = source_templates[0]
+    values = {item["key"]: item for item in data["values"]}
+    targets = []
+    for spec in FILTER_TARGET_SPECS:
+        variants = []
         for variant in source["variants"]:
-            selected = {
-                key.split(" | ")[-1]: key for key in variant["value_keys"]
-            }
-            company_key = selected["חברה"]
-            model_key = selected[FILTER_MODEL_ATTRIBUTE]
+            if (
+                spec["company_key"] not in variant["value_keys"]
+                or spec["model_key"] not in variant["value_keys"]
+            ):
+                continue
             updated = deepcopy(variant)
-            updated["value_keys"] = [capacity_key, company_key, model_key]
+            capacity_key = next(
+                key
+                for key in updated["value_keys"]
+                if key.endswith(f"| {FILTER_CAPACITY_ATTRIBUTE}")
+            )
+            updated["value_keys"] = [capacity_key]
             updated["name"] = clean(
                 " ".join(
                     (
                         "מערכת סינון",
-                        global_values[capacity_key]["name_component"],
-                        global_values[company_key]["name_component"],
-                        global_values[model_key]["name_component"],
+                        spec["company_name"],
+                        spec["model_name"],
+                        values[capacity_key]["name_component"],
                     )
                 )
             )
-            if area is not None:
-                updated["max_protected_area_m2"] = area
-            if installation_type:
-                updated["installation_type"] = installation_type
+            variants.append(updated)
+        if not variants:
+            raise RuntimeError(
+                f"No filter variants for {spec['company_name']} {spec['model_name']}"
+            )
+
+        capacity_keys = sorted(
+            {variant["value_keys"][0] for variant in variants},
+            key=lambda key: values[key]["sequence"],
+        )
+        target = deepcopy(source)
+        target.update(
+            {
+                "key": (
+                    f"{FILTER_GROUP} — {spec['company_name']} — "
+                    f"{spec['model_name']}"
+                ),
+                "name": f"{spec['company_name']} {spec['model_name']}",
+                "model_code": "",
+                "group_name_component": "מערכת סינון",
+                "model_name_component": (
+                    f"{spec['company_name']} {spec['model_name']}"
+                ),
+                "suppress_model_name": False,
+                "name_format": FILTER_FORMAT,
+                "attribute_lines": [
+                    {
+                        "attribute_key": FILTER_CAPACITY_ATTRIBUTE,
+                        "sequence": 60,
+                        "values": [
+                            {
+                                "value_key": key,
+                                "sku_override": (
+                                    f"{values[key]['sku_component']}"
+                                    f"{spec['company_code']}"
+                                ),
+                            }
+                            for key in capacity_keys
+                        ],
+                    }
+                ],
+                "variants": sorted(
+                    variants, key=lambda item: (item["source_row"], item["sku"])
+                ),
+            }
+        )
+        recompute_pairs(target)
+        targets.append(target)
+
+    data["templates"] = [
+        item
+        for item in data["templates"]
+        if item["group_key"] != FILTER_GROUP
+    ] + targets
+
+    if not any(
+        line["attribute_key"] == FILTER_MODEL_ATTRIBUTE
+        for template in data["templates"]
+        for line in template["attribute_lines"]
+    ):
+        data["attributes"] = [
+            item for item in data["attributes"]
+            if item["key"] != FILTER_MODEL_ATTRIBUTE
+        ]
+        data["values"] = [
+            item for item in data["values"]
+            if item["attribute_key"] != FILTER_MODEL_ATTRIBUTE
+        ]
+
+
+def _merge_wing_family(data, source_keys, target_key, model_name, sliding):
+    source_templates = [
+        item for item in data["templates"] if item["key"] in source_keys
+    ]
+    if len(source_templates) != 3:
+        raise RuntimeError(
+            f"Expected three wing templates for {target_key}, "
+            f"got {len(source_templates)}"
+        )
+
+    values = {item["key"]: item for item in data["values"]}
+    attributes = ("צורת פתיחה לדלת", "פתח אור לדלת", "גובה כנף")
+    values_by_attribute = {key: {} for key in attributes}
+    variants = []
+    for source in source_templates:
+        source_lines = {
+            line["attribute_key"]: line for line in source["attribute_lines"]
+        }
+        for attribute_key in attributes[:2]:
+            for value_data in source_lines[attribute_key]["values"]:
+                values_by_attribute[attribute_key].setdefault(
+                    value_data["value_key"], deepcopy(value_data)
+                )
+        for value_data in source_lines.get("גובה כנף", {}).get("values", []):
+            values_by_attribute["גובה כנף"].setdefault(
+                value_data["value_key"], deepcopy(value_data)
+            )
+
+        for variant in source["variants"]:
+            updated = deepcopy(variant)
+            selected = {
+                key.split(" | ")[-1]: key for key in updated["value_keys"]
+            }
+            selected.setdefault("גובה כנף", STANDARD_WING_HEIGHT_KEY)
+            updated["value_keys"] = [
+                selected[attribute_key] for attribute_key in attributes
+            ]
             variants.append(updated)
 
-    target = source_templates[0]
+    values_by_attribute["גובה כנף"][STANDARD_WING_HEIGHT_KEY] = {
+        "value_key": STANDARD_WING_HEIGHT_KEY,
+        "name_override": "—",
+        "sku_override": "—",
+    }
+    for value_key, value_data in values_by_attribute["גובה כנף"].items():
+        value_name = values[value_key]["name"]
+        if value_name in {"200", "201", "202"}:
+            value_data["name_override"] = f"מקוצר {value_name}"
+
+    if sliding:
+        for value_key, value_data in values_by_attribute[
+            "צורת פתיחה לדלת"
+        ].items():
+            value_data["name_override"] = clean(
+                re.sub(r"^הזזה\s+", "", values[value_key]["name"])
+            )
+
+    target = deepcopy(source_templates[0])
     target.update(
         {
-            "key": FILTER_TEMPLATE_KEY,
-            "name": "מערכת סינון",
-            "model_code": "",
-            "model_name_component": "מערכת סינון",
-            "group_name_component": "מערכת סינון",
+            "key": target_key,
+            "name": model_name,
+            "model_code": "01",
+            "group_name_component": "כנף",
+            "model_name_component": model_name,
             "suppress_model_name": False,
-            "name_format": FILTER_FORMAT,
+            "name_format": (
+                '[שם קבוצת פריטים] [דגם] [צורת פתיחה לדלת] '
+                '[פתח אור לדלת] [גובה כנף] ***כולל מנגנון***'
+                if sliding
+                else '[שם קבוצת פריטים] [דגם] [צורת פתיחה לדלת] '
+                '[פתח אור לדלת] [גובה כנף] [+ידית]'
+            ),
             "attribute_lines": [
                 {
-                    "attribute_key": FILTER_CAPACITY_ATTRIBUTE,
-                    "sequence": 60,
+                    "attribute_key": attribute_key,
+                    "sequence": sequence,
                     "values": sorted(
-                        capacity_values.values(),
-                        key=lambda item: global_values[item["value_key"]]["sequence"],
+                        values_by_attribute[attribute_key].values(),
+                        key=lambda item: values[item["value_key"]]["sequence"],
                     ),
-                },
-                {
-                    "attribute_key": "חברה",
-                    "sequence": 70,
-                    "values": sorted(
-                        company_values.values(),
-                        key=lambda item: global_values[item["value_key"]]["sequence"],
-                    ),
-                },
-                {
-                    "attribute_key": FILTER_MODEL_ATTRIBUTE,
-                    "sequence": 80,
-                    "values": sorted(
-                        model_values.values(),
-                        key=lambda item: global_values[item["value_key"]]["sequence"],
-                    ),
-                },
+                }
+                for attribute_key, sequence in zip(attributes, (10, 20, 30))
             ],
             "variants": sorted(
                 variants, key=lambda item: (item["source_row"], item["sku"])
             ),
         }
     )
-    if len({item["sku"] for item in variants}) != len(variants):
-        raise RuntimeError("Duplicate filter-system SKU after consolidation")
-    if len({tuple(item["value_keys"]) for item in variants}) != len(variants):
-        raise RuntimeError("Duplicate filter-system combination after consolidation")
     recompute_pairs(target)
-    data["templates"] = [
-        item
-        for item in data["templates"]
-        if item is target or item["group_key"] != FILTER_GROUP
-    ]
+    return target
+
+
+def merge_white_mamad_wings(data):
+    """Represent the white MAMAD wing as two logical products, not six."""
+    existing_keys = {item["key"] for item in data["templates"]}
+    if {
+        SWING_WING_TARGET_KEY,
+        SLIDING_WING_TARGET_KEY,
+    }.issubset(existing_keys):
+        return
+    if not SWING_WING_SOURCE_KEYS.issubset(existing_keys):
+        raise RuntimeError("The regular white-MAMAD wing templates are incomplete")
+    if not SLIDING_WING_SOURCE_KEYS.issubset(existing_keys):
+        raise RuntimeError("The sliding white-MAMAD wing templates are incomplete")
+
+    if not any(
+        item["key"] == STANDARD_WING_HEIGHT_KEY for item in data["values"]
+    ):
+        data["values"].append(
+            {
+                "key": STANDARD_WING_HEIGHT_KEY,
+                "attribute_key": "גובה כנף",
+                "name": "גובה רגיל",
+                "name_component": "",
+                "sku_component": "",
+                "sequence": 250,
+            }
+        )
+
+    swing = _merge_wing_family(
+        data,
+        SWING_WING_SOURCE_KEYS,
+        SWING_WING_TARGET_KEY,
+        'לדלת ממ"ד לבן',
+        False,
+    )
+    sliding = _merge_wing_family(
+        data,
+        SLIDING_WING_SOURCE_KEYS,
+        SLIDING_WING_TARGET_KEY,
+        'לדלת ממ"ד לבן הזזה',
+        True,
+    )
+    all_source_keys = SWING_WING_SOURCE_KEYS | SLIDING_WING_SOURCE_KEYS
+    result = []
+    inserted = False
+    for template in data["templates"]:
+        if template["key"] in all_source_keys:
+            if not inserted:
+                result.extend((swing, sliding))
+                inserted = True
+            continue
+        result.append(template)
+    data["templates"] = result
 
 
 def recompute_pairs(template):
@@ -702,6 +858,44 @@ def consolidate_windows(data):
     ]
 
 
+def refresh_metadata(data):
+    skus = [
+        variant["sku"]
+        for template in data["templates"]
+        for variant in template["variants"]
+    ] + [item["sku"] for item in data["unique_items"]]
+    data["metadata"].update(
+        {
+            "groups": len(data["groups"]),
+            "templates": len(data["templates"]),
+            "attributes": len(data["attributes"]),
+            "values": len(data["values"]),
+            "structured_variants": sum(
+                len(item["variants"]) for item in data["templates"]
+            ),
+            "unique_items": len(data["unique_items"]),
+            "total_products": len(skus),
+            "cartesian_mismatches": sum(
+                item["cartesian_count"] != len(item["variants"])
+                for item in data["templates"]
+            ),
+            "templates_with_exclusions": sum(
+                item["allowed_count_after_exclusions"] != item["cartesian_count"]
+                for item in data["templates"]
+            ),
+            "forbidden_pairs": sum(
+                len(item["forbidden_pairs"]) for item in data["templates"]
+            ),
+            "exclusion_mismatches": sum(
+                not item["exclusions_exact"] for item in data["templates"]
+            ),
+            "output_mismatches": 0,
+            "duplicate_skus": len(skus) - len(set(skus)),
+            "duplicate_model_keys": 0,
+        }
+    )
+
+
 def validate(data):
     value_keys = [item["key"] for item in data["values"]]
     if len(value_keys) != len(set(value_keys)):
@@ -726,10 +920,12 @@ def main():
     ensure_optional_values(data)
     split_filter_company_and_model(data)
     normalize_filter_model_labels(data)
-    consolidate_filter_systems(data)
+    split_filter_systems(data)
     consolidate_windows(data)
+    merge_white_mamad_wings(data)
     for template in data["templates"]:
         recompute_pairs(template)
+    refresh_metadata(data)
     validate(data)
 
     json_text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
