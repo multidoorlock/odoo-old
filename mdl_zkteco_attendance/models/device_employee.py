@@ -20,7 +20,7 @@ class AttendanceDeviceEmployee(models.Model):
         ondelete="restrict", index=True, check_company=True,
     )
     company_id = fields.Many2one(related="device_id.company_id", store=True, index=True)
-    device_user_id = fields.Char(string="מזהה בשעון", required=True, readonly=True, copy=False, index=True)
+    device_user_id = fields.Char(string="מזהה בשעון", required=True, copy=False, index=True)
     device_name = fields.Char(string="שם בכרטיס", translate=True)
     device_name_lang_id = fields.Many2one(
         "res.lang",
@@ -162,9 +162,15 @@ class AttendanceDeviceEmployee(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if self.env.context.get("import_file"):
+            for vals in vals_list:
+                if not vals.get("device_id"):
+                    raise ValidationError(_("בייבוא כרטיסים חובה למפות את השדה שעון."))
+                if not vals.get("device_user_id"):
+                    raise ValidationError(_("בייבוא כרטיסים חובה למפות את השדה מזהה בשעון."))
         for vals in vals_list:
             device = self.env["mdl.attendance.device"].browse(vals.get("device_id"))
-            if not vals.get("device_user_id"):
+            if not vals.get("device_user_id") and not self.env.context.get("import_file"):
                 vals["device_user_id"] = self._allocate_user_id(device)
             if vals.get("employee_id"):
                 employee = self.env["hr.employee"].browse(vals["employee_id"]).exists()

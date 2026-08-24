@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from odoo import fields
+from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase, new_test_user, tagged
 from odoo.tools import mute_logger
 
@@ -757,6 +758,23 @@ class TestAttendanceDevices(TransactionCase):
             ("command_type", "=", "create_user"),
             ("state", "=", "queued"),
         ]))
+
+    def test_native_import_requires_explicit_device_user_id(self):
+        cards = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+            import_file=True,
+        )
+        with self.assertRaises(ValidationError):
+            cards.create({
+                "device_id": self.device.id,
+                "device_name": "Missing imported identifier",
+            })
+        card = cards.create({
+            "device_id": self.device.id,
+            "device_user_id": "imported-901",
+            "device_name": "Imported card",
+        })
+        self.assertEqual(card.device_user_id, "imported-901")
 
     def test_deleting_odoo_card_queues_device_deletion(self):
         card = self.env["mdl.attendance.device.employee"].create({
