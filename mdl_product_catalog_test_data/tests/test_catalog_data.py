@@ -3,6 +3,7 @@ from odoo.tests.common import TransactionCase
 
 from odoo.addons.mdl_product_catalog_test_data.hooks import (
     MODULE,
+    ODOO_DEMO_PRODUCT_XMLIDS,
     _xmlid_name,
 )
 
@@ -102,8 +103,29 @@ class TestGeneratedCatalog(TransactionCase):
         )
 
     def test_basic_odoo_demo_products_are_archived(self):
-        demo_product = self.env.ref("product.product_product_3")
-        self.assertFalse(demo_product.product_tmpl_id.active)
+        xmlids = self.env["ir.model.data"].search(
+            [
+                ("module", "=", "product"),
+                ("name", "in", ODOO_DEMO_PRODUCT_XMLIDS),
+                ("model", "in", ("product.product", "product.template")),
+            ]
+        )
+        product_xmlids = xmlids.filtered(
+            lambda item: item.model == "product.product"
+        )
+        template_xmlids = xmlids.filtered(
+            lambda item: item.model == "product.template"
+        )
+        products = self.env["product.product"].with_context(
+            active_test=False
+        ).browse(product_xmlids.mapped("res_id")).exists()
+        templates = (
+            products.product_tmpl_id
+            | self.env["product.template"].with_context(
+                active_test=False
+            ).browse(template_xmlids.mapped("res_id")).exists()
+        )
+        self.assertTrue(all(not template.active for template in templates))
 
     def test_filter_technical_data_is_on_the_final_variant(self):
         product = self.env["product.product"].search(
