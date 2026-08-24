@@ -1,7 +1,7 @@
 {
     "name": "MDL Product Catalog - Test Data",
     "summary": "כל נתוני MasterProducts לצורך בדיקת קטלוג המוצרים",
-    "version": "19.0.1.3.0",
+    "version": "19.0.1.3.1",
     "category": "Inventory/Inventory",
     "author": "Multi Doorlock",
     "license": "LGPL-3",

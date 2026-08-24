@@ -3,7 +3,6 @@ import gzip
 import hashlib
 import json
 import logging
-from collections import defaultdict
 from pathlib import Path
 
 from odoo import Command
@@ -120,30 +119,6 @@ def _create_attributes_and_values(env, data):
     return attributes, values
 
 
-def _create_exclusions(env, template, template_data, values):
-    if not template_data["forbidden_pairs"]:
-        return
-    template_values = {
-        item.product_attribute_value_id.id: item
-        for item in template.attribute_line_ids.product_template_value_ids
-    }
-    excluded_by_source = defaultdict(set)
-    for pair in template_data["forbidden_pairs"]:
-        source = template_values[values[pair["value_key"]].id]
-        excluded = template_values[values[pair["excluded_value_key"]].id]
-        excluded_by_source[source.id].add(excluded.id)
-    env["product.template.attribute.exclusion"].create(
-        [
-            {
-                "product_tmpl_id": template.id,
-                "product_template_attribute_value_id": source_id,
-                "value_ids": [Command.set(sorted(excluded_ids))],
-            }
-            for source_id, excluded_ids in excluded_by_source.items()
-        ]
-    )
-
-
 def _validate_and_register_variants(env, template, template_data, values):
     template._create_variant_ids()
     env.flush_all()
@@ -170,11 +145,12 @@ def _validate_and_register_variants(env, template, template_data, values):
             "נתוני הבדיקה אינם מייצרים את כל השילובים בדגם "
             f"{template_data['key']}: חסרים {len(missing)} שילובים."
         )
-    # Native Odoo exclusions are pairwise.  A legacy catalog can contain a
-    # higher-order rule which cannot be expressed as a pair of values.  Keep
-    # the model in one native template and archive only the combinations that
-    # were not present in MasterProducts; users still manage the values through
-    # the normal Attributes & Variants screen.
+    # Keep the model in one native Odoo template and archive combinations that
+    # were not present in MasterProducts.  We intentionally do not create
+    # ``Exclude For`` records: they are not part of the requested workflow and
+    # can over-restrict legacy catalogs whose rules depend on three or more
+    # values.  Archived variants remain visible to Odoo's configurator as
+    # unavailable combinations while all attribute editing stays native.
     extra_products = env["product.product"].browse(
         [
             actual_by_tuple[value_tuple].id
@@ -309,7 +285,6 @@ def _create_templates(env, data, categories, attributes, values):
                         "sku_override"
                     ]
         _register_xmlid(env, "template", item["key"], template)
-        _create_exclusions(env, template, item, values)
         _validate_and_register_variants(env, template, item, values)
         templates.append(template)
     return env["product.template"].browse([template.id for template in templates])
