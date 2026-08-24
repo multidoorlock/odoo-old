@@ -69,13 +69,10 @@ class ZKTecoDevice(models.Model):
         string="פקודות",
     )
 
-    _sql_constraints = [
-        (
-            "serial_number_unique",
-            "unique(serial_number)",
-            "המספר הסידורי של השעון חייב להיות ייחודי.",
-        ),
-    ]
+    _serial_number_unique = models.Constraint(
+        "UNIQUE(serial_number)",
+        "המספר הסידורי של השעון חייב להיות ייחודי.",
+    )
 
     @api.model
     def get_or_create_from_request(self, serial_number, remote_ip=None):

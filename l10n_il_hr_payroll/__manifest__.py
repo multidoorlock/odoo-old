@@ -1,7 +1,7 @@
 {
     "name": "Israel - Payroll",
     "countries": ["il"],
-    "version": "19.0.9.0.0",
+    "version": "19.0.9.0.1",
     "category": "Human Resources/Payroll",
     "summary":"",
     "description": """
