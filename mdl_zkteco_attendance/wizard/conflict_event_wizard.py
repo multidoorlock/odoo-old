@@ -9,6 +9,11 @@ class AttendanceConflictEventWizard(models.TransientModel):
     _description = "Create a Manual Attendance Event"
 
     employee_id = fields.Many2one("hr.employee", string="עובד", required=True)
+    company_id = fields.Many2one(
+        "res.company",
+        related="employee_id.company_id",
+        readonly=True,
+    )
     device_id = fields.Many2one("mdl.attendance.device", string="שעון", required=True)
     punch_state = fields.Selection(
         [("in", "כניסה"), ("out", "יציאה")], string="סוג אירוע", required=True,
