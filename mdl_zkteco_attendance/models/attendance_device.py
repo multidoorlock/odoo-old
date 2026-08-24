@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytz
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class AttendanceDevice(models.Model):
@@ -41,6 +41,16 @@ class AttendanceDevice(models.Model):
         default=lambda self: self.env.company.resource_calendar_id.tz or self.env.user.tz or "UTC",
         required=True,
     )
+    device_language = fields.Selection(
+        [
+            ("he_IL", "עברית"),
+            ("ar_001", "ערבית"),
+            ("en_US", "אנגלית"),
+        ],
+        string="שפה",
+        required=True,
+        default="he_IL",
+    )
     auto_discover_users = fields.Boolean(default=True)
     auto_push_new_cards = fields.Boolean(default=True)
     auto_sync_name = fields.Boolean(default=True)
@@ -53,6 +63,14 @@ class AttendanceDevice(models.Model):
     attendance_reconcile_lookback_days = fields.Integer(
         string="ימי משיכה ראשונית", default=30,
         help="מספר הימים למשיכה כאשר עדיין לא התקבלה אף רשומת נוכחות מהשעון.",
+    )
+    attendance_cooldown_minutes = fields.Integer(
+        string="Cooldown החתמות (דקות)",
+        default=0,
+        help=(
+            "החתמה נוספת של אותו כרטיס ומאותו סוג (כניסה/יציאה) "
+            "בתוך החלון תישמר בלוג אך תסונן מעיבוד הנוכחות. 0 מבטל את הסינון."
+        ),
     )
     last_attendance_sync_at = fields.Datetime(
         string="סנכרון נוכחות אחרון", readonly=True,
@@ -92,10 +110,20 @@ class AttendanceDevice(models.Model):
         "UNIQUE(manufacturer, device_identifier)",
         "מזהה המכשיר חייב להיות ייחודי עבור היצרן.",
     )
+    _attendance_cooldown_nonnegative = models.Constraint(
+        "CHECK(attendance_cooldown_minutes >= 0)",
+        "Cooldown ההחתמות לא יכול להיות שלילי.",
+    )
 
     @api.model
     def _tz_get(self):
         return [(tz, tz) for tz in __import__("pytz").all_timezones]
+
+    @api.constrains("attendance_cooldown_minutes")
+    def _check_attendance_cooldown_minutes(self):
+        for device in self:
+            if device.attendance_cooldown_minutes < 0:
+                raise ValidationError(_("Cooldown ההחתמות לא יכול להיות שלילי."))
 
     @api.model
     def get_or_create_from_request(self, manufacturer, device_identifier, remote_ip=None):
@@ -122,6 +150,13 @@ class AttendanceDevice(models.Model):
         self.ensure_one()
         from ..services.adapters import get_adapter
         return get_adapter(self)
+
+    def write(self, vals):
+        language_changed = "device_language" in vals
+        result = super().write(vals)
+        if language_changed:
+            self.mapped("device_employee_ids")._sync_name_from_employee()
+        return result
 
     def action_open_push_wizard(self):
         self.ensure_one()

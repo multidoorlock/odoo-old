@@ -8,10 +8,6 @@ class AttendanceDeviceEmployee(models.Model):
     _order = "device_id, device_user_id, id"
     _check_company_auto = True
 
-    def _default_device_name_lang_id(self):
-        language = self.env["res.lang"]._lang_get(self.env.lang)
-        return language or self.env["res.lang"].search([], limit=1)
-
     employee_id = fields.Many2one(
         "hr.employee", string="עובד", ondelete="set null", index=True, check_company=True,
     )
@@ -21,19 +17,7 @@ class AttendanceDeviceEmployee(models.Model):
     )
     company_id = fields.Many2one(related="device_id.company_id", store=True, index=True)
     device_user_id = fields.Char(string="מזהה בשעון", required=True, copy=False, index=True)
-    device_name = fields.Char(string="שם בכרטיס", translate=True)
-    device_name_lang_id = fields.Many2one(
-        "res.lang",
-        string="שפת השם בשעון",
-        required=True,
-        default=_default_device_name_lang_id,
-        domain=[("active", "=", True)],
-    )
-    device_name_display = fields.Char(
-        string="שם מוצג",
-        compute="_compute_device_name_display",
-        inverse="_inverse_device_name_display",
-    )
+    device_name = fields.Char(string="שם בכרטיס", translate=False)
     profile_photo = fields.Image(string="תמונת פרופיל", max_width=1920, max_height=1920)
     device_privilege = fields.Selection(
         [("0", "משתמש רגיל"), ("14", "מנהל מערכת")],
@@ -65,6 +49,8 @@ class AttendanceDeviceEmployee(models.Model):
         ],
         string="מצב אימות בשעון", default="0", required=True,
     )
+    has_face = fields.Boolean(string="קיים פנים")
+    has_fingerprint = fields.Boolean(string="קיימת טביעת אצבע")
     biometric_photo = fields.Image(
         string="תמונה ביומטרית", max_width=1920, max_height=1920,
         groups="mdl_zkteco_attendance.group_attendance_device_manager",
@@ -89,21 +75,51 @@ class AttendanceDeviceEmployee(models.Model):
     pending_event_count = fields.Integer(compute="_compute_pending_events")
     legacy_employee_id = fields.Many2one("hr.employee", readonly=True, ondelete="set null", copy=False)
 
-    @api.depends("device_name", "device_name_lang_id", "device_user_id", "device_id")
+    @api.depends("device_name", "device_user_id", "device_id")
     def _compute_display_name(self):
         for card in self:
-            name = card._device_name_for_clock() or card.device_user_id or _("כרטיס חדש")
+            name = card.device_name or card.device_user_id or _("כרטיס חדש")
             card.display_name = f"{name} [{card.device_user_id}]" if card.device_user_id else name
 
-    @api.depends("device_name", "device_name_lang_id")
-    def _compute_device_name_display(self):
-        for card in self:
-            card.device_name_display = card._device_name_for_clock()
+    def _required_biometrics_for_verification_mode(self):
+        self.ensure_one()
+        fingerprint_modes = {"1", "8", "9", "10", "12", "13", "14", "16", "19", "20"}
+        face_modes = {"15", "16", "17", "18", "19", "20"}
+        return (
+            self.verification_mode in face_modes,
+            self.verification_mode in fingerprint_modes,
+        )
 
-    def _inverse_device_name_display(self):
+    def _verification_mode_error(self):
+        self.ensure_one()
+        face_required, fingerprint_required = self._required_biometrics_for_verification_mode()
+        missing = []
+        if face_required and not self.has_face:
+            missing.append(_("פנים"))
+        if fingerprint_required and not self.has_fingerprint:
+            missing.append(_("טביעת אצבע"))
+        if not missing:
+            return False
+        return _("מצב האימות שנבחר מחייב: %s. יש לסמן שהנתון קיים בכרטיס.") % ", ".join(missing)
+
+    @api.constrains("verification_mode", "has_face", "has_fingerprint")
+    def _check_verification_mode_biometrics(self):
         for card in self:
-            language_code = card.get_device_name_language_code()
-            card.with_context(lang=language_code).device_name = card.device_name_display
+            error = card._verification_mode_error()
+            if error:
+                raise ValidationError(error)
+
+    @api.onchange("verification_mode", "has_face", "has_fingerprint")
+    def _onchange_verification_mode_biometrics(self):
+        if self.verification_mode and self._verification_mode_error():
+            warning = self._verification_mode_error()
+            self.verification_mode = "0"
+            return {
+                "warning": {
+                    "title": _("מצב אימות אינו זמין"),
+                    "message": warning,
+                }
+            }
 
     _device_user_unique = models.Constraint(
         "UNIQUE(device_id, device_user_id)",
@@ -190,7 +206,7 @@ class AttendanceDeviceEmployee(models.Model):
             if vals.get("employee_id"):
                 employee = self.env["hr.employee"].browse(vals["employee_id"]).exists()
                 if employee:
-                    vals.setdefault("device_name", employee.name)
+                    vals["device_name"] = employee._attendance_device_name(device)
                     vals.setdefault("profile_photo", employee.image_1920)
                 vals["link_state"] = "linked"
         cards = super().create(vals_list)
@@ -216,39 +232,38 @@ class AttendanceDeviceEmployee(models.Model):
     def _onchange_device_id_allocate_user_id(self):
         if self.device_id and not self._origin.id:
             self.device_user_id = self._allocate_user_id(self.device_id)
+        if self.employee_id and self.device_id:
+            self.device_name = self.employee_id._attendance_device_name(self.device_id)
 
     @api.onchange("employee_id")
     def _onchange_employee_id_set_card_identity(self):
-        if not self._origin.id:
-            self.device_name = self.employee_id.name if self.employee_id else False
-            self.profile_photo = self.employee_id.image_1920 if self.employee_id else False
+        if self.employee_id:
+            self.device_name = self.employee_id._attendance_device_name(self.device_id)
+            self.profile_photo = self.employee_id.image_1920
+        else:
+            self.device_name = False
+            self.profile_photo = False
 
-    def get_device_name_language_code(self):
-        self.ensure_one()
-        language = self.device_name_lang_id or self.env["res.lang"]._lang_get(self.env.lang)
-        return language.code
-
-    def set_device_name_language_code(self, lang_code):
-        self.ensure_one()
-        language = self.env["res.lang"]._lang_get(lang_code)
-        if not language:
-            raise ValidationError(_("השפה שנבחרה אינה פעילה במערכת."))
-        self.write({"device_name_lang_id": language.id})
+    def _sync_name_from_employee(self):
+        for card in self.filtered(lambda item: item.employee_id and item.device_id):
+            device_name = card.employee_id._attendance_device_name(card.device_id)
+            if card.device_name != device_name:
+                card.with_context(skip_employee_name_sync=True, skip_card_sync=True).write({
+                    "device_name": device_name,
+                })
         return True
-
-    def _device_name_for_clock(self):
-        self.ensure_one()
-        language_code = self.get_device_name_language_code()
-        return self.with_context(lang=language_code).device_name
 
     def write(self, vals):
         employee_changed = "employee_id" in vals
+        identity_changed = employee_changed or "device_id" in vals
         result = super().write(vals)
         if employee_changed:
             for card in self:
                 card.with_context(skip_card_sync=True).write({
                     "link_state": "linked" if card.employee_id else "needs_employee_link"
                 })
+        if identity_changed and not self.env.context.get("skip_employee_name_sync"):
+            self._sync_name_from_employee()
         return result
 
     def unlink(self):
