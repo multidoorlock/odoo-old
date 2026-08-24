@@ -29,6 +29,11 @@ class AttendanceDeviceEmployee(models.Model):
         default=_default_device_name_lang_id,
         domain=[("active", "=", True)],
     )
+    device_name_display = fields.Char(
+        string="שם מוצג",
+        compute="_compute_device_name_display",
+        inverse="_inverse_device_name_display",
+    )
     profile_photo = fields.Image(string="תמונת פרופיל", max_width=1920, max_height=1920)
     device_privilege = fields.Selection(
         [("0", "משתמש רגיל"), ("14", "מנהל מערכת")],
@@ -84,11 +89,21 @@ class AttendanceDeviceEmployee(models.Model):
     pending_event_count = fields.Integer(compute="_compute_pending_events")
     legacy_employee_id = fields.Many2one("hr.employee", readonly=True, ondelete="set null", copy=False)
 
-    @api.depends("device_name", "device_user_id", "device_id")
+    @api.depends("device_name", "device_name_lang_id", "device_user_id", "device_id")
     def _compute_display_name(self):
         for card in self:
-            name = card.device_name or card.device_user_id or _("כרטיס חדש")
+            name = card._device_name_for_clock() or card.device_user_id or _("כרטיס חדש")
             card.display_name = f"{name} [{card.device_user_id}]" if card.device_user_id else name
+
+    @api.depends("device_name", "device_name_lang_id")
+    def _compute_device_name_display(self):
+        for card in self:
+            card.device_name_display = card._device_name_for_clock()
+
+    def _inverse_device_name_display(self):
+        for card in self:
+            language_code = card.get_device_name_language_code()
+            card.with_context(lang=language_code).device_name = card.device_name_display
 
     _device_user_unique = models.Constraint(
         "UNIQUE(device_id, device_user_id)",

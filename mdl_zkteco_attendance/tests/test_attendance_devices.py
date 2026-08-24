@@ -93,6 +93,30 @@ class TestAttendanceDevices(TransactionCase):
         command = self.device._adapter().build_command("update_name", card)
         self.assertIn(f"Name={translated_name}", command)
         self.assertEqual(card.get_device_name_language_code(), language.code)
+        self.assertEqual(card.device_name_display, translated_name)
+        self.assertTrue(card.display_name.startswith(translated_name))
+
+        edited_name = "Edited selected language name"
+        card.write({"device_name_display": edited_name})
+        self.assertEqual(card.with_context(lang=language.code).device_name, edited_name)
+        self.assertEqual(card.device_name_display, edited_name)
+
+    def test_device_employee_menu_uses_preference_action_and_versioned_icon(self):
+        preference_action = self.env.ref(
+            "mdl_zkteco_attendance.action_device_employee_preference"
+        )
+        menu = self.env.ref("mdl_zkteco_attendance.menu_device_employees")
+        root_menu = self.env.ref("mdl_zkteco_attendance.menu_attendance_devices_root")
+
+        self.assertEqual(
+            preference_action.tag,
+            "mdl_zkteco_attendance.device_employee_preference",
+        )
+        self.assertEqual(menu.action, preference_action)
+        self.assertEqual(
+            root_menu.web_icon,
+            "mdl_zkteco_attendance,static/description/icon_menu.png",
+        )
 
     def test_in_out_and_duplicate(self):
         adapter = self.device._adapter()

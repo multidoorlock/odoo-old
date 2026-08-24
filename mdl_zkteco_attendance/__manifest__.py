@@ -1,6 +1,6 @@
 {
     "name": "Multi Doorlock - Clock Attendance",
-    "version": "19.0.5.9.33",
+    "version": "19.0.5.9.36",
     "summary": "Generic attendance device management",
     "category": "Human Resources/Attendances",
     "license": "LGPL-3",
@@ -28,11 +28,13 @@
         "views/device_sync_wizard_views.xml",
         "views/pending_attendance_wizard_views.xml",
         "views/menu_views.xml",
-        'views/menu.xml',
     ],
 
     "assets": {
         "web.assets_backend": [
+            "mdl_zkteco_attendance/static/src/device_employee_view_preference.js",
+            "mdl_zkteco_attendance/static/src/device_name_translation/device_name_selected_field.js",
+            "mdl_zkteco_attendance/static/src/device_name_translation/device_name_selected_field.xml",
             "mdl_zkteco_attendance/static/src/device_name_translation/device_name_translation_dialog.js",
             "mdl_zkteco_attendance/static/src/device_name_translation/device_name_translation_dialog.xml",
         ],
