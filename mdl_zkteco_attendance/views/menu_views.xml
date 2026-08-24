@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_attendance_devices_root" name="שעוני נוכחות" sequence="90" groups="mdl_zkteco_attendance.group_attendance_device_user"/>
+    <menuitem id="menu_attendance_devices_root" name="שעוני נוכחות" sequence="90" groups="mdl_zkteco_attendance.group_attendance_device_user" web_icon="mdl_zkteco_attendance,static/description/icon_menu.png"/>
     <menuitem id="menu_attendance_devices_work" name="עבודה" parent="menu_attendance_devices_root" sequence="10"/>
     <menuitem id="menu_attendance_devices" name="שעונים" parent="menu_attendance_devices_work" action="action_attendance_device" sequence="10"/>
-    <menuitem id="menu_device_employees" name="כרטיסי עובדים" parent="menu_attendance_devices_work" action="action_device_employee" sequence="20"/>
+    <menuitem id="menu_device_employees" name="כרטיסי עובדים" parent="menu_attendance_devices_work" action="action_device_employee_preference" sequence="20"/>
     <menuitem id="menu_attendance_devices_system" name="מערכת" parent="menu_attendance_devices_root" sequence="20" groups="mdl_zkteco_attendance.group_attendance_device_technical"/>
     <menuitem id="menu_device_commands" name="פקודות" parent="menu_attendance_devices_system" action="action_device_command" sequence="10"/>
     <menuitem id="menu_device_logs" name="לוגים" parent="menu_attendance_devices_system" action="action_device_log" sequence="20"/>

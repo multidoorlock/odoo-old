@@ -1,17 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_device_employee_list" model="ir.ui.view"><field name="name">mdl.attendance.device.employee.list</field><field name="model">mdl.attendance.device.employee</field><field name="arch" type="xml">
-        <list><field name="employee_id"/><field name="device_id"/><field name="device_user_id"/><field name="device_name"/><field name="link_state" widget="badge"/><field name="sync_state" widget="badge"/><field name="pending_event_count"/><field name="active"/></list>
+        <list><field name="employee_id"/><field name="device_id"/><field name="device_user_id"/><field name="device_name_display" string="שם בכרטיס"/><field name="link_state" widget="badge"/><field name="sync_state" widget="badge" decoration-success="sync_state == 'synced'" decoration-warning="sync_state in ['pending_push', 'pending_pull']" decoration-danger="sync_state == 'error'"/><field name="pending_event_count"/><field name="active"/></list>
+    </field></record>
+    <record id="view_device_employee_kanban" model="ir.ui.view"><field name="name">mdl.attendance.device.employee.kanban</field><field name="model">mdl.attendance.device.employee</field><field name="arch" type="xml">
+        <kanban class="o_kanban_mobile">
+            <field name="profile_photo"/>
+            <field name="employee_id"/>
+            <field name="device_name_display"/>
+            <field name="sync_state"/>
+            <templates>
+                <t t-name="card" class="flex-row">
+                    <aside class="o_kanban_aside_full">
+                        <t t-if="record.profile_photo.raw_value">
+                            <field name="profile_photo" widget="background_image" options="{'zoom': true, 'zoom_delay': 1000}" class="d-block position-relative"/>
+                        </t>
+                        <div t-else="" class="d-flex align-items-center justify-content-center bg-100 bg-gradient">
+                            <i class="fa fa-user fs-1 text-muted opacity-50" title="ללא תמונה"/>
+                        </div>
+                    </aside>
+                    <main class="ms-2">
+                        <div class="fw-bold fs-5 text-truncate">
+                            <field t-if="record.employee_id.raw_value" name="employee_id"/>
+                            <span t-else="" class="text-muted">ללא עובד מקושר</span>
+                        </div>
+                        <div class="mt-1 text-truncate">
+                            <span class="text-muted me-1">שם בכרטיס:</span>
+                            <field name="device_name_display"/>
+                        </div>
+                        <div class="mt-2">
+                            <span t-attf-class="badge rounded-pill #{record.sync_state.raw_value == 'synced' ? 'text-bg-success' : record.sync_state.raw_value == 'error' ? 'text-bg-danger' : ['pending_push', 'pending_pull'].indexOf(record.sync_state.raw_value) > -1 ? 'text-bg-warning' : 'text-bg-secondary'}">
+                                <field name="sync_state"/>
+                            </span>
+                        </div>
+                    </main>
+                </t>
+            </templates>
+        </kanban>
     </field></record>
     <record id="view_device_employee_form" model="ir.ui.view"><field name="name">mdl.attendance.device.employee.form</field><field name="model">mdl.attendance.device.employee</field><field name="arch" type="xml">
     <form>
 <header><button name="action_open_push_wizard" type="object" string="שלח מידע לשעון" class="btn-primary" invisible="not id or not device_id"/><button name="action_open_pull_wizard" type="object" string="משוך מידע מהשעון" invisible="not id or not device_id"/><button name="action_process_pending_attendance" type="object" string="טפל באירועי נוכחות" invisible="not id or pending_event_count == 0"/></header>
-        <sheet><group><group><field name="employee_id"/><field name="device_id" required="1" options="{'no_create': True}"/><field name="company_id" invisible="1"/><field name="device_user_id" readonly="1" placeholder="יוקצה אוטומטית: המזהה הגבוה ביותר + 1"/><field name="device_name"/><field name="device_privilege" widget="radio" options="{'horizontal': true}"/><field name="verification_mode"/><field name="active"/></group><group><field name="link_state" widget="badge"/><field name="sync_state" widget="badge"/><field name="last_sync_at"/><field name="last_sync_error" invisible="not last_sync_error"/><field name="pending_event_count"/></group></group>
+        <sheet><group><group><field name="employee_id"/><field name="device_id" required="1" options="{'no_create': True}"/><field name="company_id" invisible="1"/><field name="device_user_id" readonly="1" placeholder="יוקצה אוטומטית: המזהה הגבוה ביותר + 1"/><field name="device_name" invisible="1"/><field name="device_name_display" string="שם בכרטיס" widget="mdl_device_name_selected"/><field name="device_privilege" widget="radio" options="{'horizontal': true}"/><field name="verification_mode"/><field name="active"/></group><group><field name="link_state" widget="badge"/><field name="sync_state" widget="badge"/><field name="last_sync_at"/><field name="last_sync_error" invisible="not last_sync_error"/><field name="pending_event_count"/></group></group>
         <notebook><page string="תמונת פרופיל"><field name="profile_photo" widget="image"/></page><page string="זיהוי פנים" groups="mdl_zkteco_attendance.group_attendance_device_manager"><field name="biometric_photo" widget="image"/><div class="alert alert-info" role="alert">בשליחה לשעון התמונה מועברת כ־BIOPHOTO Type 9. שעון MB560-VL יוצר ממנה תבנית פנים פנימית. במשיכה תוצג תמונה רק אם השעון שמר והחזיר BioPhoto; תבנית BIODATA אינה קובץ תמונה.</div><field name="face_template" invisible="1"/><field name="face_template_no" invisible="1"/><field name="face_template_index" invisible="1"/><field name="face_template_major_ver" invisible="1"/><field name="face_template_minor_ver" invisible="1"/></page></notebook></sheet>
     </form>
     </field></record>
     <record id="view_device_employee_search" model="ir.ui.view"><field name="name">mdl.attendance.device.employee.search</field><field name="model">mdl.attendance.device.employee</field><field name="arch" type="xml">
         <search><field name="employee_id"/><field name="device_id"/><field name="device_user_id"/><filter name="needs_link" string="דורשים קישור" domain="[('link_state','=','needs_employee_link')]"/><filter name="synced" string="מסונכרנים" domain="[('sync_state','=','synced')]"/><filter name="pending" string="ממתינים לשליחה" domain="[('sync_state','=','pending_push')]"/><filter name="error" string="שגיאה" domain="[('sync_state','=','error')]"/><group><filter name="group_device" string="שעון" context="{'group_by':'device_id'}"/><filter name="group_link" string="מצב קישור" context="{'group_by':'link_state'}"/></group></search>
     </field></record>
-    <record id="action_device_employee" model="ir.actions.act_window"><field name="name">כרטיסי עובדים</field><field name="res_model">mdl.attendance.device.employee</field><field name="view_mode">list,form</field></record>
+    <record id="action_device_employee" model="ir.actions.act_window"><field name="name">כרטיסי עובדים</field><field name="res_model">mdl.attendance.device.employee</field><field name="view_mode">list,kanban,form</field></record>
+    <record id="action_device_employee_preference" model="ir.actions.client">
+        <field name="name">כרטיסי עובדים</field>
+        <field name="tag">mdl_zkteco_attendance.device_employee_preference</field>
+    </record>
 </odoo>
