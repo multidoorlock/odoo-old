@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_device_employee_list" model="ir.ui.view"><field name="name">mdl.attendance.device.employee.list</field><field name="model">mdl.attendance.device.employee</field><field name="arch" type="xml">
-        <list><field name="employee_id"/><field name="device_id"/><field name="device_user_id"/><field name="device_name_display" string="שם בכרטיס"/><field name="link_state" widget="badge"/><field name="sync_state" widget="badge" decoration-success="sync_state == 'synced'" decoration-warning="sync_state in ['pending_push', 'pending_pull']" decoration-danger="sync_state == 'error'"/><field name="pending_event_count"/><field name="active"/></list>
+        <list><field name="employee_id"/><field name="device_id"/><field name="device_user_id"/><field name="device_name"/><field name="has_face"/><field name="has_fingerprint"/><field name="link_state" widget="badge"/><field name="sync_state" widget="badge" decoration-success="sync_state == 'synced'" decoration-warning="sync_state in ['pending_push', 'pending_pull']" decoration-danger="sync_state == 'error'"/><field name="pending_event_count"/><field name="active"/></list>
     </field></record>
     <record id="view_device_employee_kanban" model="ir.ui.view"><field name="name">mdl.attendance.device.employee.kanban</field><field name="model">mdl.attendance.device.employee</field><field name="arch" type="xml">
         <kanban class="o_kanban_mobile">
             <field name="profile_photo"/>
             <field name="employee_id"/>
-            <field name="device_name_display"/>
+            <field name="device_name"/>
             <field name="sync_state"/>
             <templates>
                 <t t-name="card" class="flex-row">
@@ -26,7 +26,7 @@
                         </div>
                         <div class="mt-1 text-truncate">
                             <span class="text-muted me-1">שם בכרטיס:</span>
-                            <field name="device_name_display"/>
+                            <field name="device_name"/>
                         </div>
                         <div class="mt-2">
                             <span t-attf-class="badge rounded-pill #{record.sync_state.raw_value == 'synced' ? 'text-bg-success' : record.sync_state.raw_value == 'error' ? 'text-bg-danger' : ['pending_push', 'pending_pull'].indexOf(record.sync_state.raw_value) > -1 ? 'text-bg-warning' : 'text-bg-secondary'}">
@@ -41,7 +41,7 @@
     <record id="view_device_employee_form" model="ir.ui.view"><field name="name">mdl.attendance.device.employee.form</field><field name="model">mdl.attendance.device.employee</field><field name="arch" type="xml">
     <form>
 <header><button name="action_open_push_wizard" type="object" string="שלח מידע לשעון" class="btn-primary" invisible="not id or not device_id"/><button name="action_open_pull_wizard" type="object" string="משוך מידע מהשעון" invisible="not id or not device_id"/><button name="action_process_pending_attendance" type="object" string="טפל באירועי נוכחות" invisible="not id or pending_event_count == 0"/></header>
-        <sheet><group><group><field name="employee_id"/><field name="device_id" required="1" options="{'no_create': True}"/><field name="company_id" invisible="1"/><field name="device_user_id" readonly="1" placeholder="יוקצה אוטומטית: המזהה הגבוה ביותר + 1"/><field name="device_name" invisible="1"/><field name="device_name_display" string="שם בכרטיס" widget="mdl_device_name_selected"/><field name="device_privilege" widget="radio" options="{'horizontal': true}"/><field name="verification_mode"/><field name="active"/></group><group><field name="link_state" widget="badge"/><field name="sync_state" widget="badge"/><field name="last_sync_at"/><field name="last_sync_error" invisible="not last_sync_error"/><field name="pending_event_count"/></group></group>
+        <sheet><group><group><field name="employee_id"/><field name="device_id" required="1" options="{'no_create': True}"/><field name="company_id" invisible="1"/><field name="device_user_id" readonly="1" placeholder="יוקצה אוטומטית: המזהה הגבוה ביותר + 1"/><field name="device_name"/><field name="device_privilege" widget="radio" options="{'horizontal': true}"/><field name="has_face"/><field name="has_fingerprint"/><field name="verification_mode"/><field name="active"/></group><group><field name="link_state" widget="badge"/><field name="sync_state" widget="badge"/><field name="last_sync_at"/><field name="last_sync_error" invisible="not last_sync_error"/><field name="pending_event_count"/></group></group>
         <notebook><page string="תמונת פרופיל"><field name="profile_photo" widget="image"/></page><page string="זיהוי פנים" groups="mdl_zkteco_attendance.group_attendance_device_manager"><field name="biometric_photo" widget="image"/><div class="alert alert-info" role="alert">בשליחה לשעון התמונה מועברת כ־BIOPHOTO Type 9. שעון MB560-VL יוצר ממנה תבנית פנים פנימית. במשיכה תוצג תמונה רק אם השעון שמר והחזיר BioPhoto; תבנית BIODATA אינה קובץ תמונה.</div><field name="face_template" invisible="1"/><field name="face_template_no" invisible="1"/><field name="face_template_index" invisible="1"/><field name="face_template_major_ver" invisible="1"/><field name="face_template_minor_ver" invisible="1"/></page></notebook></sheet>
     </form>
     </field></record>

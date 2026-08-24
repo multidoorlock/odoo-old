@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_attendance_devices_root" name="שעוני נוכחות" sequence="90" groups="mdl_zkteco_attendance.group_attendance_device_user" web_icon="mdl_zkteco_attendance,static/description/icon_menu.png"/>
+    <menuitem id="menu_attendance_devices_root" name="שעוני נוכחות" sequence="90" groups="mdl_zkteco_attendance.group_attendance_device_user" web_icon="mdl_zkteco_attendance,static/description/icon_menu_v2.png"/>
     <menuitem id="menu_attendance_devices_work" name="עבודה" parent="menu_attendance_devices_root" sequence="10"/>
     <menuitem id="menu_attendance_devices" name="שעונים" parent="menu_attendance_devices_work" action="action_attendance_device" sequence="10"/>
     <menuitem id="menu_device_employees" name="כרטיסי עובדים" parent="menu_attendance_devices_work" action="action_device_employee_preference" sequence="20"/>

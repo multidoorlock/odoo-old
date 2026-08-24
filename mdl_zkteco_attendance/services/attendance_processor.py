@@ -1,6 +1,7 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from odoo import _
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -55,6 +56,22 @@ class AttendanceProcessor:
         if effective_punch_state == "unknown":
             event.sudo().write({"processing_state": "not_applied", "processing_message": f"Unmapped punch state: {event.raw_punch_state}"})
             return
+        cooldown_source = self._cooldown_source_event(
+            event, card, effective_punch_state,
+        )
+        if cooldown_source:
+            punch_label = _("Entry") if effective_punch_state == "in" else _("Exit")
+            event.sudo().write({
+                "processing_state": "ignored",
+                "processing_message": _(
+                    "סונן בעזרת Cooldown: החתמת %(punch)s נוספת "
+                    "בתוך %(minutes)s דקות.",
+                    punch=punch_label,
+                    minutes=event.device_id.attendance_cooldown_minutes,
+                ),
+                "attendance_id": cooldown_source.attendance_id.id,
+            })
+            return
         Attendance = self.env["hr.attendance"].sudo()
         open_attendance = Attendance.search([("employee_id", "=", card.employee_id.id), ("check_out", "=", False)], order="check_in desc", limit=1)
         if effective_punch_state == "in":
@@ -79,3 +96,25 @@ class AttendanceProcessor:
                 event.sudo().write({"processing_state": "not_applied", "processing_message": str(exc), "attendance_id": open_attendance.id})
                 return
         event.sudo().write({"processing_state": "processed", "processing_message": False, "attendance_id": attendance.id})
+
+    def _cooldown_source_event(self, event, card, punch_state):
+        """Return the last accepted same-kind punch inside the device window."""
+        minutes = event.device_id.attendance_cooldown_minutes
+        if minutes <= 0 or not event.event_datetime or punch_state not in ("in", "out"):
+            return self.env["mdl.attendance.device.event"]
+
+        candidates = self.env["mdl.attendance.device.event"].sudo().search([
+            ("id", "!=", event.id),
+            ("device_id", "=", event.device_id.id),
+            ("device_employee_id", "=", card.id),
+            ("event_datetime", ">=", event.event_datetime - timedelta(minutes=minutes)),
+            ("event_datetime", "<=", event.event_datetime),
+            ("processing_state", "!=", "ignored"),
+        ], order="event_datetime desc, id desc")
+        return candidates.filtered(
+            lambda candidate: (
+                candidate.event_datetime < event.event_datetime
+                or candidate.id < event.id
+            )
+            and (candidate.manual_punch_state or candidate.punch_state) == punch_state
+        )[:1]

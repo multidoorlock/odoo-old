@@ -1,8 +1,18 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class HrEmployee(models.Model):
     _inherit = "hr.employee"
+
+    name = fields.Char(
+        string="Employee Name",
+        related=False,
+        store=True,
+        readonly=False,
+        required=True,
+        tracking=True,
+        translate=True,
+    )
 
     # Legacy fields are intentionally retained for migration compatibility.
     # New synchronization always goes through mdl.attendance.device.employee.
@@ -19,6 +29,49 @@ class HrEmployee(models.Model):
     attendance_device_card_ids = fields.One2many(
         "mdl.attendance.device.employee", "employee_id", string="כרטיסי שעוני נוכחות"
     )
+
+    def _prepare_resource_values(self, vals, tz):
+        # hr.employee normally removes name because it is a related field in
+        # standard Odoo. Here the employee name is a native translated field,
+        # so keep it for the employee row after creating the resource.
+        employee_name = vals.get("name")
+        resource_values = super()._prepare_resource_values(vals, tz)
+        if employee_name is not None:
+            vals["name"] = employee_name
+        return resource_values
+
+    def _attendance_device_name(self, device):
+        self.ensure_one()
+        if not device:
+            return self.name
+        return self.with_context(lang=device.device_language).name or self.name
+
+    def _sync_attendance_device_card_names(self):
+        for employee in self:
+            employee.attendance_device_card_ids.sudo()._sync_name_from_employee()
+
+    def _sync_attendance_resource_names(self):
+        for employee in self.filtered("resource_id"):
+            resource_name = employee.with_context(lang="en_US").name or employee.name
+            if employee.resource_id.name != resource_name:
+                employee.resource_id.name = resource_name
+
+    def write(self, vals):
+        name_changed = "name" in vals
+        result = super().write(vals)
+        if name_changed:
+            self._sync_attendance_resource_names()
+            self._sync_attendance_device_card_names()
+        return result
+
+    def update_field_translations(self, field_name, translations, source_lang=""):
+        result = super().update_field_translations(
+            field_name, translations, source_lang=source_lang,
+        )
+        if field_name == "name":
+            self._sync_attendance_resource_names()
+            self._sync_attendance_device_card_names()
+        return result
 
     def action_zk_push_user(self):
         """Legacy entry point: never synchronize employee fields directly."""

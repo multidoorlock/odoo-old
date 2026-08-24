@@ -73,33 +73,76 @@ class TestAttendanceDevices(TransactionCase):
         self.assertEqual(card.device_name, self.employee.name)
         self.assertEqual(card.profile_photo, self.employee.image_1920)
 
-    def test_device_name_sync_uses_selected_translation(self):
+    def test_device_language_syncs_employee_translation_to_card(self):
+        self.assertFalse(self.env["resource.resource"]._fields["name"].translate)
+        self.assertTrue(self.env["hr.employee"]._fields["name"].translate)
+        self.assertFalse(self.env["mdl.attendance.device.employee"]._fields["device_name"].translate)
+
         language = self.env["res.lang"].search([
+            ("code", "in", ["he_IL", "ar_001", "en_US"]),
             ("code", "!=", self.env.lang),
         ], limit=1)
         if not language:
-            self.skipTest("A second active language is required for this test")
+            self.skipTest("A second supported active language is required for this test")
 
+        translated_name = "Selected clock language employee name"
+        self.employee.update_field_translations("name", {
+            language.code: translated_name,
+        })
+        self.device.write({"device_language": language.code})
         card = self.env["mdl.attendance.device.employee"].with_context(
             attendance_device_discovery=True,
         ).create({
             "device_id": self.device.id,
-            "device_name": "Default card name",
+            "employee_id": self.employee.id,
+            "device_name": "This value must be overwritten",
         })
-        translated_name = "Selected language card name"
-        card.with_context(lang=language.code).write({"device_name": translated_name})
-        card.set_device_name_language_code(language.code)
 
         command = self.device._adapter().build_command("update_name", card)
         self.assertIn(f"Name={translated_name}", command)
-        self.assertEqual(card.get_device_name_language_code(), language.code)
-        self.assertEqual(card.device_name_display, translated_name)
-        self.assertTrue(card.display_name.startswith(translated_name))
+        self.assertEqual(card.device_name, translated_name)
 
-        edited_name = "Edited selected language name"
-        card.write({"device_name_display": edited_name})
-        self.assertEqual(card.with_context(lang=language.code).device_name, edited_name)
-        self.assertEqual(card.device_name_display, edited_name)
+        edited_name = "Edited employee translation"
+        self.employee.update_field_translations("name", {
+            language.code: edited_name,
+        })
+        self.assertEqual(card.device_name, edited_name)
+
+        card.write({"device_name": "Manual card name"})
+        card.write({"employee_id": self.employee.id})
+        self.assertEqual(card.device_name, edited_name)
+
+        created_employee = self.env["hr.employee"].create({
+            "name": "Created through translated name field",
+            "company_id": self.env.company.id,
+        })
+        self.assertEqual(created_employee.name, "Created through translated name field")
+
+    def test_verification_mode_requires_enrolled_biometrics(self):
+        card = self.card
+        card.write({
+            "verification_mode": "0",
+            "has_face": False,
+            "has_fingerprint": False,
+        })
+
+        # Slash-separated modes are alternatives and do not require enrollment.
+        card.write({"verification_mode": "5"})
+
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            card.write({"verification_mode": "1"})
+        card.invalidate_recordset()
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            card.write({"verification_mode": "15"})
+        card.invalidate_recordset()
+
+        card.write({"has_fingerprint": True, "verification_mode": "1"})
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            card.write({"verification_mode": "16"})
+        card.invalidate_recordset()
+
+        card.write({"has_face": True, "verification_mode": "16"})
+        self.assertEqual(card.verification_mode, "16")
 
     def test_device_employee_menu_uses_preference_action_and_versioned_icon(self):
         preference_action = self.env.ref(
@@ -115,7 +158,7 @@ class TestAttendanceDevices(TransactionCase):
         self.assertEqual(menu.action, preference_action)
         self.assertEqual(
             root_menu.web_icon,
-            "mdl_zkteco_attendance,static/description/icon_menu.png",
+            "mdl_zkteco_attendance,static/description/icon_menu_v2.png",
         )
 
     def test_in_out_and_duplicate(self):
@@ -131,6 +174,38 @@ class TestAttendanceDevices(TransactionCase):
         duplicate_log = self._log()
         adapter.process_payload(duplicate_log, "ATTLOG", b"", "74\t2026-08-11 08:00:00\t255\t1\t0")
         self.assertEqual(duplicate_log.event_ids.processing_state, "ignored")
+
+    def test_device_cooldown_filters_only_repeated_same_kind_punches(self):
+        self.device.write({"attendance_cooldown_minutes": 5})
+        log = self._log()
+        self.device._adapter().process_payload(
+            log,
+            "ATTLOG",
+            b"",
+            "74\t2026-08-12 08:00:00\t255\t1\t0\n"
+            "74\t2026-08-12 08:02:00\t255\t1\t0\n"
+            "74\t2026-08-12 08:03:00\t255\t15\t0",
+        )
+        first_in, repeated_in, out_event = log.event_ids.sorted(
+            lambda event: (event.event_datetime, event.id),
+        )
+
+        self.assertEqual(first_in.processing_state, "processed")
+        self.assertEqual(repeated_in.processing_state, "ignored")
+        self.assertIn("Cooldown", repeated_in.processing_message)
+        self.assertEqual(out_event.processing_state, "processed")
+        self.assertEqual(first_in.attendance_id, out_event.attendance_id)
+        self.assertEqual(repeated_in.attendance_id, first_in.attendance_id)
+
+        later_log = self._log()
+        self.device._adapter().process_payload(
+            later_log, "ATTLOG", b"", "74\t2026-08-12 08:06:00\t255\t1\t0",
+        )
+        self.assertNotEqual(later_log.event_ids.processing_state, "ignored")
+
+    def test_device_cooldown_must_not_be_negative(self):
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self.device.write({"attendance_cooldown_minutes": -1})
 
     def test_new_zkteco_device_maps_standard_zero_and_one_punch_values(self):
         self.assertEqual(self.device._adapter().map_punch_state("0"), "unknown")
@@ -816,7 +891,12 @@ class TestAttendanceDevices(TransactionCase):
         self.assertFalse(command.device_employee_id)
 
     def test_user_privilege_and_verification_push_and_pull(self):
-        self.card.write({"device_privilege": "14", "verification_mode": "19"})
+        self.card.write({
+            "device_privilege": "14",
+            "has_face": True,
+            "has_fingerprint": True,
+            "verification_mode": "19",
+        })
         adapter = self.device._adapter()
         self.assertEqual(adapter.build_command("update_privilege", self.card),
                          "DATA UPDATE USERINFO PIN=74\tName=Clock Employee\tPri=14\tVerify=19")

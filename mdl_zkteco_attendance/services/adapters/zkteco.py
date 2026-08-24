@@ -37,7 +37,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
     def build_command(self, command_type, card):
         pin = card.device_user_id
         if command_type in ("create_user", "update_name", "update_privilege", "update_verification_mode"):
-            return (f"DATA UPDATE USERINFO PIN={pin}\tName={self._clean(card._device_name_for_clock())}"
+            return (f"DATA UPDATE USERINFO PIN={pin}\tName={self._clean(card.device_name)}"
                     f"\tPri={card.device_privilege}\tVerify={card.verification_mode}")
         if command_type == "update_profile_photo":
             prepared = self._photo(card.profile_photo)
@@ -139,16 +139,13 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             ("device_user_id", "=", pin),
         ], limit=1)
         if card:
-            card_in_clock_language = card.with_context(
-                lang=card.get_device_name_language_code(),
-            )
             values = {}
             if not card.active:
                 values["active"] = True
-            if update_existing and name and card_in_clock_language.device_name != name:
+            if update_existing and name and card.device_name != name:
                 values["device_name"] = name
             if values:
-                card_in_clock_language.with_context(skip_card_sync=True).write(values)
+                card.with_context(skip_card_sync=True).write(values)
             return card
         if not self.device.auto_discover_users:
             return Card.browse()
