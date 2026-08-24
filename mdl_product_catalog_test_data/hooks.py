@@ -18,6 +18,29 @@ _logger = logging.getLogger(__name__)
 MODULE = "mdl_product_catalog_test_data"
 DATA_FILE = Path(__file__).parent / "data" / "catalog.json.gz.b64"
 
+# Product records from Odoo 19's official product_demo.xml. We archive their
+# templates instead of unlinking them because demo documents may reference them.
+ODOO_DEMO_PRODUCT_XMLIDS = (
+    "expense_product", "expense_hotel", "product_product_1",
+    "product_product_2", "product_delivery_01", "product_delivery_02",
+    "product_order_01", "product_product_3",
+    "product_product_4_product_template", "product_product_4",
+    "product_product_4b", "product_product_4c", "product_product_5",
+    "product_product_6", "product_product_7", "product_product_8",
+    "product_product_8_glass", "product_product_8_metal",
+    "product_product_9", "product_product_10",
+    "product_product_11_product_template", "product_product_11",
+    "product_product_11b", "product_product_12", "product_product_13",
+    "product_product_16", "product_product_20", "product_product_22",
+    "product_product_24", "product_template_acoustic_bloc_screens",
+    "product_product_acoustic_bloc_screens_black", "product_product_27",
+    "consu_delivery_03", "consu_delivery_02", "consu_delivery_01",
+    "consu_delivery_01_velvet", "consu_delivery_01_leather",
+    "product_product_local_delivery", "product_product_furniture",
+    "product_template_dining_table", "desk_organizer", "desk_pad",
+    "monitor_stand", "office_combo",
+)
+
 
 def _clean(value):
     return " ".join(str(value or "").split())
@@ -45,6 +68,36 @@ def _load_source():
     return json.loads(gzip.decompress(compressed).decode("utf-8"))
 
 
+def _archive_odoo_demo_products(env):
+    xmlids = env["ir.model.data"].sudo().search(
+        [
+            ("module", "=", "product"),
+            ("name", "in", ODOO_DEMO_PRODUCT_XMLIDS),
+            ("model", "in", ("product.product", "product.template")),
+        ]
+    )
+    product_xmlids = xmlids.filtered(
+        lambda item: item.model == "product.product"
+    )
+    template_xmlids = xmlids.filtered(
+        lambda item: item.model == "product.template"
+    )
+    products = env["product.product"].with_context(active_test=False).browse(
+        product_xmlids.mapped("res_id")
+    ).exists()
+    templates = (
+        products.product_tmpl_id
+        | env["product.template"].with_context(active_test=False).browse(
+            template_xmlids.mapped("res_id")
+        ).exists()
+    )
+    if templates:
+        templates.with_context(skip_mdl_catalog_sync=True).write(
+            {"active": False}
+        )
+        _logger.info("Archived %s Odoo demo product templates", len(templates))
+
+
 def _check_existing_skus(env, data):
     expected_skus = [
         variant["sku"]
@@ -64,22 +117,17 @@ def _check_existing_skus(env, data):
 
 def _create_categories(env, data):
     Category = env["product.category"]
-    parent = Category.create({"name": "בדיקת קטלוג MasterProducts"})
-    _register_xmlid(env, "category", "test_root", parent)
     result = {}
     for item in data["groups"]:
         category = Category.create(
             {
                 "name": item["name"],
-                "parent_id": parent.id,
                 "mdl_sku_component": item["code"],
             }
         )
         _register_xmlid(env, "category", item["key"], category)
         result[item["key"]] = category
-    unique_category = Category.create(
-        {"name": "פריטים ייחודיים", "parent_id": parent.id}
-    )
+    unique_category = Category.create({"name": "פריטים ייחודיים"})
     _register_xmlid(env, "category", "unique_items", unique_category)
     return result, unique_category
 
@@ -320,6 +368,7 @@ def _create_unique_items(env, data, category):
 
 
 def post_init_hook(env):
+    _archive_odoo_demo_products(env)
     data = _load_source()
     _check_existing_skus(env, data)
     categories, unique_category = _create_categories(env, data)
