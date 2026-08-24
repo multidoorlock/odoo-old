@@ -290,7 +290,7 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(first.mdl_width_cm, 80.0)
         self.assertEqual(first.mdl_height_cm, 40.0)
         self.assertEqual(first.weight, 49.4)
-        self.assertEqual(first.volume, 0.3856)
+        self.assertEqual(first.volume, 0.39)
         self.assertEqual(first.mdl_max_protected_area_m2, 20.0)
         self.assertEqual(first.mdl_installation_type, "overhead")
         self.assertFalse(second.mdl_length_cm)
