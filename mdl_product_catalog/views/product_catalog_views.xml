@@ -53,43 +53,22 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_only_form_view"/>
         <field name="arch" type="xml">
-            <field name="default_code" position="after">
-                <field name="mdl_model_sku_component"
-                       string="מק״ט מקור לדגם"
-                       invisible="not mdl_sku_prefix"/>
-            </field>
             <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']"
                    position="before">
                 <field name="mdl_group_name_override" invisible="1"/>
                 <field name="mdl_group_sku_override" invisible="1"/>
                 <field name="mdl_model_name_override" invisible="1"/>
                 <field name="mdl_model_sku_override" invisible="1"/>
-                <group string="בסיס השם והמק״ט">
-                    <group string="קבוצת פריטים">
-                        <field name="mdl_group_name_value"/>
-                        <field name="mdl_group_sku_value"/>
-                        <button name="action_mdl_reset_group_values"
-                                type="object"
-                                string="אפס למקור"
-                                icon="fa-undo"
-                                class="btn-secondary"
-                                invisible="not mdl_group_name_override and not mdl_group_sku_override"/>
-                    </group>
-                    <group string="דגם">
-                        <field name="mdl_model_name_value"/>
-                        <field name="mdl_model_sku_value"/>
-                        <button name="action_mdl_reset_model_values"
-                                type="object"
-                                string="אפס למקור"
-                                icon="fa-undo"
-                                class="btn-secondary"
-                                invisible="not mdl_model_name_override and not mdl_model_sku_override"/>
-                    </group>
-                </group>
-                <group string="התוצאה הבסיסית">
+                <group string="בסיס הפריט">
                     <group>
-                        <field name="mdl_effective_base_name" readonly="1"/>
-                        <field name="mdl_sku_prefix" readonly="1"/>
+                        <field name="mdl_effective_base_name"/>
+                        <field name="mdl_sku_prefix"/>
+                        <button name="action_mdl_reset_base_values"
+                                type="object"
+                                string="אפס למקור"
+                                icon="fa-undo"
+                                class="btn-secondary"
+                                invisible="not mdl_group_name_override and not mdl_group_sku_override and not mdl_model_name_override and not mdl_model_sku_override"/>
                     </group>
                     <group>
                         <button name="action_mdl_check_and_rebuild"
@@ -107,13 +86,13 @@
                     </group>
                 </group>
                 <div class="alert alert-info" role="alert" invisible="not mdl_sku_prefix">
-                    השדות למעלה מציגים תמיד את הערך שבפועל. עריכה יוצרת שינוי
-                    לדגם הנוכחי בלבד, ו"אפס למקור" מחזיר לערך המקורי של
-                    הקבוצה, הדגם או ערך המאפיין.
+                    שם הבסיס ומק״ט הבסיס מחוברים אוטומטית מקבוצת הפריטים
+                    ומהדגם. עריכה משנה רק את הדגם הנוכחי, ו"אפס למקור"
+                    מחזיר לחיבור המקורי.
                     סדר השורות קובע את סדר המאפיינים בשם. את הערכים משייכים בשדה
                     "ערכים" הרגיל של Odoo. רווח, "/", "+" או כל מלל שמפריד בין
                     מאפיינים נכתב רק ב"טקסט אחרי" של השורה הקודמת. שינוי חריג
-                    לערך מסוים בדגם נעשה בטבלת ערכי המאפיינים שמתחת.
+                    לערך מסוים בדגם נעשה דרך כפתור "Configure" של המאפיין.
                 </div>
             </xpath>
 
@@ -123,28 +102,6 @@
                 <field name="mdl_name_suffix" optional="show"/>
             </xpath>
 
-            <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']"
-                   position="after">
-                <separator string="ערכי מאפיינים בדגם"/>
-                <field name="mdl_attribute_value_ids" nolabel="1">
-                    <list editable="bottom" create="0" delete="0">
-                        <field name="attribute_id" string="מאפיין" readonly="1"/>
-                        <field name="product_attribute_value_id"
-                               string="ערך המאפיין"
-                               context="{'show_attribute': False}"
-                               readonly="1"/>
-                        <field name="mdl_name_component_override" column_invisible="1"/>
-                        <field name="mdl_sku_component_override" column_invisible="1"/>
-                        <field name="mdl_name_component_value"/>
-                        <field name="mdl_sku_component_value"/>
-                        <button name="action_mdl_reset_components"
-                                type="object"
-                                string="אפס למקור"
-                                icon="fa-undo"
-                                invisible="not mdl_name_component_override and not mdl_sku_component_override"/>
-                    </list>
-                </field>
-            </xpath>
         </field>
     </record>
 

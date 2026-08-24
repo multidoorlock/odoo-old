@@ -46,6 +46,7 @@ class TestProductCatalog(TransactionCase):
                 "name": "כנף",
                 "categ_id": self.category.id,
                 "mdl_model_sku_component": "01",
+                "mdl_name_suffix": "+ידית",
                 "attribute_line_ids": [
                     Command.create(
                         {
@@ -63,7 +64,6 @@ class TestProductCatalog(TransactionCase):
                             "attribute_id": self.height.id,
                             "sequence": 20,
                             "mdl_name_mode": "value",
-                            "mdl_name_suffix": " +ידית",
                             "value_ids": [Command.set([self.height_100.id])],
                         }
                     ),
@@ -238,16 +238,14 @@ class TestProductCatalog(TransactionCase):
 
         template.write(
             {
-                "mdl_group_name_value": "סט דלת",
-                "mdl_group_sku_value": "90",
-                "mdl_model_name_value": "מיוחדת",
-                "mdl_model_sku_value": "07",
+                "mdl_effective_base_name": "סט דלת מיוחדת",
+                "mdl_sku_prefix": "9007",
             }
         )
-        self.assertEqual(template.mdl_group_name_override, "סט דלת")
-        self.assertEqual(template.mdl_group_sku_override, "90")
-        self.assertEqual(template.mdl_model_name_override, "מיוחדת")
-        self.assertEqual(template.mdl_model_sku_override, "07")
+        self.assertEqual(template.mdl_group_name_override, "—")
+        self.assertEqual(template.mdl_group_sku_override, "—")
+        self.assertEqual(template.mdl_model_name_override, "סט דלת מיוחדת")
+        self.assertEqual(template.mdl_model_sku_override, "9007")
         self.assertEqual(template.mdl_effective_base_name, "סט דלת מיוחדת")
         self.assertEqual(template.mdl_sku_prefix, "9007")
         self.assertTrue(
@@ -258,8 +256,7 @@ class TestProductCatalog(TransactionCase):
             )
         )
 
-        template.action_mdl_reset_group_values()
-        template.action_mdl_reset_model_values()
+        template.action_mdl_reset_base_values()
         self.assertFalse(template.mdl_group_name_override)
         self.assertFalse(template.mdl_group_sku_override)
         self.assertFalse(template.mdl_model_name_override)
@@ -270,6 +267,104 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(template.mdl_model_sku_value, "01")
         self.assertEqual(template.mdl_effective_base_name, "דלת כנף")
         self.assertEqual(template.mdl_sku_prefix, "1001")
+
+    def test_optional_values_do_not_leave_dangling_separators(self):
+        wall = self.env["product.attribute"].create(
+            {"name": "עובי קיר", "create_variant": "always"}
+        )
+        dressing = self.env["product.attribute"].create(
+            {"name": "עומק הלבשה", "create_variant": "always"}
+        )
+        company = self.env["product.attribute"].create(
+            {"name": "חברה", "create_variant": "always"}
+        )
+        wall_30 = self.env["product.attribute.value"].create(
+            {
+                "name": "30",
+                "attribute_id": wall.id,
+                "mdl_sku_component": "30",
+            }
+        )
+        no_dressing = self.env["product.attribute.value"].create(
+            {
+                "name": "ללא הלבשה",
+                "attribute_id": dressing.id,
+                "mdl_sku_component": "—",
+            }
+        )
+        dressing_3 = self.env["product.attribute.value"].create(
+            {
+                "name": "3",
+                "attribute_id": dressing.id,
+                "mdl_sku_component": "03",
+            }
+        )
+        multidoorlock = self.env["product.attribute.value"].create(
+            {
+                "name": "מולטי דורלוק",
+                "attribute_id": company.id,
+                "mdl_sku_component": "—",
+            }
+        )
+        rav_bariach = self.env["product.attribute.value"].create(
+            {
+                "name": "רב בריח",
+                "attribute_id": company.id,
+                "mdl_sku_component": "01",
+            }
+        )
+        template = self.env["product.template"].with_context(
+            skip_mdl_catalog_sync=True
+        ).create(
+            {
+                "name": "חלון",
+                "categ_id": self.category.id,
+                "mdl_model_sku_component": "32",
+                "attribute_line_ids": [
+                    Command.create(
+                        {
+                            "attribute_id": wall.id,
+                            "sequence": 10,
+                            "mdl_name_suffix": "+",
+                            "value_ids": [Command.set([wall_30.id])],
+                        }
+                    ),
+                    Command.create(
+                        {
+                            "attribute_id": dressing.id,
+                            "sequence": 20,
+                            "mdl_name_suffix": " ",
+                            "value_ids": [
+                                Command.set([no_dressing.id, dressing_3.id])
+                            ],
+                        }
+                    ),
+                    Command.create(
+                        {
+                            "attribute_id": company.id,
+                            "sequence": 30,
+                            "value_ids": [
+                                Command.set([multidoorlock.id, rav_bariach.id])
+                            ],
+                        }
+                    ),
+                ],
+            }
+        )
+        for value in template.attribute_line_ids.product_template_value_ids:
+            if value.product_attribute_value_id in (
+                no_dressing,
+                multidoorlock,
+            ):
+                value.mdl_name_component_override = "—"
+        template.with_context(
+            skip_mdl_catalog_sync=False
+        )._mdl_sync_variant_codes()
+        names = set(template.product_variant_ids.mapped("mdl_generated_name"))
+        self.assertIn("דלת חלון 30", names)
+        self.assertIn("דלת חלון 30+3", names)
+        self.assertIn("דלת חלון 30 רב בריח", names)
+        self.assertIn("דלת חלון 30+3 רב בריח", names)
 
     def test_attribute_value_edit_in_model_does_not_change_the_source(self):
         template = self._create_template()
@@ -304,7 +399,6 @@ class TestProductCatalog(TransactionCase):
         width_line.write(
             {
                 "mdl_name_mode": "attribute_value",
-                "mdl_name_suffix": " +ידית",
             }
         )
         height_line.mdl_name_mode = "hidden"

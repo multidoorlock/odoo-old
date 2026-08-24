@@ -13,6 +13,16 @@ from .catalog_utils import (
 class ProductProduct(models.Model):
     _inherit = "product.product"
 
+    mdl_catalog_allowed = fields.Boolean(
+        string="שילוב קטלוג מותר (טכני)",
+        default=True,
+        index=True,
+        copy=False,
+        help=(
+            "שדה טכני לנתונים מוסבים שבהם כלל השילוב אינו ניתן לביטוי "
+            "באמצעות ההחרגות הזוגיות של Odoo."
+        ),
+    )
     mdl_generated_name = fields.Char(
         string="שם פריט סופי",
         compute="_compute_mdl_catalog_values",
@@ -23,6 +33,7 @@ class ProductProduct(models.Model):
     @api.depends(
         "product_tmpl_id.mdl_sku_prefix",
         "product_tmpl_id.mdl_effective_base_name",
+        "product_tmpl_id.mdl_name_suffix",
         "product_tmpl_id.attribute_line_ids.sequence",
         "product_tmpl_id.attribute_line_ids.mdl_name_mode",
         "product_tmpl_id.attribute_line_ids.mdl_name_suffix",

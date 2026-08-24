@@ -148,8 +148,9 @@ def _validate_and_register_variants(env, template, template_data, values):
     template._create_variant_ids()
     env.flush_all()
     env.invalidate_all()
-    template = env["product.template"].browse(template.id)
-    template._mdl_sync_variant_codes()
+    template = env["product.template"].with_context(active_test=False).browse(
+        template.id
+    )
     expected_by_tuple = {
         tuple(sorted(values[key].id for key in variant["value_keys"])): variant
         for variant in template_data["variants"]
@@ -163,12 +164,35 @@ def _validate_and_register_variants(env, template, template_data, values):
         ): product
         for product in template.product_variant_ids
     }
-    if expected_by_tuple.keys() != actual_by_tuple.keys():
+    missing = expected_by_tuple.keys() - actual_by_tuple.keys()
+    if missing:
         raise UserError(
-            "נתוני הבדיקה אינם מייצרים את אותם שילובים בדגם "
-            f"{template_data['key']}: צפויים {len(expected_by_tuple)}, "
-            f"נוצרו {len(actual_by_tuple)}."
+            "נתוני הבדיקה אינם מייצרים את כל השילובים בדגם "
+            f"{template_data['key']}: חסרים {len(missing)} שילובים."
         )
+    # Native Odoo exclusions are pairwise.  A legacy catalog can contain a
+    # higher-order rule which cannot be expressed as a pair of values.  Keep
+    # the model in one native template and archive only the combinations that
+    # were not present in MasterProducts; users still manage the values through
+    # the normal Attributes & Variants screen.
+    extra_products = env["product.product"].browse(
+        [
+            actual_by_tuple[value_tuple].id
+            for value_tuple in actual_by_tuple.keys() - expected_by_tuple.keys()
+        ]
+    )
+    if extra_products:
+        extra_products.with_context(skip_mdl_catalog_sync=True).write(
+            {"mdl_catalog_allowed": False, "active": False}
+        )
+    expected_products = env["product.product"].browse(
+        [actual_by_tuple[value_tuple].id for value_tuple in expected_by_tuple]
+    )
+    expected_products.with_context(skip_mdl_catalog_sync=True).write(
+        {"mdl_catalog_allowed": True, "active": True}
+    )
+    template = template.with_context(active_test=True)
+    template._mdl_sync_variant_codes()
     for value_tuple, expected in expected_by_tuple.items():
         product = actual_by_tuple[value_tuple]
         actual_sku = _clean(product.default_code)
@@ -205,7 +229,6 @@ def _create_templates(env, data, categories, attributes, values):
             key=lambda row: row[0],
         )
         first_visible_key = visible_rules[0][1] if visible_rules else None
-        last_visible_key = visible_rules[-1][1] if visible_rules else None
         leading_text = (
             _clean(name_rules[first_visible_key]["prefix"])
             if first_visible_key
@@ -215,16 +238,13 @@ def _create_templates(env, data, categories, attributes, values):
         for line in item["attribute_lines"]:
             rule_key = normalize_token(line["attribute_key"])
             rule = name_rules[rule_key]
-            suffix = rule["suffix"]
-            if rule_key == last_visible_key and final_suffix:
-                suffix += final_suffix
             lines.append(
                 Command.create(
                     {
                         "attribute_id": attributes[line["attribute_key"]].id,
                         "sequence": line["sequence"],
                         "mdl_name_mode": rule["name_mode"],
-                        "mdl_name_suffix": suffix or False,
+                        "mdl_name_suffix": rule["suffix"] or False,
                         "value_ids": [
                             Command.set(
                                 [values[value["value_key"]].id for value in line["values"]]
@@ -267,6 +287,7 @@ def _create_templates(env, data, categories, attributes, values):
                 "mdl_group_name_override": group_name_override,
                 "mdl_model_sku_component": item["model_code"],
                 "mdl_model_name_override": model_name_override,
+                "mdl_name_suffix": final_suffix or False,
                 "attribute_line_ids": lines,
             }
         )
@@ -276,10 +297,17 @@ def _create_templates(env, data, categories, attributes, values):
         }
         for line in item["attribute_lines"]:
             for value_data in line["values"]:
+                template_value = template_values[
+                    values[value_data["value_key"]].id
+                ]
                 if value_data.get("name_override"):
-                    template_values[
-                        values[value_data["value_key"]].id
-                    ].mdl_name_component_override = value_data["name_override"]
+                    template_value.mdl_name_component_override = value_data[
+                        "name_override"
+                    ]
+                if value_data.get("sku_override"):
+                    template_value.mdl_sku_component_override = value_data[
+                        "sku_override"
+                    ]
         _register_xmlid(env, "template", item["key"], template)
         _create_exclusions(env, template, item, values)
         _validate_and_register_variants(env, template, item, values)

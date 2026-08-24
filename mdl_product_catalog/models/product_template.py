@@ -50,8 +50,9 @@ class ProductTemplate(models.Model):
     _inherit = "product.template"
 
     mdl_sku_prefix = fields.Char(
-        string="מק״ט בסיס בפועל",
+        string="מק״ט בסיס",
         compute="_compute_mdl_sku_prefix",
+        inverse="_inverse_mdl_sku_prefix",
         store=True,
         index=True,
         copy=False,
@@ -136,9 +137,14 @@ class ProductTemplate(models.Model):
         ),
     )
     mdl_effective_base_name = fields.Char(
-        string="שם בסיס בפועל",
+        string="שם בסיס",
         compute="_compute_mdl_effective_base_name",
+        inverse="_inverse_mdl_effective_base_name",
         store=True,
+        help=(
+            "שם הבסיס של הפריט לפני המאפיינים. כברירת מחדל הוא מחובר "
+            "משם קבוצת הפריטים ושם הדגם; עריכה משנה רק את הדגם הנוכחי."
+        ),
     )
     mdl_attribute_value_ids = fields.One2many(
         comodel_name="product.template.attribute.value",
@@ -146,14 +152,14 @@ class ProductTemplate(models.Model):
         string="ערכי מאפיינים בדגם",
     )
 
-    # Kept as technical migration fields for databases created by earlier
-    # versions. They are no longer shown or used to render new catalog names.
+    # Kept out of the form: users manage the readable format through the
+    # ordered attribute rows and their single "טקסט אחרי" field.
     mdl_variant_base_name = fields.Char(
         string="שם בסיס ישן (לא בשימוש)",
         copy=True,
     )
     mdl_name_suffix = fields.Char(
-        string="טקסט קבוע ישן (לא בשימוש)",
+        string="טקסט סופי של הפורמט (טכני)",
         copy=True,
     )
 
@@ -174,6 +180,26 @@ class ProductTemplate(models.Model):
                 template.mdl_model_sku_override,
             )
             template.mdl_sku_prefix = f"{group_sku}{model_sku}" or False
+
+    def _inverse_mdl_sku_prefix(self):
+        for template in self:
+            effective_value = clean_text(template.mdl_sku_prefix)
+            source_value = clean_text(
+                f"{template.categ_id.mdl_sku_component or ''}"
+                f"{template.mdl_model_sku_component or ''}"
+            )
+            if effective_value == source_value:
+                values = {
+                    "mdl_group_sku_override": False,
+                    "mdl_model_sku_override": False,
+                }
+            else:
+                values = {
+                    "mdl_group_sku_override": "—",
+                    "mdl_model_sku_override": effective_value or "—",
+                }
+            template.with_context(skip_mdl_catalog_sync=True).write(values)
+        self._mdl_sync_variant_codes()
 
     @api.depends("name", "categ_id.name")
     def _compute_mdl_model_default_name(self):
@@ -288,6 +314,26 @@ class ProductTemplate(models.Model):
                 " ".join(part for part in (group_name, model_name) if part)
             )
 
+    def _inverse_mdl_effective_base_name(self):
+        for template in self:
+            effective_value = clean_text(template.mdl_effective_base_name)
+            source_value = _name_with_group(
+                template.categ_id.name,
+                _name_without_group(template.categ_id.name, template.name),
+            )
+            if effective_value == source_value:
+                values = {
+                    "mdl_group_name_override": False,
+                    "mdl_model_name_override": False,
+                }
+            else:
+                values = {
+                    "mdl_group_name_override": "—",
+                    "mdl_model_name_override": effective_value or "—",
+                }
+            template.with_context(skip_mdl_catalog_sync=True).write(values)
+        self._mdl_sync_variant_codes()
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -362,6 +408,18 @@ class ProductTemplate(models.Model):
         )
         return {"type": "ir.actions.client", "tag": "reload"}
 
+    def action_mdl_reset_base_values(self):
+        self.ensure_one()
+        self.write(
+            {
+                "mdl_group_name_override": False,
+                "mdl_group_sku_override": False,
+                "mdl_model_name_override": False,
+                "mdl_model_sku_override": False,
+            }
+        )
+        return {"type": "ir.actions.client", "tag": "reload"}
+
     def _mdl_ensure_full_model_names(self, previous_group_names=None):
         previous_group_names = previous_group_names or {}
         for template in self.filtered("mdl_sku_prefix"):
@@ -404,9 +462,12 @@ class ProductTemplate(models.Model):
         final_name = clean_text(self.mdl_effective_base_name)
         deferred_name_markers = []
         displayed_values = 0
-        for line in self.attribute_line_ids.filtered("active").sorted(
+        previous_line_suffix = ""
+        last_line_had_text = False
+        ordered_lines = self.attribute_line_ids.filtered("active").sorted(
             lambda item: (item.sequence, item.attribute_id.sequence, item.id)
-        ):
+        )
+        for line in ordered_lines:
             value = values_by_line.get(line.id)
             if not value or line.mdl_name_mode == "hidden":
                 continue
@@ -416,11 +477,30 @@ class ProductTemplate(models.Model):
                 if marker:
                     deferred_name_markers.append(marker)
             if line.mdl_name_mode == "attribute_value":
-                value_name = clean_text(f"{line.attribute_id.name} {value_name}")
-            if not displayed_values and final_name:
-                final_name += " "
-            final_name += f"{value_name}{line.mdl_name_suffix or ''}"
-            displayed_values += 1
+                value_name = clean_text(
+                    f"{line.attribute_id.name} {value_name}"
+                ) if value_name else ""
+            if value_name:
+                if not displayed_values and final_name:
+                    final_name += " "
+                elif displayed_values:
+                    final_name += previous_line_suffix
+                final_name += value_name
+                displayed_values += 1
+                last_line_had_text = True
+            else:
+                last_line_had_text = False
+            # "טקסט אחרי" is the separator before the next row.  Deferring
+            # it until the next non-empty value keeps optional values such as
+            # "ללא הלבשה" from leaving a dangling '+' in the final name.
+            previous_line_suffix = line.mdl_name_suffix or ""
+        terminal_text = clean_text(self.mdl_name_suffix)
+        if not terminal_text and last_line_had_text:
+            # Backward compatibility for formats created before terminal text
+            # was stored on the template itself.
+            terminal_text = previous_line_suffix
+        if terminal_text:
+            final_name += f" {terminal_text}" if not terminal_text.startswith(" ") else terminal_text
         if deferred_name_markers:
             final_name += " " + " ".join(deferred_name_markers)
         return "".join(sku_parts), clean_text(final_name), missing_components
@@ -490,6 +570,18 @@ class ProductTemplate(models.Model):
             return
         for template in self.filtered("mdl_sku_prefix"):
             template.product_variant_ids._mdl_sync_default_code()
+
+    def _create_variant_ids(self):
+        result = super()._create_variant_ids()
+        disallowed = self.with_context(
+            active_test=False
+        ).product_variant_ids.filtered(
+            lambda product: not product.mdl_catalog_allowed
+        )
+        disallowed.filtered("active").with_context(
+            skip_mdl_catalog_sync=True
+        ).write({"active": False})
+        return result
 
     def action_mdl_check_and_rebuild(self):
         self.ensure_one()
