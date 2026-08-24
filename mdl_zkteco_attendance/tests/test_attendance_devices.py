@@ -118,6 +118,23 @@ class TestAttendanceDevices(TransactionCase):
         })
         self.assertEqual(created_employee.name, "Created through translated name field")
 
+    def test_inactive_clock_language_falls_back_to_current_odoo_language(self):
+        language_code = "ar_001" if self.env.lang != "ar_001" else "he_IL"
+        language = self.env["res.lang"].with_context(active_test=False).search([
+            ("code", "=", language_code),
+        ], limit=1)
+        if language and language.active:
+            language.active = False
+
+        self.device.device_language = language_code
+        card = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": self.device.id,
+            "employee_id": self.employee.id,
+        })
+        self.assertEqual(card.device_name, self.employee.name)
+
     def test_verification_mode_requires_enrolled_biometrics(self):
         card = self.card
         card.write({

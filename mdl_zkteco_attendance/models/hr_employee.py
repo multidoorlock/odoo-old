@@ -44,7 +44,14 @@ class HrEmployee(models.Model):
         self.ensure_one()
         if not device:
             return self.name
-        return self.with_context(lang=device.device_language).name or self.name
+        # A newly-created Odoo.sh database initially has only en_US enabled.
+        # The clock can already be configured for Hebrew or Arabic, but Odoo
+        # rejects an inactive language code in ``env.lang``.  Use the clock
+        # language when it is active and otherwise keep the employee's current
+        # Odoo-language name until that language is installed.
+        language = self.env["res.lang"]._lang_get(device.device_language)
+        language_code = language.code if language else (self.env.lang or "en_US")
+        return self.with_context(lang=language_code).name or self.name
 
     def _sync_attendance_device_card_names(self):
         for employee in self:
