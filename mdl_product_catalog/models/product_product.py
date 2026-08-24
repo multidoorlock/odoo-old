@@ -13,6 +13,32 @@ from .catalog_utils import (
 class ProductProduct(models.Model):
     _inherit = "product.product"
 
+    mdl_max_protected_area_m2 = fields.Float(
+        string="שטח מוגן מרבי (מ״ר)",
+        help="נתון טכני של הפריט הסופי; אינו יוצר וריאנטים חדשים.",
+    )
+    mdl_installation_type = fields.Selection(
+        selection=[
+            ("overhead", "עילית"),
+            ("concealed", "סמויה"),
+            ("other", "אחר"),
+        ],
+        string="סוג התקנה",
+        help="נתון טכני של הפריט הסופי; אינו חלק משם המוצר.",
+    )
+    mdl_length_cm = fields.Float(
+        string="אורך (ס״מ)",
+        help="אורך הפריט הסופי בסנטימטרים.",
+    )
+    mdl_width_cm = fields.Float(
+        string="רוחב (ס״מ)",
+        help="רוחב הפריט הסופי בסנטימטרים.",
+    )
+    mdl_height_cm = fields.Float(
+        string="גובה (ס״מ)",
+        help="גובה הפריט הסופי בסנטימטרים.",
+    )
+
     mdl_catalog_allowed = fields.Boolean(
         string="שילוב קטלוג מותר (טכני)",
         default=True,

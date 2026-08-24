@@ -186,6 +186,19 @@ def _validate_and_register_variants(env, template, template_data, values):
             raise UserError(
                 f"המק״ט {expected['sku']} חושב אך לא נשמר בפריט."
             )
+        technical_values = {}
+        if "max_protected_area_m2" in expected:
+            technical_values["mdl_max_protected_area_m2"] = expected[
+                "max_protected_area_m2"
+            ]
+        if "installation_type" in expected:
+            technical_values["mdl_installation_type"] = expected[
+                "installation_type"
+            ]
+        if technical_values:
+            product.with_context(skip_mdl_catalog_sync=True).write(
+                technical_values
+            )
 
 
 def _create_templates(env, data, categories, attributes, values):

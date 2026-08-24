@@ -207,6 +207,28 @@
                        widget="text"
                        invisible="mdl_generated_name"/>
             </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="נתונים טכניים" name="mdl_technical_data">
+                    <group>
+                        <group string="מידות ומשקל">
+                            <field name="mdl_length_cm"/>
+                            <field name="mdl_width_cm"/>
+                            <field name="mdl_height_cm"/>
+                            <field name="weight" string="משקל"/>
+                            <field name="volume" string="נפח"/>
+                        </group>
+                        <group string="נתוני מערכת">
+                            <field name="mdl_max_protected_area_m2"/>
+                            <field name="mdl_installation_type"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        הנתונים בלשונית זו שייכים לפריט הסופי ואינם יוצרים
+                        שילובים חדשים. קיבולת, חברה ודגם מערכת מנוהלים
+                        בלשונית המאפיינים של תבנית המוצר.
+                    </div>
+                </page>
+            </xpath>
         </field>
     </record>
 
@@ -243,6 +265,8 @@
         <field name="arch" type="xml">
             <field name="name" position="after">
                 <field name="mdl_generated_name" string="שם פריט סופי"/>
+                <field name="mdl_max_protected_area_m2"/>
+                <field name="mdl_installation_type"/>
             </field>
         </field>
     </record>

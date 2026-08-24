@@ -290,6 +290,12 @@
       "name": "דגם מערכת סינון",
       "sequence": 80,
       "display_type": "select"
+    },
+    {
+      "key": "קיבולת נפשות",
+      "name": "קיבולת נפשות",
+      "sequence": 60,
+      "display_type": "select"
     }
   ],
   "values": [
@@ -902,12 +908,132 @@
       "sequence": 12
     },
     {
-      "key": "— - Hidden סמויה אחודה | דגם מערכת סינון",
+      "key": "— - Hidden | דגם מערכת סינון",
       "attribute_key": "דגם מערכת סינון",
-      "name": "Hidden סמויה אחודה",
-      "name_component": "Hidden סמויה אחודה",
+      "name": "Hidden",
+      "name_component": "Hidden",
       "sku_component": "",
       "sequence": 13
+    },
+    {
+      "key": "06 - 6 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "6 נפשות",
+      "name_component": "6 נפשות",
+      "sku_component": "06",
+      "sequence": 6
+    },
+    {
+      "key": "25 - 25 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "25 נפשות",
+      "name_component": "25 נפשות",
+      "sku_component": "25",
+      "sequence": 25
+    },
+    {
+      "key": "30 - 30 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "30 נפשות",
+      "name_component": "30 נפשות",
+      "sku_component": "30",
+      "sequence": 30
+    },
+    {
+      "key": "40 - 40 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "40 נפשות",
+      "name_component": "40 נפשות",
+      "sku_component": "40",
+      "sequence": 40
+    },
+    {
+      "key": "50 - 50 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "50 נפשות",
+      "name_component": "50 נפשות",
+      "sku_component": "50",
+      "sequence": 50
+    },
+    {
+      "key": "60 - 60 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "60 נפשות",
+      "name_component": "60 נפשות",
+      "sku_component": "60",
+      "sequence": 60
+    },
+    {
+      "key": "80 - 80 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "80 נפשות",
+      "name_component": "80 נפשות",
+      "sku_component": "80",
+      "sequence": 80
+    },
+    {
+      "key": "100 - 100 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "100 נפשות",
+      "name_component": "100 נפשות",
+      "sku_component": "100",
+      "sequence": 100
+    },
+    {
+      "key": "120 - 120 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "120 נפשות",
+      "name_component": "120 נפשות",
+      "sku_component": "120",
+      "sequence": 120
+    },
+    {
+      "key": "150 - 150 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "150 נפשות",
+      "name_component": "150 נפשות",
+      "sku_component": "150",
+      "sequence": 150
+    },
+    {
+      "key": "160 - 160 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "160 נפשות",
+      "name_component": "160 נפשות",
+      "sku_component": "160",
+      "sequence": 160
+    },
+    {
+      "key": "200 - 200 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "200 נפשות",
+      "name_component": "200 נפשות",
+      "sku_component": "200",
+      "sequence": 200
+    },
+    {
+      "key": "33 - 33 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "33 נפשות",
+      "name_component": "33 נפשות",
+      "sku_component": "33",
+      "sequence": 33
+    },
+    {
+      "key": "66 - 66 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "66 נפשות",
+      "name_component": "66 נפשות",
+      "sku_component": "66",
+      "sequence": 66
+    },
+    {
+      "key": "83 - 83 נפשות | קיבולת נפשות",
+      "attribute_key": "קיבולת נפשות",
+      "name": "83 נפשות",
+      "name_component": "83 נפשות",
+      "sku_component": "83",
+      "sequence": 83
     }
   ],
   "templates": [
@@ -15941,25 +16067,76 @@
       "exclusions_exact": true
     },
     {
-      "key": "4006 - מערכת סינון דירתית",
+      "key": "40 - מערכת סינון",
       "source_model_lookup": "4006 - מערכת סינון דירתית",
       "group_key": "40 - מערכת סינון",
-      "model_code": "06",
-      "name": "דירתית",
+      "model_code": "",
+      "name": "מערכת סינון",
       "group_name_component": "מערכת סינון",
-      "model_name_component": "דירתית",
+      "model_name_component": "מערכת סינון",
       "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
+      "name_format": "[שם קבוצת פריטים] [דגם] [קיבולת נפשות] [חברה] [דגם מערכת סינון]",
       "attribute_lines": [
+        {
+          "attribute_key": "קיבולת נפשות",
+          "sequence": 60,
+          "values": [
+            {
+              "value_key": "06 - 6 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "25 - 25 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "30 - 30 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "33 - 33 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "40 - 40 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "50 - 50 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "60 - 60 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "66 - 66 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "80 - 80 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "83 - 83 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "100 - 100 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "120 - 120 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "150 - 150 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "160 - 160 נפשות | קיבולת נפשות"
+            },
+            {
+              "value_key": "200 - 200 נפשות | קיבולת נפשות"
+            }
+          ]
+        },
         {
           "attribute_key": "חברה",
           "sequence": 70,
           "values": [
             {
-              "value_key": "01 - רב בריח | חברה"
+              "value_key": "09 - בית אל | חברה"
             },
             {
-              "value_key": "09 - בית אל | חברה"
+              "value_key": "01 - רב בריח | חברה"
             }
           ]
         },
@@ -15971,7 +16148,13 @@
               "value_key": "— - לביא PRO | דגם מערכת סינון"
             },
             {
+              "value_key": "— - כפיר+ | דגם מערכת סינון"
+            },
+            {
               "value_key": "— - Rainbow | דגם מערכת סינון"
+            },
+            {
+              "value_key": "— - Hidden | דגם מערכת סינון"
             }
           ]
         }
@@ -15979,771 +16162,453 @@
       "variants": [
         {
           "sku": "400601",
-          "name": "מערכת סינון דירתית רב בריח דגם לביא PRO",
+          "name": "מערכת סינון 6 נפשות רב בריח לביא PRO",
           "source_row": 1058,
           "value_keys": [
+            "06 - 6 נפשות | קיבולת נפשות",
             "01 - רב בריח | חברה",
             "— - לביא PRO | דגם מערכת סינון"
           ]
         },
         {
+          "sku": "402501",
+          "name": "מערכת סינון 25 נפשות רב בריח כפיר+",
+          "source_row": 1059,
+          "value_keys": [
+            "25 - 25 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 10.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "403001",
+          "name": "מערכת סינון 30 נפשות רב בריח כפיר+",
+          "source_row": 1060,
+          "value_keys": [
+            "30 - 30 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 12.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "404001",
+          "name": "מערכת סינון 40 נפשות רב בריח כפיר+",
+          "source_row": 1061,
+          "value_keys": [
+            "40 - 40 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 16.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "405001",
+          "name": "מערכת סינון 50 נפשות רב בריח כפיר+",
+          "source_row": 1062,
+          "value_keys": [
+            "50 - 50 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 20.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "406001",
+          "name": "מערכת סינון 60 נפשות רב בריח כפיר+",
+          "source_row": 1063,
+          "value_keys": [
+            "60 - 60 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 24.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "408001",
+          "name": "מערכת סינון 80 נפשות רב בריח כפיר+",
+          "source_row": 1064,
+          "value_keys": [
+            "80 - 80 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 32.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "4010001",
+          "name": "מערכת סינון 100 נפשות רב בריח כפיר+",
+          "source_row": 1065,
+          "value_keys": [
+            "100 - 100 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 40.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "4012001",
+          "name": "מערכת סינון 120 נפשות רב בריח כפיר+",
+          "source_row": 1066,
+          "value_keys": [
+            "120 - 120 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 48.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "4015001",
+          "name": "מערכת סינון 150 נפשות רב בריח כפיר+",
+          "source_row": 1067,
+          "value_keys": [
+            "150 - 150 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 60.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "4016001",
+          "name": "מערכת סינון 160 נפשות רב בריח כפיר+",
+          "source_row": 1068,
+          "value_keys": [
+            "160 - 160 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 64.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "4020001",
+          "name": "מערכת סינון 200 נפשות רב בריח כפיר+",
+          "source_row": 1069,
+          "value_keys": [
+            "200 - 200 נפשות | קיבולת נפשות",
+            "01 - רב בריח | חברה",
+            "— - כפיר+ | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 80.0,
+          "installation_type": "overhead"
+        },
+        {
           "sku": "400609",
-          "name": "מערכת סינון דירתית בית אל דגם Rainbow",
+          "name": "מערכת סינון 6 נפשות בית אל Rainbow",
           "source_row": 1070,
           "value_keys": [
+            "06 - 6 נפשות | קיבולת נפשות",
             "09 - בית אל | חברה",
             "— - Rainbow | דגם מערכת סינון"
           ]
+        },
+        {
+          "sku": "403309",
+          "name": "מערכת סינון 33 נפשות בית אל Hidden",
+          "source_row": 1071,
+          "value_keys": [
+            "33 - 33 נפשות | קיבולת נפשות",
+            "09 - בית אל | חברה",
+            "— - Hidden | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 13.2,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "405009",
+          "name": "מערכת סינון 50 נפשות בית אל Hidden",
+          "source_row": 1072,
+          "value_keys": [
+            "50 - 50 נפשות | קיבולת נפשות",
+            "09 - בית אל | חברה",
+            "— - Hidden | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 20.0,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "406609",
+          "name": "מערכת סינון 66 נפשות בית אל Hidden",
+          "source_row": 1073,
+          "value_keys": [
+            "66 - 66 נפשות | קיבולת נפשות",
+            "09 - בית אל | חברה",
+            "— - Hidden | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 26.4,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "408309",
+          "name": "מערכת סינון 83 נפשות בית אל Hidden",
+          "source_row": 1074,
+          "value_keys": [
+            "83 - 83 נפשות | קיבולת נפשות",
+            "09 - בית אל | חברה",
+            "— - Hidden | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 33.2,
+          "installation_type": "overhead"
+        },
+        {
+          "sku": "4010009",
+          "name": "מערכת סינון 100 נפשות בית אל Hidden",
+          "source_row": 1075,
+          "value_keys": [
+            "100 - 100 נפשות | קיבולת נפשות",
+            "09 - בית אל | חברה",
+            "— - Hidden | דגם מערכת סינון"
+          ],
+          "max_protected_area_m2": 40.0,
+          "installation_type": "overhead"
         }
       ],
-      "cartesian_count": 4,
+      "cartesian_count": 120,
       "forbidden_pairs": [
+        {
+          "value_key": "25 - 25 נפשות | קיבולת נפשות",
+          "excluded_value_key": "09 - בית אל | חברה"
+        },
+        {
+          "value_key": "30 - 30 נפשות | קיבולת נפשות",
+          "excluded_value_key": "09 - בית אל | חברה"
+        },
+        {
+          "value_key": "33 - 33 נפשות | קיבולת נפשות",
+          "excluded_value_key": "01 - רב בריח | חברה"
+        },
+        {
+          "value_key": "40 - 40 נפשות | קיבולת נפשות",
+          "excluded_value_key": "09 - בית אל | חברה"
+        },
+        {
+          "value_key": "60 - 60 נפשות | קיבולת נפשות",
+          "excluded_value_key": "09 - בית אל | חברה"
+        },
+        {
+          "value_key": "66 - 66 נפשות | קיבולת נפשות",
+          "excluded_value_key": "01 - רב בריח | חברה"
+        },
+        {
+          "value_key": "80 - 80 נפשות | קיבולת נפשות",
+          "excluded_value_key": "09 - בית אל | חברה"
+        },
+        {
+          "value_key": "83 - 83 נפשות | קיבולת נפשות",
+          "excluded_value_key": "01 - רב בריח | חברה"
+        },
+        {
+          "value_key": "120 - 120 נפשות | קיבולת נפשות",
+          "excluded_value_key": "09 - בית אל | חברה"
+        },
+        {
+          "value_key": "150 - 150 נפשות | קיבולת נפשות",
+          "excluded_value_key": "09 - בית אל | חברה"
+        },
+        {
+          "value_key": "160 - 160 נפשות | קיבולת נפשות",
+          "excluded_value_key": "09 - בית אל | חברה"
+        },
+        {
+          "value_key": "200 - 200 נפשות | קיבולת נפשות",
+          "excluded_value_key": "09 - בית אל | חברה"
+        },
+        {
+          "value_key": "06 - 6 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - כפיר+ | דגם מערכת סינון"
+        },
+        {
+          "value_key": "06 - 6 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "25 - 25 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "25 - 25 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "25 - 25 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "30 - 30 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "30 - 30 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "30 - 30 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "33 - 33 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "33 - 33 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - כפיר+ | דגם מערכת סינון"
+        },
+        {
+          "value_key": "33 - 33 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "40 - 40 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "40 - 40 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "40 - 40 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "50 - 50 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "50 - 50 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "60 - 60 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "60 - 60 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "60 - 60 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "66 - 66 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "66 - 66 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - כפיר+ | דגם מערכת סינון"
+        },
+        {
+          "value_key": "66 - 66 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "80 - 80 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "80 - 80 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "80 - 80 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "83 - 83 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "83 - 83 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - כפיר+ | דגם מערכת סינון"
+        },
+        {
+          "value_key": "83 - 83 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "100 - 100 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "100 - 100 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "120 - 120 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "120 - 120 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "120 - 120 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "150 - 150 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "150 - 150 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "150 - 150 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "160 - 160 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "160 - 160 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "160 - 160 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "200 - 200 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "200 - 200 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
+        },
+        {
+          "value_key": "200 - 200 נפשות | קיבולת נפשות",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
+        },
+        {
+          "value_key": "09 - בית אל | חברה",
+          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+        },
+        {
+          "value_key": "09 - בית אל | חברה",
+          "excluded_value_key": "— - כפיר+ | דגם מערכת סינון"
+        },
         {
           "value_key": "01 - רב בריח | חברה",
           "excluded_value_key": "— - Rainbow | דגם מערכת סינון"
         },
         {
-          "value_key": "09 - בית אל | חברה",
-          "excluded_value_key": "— - לביא PRO | דגם מערכת סינון"
+          "value_key": "01 - רב בריח | חברה",
+          "excluded_value_key": "— - Hidden | דגם מערכת סינון"
         }
       ],
-      "allowed_count_after_exclusions": 2,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4025 - מערכת סינון מוסדית, עד 25 נפשות למרחב מוגן מוסדי, לממ\"מ עד 10 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "4025 - מערכת סינון מוסדית, עד 25 נפשות למרחב מוגן מוסדי, לממ\"מ עד 10 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "25",
-      "name": "מוסדית, עד 25 נפשות למרחב מוגן מוסדי, לממ\"מ עד 10 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 25 נפשות למרחב מוגן מוסדי, לממ\"מ עד 10 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "402501",
-          "name": "מערכת סינון מוסדית, עד 25 נפשות למרחב מוגן מוסדי, לממ\"מ עד 10 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1059,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4030 - מערכת סינון מוסדית, עד 30 נפשות למרחב מוגן מוסדי, לממ\"מ עד 12 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "4030 - מערכת סינון מוסדית, עד 30 נפשות למרחב מוגן מוסדי, לממ\"מ עד 12 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "30",
-      "name": "מוסדית, עד 30 נפשות למרחב מוגן מוסדי, לממ\"מ עד 12 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 30 נפשות למרחב מוגן מוסדי, לממ\"מ עד 12 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "403001",
-          "name": "מערכת סינון מוסדית, עד 30 נפשות למרחב מוגן מוסדי, לממ\"מ עד 12 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1060,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4040 - מערכת סינון מוסדית, עד 40 נפשות למרחב מוגן מוסדי, לממ\"מ עד 16 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "4040 - מערכת סינון מוסדית, עד 40 נפשות למרחב מוגן מוסדי, לממ\"מ עד 16 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "40",
-      "name": "מוסדית, עד 40 נפשות למרחב מוגן מוסדי, לממ\"מ עד 16 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 40 נפשות למרחב מוגן מוסדי, לממ\"מ עד 16 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "404001",
-          "name": "מערכת סינון מוסדית, עד 40 נפשות למרחב מוגן מוסדי, לממ\"מ עד 16 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1061,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4050 - מערכת סינון מוסדית, עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "4050 - מערכת סינון מוסדית, עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "50",
-      "name": "מוסדית, עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "405001",
-          "name": "מערכת סינון מוסדית, עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1062,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4060 - מערכת סינון מוסדית, עד 60 נפשות למרחב מוגן מוסדי, לממ\"מ עד 24 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "4060 - מערכת סינון מוסדית, עד 60 נפשות למרחב מוגן מוסדי, לממ\"מ עד 24 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "60",
-      "name": "מוסדית, עד 60 נפשות למרחב מוגן מוסדי, לממ\"מ עד 24 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 60 נפשות למרחב מוגן מוסדי, לממ\"מ עד 24 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "406001",
-          "name": "מערכת סינון מוסדית, עד 60 נפשות למרחב מוגן מוסדי, לממ\"מ עד 24 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1063,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4080 - מערכת סינון מוסדית, עד 80 נפשות למרחב מוגן מוסדי, לממ\"מ עד 32 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "4080 - מערכת סינון מוסדית, עד 80 נפשות למרחב מוגן מוסדי, לממ\"מ עד 32 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "80",
-      "name": "מוסדית, עד 80 נפשות למרחב מוגן מוסדי, לממ\"מ עד 32 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 80 נפשות למרחב מוגן מוסדי, לממ\"מ עד 32 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "408001",
-          "name": "מערכת סינון מוסדית, עד 80 נפשות למרחב מוגן מוסדי, לממ\"מ עד 32 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1064,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "40100 - מערכת סינון מוסדית, עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "40100 - מערכת סינון מוסדית, עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "100",
-      "name": "מוסדית, עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "4010001",
-          "name": "מערכת סינון מוסדית, עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1065,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "40120 - מערכת סינון מוסדית, עד 120 נפשות למרחב מוגן מוסדי, לממ\"מ עד 48 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "40120 - מערכת סינון מוסדית, עד 120 נפשות למרחב מוגן מוסדי, לממ\"מ עד 48 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "120",
-      "name": "מוסדית, עד 120 נפשות למרחב מוגן מוסדי, לממ\"מ עד 48 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 120 נפשות למרחב מוגן מוסדי, לממ\"מ עד 48 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "4012001",
-          "name": "מערכת סינון מוסדית, עד 120 נפשות למרחב מוגן מוסדי, לממ\"מ עד 48 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1066,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "40150 - מערכת סינון מוסדית, עד 150 נפשות למרחב מוגן מוסדי, לממ\"מ עד 60 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "40150 - מערכת סינון מוסדית, עד 150 נפשות למרחב מוגן מוסדי, לממ\"מ עד 60 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "150",
-      "name": "מוסדית, עד 150 נפשות למרחב מוגן מוסדי, לממ\"מ עד 60 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 150 נפשות למרחב מוגן מוסדי, לממ\"מ עד 60 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "4015001",
-          "name": "מערכת סינון מוסדית, עד 150 נפשות למרחב מוגן מוסדי, לממ\"מ עד 60 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1067,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "40160 - מערכת סינון מוסדית, עד 160 נפשות למרחב מוגן מוסדי, לממ\"מ עד 64 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "40160 - מערכת סינון מוסדית, עד 160 נפשות למרחב מוגן מוסדי, לממ\"מ עד 64 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "160",
-      "name": "מוסדית, עד 160 נפשות למרחב מוגן מוסדי, לממ\"מ עד 64 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 160 נפשות למרחב מוגן מוסדי, לממ\"מ עד 64 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "4016001",
-          "name": "מערכת סינון מוסדית, עד 160 נפשות למרחב מוגן מוסדי, לממ\"מ עד 64 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1068,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "40200 - מערכת סינון מוסדית, עד 200 נפשות למרחב מוגן מוסדי, לממ\"מ עד 80 מ\"ר בהתקנה עילית",
-      "source_model_lookup": "40200 - מערכת סינון מוסדית, עד 200 נפשות למרחב מוגן מוסדי, לממ\"מ עד 80 מ\"ר בהתקנה עילית",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "200",
-      "name": "מוסדית, עד 200 נפשות למרחב מוגן מוסדי, לממ\"מ עד 80 מ\"ר בהתקנה עילית",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "מוסדית, עד 200 נפשות למרחב מוגן מוסדי, לממ\"מ עד 80 מ\"ר בהתקנה עילית",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "01 - רב בריח | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - כפיר+ | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "4020001",
-          "name": "מערכת סינון מוסדית, עד 200 נפשות למרחב מוגן מוסדי, לממ\"מ עד 80 מ\"ר בהתקנה עילית רב בריח דגם כפיר+",
-          "source_row": 1069,
-          "value_keys": [
-            "01 - רב בריח | חברה",
-            "— - כפיר+ | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4033 - מערכת סינון בהתקנה עילית עד 33 נפשות למרחב מוגן מוסדי, לממ\"מ עד 13.2 מ\"ר",
-      "source_model_lookup": "4033 - מערכת סינון בהתקנה עילית עד 33 נפשות למרחב מוגן מוסדי, לממ\"מ עד 13.2 מ\"ר",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "33",
-      "name": "בהתקנה עילית עד 33 נפשות למרחב מוגן מוסדי, לממ\"מ עד 13.2 מ\"ר",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "בהתקנה עילית עד 33 נפשות למרחב מוגן מוסדי, לממ\"מ עד 13.2 מ\"ר",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "09 - בית אל | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - Hidden סמויה אחודה | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "403309",
-          "name": "מערכת סינון בהתקנה עילית עד 33 נפשות למרחב מוגן מוסדי, לממ\"מ עד 13.2 מ\"ר בית אל דגם Hidden סמויה אחודה",
-          "source_row": 1071,
-          "value_keys": [
-            "09 - בית אל | חברה",
-            "— - Hidden סמויה אחודה | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4050 - מערכת סינון בהתקנה עילית עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר",
-      "source_model_lookup": "4050 - מערכת סינון בהתקנה עילית עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "50",
-      "name": "בהתקנה עילית עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "בהתקנה עילית עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "09 - בית אל | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - Hidden סמויה אחודה | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "405009",
-          "name": "מערכת סינון בהתקנה עילית עד 50 נפשות למרחב מוגן מוסדי, לממ\"מ עד 20 מ\"ר בית אל דגם Hidden סמויה אחודה",
-          "source_row": 1072,
-          "value_keys": [
-            "09 - בית אל | חברה",
-            "— - Hidden סמויה אחודה | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4066 - מערכת סינון בהתקנה עילית עד 66 נפשות למרחב מוגן מוסדי, לממ\"מ עד 26.4 מ\"ר",
-      "source_model_lookup": "4066 - מערכת סינון בהתקנה עילית עד 66 נפשות למרחב מוגן מוסדי, לממ\"מ עד 26.4 מ\"ר",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "66",
-      "name": "בהתקנה עילית עד 66 נפשות למרחב מוגן מוסדי, לממ\"מ עד 26.4 מ\"ר",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "בהתקנה עילית עד 66 נפשות למרחב מוגן מוסדי, לממ\"מ עד 26.4 מ\"ר",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "09 - בית אל | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - Hidden סמויה אחודה | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "406609",
-          "name": "מערכת סינון בהתקנה עילית עד 66 נפשות למרחב מוגן מוסדי, לממ\"מ עד 26.4 מ\"ר בית אל דגם Hidden סמויה אחודה",
-          "source_row": 1073,
-          "value_keys": [
-            "09 - בית אל | חברה",
-            "— - Hidden סמויה אחודה | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "4083 - מערכת סינון בהתקנה עילית עד 83 נפשות למרחב מוגן מוסדי, לממ\"מ עד 33.2 מ\"ר",
-      "source_model_lookup": "4083 - מערכת סינון בהתקנה עילית עד 83 נפשות למרחב מוגן מוסדי, לממ\"מ עד 33.2 מ\"ר",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "83",
-      "name": "בהתקנה עילית עד 83 נפשות למרחב מוגן מוסדי, לממ\"מ עד 33.2 מ\"ר",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "בהתקנה עילית עד 83 נפשות למרחב מוגן מוסדי, לממ\"מ עד 33.2 מ\"ר",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "09 - בית אל | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - Hidden סמויה אחודה | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "408309",
-          "name": "מערכת סינון בהתקנה עילית עד 83 נפשות למרחב מוגן מוסדי, לממ\"מ עד 33.2 מ\"ר בית אל דגם Hidden סמויה אחודה",
-          "source_row": 1074,
-          "value_keys": [
-            "09 - בית אל | חברה",
-            "— - Hidden סמויה אחודה | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
-      "exclusions_exact": true
-    },
-    {
-      "key": "40100 - מערכת סינון בהתקנה עילית עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר",
-      "source_model_lookup": "40100 - מערכת סינון בהתקנה עילית עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר",
-      "group_key": "40 - מערכת סינון",
-      "model_code": "100",
-      "name": "בהתקנה עילית עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר",
-      "group_name_component": "מערכת סינון",
-      "model_name_component": "בהתקנה עילית עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר",
-      "suppress_model_name": false,
-      "name_format": "[שם קבוצת פריטים] [דגם] [חברה] דגם [דגם מערכת סינון]",
-      "attribute_lines": [
-        {
-          "attribute_key": "חברה",
-          "sequence": 70,
-          "values": [
-            {
-              "value_key": "09 - בית אל | חברה"
-            }
-          ]
-        },
-        {
-          "attribute_key": "דגם מערכת סינון",
-          "sequence": 80,
-          "values": [
-            {
-              "value_key": "— - Hidden סמויה אחודה | דגם מערכת סינון"
-            }
-          ]
-        }
-      ],
-      "variants": [
-        {
-          "sku": "4010009",
-          "name": "מערכת סינון בהתקנה עילית עד 100 נפשות למרחב מוגן מוסדי, לממ\"מ עד 40 מ\"ר בית אל דגם Hidden סמויה אחודה",
-          "source_row": 1075,
-          "value_keys": [
-            "09 - בית אל | חברה",
-            "— - Hidden סמויה אחודה | דגם מערכת סינון"
-          ]
-        }
-      ],
-      "cartesian_count": 1,
-      "forbidden_pairs": [],
-      "allowed_count_after_exclusions": 1,
+      "allowed_count_after_exclusions": 18,
       "exclusions_exact": true
     },
     {
@@ -18070,7 +17935,7 @@
           ]
         }
       ],
-      "cartesian_count": 180,
+      "cartesian_count": 160,
       "forbidden_pairs": [
         {
           "value_key": "10 - 100 | רוחב חלון",
@@ -18078,15 +17943,7 @@
         },
         {
           "value_key": "08 - 80 | רוחב חלון",
-          "excluded_value_key": "— - מלאי - לבן - גוון 9016 שחור - גוון 9005 שמנת -גוון 1013 אפור כהה -גוון 9007 אפור בהיר -גוון 9006 | גוון"
-        },
-        {
-          "value_key": "08 - 80 | רוחב חלון",
           "excluded_value_key": "9016 - לבן | גוון"
-        },
-        {
-          "value_key": "10 - 100 | רוחב חלון",
-          "excluded_value_key": "— - מלאי - לבן - גוון 9016 שחור - גוון 9005 שמנת -גוון 1013 אפור כהה -גוון 9007 אפור בהיר -גוון 9006 | גוון"
         },
         {
           "value_key": "08 - 80 | רוחב חלון",
@@ -18094,18 +17951,10 @@
         },
         {
           "value_key": "08 - 80 | גובה חלון",
-          "excluded_value_key": "— - מלאי - לבן - גוון 9016 שחור - גוון 9005 שמנת -גוון 1013 אפור כהה -גוון 9007 אפור בהיר -גוון 9006 | גוון"
-        },
-        {
-          "value_key": "08 - 80 | גובה חלון",
           "excluded_value_key": "9016 - לבן | גוון"
         },
         {
           "value_key": "08 - 80 | גובה חלון",
-          "excluded_value_key": "— - מולטי דורלוק | חברה"
-        },
-        {
-          "value_key": "— - מלאי - לבן - גוון 9016 שחור - גוון 9005 שמנת -גוון 1013 אפור כהה -גוון 9007 אפור בהיר -גוון 9006 | גוון",
           "excluded_value_key": "— - מולטי דורלוק | חברה"
         },
         {
@@ -19579,7 +19428,7 @@
           ]
         }
       ],
-      "cartesian_count": 160,
+      "cartesian_count": 140,
       "forbidden_pairs": [
         {
           "value_key": "10 - 100 | רוחב חלון",
@@ -19587,26 +19436,10 @@
         },
         {
           "value_key": "08 - 80 | רוחב חלון",
-          "excluded_value_key": "— - מלאי - לבן - גוון 9016 שחור - גוון 9005 שמנת -גוון 1013 אפור כהה -גוון 9007 אפור בהיר -גוון 9006 | גוון"
-        },
-        {
-          "value_key": "10 - 100 | רוחב חלון",
-          "excluded_value_key": "— - מלאי - לבן - גוון 9016 שחור - גוון 9005 שמנת -גוון 1013 אפור כהה -גוון 9007 אפור בהיר -גוון 9006 | גוון"
-        },
-        {
-          "value_key": "08 - 80 | רוחב חלון",
           "excluded_value_key": "— - מולטי דורלוק | חברה"
         },
         {
           "value_key": "08 - 80 | גובה חלון",
-          "excluded_value_key": "— - מלאי - לבן - גוון 9016 שחור - גוון 9005 שמנת -גוון 1013 אפור כהה -גוון 9007 אפור בהיר -גוון 9006 | גוון"
-        },
-        {
-          "value_key": "08 - 80 | גובה חלון",
-          "excluded_value_key": "— - מולטי דורלוק | חברה"
-        },
-        {
-          "value_key": "— - מלאי - לבן - גוון 9016 שחור - גוון 9005 שמנת -גוון 1013 אפור כהה -גוון 9007 אפור בהיר -גוון 9006 | גוון",
           "excluded_value_key": "— - מולטי דורלוק | חברה"
         }
       ],

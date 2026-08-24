@@ -268,6 +268,35 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(template.mdl_effective_base_name, "דלת כנף")
         self.assertEqual(template.mdl_sku_prefix, "1001")
 
+    def test_technical_data_is_stored_on_the_final_variant(self):
+        template = self._create_template()
+        variants = template.product_variant_ids.sorted("default_code")
+        first = variants[0]
+        second = variants[1]
+
+        first.write(
+            {
+                "mdl_length_cm": 120.5,
+                "mdl_width_cm": 80.0,
+                "mdl_height_cm": 40.0,
+                "weight": 49.4,
+                "volume": 0.3856,
+                "mdl_max_protected_area_m2": 20.0,
+                "mdl_installation_type": "overhead",
+            }
+        )
+
+        self.assertEqual(first.mdl_length_cm, 120.5)
+        self.assertEqual(first.mdl_width_cm, 80.0)
+        self.assertEqual(first.mdl_height_cm, 40.0)
+        self.assertEqual(first.weight, 49.4)
+        self.assertEqual(first.volume, 0.3856)
+        self.assertEqual(first.mdl_max_protected_area_m2, 20.0)
+        self.assertEqual(first.mdl_installation_type, "overhead")
+        self.assertFalse(second.mdl_length_cm)
+        self.assertFalse(second.mdl_max_protected_area_m2)
+        self.assertFalse(second.mdl_installation_type)
+
     def test_optional_values_do_not_leave_dangling_separators(self):
         wall = self.env["product.attribute"].create(
             {"name": "עובי קיר", "create_variant": "always"}
