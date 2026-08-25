@@ -166,18 +166,44 @@ class AttendanceDevice(models.Model):
         if not self.env.context.get("skip_device_setting_sync"):
             for device in self.filtered(lambda item: item.manufacturer == "zkteco"):
                 if language_changed:
-                    device._queue_device_command(
-                        "update_device_language",
-                        "SET OPTION Language=%s" % device._LANGUAGE_TO_DEVICE[device.device_language],
-                    )
+                    device._queue_device_language_push()
                 if cooldown_changed:
-                    device._queue_device_command(
-                        "update_device_cooldown",
-                        "SET OPTION ReCheckMin=%s" % device.attendance_cooldown_minutes,
-                    )
+                    device._queue_device_cooldown_push()
                 if language_changed or cooldown_changed:
                     device._queue_device_options_reload()
         return result
+
+    def _queue_device_language_push(self):
+        """Send the selected terminal language using PUSH 3.x syntax."""
+        self.ensure_one()
+        return self._queue_device_command(
+            "update_device_language",
+            "SET OPTIONS Language=%s" % self._LANGUAGE_TO_DEVICE[self.device_language],
+        )
+
+    def _queue_device_cooldown_push(self):
+        """Set the terminal's duplicate-punch interval in minutes.
+
+        On this ZAM70/MB560-VL firmware ``RecheckMin`` selects minutes as
+        the unit while ``AlarmReRec`` contains the actual interval.  Sending
+        only ``ReCheckMin=<minutes>`` changes the unit flag and therefore does
+        not update the value shown by the terminal.
+        """
+        self.ensure_one()
+        return self._queue_device_command(
+            "update_device_cooldown",
+            "SET OPTIONS RecheckMin=1,AlarmReRec=%s"
+            % self.attendance_cooldown_minutes,
+        )
+
+    def _queue_current_device_settings(self):
+        """Queue all device-level values maintained by this module."""
+        queued = self.env["mdl.attendance.device.command"].browse()
+        for device in self.filtered(lambda item: item.manufacturer == "zkteco"):
+            queued |= device._queue_device_language_push()
+            queued |= device._queue_device_cooldown_push()
+            queued |= device._queue_device_options_reload()
+        return queued
 
     def _queue_device_command(self, command_type, raw_command):
         self.ensure_one()
@@ -253,9 +279,12 @@ class AttendanceDevice(models.Model):
                 ("request_users", "DATA QUERY USERINFO"),
                 ("request_fingerprints", "DATA QUERY FINGERTMP"),
                 ("request_face_templates", "DATA QUERY BIODATA"),
-                # INFO returns the terminal's supported OPTIONS table.  It is
-                # the documented PUSH command for reading device settings.
-                ("request_device_options", "INFO"),
+                # PUSH 3.1.2 posts the result asynchronously to
+                # /iclock/querydata?type=options.
+                (
+                    "request_device_options",
+                    "GET OPTIONS Language,RecheckMin,AlarmReRec",
+                ),
             )
             for command_type, raw_command in requests:
                 if Command.search_count([
@@ -270,13 +299,17 @@ class AttendanceDevice(models.Model):
             })
         return queued
 
-    def action_open_push_wizard(self):
+    def action_open_sync_wizard(self):
         self.ensure_one()
-        return self.env["mdl.attendance.device.sync.wizard"]._open(self, "push")
+        return self.env["mdl.attendance.device.sync.wizard"]._open(self)
+
+    # Kept as API aliases for existing bookmarks/custom actions.  The form now
+    # exposes one synchronization button and the direction is chosen inside it.
+    def action_open_push_wizard(self):
+        return self.action_open_sync_wizard()
 
     def action_open_pull_wizard(self):
-        self.ensure_one()
-        return self.env["mdl.attendance.device.sync.wizard"]._open(self, "pull")
+        return self.action_open_sync_wizard()
 
     def action_discover_users(self):
         self.ensure_one()

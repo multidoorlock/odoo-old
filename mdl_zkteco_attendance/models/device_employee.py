@@ -301,11 +301,11 @@ class AttendanceDeviceEmployee(models.Model):
 
     def action_open_push_wizard(self):
         self.ensure_one()
-        return self.env["mdl.attendance.device.sync.wizard"]._open(self.device_id, "push", self)
+        return self.device_id.action_open_sync_wizard()
 
     def action_open_pull_wizard(self):
         self.ensure_one()
-        return self.env["mdl.attendance.device.sync.wizard"]._open(self.device_id, "pull", self)
+        return self.device_id.action_open_sync_wizard()
 
     def action_process_pending_attendance(self):
         self.ensure_one()

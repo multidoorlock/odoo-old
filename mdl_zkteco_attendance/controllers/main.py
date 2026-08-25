@@ -37,7 +37,12 @@ class ZKTecoADMSController(http.Controller):
         safe_headers = ("Content-Type", "Content-Length", "User-Agent", "Host", "X-Forwarded-For", "X-Real-IP")
         headers = "\n".join(f"{key}: {req.headers.get(key)}" for key in safe_headers if req.headers.get(key))
         identifier = req.args.get("SN") or req.args.get("sn") or ""
-        request_type = (req.args.get("table") or "").upper()
+        request_type = (
+            req.args.get("table")
+            or req.args.get("type")
+            or req.args.get("tablename")
+            or ""
+        ).upper()
         log = request.env["mdl.attendance.device.log"].sudo().create({
             "device_id": device.id if device else False, "device_identifier": identifier,
             "request_type": request_type, "http_method": req.method, "endpoint": endpoint,
@@ -61,7 +66,12 @@ class ZKTecoADMSController(http.Controller):
             return
         req = request.httprequest
         language = req.args.get("language") or req.args.get("Language")
-        cooldown = req.args.get("ReCheckMin") or req.args.get("recheckmin")
+        cooldown = (
+            req.args.get("AlarmReRec")
+            or req.args.get("alarmrerec")
+            or req.args.get("ReCheckMin")
+            or req.args.get("recheckmin")
+        )
         if language is not None:
             device.sudo()._apply_reported_language(language)
         if cooldown is not None:
@@ -93,6 +103,53 @@ class ZKTecoADMSController(http.Controller):
             log.sudo().write({"processing_state": "error", "processing_message": str(exc)})
             count = 0
         return self._response(f"OK: {count}" if (req.args.get("table") or "").upper() == "ATTLOG" else "OK")
+
+    @http.route(
+        ["/iclock/querydata", "/iclock/querydata/"],
+        type="http",
+        auth="public",
+        methods=["GET", "POST"],
+        csrf=False,
+    )
+    def querydata(self, **kwargs):
+        """Receive asynchronous results for PUSH ``GET OPTIONS`` commands."""
+        device = self._device()
+        log, raw, text = self._log("/iclock/querydata", device)
+        if not device:
+            log.sudo().write({
+                "processing_state": "error",
+                "processing_message": "Missing device serial number",
+            })
+            return self._response("OK")
+
+        req = request.httprequest
+        request_type = (
+            req.args.get("type")
+            or req.args.get("table")
+            or req.args.get("tablename")
+            or ""
+        ).upper()
+        cmdid = req.args.get("cmdid") or req.args.get("CmdId")
+        command = False
+        if cmdid and str(cmdid).isdigit():
+            command_id = int(cmdid)
+            command = request.env["mdl.attendance.device.command"].sudo().search([
+                ("device_id", "=", device.id),
+                "|",
+                ("id", "=", command_id),
+                ("legacy_command_id", "=", command_id),
+            ], limit=1)
+        try:
+            device._adapter().process_payload(log, request_type, raw, text)
+            if command:
+                log.sudo().write({"command_id": command.id})
+        except Exception as exc:
+            _logger.exception("ZKTeco querydata processing failed for log %s", log.id)
+            log.sudo().write({
+                "processing_state": "error",
+                "processing_message": str(exc),
+            })
+        return self._response("OK")
 
     @http.route(["/iclock/getrequest", "/iclock/getrequest/"], type="http", auth="public", methods=["GET"], csrf=False)
     def getrequest(self, **kwargs):
