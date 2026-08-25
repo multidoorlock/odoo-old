@@ -13,7 +13,7 @@ class ProductTemplateAttributeLine(models.Model):
         string="הצגה בשם",
         default="value",
         required=True,
-        help="קובע כיצד המאפיין יוצג בשם הסופי של הווריאנט.",
+        help="קובע כיצד המאפיין יוצג בשם המלא של הווריאנט.",
     )
     mdl_name_prefix = fields.Char(
         string="טקסט לפני ישן (לא בשימוש)",

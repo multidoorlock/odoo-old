@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
                 <app string="קטלוג מוצרים MDL" name="mdl_product_catalog">
-                    <block title="תצוגת פריטים סופיים">
+                    <block title="תצוגת פריטים">
                         <setting string="פורמט תצוגה בחיפוש ובמסמכים"
                                  help="הגדרה מערכתית אחת לכל הדגמים. השתמשו ב-[מק״ט] וב-[שם הפריט].">
                             <field name="mdl_variant_display_format"

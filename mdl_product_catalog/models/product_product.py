@@ -15,7 +15,7 @@ class ProductProduct(models.Model):
 
     mdl_max_protected_area_m2 = fields.Float(
         string="שטח מוגן מרבי (מ״ר)",
-        help="נתון טכני של הפריט הסופי; אינו יוצר וריאנטים חדשים.",
+        help="נתון טכני של הפריט; אינו יוצר וריאנטים חדשים.",
     )
     mdl_installation_type = fields.Selection(
         selection=[
@@ -24,19 +24,19 @@ class ProductProduct(models.Model):
             ("other", "אחר"),
         ],
         string="סוג התקנה",
-        help="נתון טכני של הפריט הסופי; אינו חלק משם המוצר.",
+        help="נתון טכני של הפריט; אינו חלק משם המוצר.",
     )
     mdl_length_cm = fields.Float(
         string="אורך (ס״מ)",
-        help="אורך הפריט הסופי בסנטימטרים.",
+        help="אורך הפריט בסנטימטרים.",
     )
     mdl_width_cm = fields.Float(
         string="רוחב (ס״מ)",
-        help="רוחב הפריט הסופי בסנטימטרים.",
+        help="רוחב הפריט בסנטימטרים.",
     )
     mdl_height_cm = fields.Float(
         string="גובה (ס״מ)",
-        help="גובה הפריט הסופי בסנטימטרים.",
+        help="גובה הפריט בסנטימטרים.",
     )
 
     mdl_catalog_allowed = fields.Boolean(
@@ -50,7 +50,7 @@ class ProductProduct(models.Model):
         ),
     )
     mdl_generated_name = fields.Char(
-        string="שם פריט סופי",
+        string="שם הפריט",
         compute="_compute_mdl_catalog_values",
         store=True,
         index="trigram",

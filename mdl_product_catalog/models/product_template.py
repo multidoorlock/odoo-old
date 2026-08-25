@@ -100,7 +100,7 @@ class ProductTemplate(models.Model):
     )
     mdl_model_name_override = fields.Char(
         string="שינוי טקסט לדגם",
-        help="אופציונלי. הזן — כדי לא להציג את הדגם בשם הפריט הסופי.",
+        help="אופציונלי. הזן — כדי לא להציג את הדגם בשם הפריט.",
     )
     mdl_model_sku_override = fields.Char(
         string="שינוי מק״ט לדגם",
