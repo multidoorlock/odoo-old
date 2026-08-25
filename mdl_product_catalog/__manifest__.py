@@ -1,7 +1,7 @@
 {
-    "name": "Multi Doorlock - Product Catalog",
-    "summary": "ניהול שמות ומק\"טים לווריאנטים לפי קבוצת פריטים, דגם ומאפיינים",
-    "version": "19.0.1.20.0",
+    "name": "Multi Doorlock - Product Groups & Attributes",
+    "summary": "הרחבת קבוצות פריטים, מאפיינים, ערכים ושמות ומק\"טים של וריאנטים",
+    "version": "19.0.1.21.0",
     "category": "Inventory/Inventory",
     "author": "Multi Doorlock",
     "license": "LGPL-3",
