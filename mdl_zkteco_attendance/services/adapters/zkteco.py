@@ -146,8 +146,13 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             if token in ("FP", "FINGERTMP"):
                 biometrics += self._apply_fingerprint_lines([line])
                 continue
-            if token in ("FACE", "BIODATA"):
+            if token == "FACE":
                 biometrics += self._apply_face_lines([line])
+                continue
+            if token == "BIODATA":
+                fingerprint_lines, face_lines = self._partition_biodata_lines([line])
+                biometrics += self._apply_fingerprint_lines(fingerprint_lines)
+                biometrics += self._apply_face_lines(face_lines)
                 continue
             if token in ("USER", "USERINFO"):
                 values = self._values(line)
@@ -395,6 +400,27 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                 updated += 1
         return updated
 
+    def _partition_biodata_lines(self, lines):
+        """Split ZKTeco's unified BIODATA table by biometric type.
+
+        Modern PUSH firmwares use Type/BioType 1 for fingerprints, 2 for
+        face templates, and 9 for visible-light face data.  Older face-only
+        payloads omit the type, so keep treating an untyped BIODATA row as a
+        face template for backwards compatibility.
+        """
+        fingerprint_lines = []
+        face_lines = []
+        for line in lines:
+            values = self._values(line)
+            biometric_type = str(
+                values.get("TYPE") or values.get("BIOTYPE") or ""
+            ).strip().upper()
+            if biometric_type in ("1", "FP", "FINGER", "FINGERPRINT"):
+                fingerprint_lines.append(line)
+            else:
+                face_lines.append(line)
+        return fingerprint_lines, face_lines
+
     def _process_fingertmp(self, log, body_text):
         updated = self._apply_fingerprint_lines(body_text.replace("\r", "\n").split("\n"))
         state = "processed" if updated else "not_applied"
@@ -446,13 +472,21 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
 
     def _process_biodata(self, log, body_text):
         lines = body_text.replace("\r", "\n").split("\n")
-        updated = self._apply_face_lines(lines)
-        for line in lines:
+        fingerprint_lines, face_lines = self._partition_biodata_lines(lines)
+        updated_fingerprints = self._apply_fingerprint_lines(fingerprint_lines)
+        updated_faces = self._apply_face_lines(face_lines)
+        for line in face_lines:
             values = self._values(line)
             card = self._get_or_create_card(values.get("PIN")) if values.get("PIN") else False
             self._complete_pull_command(card, "request_biometric_photo", log, line)
+        updated = updated_fingerprints + updated_faces
         state = "processed" if updated else "not_applied"
-        message = f"Updated {updated} face recognition template(s)" if updated else "BIODATA did not contain a requested face template"
+        message = (
+            f"Updated {updated_fingerprints} fingerprint and "
+            f"{updated_faces} face enrollment state(s)"
+            if updated
+            else "BIODATA did not contain a supported biometric template"
+        )
         log.sudo().write({"processing_state": state, "processing_message": message})
         return updated
 

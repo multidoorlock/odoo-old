@@ -998,6 +998,102 @@ class TestAttendanceDevices(TransactionCase):
         self.assertFalse(self.card.has_fingerprint)
         self.assertFalse(self.card.has_face)
 
+    def test_existing_face_template_backfills_readonly_face_flag(self):
+        self.card.with_context(
+            skip_card_sync=True,
+            skip_biometric_verification_constraint=True,
+        ).write({"face_template": b"dGVzdC1mYWNlLXRlbXBsYXRl", "has_face": False})
+        self.env.flush_all()
+        self.env["mdl.attendance.device.employee"].init()
+        self.card.invalidate_recordset(["has_face"])
+        self.assertTrue(self.card.has_face)
+
+    def test_unified_biodata_updates_fingerprint_and_face_independently(self):
+        face_card = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": self.device.id,
+            "device_user_id": "75",
+            "device_name": "Face only",
+        })
+        (self.card | face_card).with_context(
+            skip_card_sync=True,
+            skip_biometric_verification_constraint=True,
+        ).write({"has_face": False, "has_fingerprint": False})
+
+        log = self._log()
+        self.device._adapter().process_payload(
+            log,
+            "BIODATA",
+            b"",
+            "BIODATA PIN=74\tType=1\tValid=1\tTMP=fingerprint-template\n"
+            "BIODATA PIN=75\tBioType=9\tValid=1\tTMP=face-template",
+        )
+        (self.card | face_card).invalidate_recordset(
+            ["has_face", "has_fingerprint"]
+        )
+        self.assertTrue(self.card.has_fingerprint)
+        self.assertFalse(self.card.has_face)
+        self.assertTrue(face_card.has_face)
+        self.assertFalse(face_card.has_fingerprint)
+
+        self.device._adapter().process_payload(
+            self._log(),
+            "BIODATA",
+            b"",
+            "BIODATA PIN=74\tType=1\tValid=0\tTMP=",
+        )
+        self.card.invalidate_recordset(["has_fingerprint"])
+        self.assertFalse(self.card.has_fingerprint)
+
+    def test_operlog_unified_fingerprint_biodata_updates_card_flag(self):
+        self.card.with_context(
+            skip_card_sync=True,
+            skip_biometric_verification_constraint=True,
+        ).write({"has_face": False, "has_fingerprint": False})
+        self.device._adapter().process_payload(
+            self._log(),
+            "OPERLOG",
+            b"",
+            "BIODATA PIN=74\tType=1\tValid=1\tTMP=fingerprint-template",
+        )
+        self.card.invalidate_recordset(["has_face", "has_fingerprint"])
+        self.assertTrue(self.card.has_fingerprint)
+        self.assertFalse(self.card.has_face)
+
+    def test_successful_biometric_photo_push_updates_readonly_face_flag(self):
+        image = (
+            b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+            b"+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        self.card.with_context(
+            skip_card_sync=True,
+            skip_biometric_verification_constraint=True,
+        ).write({"biometric_photo": image, "has_face": False})
+        command = self.env["mdl.attendance.device.command"].create({
+            "device_id": self.device.id,
+            "device_employee_id": self.card.id,
+            "command_type": "update_biometric_photo",
+            "state": "sent",
+            "raw_command": "DATA UPDATE BIOPHOTO PIN=74",
+        })
+        command.mark_result(0, "OK")
+        self.assertTrue(self.card.has_face)
+
+        self.card.with_context(
+            skip_card_sync=True,
+            skip_biometric_verification_constraint=True,
+        ).write({"biometric_photo": False})
+        delete_command = self.env["mdl.attendance.device.command"].create({
+            "device_id": self.device.id,
+            "device_employee_id": self.card.id,
+            "command_type": "update_biometric_photo",
+            "state": "sent",
+            "raw_command": "DATA DELETE BIOPHOTO PIN=74 Type=9",
+        })
+        delete_command.mark_result(0, "OK")
+        self.assertFalse(self.card.has_face)
+
     def test_device_language_and_cooldown_are_synchronized_both_directions(self):
         self.device.write({
             "device_language": "en_US",
