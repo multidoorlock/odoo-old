@@ -206,22 +206,20 @@
                 </field>
 
                 <separator string="שילובים לא מורשים"/>
-                <field name="mdl_exclusion_ids" nolabel="1">
+                <field name="mdl_exclusion_ids"
+                       nolabel="1"
+                       domain="[('mdl_is_catalog_condition', '=', True)]"
+                       context="{'default_mdl_is_catalog_condition': True}">
                     <list editable="bottom">
                         <field name="product_tmpl_id"
                                column_invisible="True"/>
-                        <field name="mdl_source_attribute_id"
+                        <field name="mdl_is_catalog_condition"
                                column_invisible="True"/>
-                        <field name="product_template_attribute_value_id"
-                               string="כאשר נבחר"
-                               required="1"
-                               domain="[('product_tmpl_id', '=', product_tmpl_id), ('ptav_active', '=', True)]"
-                               options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
-                        <field name="value_ids"
-                               string="לא ניתן לשלב עם"
+                        <field name="mdl_combination_value_ids"
+                               string="שילוב אסור"
                                widget="many2many_tags"
                                required="1"
-                               domain="[('product_tmpl_id', '=', product_tmpl_id), ('attribute_id', '!=', mdl_source_attribute_id), ('ptav_active', '=', True)]"
+                               domain="[('product_tmpl_id', '=', product_tmpl_id), ('ptav_active', '=', True)]"
                                options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
                     </list>
                 </field>

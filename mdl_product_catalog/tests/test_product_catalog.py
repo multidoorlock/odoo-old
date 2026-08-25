@@ -237,27 +237,16 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(product.default_code, "100180100")
         self.assertEqual(product.mdl_generated_name, "דלת כנף 80/100 +ידית")
 
-    def test_separate_exclusion_table_manages_native_rules(self):
+    def test_single_column_exclusion_table_manages_native_rules(self):
         template = self._create_template()
-        height_110 = self.env["product.attribute.value"].create(
-            {
-                "name": "110",
-                "attribute_id": self.height.id,
-                "mdl_sku_component": "110",
-            }
-        )
-        height_line = template.attribute_line_ids.filtered(
-            lambda line: line.attribute_id == self.height
-        )
-        height_line.write({"value_ids": [Command.link(height_110.id)]})
         width_value = template.mdl_attribute_value_ids.filtered(
             lambda value: value.product_attribute_value_id == self.width_80
         )
+        width_90_value = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.width_90
+        )
         height_value = template.mdl_attribute_value_ids.filtered(
             lambda value: value.product_attribute_value_id == self.height_100
-        )
-        height_110_value = template.mdl_attribute_value_ids.filtered(
-            lambda value: value.product_attribute_value_id == height_110
         )
 
         template.write(
@@ -265,9 +254,9 @@ class TestProductCatalog(TransactionCase):
                 "mdl_exclusion_ids": [
                     Command.create(
                         {
-                            "product_template_attribute_value_id": width_value.id,
-                            "value_ids": [
-                                Command.set((height_value | height_110_value).ids)
+                            "mdl_is_catalog_condition": True,
+                            "mdl_combination_value_ids": [
+                                Command.set((width_value | height_value).ids)
                             ],
                         }
                     )
@@ -280,18 +269,30 @@ class TestProductCatalog(TransactionCase):
             native_rule.product_template_attribute_value_id,
             width_value,
         )
-        self.assertEqual(native_rule.mdl_source_attribute_id, self.width)
-        self.assertEqual(native_rule.value_ids, height_value | height_110_value)
+        self.assertEqual(native_rule.value_ids, height_value)
+        self.assertEqual(
+            native_rule.mdl_combination_value_ids,
+            width_value | height_value,
+        )
         self.assertTrue(native_rule)
-        self.assertEqual(len(template.product_variant_ids), 2)
+        self.assertEqual(len(template.product_variant_ids), 1)
 
-        native_rule.write({"value_ids": [Command.unlink(height_value.id)]})
-        self.assertEqual(native_rule.value_ids, height_110_value)
-        self.assertEqual(len(template.product_variant_ids), 3)
+        native_rule.write(
+            {
+                "mdl_combination_value_ids": [
+                    Command.set((width_90_value | height_value).ids)
+                ]
+            }
+        )
+        self.assertEqual(
+            native_rule.mdl_combination_value_ids,
+            width_90_value | height_value,
+        )
+        self.assertEqual(len(template.product_variant_ids), 1)
 
         template.write({"mdl_exclusion_ids": [Command.unlink(native_rule.id)]})
         self.assertFalse(native_rule.exists())
-        self.assertEqual(len(template.product_variant_ids), 4)
+        self.assertEqual(len(template.product_variant_ids), 2)
 
     def test_symmetric_exclusion_rows_are_collapsed(self):
         template = self._create_template()
@@ -321,6 +322,10 @@ class TestProductCatalog(TransactionCase):
         self.assertFalse(first_rule.exists())
         self.assertTrue(reverse_rule.exists())
         self.assertEqual(template.mdl_exclusion_ids, reverse_rule)
+        self.assertEqual(
+            reverse_rule.mdl_combination_value_ids,
+            width_value | height_value,
+        )
         self.assertEqual(len(template.product_variant_ids), 1)
 
     def test_base_defaults_and_overrides_drive_the_result(self):
