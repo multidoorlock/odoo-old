@@ -416,6 +416,12 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     if (timeDifference) {
                         return timeDifference;
                     }
+                    const leftSortId = Number(left.sort_id || Number.MAX_SAFE_INTEGER);
+                    const rightSortId = Number(right.sort_id || Number.MAX_SAFE_INTEGER);
+                    const eventOrderDifference = leftSortId - rightSortId;
+                    if (eventOrderDifference) {
+                        return eventOrderDifference;
+                    }
                     const sourceDifference = Number(left.source === "event") - Number(right.source === "event");
                     if (sourceDifference) {
                         return sourceDifference;
@@ -454,7 +460,15 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
             const connectedItemIds = new Set();
             const usableConnections = [];
+            const itemIndexById = new Map(items.map((item, index) => [item.id, index]));
             for (const connection of connections) {
+                const fromIndex = itemIndexById.get(connection.fromItem.id);
+                const toIndex = itemIndexById.get(connection.toItem.id);
+                // A connector is a visual statement that two direct neighbours
+                // belong together.  Never draw it across a third event.
+                if (Math.abs(fromIndex - toIndex) !== 1) {
+                    continue;
+                }
                 if (
                     connectedItemIds.has(connection.fromItem.id) ||
                     connectedItemIds.has(connection.toItem.id)

@@ -1,6 +1,7 @@
 import base64
 import logging
 import re
+from urllib.parse import unquote_plus
 
 from odoo import http
 from odoo.http import request
@@ -55,11 +56,23 @@ class ZKTecoADMSController(http.Controller):
         if vals:
             device.sudo().write(vals)
 
+    def _reported_settings(self, device):
+        if not device:
+            return
+        req = request.httprequest
+        language = req.args.get("language") or req.args.get("Language")
+        cooldown = req.args.get("ReCheckMin") or req.args.get("recheckmin")
+        if language is not None:
+            device.sudo()._apply_reported_language(language)
+        if cooldown is not None:
+            device.sudo()._apply_reported_cooldown(cooldown)
+
     @http.route(["/iclock/cdata", "/iclock/cdata/"], type="http", auth="public", methods=["GET", "POST"], csrf=False)
     def cdata(self, **kwargs):
         device = self._device()
         log, raw, text = self._log("/iclock/cdata", device)
         self._stamps(device)
+        self._reported_settings(device)
         req = request.httprequest
         if not device:
             log.sudo().write({"processing_state": "error", "processing_message": "Missing device serial number"})
@@ -69,7 +82,7 @@ class ZKTecoADMSController(http.Controller):
                 f"GET OPTION FROM:{device.device_identifier}\nStamp={device.attendance_stamp or '0'}\n"
                 f"OpStamp={device.operation_stamp or '0'}\nPhotoStamp={device.photo_stamp or '0'}\n"
                 "ErrorDelay=60\nDelay=10\nTransTimes=00:00;14:05\nTransInterval=1\n"
-                "TransFlag=1111000000\nRealtime=1\nEncrypt=0\n"
+                "TransFlag=1111111111\nRealtime=1\nEncrypt=0\n"
             )
             log.sudo().write({"processing_state": "processed", "processing_message": "ADMS handshake"})
             return self._response(response)
@@ -88,6 +101,7 @@ class ZKTecoADMSController(http.Controller):
         if not device:
             log.sudo().write({"processing_state": "error", "processing_message": "Missing device serial number"})
             return self._response("OK")
+        device.sudo()._queue_automatic_sync()
         command = request.env["mdl.attendance.device.command"].sudo().search([("device_id", "=", device.id), ("state", "=", "queued")], order="id", limit=1)
         if not command:
             log.sudo().write({"processing_state": "processed", "processing_message": "No queued command"})
@@ -111,6 +125,10 @@ class ZKTecoADMSController(http.Controller):
         if command:
             code = int(return_match.group(1)) if return_match else 0
             log.sudo().write({"command_id": command.id, "processing_state": "processed", "processing_message": f"Command {command.id} result {code}"})
+            if code >= 0:
+                command.device_id._adapter().process_command_response(
+                    command, unquote_plus(combined),
+                )
             command.mark_result(code, text, log)
         else:
             log.sudo().write({"processing_state": "ignored", "processing_message": "devicecmd without matching command"})

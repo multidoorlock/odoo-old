@@ -47,7 +47,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             return f"DATA UPDATE USERPIC PIN={pin}\tSize={len(raw)}\tContent={encoded}"
         if command_type == "update_biometric_photo":
             if not card.biometric_photo:
-                raise ValueError("אין בכרטיס תבנית זיהוי פנים. יש לסרוק פנים בשעון ולמשוך את התבנית תחילה.")
+                return f"DATA DELETE BIOPHOTO PIN={pin}\tType=9"
             raw, encoded = self._photo(card.biometric_photo)
             # ZAM70/MB560-VL advertises face-photo support in slot 9.
             # The terminal converts this comparison photo into ZKFace data.
@@ -72,7 +72,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         # The actual record type is the first token in the payload.
         if request_type == "OPERLOG" and first_token in ("USER", "USERINFO"):
             request_type = "USERINFO"
-        elif request_type == "OPERLOG" and first_token in ("USERPIC", "BIOPHOTO", "BIODATA"):
+        elif request_type == "OPERLOG" and first_token in ("USERPIC", "BIOPHOTO", "BIODATA", "FP", "FINGERTMP", "FACE"):
             request_type = first_token
         if request_type == "ATTLOG":
             return self._process_attlog(log, body_text)
@@ -80,17 +80,44 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         # base64 payload may coincidentally contain text such as ``NAME=``.
         if request_type in ("USERPIC", "BIOPHOTO"):
             return self._process_photo(log, request_type, body_text)
-        if request_type == "BIODATA":
+        if request_type in ("BIODATA", "FACE"):
             return self._process_biodata(log, body_text)
+        if request_type in ("FP", "FINGERTMP"):
+            return self._process_fingertmp(log, body_text)
         if request_type == "USERINFO" or ("PIN=" in body_text.upper() and "NAME=" in body_text.upper()):
             return self._process_userinfo(log, body_text)
         log.sudo().write({"processing_state": "processed", "processing_message": f"Received {request_type or 'UNKNOWN'}"})
         return 0
 
+    def process_command_response(self, command, response):
+        """Apply values returned by GET OPTION device commands."""
+        if command.command_type in ("request_device_language", "request_device_options"):
+            match = re.search(r"(?:^|[\s&])Language\s*=\s*(\d+)", response, re.I)
+            if match:
+                self.device.sudo()._apply_reported_language(match.group(1))
+        if command.command_type in ("request_device_cooldown", "request_device_options"):
+            match = re.search(r"(?:^|[\s&])ReCheckMin\s*=\s*(\d+)", response, re.I)
+            if match:
+                self.device.sudo()._apply_reported_cooldown(match.group(1))
+
     def _process_operlog(self, log, body_text):
-        created = deleted = 0
+        created = deleted = biometrics = 0
         for line in body_text.replace("\r", "\n").split("\n"):
             columns = line.strip().split("\t")
+            token = columns[0].split(None, 1)[0].upper() if columns and columns[0] else ""
+            if token in ("FP", "FINGERTMP"):
+                biometrics += self._apply_fingerprint_lines([line])
+                continue
+            if token in ("FACE", "BIODATA"):
+                biometrics += self._apply_face_lines([line])
+                continue
+            if token in ("USER", "USERINFO"):
+                values = self._values(line)
+                pin = values.get("PIN")
+                if pin:
+                    self._apply_userinfo_values(pin, values, log)
+                    created += 1
+                continue
             if not columns or not columns[0].startswith("OPLOG "):
                 continue
             try:
@@ -106,6 +133,33 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                     card._queue_command("request_user")
                     card._queue_command("request_profile_photo")
                     created += 1
+            elif operation_type == 5:
+                # The option number differs between firmware builds. Query the
+                # full supported option table instead of guessing from that number.
+                self.device._queue_device_command(
+                    "request_device_options", "INFO",
+                )
+            elif operation_type == 37:
+                card = self._get_or_create_card(pin)
+                if card:
+                    card._queue_command("request_user")
+                    created += 1
+            elif operation_type == 6:
+                card = self._get_or_create_card(pin)
+                if card:
+                    card.with_context(skip_card_sync=True).write({"has_fingerprint": True})
+                    biometrics += 1
+            elif operation_type == 10:
+                card = self._get_or_create_card(pin)
+                if card:
+                    # The deleted finger may have been the last one.  Mark it absent
+                    # immediately; a following FP payload restores True when another
+                    # enrolled finger still exists.
+                    card.with_context(skip_card_sync=True).write({"has_fingerprint": False})
+                    self.device._queue_device_command(
+                        "request_fingerprints",
+                        f"DATA QUERY FINGERTMP PIN={pin}",
+                    )
             elif operation_type == 9:
                 card = self.env["mdl.attendance.device.employee"].sudo().with_context(
                     active_test=False
@@ -118,9 +172,12 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                     deleted += 1
         log.sudo().write({
             "processing_state": "processed",
-            "processing_message": f"OPERLOG: discovered {created} user(s), deleted {deleted} user(s)",
+            "processing_message": (
+                f"OPERLOG: synchronized {created} user(s), deleted {deleted} user(s), "
+                f"updated {biometrics} biometric state(s)"
+            ),
         })
-        return created + deleted
+        return created + deleted + biometrics
 
     def _values(self, line):
         # Values such as a user's Name may contain spaces. Locate field markers
@@ -147,15 +204,12 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             if values:
                 card.with_context(skip_card_sync=True).write(values)
             return card
-        if not self.device.auto_discover_users:
-            return Card.browse()
         card = Card.with_context(attendance_device_discovery=True).create({
             "device_id": self.device.id, "device_user_id": pin,
             "device_name": name or pin, "link_state": "needs_employee_link",
         })
         card._queue_command("request_user")
-        if self.device.auto_sync_profile_photo:
-            card._queue_command("request_profile_photo")
+        card._queue_command("request_profile_photo")
         return card
 
     def _pull_is_pending(self, card, command_types):
@@ -172,6 +226,52 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             "|", ("device_employee_id", "=", card.id), ("device_employee_id", "=", False),
         ], limit=1))
 
+    def _apply_userinfo_values(self, pin, values, log):
+        card = self._get_or_create_card(pin, values.get("NAME"), update_existing=True)
+        if not card:
+            return card
+        update_values = {}
+        if values.get("NAME") is not None and card.device_name != values.get("NAME"):
+            update_values["device_name"] = values.get("NAME")
+        privilege_values = dict(card._fields["device_privilege"].selection)
+        verification_values = dict(card._fields["verification_mode"].selection)
+        if values.get("PRI") in privilege_values:
+            update_values["device_privilege"] = values["PRI"]
+        if values.get("VERIFY") in verification_values:
+            update_values["verification_mode"] = values["VERIFY"]
+
+        def reported_count(*names):
+            for name in names:
+                if name in values:
+                    try:
+                        return int(values[name]) > 0
+                    except (TypeError, ValueError):
+                        return None
+            return None
+
+        fingerprint = reported_count("FPCOUNT", "FINGERCOUNT", "FPCNT")
+        face = reported_count("FACECOUNT", "FACECNT")
+        if fingerprint is not None:
+            update_values["has_fingerprint"] = fingerprint
+        if face is not None:
+            update_values["has_face"] = face
+
+        photo_content = values.get("CONTENT") or values.get("PHOTO")
+        if photo_content:
+            prepared = self._photo(photo_content)
+            if prepared:
+                update_values["profile_photo"] = prepared[1]
+        update_values.update({
+            "sync_state": "synced",
+            "last_sync_at": log.received_at,
+            "last_sync_error": False,
+        })
+        card.with_context(
+            skip_card_sync=True,
+            skip_biometric_verification_constraint=True,
+        ).write(update_values)
+        return card
+
     def _process_userinfo(self, log, body_text):
         count = 0
         for line in body_text.replace("\r", "\n").split("\n"):
@@ -179,24 +279,10 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             pin = values.get("PIN")
             if not pin:
                 continue
-            existing = self.env["mdl.attendance.device.employee"].sudo().with_context(active_test=False).search([
-                ("device_id", "=", self.device.id), ("device_user_id", "=", pin)
-            ], limit=1)
-            allow_update = not existing or self._pull_is_pending(existing, {"request_user", "request_users"})
-            card = self._get_or_create_card(pin, values.get("NAME"), update_existing=allow_update)
-            extra_values = {}
-            privilege_values = dict(card._fields["device_privilege"].selection) if card else {}
-            verification_values = dict(card._fields["verification_mode"].selection) if card else {}
-            if values.get("PRI") in privilege_values and self._pull_is_pending(card, {"request_privilege"}):
-                extra_values["device_privilege"] = values["PRI"]
-                self._complete_pull_command(card, "request_privilege", log, line)
-            if values.get("VERIFY") in verification_values and self._pull_is_pending(card, {"request_verification_mode"}):
-                extra_values["verification_mode"] = values["VERIFY"]
-                self._complete_pull_command(card, "request_verification_mode", log, line)
-            if extra_values:
-                extra_values.update({"sync_state": "synced", "last_sync_at": log.received_at, "last_sync_error": False})
-                card.with_context(skip_card_sync=True).write(extra_values)
+            card = self._apply_userinfo_values(pin, values, log)
             self._complete_pull_command(card, "request_user", log, line)
+            self._complete_pull_command(card, "request_privilege", log, line)
+            self._complete_pull_command(card, "request_verification_mode", log, line)
             count += 1
         bulk_command = self.env["mdl.attendance.device.command"].sudo().search([
             ("device_id", "=", self.device.id),
@@ -216,13 +302,13 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         content = values.get("CONTENT")
         prepared = self._photo(content) if content else False
         fields_to_update = []
-        if card and prepared:
-            if request_type == "USERPIC" and self._pull_is_pending(card, {"request_profile_photo"}):
+        if card:
+            if request_type == "USERPIC":
                 fields_to_update.append(("profile_photo", "request_profile_photo"))
-            if request_type == "BIOPHOTO" and self._pull_is_pending(card, {"request_biometric_photo"}):
+            if request_type == "BIOPHOTO":
                 fields_to_update.append(("biometric_photo", "request_biometric_photo"))
         if fields_to_update:
-            _raw, display_image = prepared
+            display_image = prepared[1] if prepared else False
             update_values = {
                 "sync_state": "synced",
                 "last_sync_at": log.received_at,
@@ -230,8 +316,13 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             }
             for field, command_type in fields_to_update:
                 update_values[field] = display_image
+                if field == "biometric_photo":
+                    update_values["has_face"] = bool(display_image)
                 self._complete_pull_command(card, command_type, log, body_text)
-            card.with_context(skip_card_sync=True).write(update_values)
+            card.with_context(
+                skip_card_sync=True,
+                skip_biometric_verification_constraint=True,
+            ).write(update_values)
             updated_fields = ", ".join(field for field, _command in fields_to_update)
             state, message = "processed", f"Updated {updated_fields} on device card"
         else:
@@ -239,26 +330,82 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         log.sudo().write({"processing_state": state, "processing_message": message})
         return int(state == "processed")
 
-    def _process_biodata(self, log, body_text):
+    def _apply_fingerprint_lines(self, lines):
+        states = {}
+        for line in lines:
+            values = self._values(line)
+            pin = values.get("PIN")
+            if not pin:
+                continue
+            valid = values.get("VALID", "1") not in ("0", "False", "false")
+            states[pin] = states.get(pin, False) or bool(valid and values.get("TMP"))
         updated = 0
-        for line in body_text.replace("\r", "\n").split("\n"):
+        for pin, present in states.items():
+            card = self._get_or_create_card(pin)
+            if card:
+                card.with_context(
+                    skip_card_sync=True,
+                    skip_biometric_verification_constraint=True,
+                ).write({"has_fingerprint": present})
+                updated += 1
+        return updated
+
+    def _process_fingertmp(self, log, body_text):
+        updated = self._apply_fingerprint_lines(body_text.replace("\r", "\n").split("\n"))
+        state = "processed" if updated else "not_applied"
+        log.sudo().write({
+            "processing_state": state,
+            "processing_message": f"Updated {updated} fingerprint enrollment state(s)",
+        })
+        return updated
+
+    def _apply_face_lines(self, lines):
+        states = {}
+        values_by_pin = {}
+        for line in lines:
             values = self._values(line)
             pin, template = values.get("PIN"), values.get("TMP")
-            card = self.env["mdl.attendance.device.employee"].sudo().with_context(active_test=False).search([
-                ("device_id", "=", self.device.id), ("device_user_id", "=", pin),
-            ], limit=1) if pin else False
-            if not (card and template and values.get("TYPE") == "1" and self._pull_is_pending(card, {"request_biometric_photo"})):
+            if not pin:
                 continue
-            card.with_context(skip_card_sync=True).write({
-                "face_template": template,
-                "face_template_no": int(values.get("NO", 4)),
-                "face_template_index": int(values.get("INDEX", 0)),
-                "face_template_major_ver": int(values.get("MAJORVER", 13)),
-                "face_template_minor_ver": int(values.get("MINORVER", 0)),
-                "sync_state": "synced", "last_sync_at": log.received_at, "last_sync_error": False,
-            })
-            self._complete_pull_command(card, "request_biometric_photo", log, line)
+            valid = values.get("VALID", "1") not in ("0", "False", "false")
+            present = bool(valid and template)
+            states[pin] = states.get(pin, False) or present
+            if present:
+                values_by_pin[pin] = values
+        updated = 0
+        def integer(values, key, default):
+            try:
+                return int(values.get(key, default))
+            except (TypeError, ValueError):
+                return default
+
+        for pin, present in states.items():
+            card = self._get_or_create_card(pin)
+            if not card:
+                continue
+            values = values_by_pin.get(pin, {})
+            update_values = {
+                "has_face": present,
+                "face_template": values.get("TMP") if present else False,
+                "face_template_no": integer(values, "NO", 4),
+                "face_template_index": integer(values, "INDEX", 0),
+                "face_template_major_ver": integer(values, "MAJORVER", 13),
+                "face_template_minor_ver": integer(values, "MINORVER", 0),
+            }
+            card.with_context(
+                skip_card_sync=True,
+                skip_biometric_verification_constraint=True,
+            ).write(update_values)
             updated += 1
+        return updated
+
+    def _process_biodata(self, log, body_text):
+        lines = body_text.replace("\r", "\n").split("\n")
+        updated = self._apply_face_lines(lines)
+        for line in lines:
+            values = self._values(line)
+            card = self._get_or_create_card(values.get("PIN")) if values.get("PIN") else False
+            self._complete_pull_command(card, "request_biometric_photo", log, line)
         state = "processed" if updated else "not_applied"
         message = f"Updated {updated} face recognition template(s)" if updated else "BIODATA did not contain a requested face template"
         log.sudo().write({"processing_state": state, "processing_message": message})
