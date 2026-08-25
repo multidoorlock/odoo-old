@@ -204,7 +204,42 @@ class TestProductCatalog(TransactionCase):
         )
         self.assertEqual(
             line.name.splitlines()[0],
-            "דלת כנף 80/100 +ידית",
+            product.with_context(display_default_code=True).display_name,
+        )
+
+    def test_variant_action_uses_full_product_form(self):
+        template = self._create_template()
+        action = template.action_mdl_open_variants()
+        normal_form = self.env.ref("product.product_normal_form_view")
+
+        self.assertIn((normal_form.id, "form"), action["views"])
+        self.assertEqual(
+            action["context"]["form_view_ref"],
+            "product.product_normal_form_view",
+        )
+
+    def test_quotation_keeps_only_real_extra_description_below_product(self):
+        template = self._create_template()
+        product = template.product_variant_ids.filtered(
+            lambda variant: variant.default_code == "100180100"
+        )
+        product.description_sale = "הערת מכירה נוספת"
+        partner = self.env["res.partner"].create({"name": "לקוח בדיקה"})
+        order = self.env["sale.order"].create({"partner_id": partner.id})
+        line = self.env["sale.order.line"].create(
+            {
+                "order_id": order.id,
+                "product_id": product.id,
+                "product_uom_qty": 1,
+            }
+        )
+
+        self.assertEqual(
+            line.name.splitlines(),
+            [
+                product.with_context(display_default_code=True).display_name,
+                "הערת מכירה נוספת",
+            ],
         )
 
     def test_model_specific_value_overrides(self):

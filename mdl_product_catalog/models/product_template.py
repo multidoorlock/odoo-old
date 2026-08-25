@@ -628,10 +628,17 @@ class ProductTemplate(models.Model):
         action = self.env["ir.actions.act_window"]._for_xml_id(
             "product.product_variant_action"
         )
+        normal_form = self.env.ref("product.product_normal_form_view")
+        action["views"] = [
+            (view_id, view_type)
+            for view_id, view_type in action.get("views", [])
+            if view_type != "form"
+        ] + [(normal_form.id, "form")]
         action["domain"] = [("product_tmpl_id", "=", self.id)]
         action["context"] = {
             "default_product_tmpl_id": self.id,
             "search_default_product_tmpl_id": self.id,
+            "form_view_ref": "product.product_normal_form_view",
         }
         return action
 
