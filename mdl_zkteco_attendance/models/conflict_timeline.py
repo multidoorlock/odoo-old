@@ -162,6 +162,7 @@ class AttendanceConflictTimeline(models.Model):
             events = Event.search([
                 ("employee_id", "=", employee.id),
                 ("processing_state", "!=", "ignored"),
+                ("conflict_dismissed", "=", False),
                 ("event_datetime", "!=", False),
                 "|",
                 ("manual_punch_state", "in", ["in", "out"]),
@@ -233,12 +234,26 @@ class AttendanceConflictTimeline(models.Model):
             paired_event_ids = set()
             for index, in_event in enumerate(event_sequence[:-1]):
                 out_event = event_sequence[index + 1]
-                if (
+                if not (
                     (in_event.manual_punch_state or in_event.punch_state) == "in"
                     and (out_event.manual_punch_state or out_event.punch_state) == "out"
+                    and in_event.event_datetime < out_event.event_datetime
                 ):
-                    desired_pairs.append((in_event, out_event))
-                    paired_event_ids.update((in_event.id, out_event.id))
+                    continue
+                in_attendance = in_event.attendance_id.exists()
+                out_attendance = out_event.attendance_id.exists()
+                # A closed Odoo attendance already owns both of its endpoints.
+                # Never let a neighbouring raw event steal one of those endpoints.
+                if out_attendance and out_attendance != in_attendance:
+                    continue
+                if (
+                    in_attendance
+                    and in_attendance.check_out
+                    and in_attendance != out_attendance
+                ):
+                    continue
+                desired_pairs.append((in_event, out_event))
+                paired_event_ids.update((in_event.id, out_event.id))
 
             reusable_by_pair = {}
             reserved_attendance_ids = set()
@@ -267,6 +282,7 @@ class AttendanceConflictTimeline(models.Model):
                         break
 
             singleton_open_by_event = {}
+            preserved_full_pairs = {}
             preblocked_reason_by_event = {}
             # A genuine open attendance remains the legal representation of its
             # source IN until a direct-neighbour OUT can close it.  If that IN was
@@ -288,6 +304,37 @@ class AttendanceConflictTimeline(models.Model):
                 reserved_attendance_ids.add(attendance.id)
                 singleton_open_by_event[source_in.id] = attendance
 
+            # Closed attendances already know their own IN/OUT relationship.  A
+            # new raw event between those timestamps must not steal an endpoint
+            # or cause the known attendance to be deleted merely because the two
+            # source events are no longer adjacent in the raw sequence.
+            for attendance in managed_attendances.filtered("check_out"):
+                if attendance.id in reserved_attendance_ids:
+                    continue
+                source_in, source_out = source_pair_by_attendance.get(
+                    attendance.id, (Event.browse(), Event.browse())
+                )
+                if not (
+                    source_in
+                    and source_out
+                    and (source_in.manual_punch_state or source_in.punch_state) == "in"
+                    and (source_out.manual_punch_state or source_out.punch_state) == "out"
+                    and source_in.event_datetime < source_out.event_datetime
+                ):
+                    continue
+                blocked_reason = self._timeline_block_reason(
+                    employee,
+                    source_in.event_datetime,
+                    source_out.event_datetime,
+                    exclude_attendance=attendance,
+                )
+                if blocked_reason:
+                    preblocked_reason_by_event[source_in.id] = blocked_reason
+                    preblocked_reason_by_event[source_out.id] = blocked_reason
+                    continue
+                reserved_attendance_ids.add(attendance.id)
+                preserved_full_pairs[attendance.id] = (source_in, source_out)
+
             obsolete_attendances = managed_attendances.filtered(
                 lambda attendance: attendance.id not in reserved_attendance_ids
             )
@@ -297,6 +344,34 @@ class AttendanceConflictTimeline(models.Model):
 
             represented = {}
             blocked_reason_by_event = dict(preblocked_reason_by_event)
+            for attendance_id, (source_in, source_out) in preserved_full_pairs.items():
+                attendance = Attendance.browse(attendance_id).exists()
+                if not attendance:
+                    continue
+                try:
+                    with self.env.cr.savepoint():
+                        values = {
+                            "employee_id": employee.id,
+                            "check_in": source_in.event_datetime,
+                            "check_out": source_out.event_datetime,
+                        }
+                        changed_values = {
+                            key: value for key, value in values.items()
+                            if (
+                                attendance[key].id != value
+                                if attendance._fields[key].type == "many2one"
+                                else attendance[key] != value
+                            )
+                        }
+                        if changed_values:
+                            attendance.write(changed_values)
+                except (UserError, ValidationError) as error:
+                    attendance.unlink()
+                    blocked_reason_by_event[source_in.id] = str(error)
+                    blocked_reason_by_event[source_out.id] = str(error)
+                    continue
+                represented[source_in.id] = attendance
+                represented[source_out.id] = attendance
             for event_id, attendance in singleton_open_by_event.items():
                 source_in = Event.browse(event_id)
                 try:
@@ -469,6 +544,7 @@ class AttendanceConflictTimeline(models.Model):
             "pair_key": pair_key,
             "blocked": bool(blocked_reason or state in ("7", "9")),
             "edited": event.timeline_is_edited,
+            "sort_id": event.id,
             # Pairing is calculated by the server. Manual drag linking is disabled.
             "linkable": False,
             "actions": self._timeline_event_actions(event, state, action),
@@ -501,6 +577,7 @@ class AttendanceConflictTimeline(models.Model):
             "pair_key": pair_key,
             "blocked": state == "7",
             "edited": event.timeline_is_edited if event else False,
+            "sort_id": event.id if event else False,
             "linkable": False,
             "actions": self._timeline_attendance_actions(attendance, event, kind),
         }
@@ -523,6 +600,20 @@ class AttendanceConflictTimeline(models.Model):
             Domain(candidate_domain) & Domain(active_domain or Domain.TRUE),
             order="employee_id, event_datetime, id",
         )
+        # Repair stale states left by an interrupted/imported batch before deciding
+        # which employees still have conflicts.  The reconciliation is idempotent
+        # and uses row locks, so opening the view cannot create duplicates.
+        candidate_employee_ids = {
+            self._timeline_event_employee(event).id
+            for event in candidates
+            if self._timeline_event_employee(event)
+        }
+        if candidate_employee_ids:
+            self._timeline_reconcile_employee_ids(candidate_employee_ids)
+            candidates = Event.search(
+                Domain(candidate_domain) & Domain(active_domain or Domain.TRUE),
+                order="employee_id, event_datetime, id",
+            )
         conflicts = candidates.filtered(
             lambda event: not event.conflict_dismissed
             and (event.processing_state != "processed" or not event.attendance_id)
@@ -675,7 +766,14 @@ class AttendanceConflictTimeline(models.Model):
                 "employee_id": employee.id,
                 "employee_name": employee.name,
                 "avatar_url": f"/web/image/hr.employee/{employee.id}/avatar_128",
-                "items": sorted(items, key=lambda item: (item["datetime"], item["id"])),
+                "items": sorted(
+                    items,
+                    key=lambda item: (
+                        item["datetime"],
+                        item.get("sort_id") or 2 ** 63,
+                        item["id"],
+                    ),
+                ),
                 "connections": connections,
             })
         return {"rows": rows, "start": self._timeline_dt(start), "end": self._timeline_dt(end)}

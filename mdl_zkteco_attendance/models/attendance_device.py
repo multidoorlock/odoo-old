@@ -12,6 +12,9 @@ class AttendanceDevice(models.Model):
     _order = "name, id"
     _check_company_auto = True
 
+    _LANGUAGE_TO_DEVICE = {"he_IL": "72", "ar_001": "66", "en_US": "69"}
+    _DEVICE_TO_LANGUAGE = {value: key for key, value in _LANGUAGE_TO_DEVICE.items()}
+
     name = fields.Char(string="שם", required=True)
     manufacturer = fields.Selection(
         [
@@ -74,6 +77,9 @@ class AttendanceDevice(models.Model):
     )
     last_attendance_sync_at = fields.Datetime(
         string="סנכרון נוכחות אחרון", readonly=True,
+    )
+    last_automatic_sync_at = fields.Datetime(
+        string="סנכרון אוטומטי אחרון", readonly=True,
     )
 
     # Explicit firmware mapping. Never infer a direction from open attendance.
@@ -153,10 +159,116 @@ class AttendanceDevice(models.Model):
 
     def write(self, vals):
         language_changed = "device_language" in vals
+        cooldown_changed = "attendance_cooldown_minutes" in vals
         result = super().write(vals)
         if language_changed:
             self.mapped("device_employee_ids")._sync_name_from_employee()
+        if not self.env.context.get("skip_device_setting_sync"):
+            for device in self.filtered(lambda item: item.manufacturer == "zkteco"):
+                if language_changed:
+                    device._queue_device_command(
+                        "update_device_language",
+                        "SET OPTION Language=%s" % device._LANGUAGE_TO_DEVICE[device.device_language],
+                    )
+                if cooldown_changed:
+                    device._queue_device_command(
+                        "update_device_cooldown",
+                        "SET OPTION ReCheckMin=%s" % device.attendance_cooldown_minutes,
+                    )
+                if language_changed or cooldown_changed:
+                    device._queue_device_options_reload()
         return result
+
+    def _queue_device_command(self, command_type, raw_command):
+        self.ensure_one()
+        return self.env["mdl.attendance.device.command"].sudo().queue_device_command(
+            self, command_type, raw_command,
+        )
+
+    def _queue_device_options_reload(self):
+        """Keep RELOAD OPTIONS behind every still-queued option update."""
+        self.ensure_one()
+        Command = self.env["mdl.attendance.device.command"].sudo()
+        stale_reload = Command.search([
+            ("device_id", "=", self.id),
+            ("command_type", "=", "reload_device_options"),
+            ("state", "=", "queued"),
+        ])
+        if stale_reload:
+            stale_reload.write({
+                "state": "cancelled",
+                "completed_at": fields.Datetime.now(),
+            })
+        return self._queue_device_command("reload_device_options", "RELOAD OPTIONS")
+
+    def _device_setting_push_pending(self, command_type):
+        self.ensure_one()
+        return bool(self.env["mdl.attendance.device.command"].sudo().search_count([
+            ("device_id", "=", self.id),
+            ("command_type", "=", command_type),
+            ("state", "in", ["queued", "sent"]),
+        ], limit=1))
+
+    def _apply_reported_language(self, raw_language):
+        self.ensure_one()
+        language = self._DEVICE_TO_LANGUAGE.get(str(raw_language or "").strip())
+        if (
+            language
+            and language != self.device_language
+            and not self._device_setting_push_pending("update_device_language")
+        ):
+            self.with_context(skip_device_setting_sync=True).write({
+                "device_language": language,
+            })
+        return language
+
+    def _apply_reported_cooldown(self, raw_cooldown):
+        self.ensure_one()
+        try:
+            cooldown = max(0, int(str(raw_cooldown).strip()))
+        except (TypeError, ValueError):
+            return False
+        if (
+            cooldown != self.attendance_cooldown_minutes
+            and not self._device_setting_push_pending("update_device_cooldown")
+        ):
+            self.with_context(skip_device_setting_sync=True).write({
+                "attendance_cooldown_minutes": cooldown,
+            })
+        return cooldown
+
+    def _queue_automatic_sync(self, force=False):
+        """Queue fallback reconciliation; real-time OPERLOG remains the fast path."""
+        Command = self.env["mdl.attendance.device.command"].sudo()
+        now = fields.Datetime.now()
+        queued = Command.browse()
+        for device in self.filtered(lambda item: item.active and item.manufacturer == "zkteco"):
+            if (
+                not force
+                and device.last_automatic_sync_at
+                and device.last_automatic_sync_at > now - timedelta(hours=1)
+            ):
+                continue
+            requests = (
+                ("request_users", "DATA QUERY USERINFO"),
+                ("request_fingerprints", "DATA QUERY FINGERTMP"),
+                ("request_face_templates", "DATA QUERY BIODATA"),
+                # INFO returns the terminal's supported OPTIONS table.  It is
+                # the documented PUSH command for reading device settings.
+                ("request_device_options", "INFO"),
+            )
+            for command_type, raw_command in requests:
+                if Command.search_count([
+                    ("device_id", "=", device.id),
+                    ("command_type", "=", command_type),
+                    ("state", "in", ["queued", "sent"]),
+                ], limit=1):
+                    continue
+                queued |= device._queue_device_command(command_type, raw_command)
+            device.with_context(skip_device_setting_sync=True).write({
+                "last_automatic_sync_at": now,
+            })
+        return queued
 
     def action_open_push_wizard(self):
         self.ensure_one()
@@ -259,9 +371,9 @@ class AttendanceDevice(models.Model):
         devices = self.sudo().search([
             ("active", "=", True),
             ("manufacturer", "=", "zkteco"),
-            ("auto_reconcile_attendance", "=", True),
         ])
         devices._queue_attendance_reconciliation()
+        devices._queue_automatic_sync()
 
     @api.ondelete(at_uninstall=False)
     def _prevent_history_deletion(self):

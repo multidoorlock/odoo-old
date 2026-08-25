@@ -949,3 +949,182 @@ class TestAttendanceDevices(TransactionCase):
             ("command_type", "=", "delete_user"),
             ("raw_command", "=", "DATA DELETE USERINFO PIN=222"),
         ]))
+
+    def test_card_fields_are_pushed_automatically_without_manual_sync(self):
+        self.card.with_context(
+            skip_card_sync=True,
+            skip_biometric_verification_constraint=True,
+        ).write({"has_face": True, "has_fingerprint": True})
+        self.card.write({
+            "device_name": "Automatic clock name",
+            "device_privilege": "14",
+            "verification_mode": "19",
+        })
+
+        commands = self.env["mdl.attendance.device.command"].search([
+            ("device_employee_id", "=", self.card.id),
+            ("state", "=", "queued"),
+            ("command_type", "in", [
+                "update_name", "update_privilege", "update_verification_mode",
+            ]),
+        ])
+        self.assertEqual(
+            set(commands.mapped("command_type")),
+            {"update_name", "update_privilege", "update_verification_mode"},
+        )
+        self.assertTrue(all("Name=Automatic clock name" in command.raw_command for command in commands))
+
+    def test_clock_user_and_biometrics_are_applied_without_manual_pull(self):
+        adapter = self.device._adapter()
+        log = self._log()
+        adapter.process_payload(
+            log,
+            "USERINFO",
+            b"",
+            "USER PIN=74\tName=Changed on terminal\tPri=14\tVerify=19\tFPCount=2\tFaceCount=1",
+        )
+        self.card.invalidate_recordset()
+        self.assertEqual(self.card.device_name, "Changed on terminal")
+        self.assertEqual(self.card.device_privilege, "14")
+        self.assertEqual(self.card.verification_mode, "19")
+        self.assertTrue(self.card.has_fingerprint)
+        self.assertTrue(self.card.has_face)
+
+        adapter.process_payload(
+            self._log(), "USERINFO", b"",
+            "USER PIN=74\tName=Changed on terminal\tPri=0\tVerify=0\tFPCount=0\tFaceCount=0",
+        )
+        self.card.invalidate_recordset()
+        self.assertFalse(self.card.has_fingerprint)
+        self.assertFalse(self.card.has_face)
+
+    def test_device_language_and_cooldown_are_synchronized_both_directions(self):
+        self.device.write({
+            "device_language": "en_US",
+            "attendance_cooldown_minutes": 7,
+        })
+        Command = self.env["mdl.attendance.device.command"]
+        language_push = Command.search([
+            ("device_id", "=", self.device.id),
+            ("command_type", "=", "update_device_language"),
+        ], order="id desc", limit=1)
+        cooldown_push = Command.search([
+            ("device_id", "=", self.device.id),
+            ("command_type", "=", "update_device_cooldown"),
+        ], order="id desc", limit=1)
+        self.assertEqual(language_push.raw_command, "SET OPTION Language=69")
+        self.assertEqual(cooldown_push.raw_command, "SET OPTION ReCheckMin=7")
+        reload_command = Command.search([
+            ("device_id", "=", self.device.id),
+            ("command_type", "=", "reload_device_options"),
+            ("state", "=", "queued"),
+        ], order="id desc", limit=1)
+        self.assertEqual(reload_command.raw_command, "RELOAD OPTIONS")
+        self.assertGreater(reload_command.id, language_push.id)
+        self.assertGreater(reload_command.id, cooldown_push.id)
+
+        language_push.mark_result(0, "OK")
+        cooldown_push.mark_result(0, "OK")
+        reload_command.mark_result(0, "OK")
+        options_query = self.device._queue_device_command(
+            "request_device_options", "INFO",
+        )
+        adapter = self.device._adapter()
+        adapter.process_command_response(
+            options_query, "INFO\nOPTIONS\nLanguage=66\nReCheckMin=4",
+        )
+        self.device.invalidate_recordset()
+        self.assertEqual(self.device.device_language, "ar_001")
+        self.assertEqual(self.device.attendance_cooldown_minutes, 4)
+        self.assertFalse(Command.search_count([
+            ("device_id", "=", self.device.id),
+            ("command_type", "in", ["update_device_language", "update_device_cooldown"]),
+            ("state", "=", "queued"),
+        ]))
+
+    def test_hourly_fallback_queues_all_clock_reconciliation_requests(self):
+        commands = self.device._queue_automatic_sync(force=True)
+        self.assertEqual(
+            set(commands.mapped("command_type")),
+            {
+                "request_users",
+                "request_fingerprints",
+                "request_face_templates",
+                "request_device_options",
+            },
+        )
+        self.assertTrue(self.device.last_automatic_sync_at)
+        self.assertFalse(self.device._queue_automatic_sync())
+
+    def test_conflict_view_reconciles_a_stale_valid_pair_automatically(self):
+        check_in = self._pending_event(
+            "2026-08-24 13:43:10", "in", "stale-view-in",
+        )
+        check_out = self._pending_event(
+            "2026-08-24 13:43:50", "out", "stale-view-out",
+        )
+        data = self.env["mdl.attendance.device.event"].get_conflict_timeline(
+            "2026-08-24 00:00:00", "2026-08-25 00:00:00",
+        )
+        (check_in | check_out).invalidate_recordset()
+        self.assertEqual(check_in.attendance_id, check_out.attendance_id)
+        self.assertTrue(check_in.attendance_id)
+        self.assertEqual(
+            (check_in | check_out).mapped("processing_state"),
+            ["processed", "processed"],
+        )
+        self.assertNotIn(self.employee.id, [row["employee_id"] for row in data["rows"]])
+
+    def test_same_minute_events_pair_only_direct_deterministic_neighbours(self):
+        first_out = self._pending_event(
+            "2026-08-24 13:43:05", "out", "same-minute-out-first",
+        )
+        middle_in = self._pending_event(
+            "2026-08-24 13:43:15", "in", "same-minute-in-middle",
+        )
+        middle_out = self._pending_event(
+            "2026-08-24 13:43:30", "out", "same-minute-out-middle",
+        )
+        last_in = self._pending_event(
+            "2026-08-24 13:43:45", "in", "same-minute-in-last",
+        )
+        self._reconcile_employee()
+        events = first_out | middle_in | middle_out | last_in
+        events.invalidate_recordset()
+        self.assertFalse(first_out.attendance_id)
+        self.assertEqual(middle_in.attendance_id, middle_out.attendance_id)
+        self.assertTrue(middle_in.attendance_id)
+        self.assertFalse(last_in.attendance_id)
+
+        data = self.env["mdl.attendance.device.event"].get_conflict_timeline(
+            "2026-08-24 00:00:00", "2026-08-25 00:00:00",
+        )
+        row = next(row for row in data["rows"] if row["employee_id"] == self.employee.id)
+        source_sort_ids = [
+            item["sort_id"] for item in row["items"] if item.get("sort_id")
+        ]
+        self.assertEqual(source_sort_ids, sorted(source_sort_ids))
+        self.assertFalse(any(
+            connection["from"] == f"event:{first_out.id}"
+            or connection["to"] == f"event:{last_in.id}"
+            for connection in row["connections"]
+        ))
+
+    def test_existing_attendance_endpoints_are_not_stolen_by_an_intermediate_event(self):
+        log = self._log()
+        self.device._adapter().process_payload(
+            log, "ATTLOG", b"",
+            "74\t2026-08-24 06:00:00\t255\t1\t0\n"
+            "74\t2026-08-24 16:00:00\t255\t15\t0",
+        )
+        in_event, out_event = log.event_ids.sorted("event_datetime")
+        attendance = in_event.attendance_id
+        extra_in = self._pending_event(
+            "2026-08-24 12:00:00", "in", "between-known-pair",
+        )
+        self._reconcile_employee()
+        (in_event | out_event | extra_in).invalidate_recordset()
+        self.assertEqual(in_event.attendance_id, attendance)
+        self.assertEqual(out_event.attendance_id, attendance)
+        self.assertFalse(extra_in.attendance_id)
+        self.assertEqual(extra_in.processing_state, "not_applied")

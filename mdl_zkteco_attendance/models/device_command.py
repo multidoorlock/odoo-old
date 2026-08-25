@@ -20,7 +20,15 @@ class AttendanceDeviceCommand(models.Model):
         ("request_profile_photo", "בקשת תמונת פרופיל"),
         ("request_biometric_photo", "בקשת תמונה ביומטרית"),
         ("request_users", "בקשת כל המשתמשים מהשעון"),
+        ("request_fingerprints", "בקשת מצב טביעות אצבע"),
+        ("request_face_templates", "בקשת מצב תבניות פנים"),
         ("request_attendance_logs", "בקשת השלמת רשומות נוכחות"),
+        ("update_device_language", "עדכון שפת השעון"),
+        ("request_device_language", "בקשת שפת השעון"),
+        ("update_device_cooldown", "עדכון Cooldown בשעון"),
+        ("request_device_cooldown", "בקשת Cooldown מהשעון"),
+        ("request_device_options", "בקשת הגדרות השעון"),
+        ("reload_device_options", "טעינה מחדש של הגדרות השעון"),
         ("delete_user", "מחיקת משתמש"), ("custom", "פקודה אחרת"),
     ], required=True, default="custom", index=True)
     state = fields.Selection([
@@ -57,6 +65,26 @@ class AttendanceDeviceCommand(models.Model):
             "last_sync_error": False,
         })
         return command
+
+    @api.model
+    def queue_device_command(self, device, command_type, raw_command):
+        """Queue a device-level setting/query without creating duplicates."""
+        existing = self.search([
+            ("device_id", "=", device.id),
+            ("device_employee_id", "=", False),
+            ("command_type", "=", command_type),
+            ("state", "=", "queued"),
+        ], order="id desc", limit=1)
+        values = {"raw_command": raw_command, "error_message": False}
+        if existing:
+            existing.write(values)
+            return existing
+        values.update({
+            "device_id": device.id,
+            "command_type": command_type,
+            "state": "queued",
+        })
+        return self.create(values)
 
     def get_wire_command(self):
         self.ensure_one()

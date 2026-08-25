@@ -49,8 +49,8 @@ class AttendanceDeviceEmployee(models.Model):
         ],
         string="מצב אימות בשעון", default="0", required=True,
     )
-    has_face = fields.Boolean(string="קיים פנים")
-    has_fingerprint = fields.Boolean(string="קיימת טביעת אצבע")
+    has_face = fields.Boolean(string="קיים פנים", readonly=True)
+    has_fingerprint = fields.Boolean(string="קיימת טביעת אצבע", readonly=True)
     biometric_photo = fields.Image(
         string="תמונה ביומטרית", max_width=1920, max_height=1920,
         groups="mdl_zkteco_attendance.group_attendance_device_manager",
@@ -104,6 +104,8 @@ class AttendanceDeviceEmployee(models.Model):
 
     @api.constrains("verification_mode", "has_face", "has_fingerprint")
     def _check_verification_mode_biometrics(self):
+        if self.env.context.get("skip_biometric_verification_constraint"):
+            return
         for card in self:
             error = card._verification_mode_error()
             if error:
@@ -248,7 +250,7 @@ class AttendanceDeviceEmployee(models.Model):
         for card in self.filtered(lambda item: item.employee_id and item.device_id):
             device_name = card.employee_id._attendance_device_name(card.device_id)
             if card.device_name != device_name:
-                card.with_context(skip_employee_name_sync=True, skip_card_sync=True).write({
+                card.with_context(skip_employee_name_sync=True).write({
                     "device_name": device_name,
                 })
         return True
@@ -264,6 +266,18 @@ class AttendanceDeviceEmployee(models.Model):
                 })
         if identity_changed and not self.env.context.get("skip_employee_name_sync"):
             self._sync_name_from_employee()
+        if not self.env.context.get("skip_card_sync"):
+            sync_fields = {
+                "device_name": "update_name",
+                "device_privilege": "update_privilege",
+                "verification_mode": "update_verification_mode",
+                "profile_photo": "update_profile_photo",
+                "biometric_photo": "update_biometric_photo",
+            }
+            for card in self.filtered(lambda item: item.device_id and item.device_user_id):
+                for field_name, command_type in sync_fields.items():
+                    if field_name in vals:
+                        card._queue_command(command_type)
         return result
 
     def unlink(self):
@@ -279,12 +293,10 @@ class AttendanceDeviceEmployee(models.Model):
 
     def _queue_initial_sync(self):
         for card in self:
-            if not card.device_id.auto_push_new_cards:
-                continue
             card._queue_command("create_user")
-            if card.device_id.auto_sync_profile_photo and card.profile_photo:
+            if card.profile_photo:
                 card._queue_command("update_profile_photo")
-            if card.device_id.auto_sync_biometric_photo and card.biometric_photo:
+            if card.biometric_photo:
                 card._queue_command("update_biometric_photo")
 
     def action_open_push_wizard(self):
