@@ -111,7 +111,12 @@ class AttendanceDeviceEmployee(models.Model):
 
     def _refresh_has_fingerprint(self):
         for card in self:
-            present = bool(card.sudo().fingerprint_ids)
+            # A locally selected file is only a pending template.  The readonly
+            # flag becomes true after the terminal returns that template in a
+            # BIODATA payload and the row's source becomes ``device``.
+            present = bool(card.sudo().fingerprint_ids.filtered(
+                lambda fingerprint: fingerprint.source == "device"
+            ))
             if card.has_fingerprint != present:
                 card.with_context(
                     skip_card_sync=True,

@@ -1071,7 +1071,7 @@ class TestAttendanceDevices(TransactionCase):
             "filename": "finger_6.fpt",
         })
         self.card.invalidate_recordset(["has_fingerprint"])
-        self.assertTrue(self.card.has_fingerprint)
+        self.assertFalse(self.card.has_fingerprint)
         command = self.env["mdl.attendance.device.command"].search([
             ("device_employee_id", "=", self.card.id),
             ("command_type", "=", "update_fingerprint"),
@@ -1079,9 +1079,12 @@ class TestAttendanceDevices(TransactionCase):
             ("state", "=", "queued"),
         ], limit=1)
         payload = base64.b64encode(raw_template).decode("ascii")
-        self.assertIn("DATA UPDATE FINGERTMP PIN=74", command.raw_command)
-        self.assertIn("FID=6", command.raw_command)
-        self.assertIn(f"TMP={payload}", command.raw_command)
+        self.assertEqual(
+            command.raw_command,
+            "DATA UPDATE BIODATA Pin=74\tNo=6\tIndex=0\tValid=1"
+            "\tDuress=0\tType=1\tMajorVer=13\tMinorVer=0\tFormat=0"
+            f"\tTmp={payload}",
+        )
 
         fingerprint.unlink()
         self.card.invalidate_recordset(["has_fingerprint"])
@@ -1094,7 +1097,7 @@ class TestAttendanceDevices(TransactionCase):
         ], limit=1)
         self.assertEqual(
             delete_command.raw_command,
-            "DATA DELETE FINGERTMP PIN=74\tFID=6",
+            "DATA DELETE BIODATA Pin=74\tNo=6\tIndex=0\tType=1",
         )
 
     def test_zkteco_ini_upload_extracts_matching_user_and_finger(self):
@@ -1115,7 +1118,7 @@ class TestAttendanceDevices(TransactionCase):
             ("command_type", "=", "update_fingerprint"),
             ("fingerprint_index", "=", "6"),
         ], limit=1)
-        self.assertIn(f"TMP={payload}", command.raw_command)
+        self.assertIn(f"Tmp={payload}", command.raw_command)
         self.assertNotIn("W1VzZXJf", command.raw_command)
 
     def test_fingerprint_number_is_unique_per_card(self):
@@ -1153,8 +1156,110 @@ class TestAttendanceDevices(TransactionCase):
             ("fingerprint_index", "=", "3"),
         ], limit=1)
         self.assertEqual(fingerprint._template_payload(), payload)
-        self.assertIn(f"PIN=0075", command.raw_command)
-        self.assertIn(f"TMP={payload}", command.raw_command)
+        self.assertIn(f"Pin=0075", command.raw_command)
+        self.assertIn(f"Tmp={payload}", command.raw_command)
+
+    def test_fingerprint_biodata_push_is_verified_by_native_readback(self):
+        Command = self.env["mdl.attendance.device.command"]
+        Command.search([("device_employee_id", "=", self.card.id)]).unlink()
+        raw_template = b"native-mb560-fingerprint-template"
+        payload = base64.b64encode(raw_template).decode("ascii")
+        fingerprint = self.env["mdl.attendance.device.fingerprint"].create({
+            "device_employee_id": self.card.id,
+            "finger_index": "6",
+            "template_file": base64.b64encode(raw_template),
+            "filename": "native_6.fpt",
+        })
+        self.card.invalidate_recordset(["has_fingerprint", "sync_state"])
+        self.assertFalse(self.card.has_fingerprint)
+        self.assertEqual(self.card.sync_state, "pending_push")
+
+        push = Command.search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "update_fingerprint"),
+            ("fingerprint_index", "=", "6"),
+        ], limit=1)
+        push.mark_sent()
+        push.mark_result(0, "ID=1&Return=0&CMD=DATA")
+        verification = Command.search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "request_fingerprints"),
+            ("fingerprint_index", "=", "6"),
+        ], limit=1)
+        self.assertEqual(
+            verification.raw_command,
+            "DATA QUERY BIODATA Pin=74",
+        )
+        self.assertTrue(verification.fingerprint_verification_hash)
+        self.card.invalidate_recordset(["sync_state"])
+        self.assertEqual(self.card.sync_state, "pending_pull")
+
+        verification.mark_sent()
+        verification.mark_result(0, "ID=2&Return=0&CMD=DATA")
+        self.assertEqual(verification.state, "sent")
+        log = self._log()
+        log.write({
+            "request_type": "BIODATA",
+            "query_string": "SN=TEST-SN&table=BIODATA&OpStamp=9999",
+        })
+        self.device._adapter().process_payload(
+            log,
+            "BIODATA",
+            b"",
+            "BIODATA Pin=74\tNo=6\tIndex=0\tValid=1\tDuress=0"
+            "\tType=1\tMajorVer=13\tMinorVer=0\tFormat=0"
+            f"\tTmp={payload}",
+        )
+        verification.invalidate_recordset()
+        fingerprint.invalidate_recordset()
+        self.card.invalidate_recordset(["has_fingerprint", "sync_state"])
+        self.assertEqual(verification.state, "done")
+        self.assertTrue(self.card.has_fingerprint)
+        self.assertEqual(self.card.sync_state, "synced")
+        self.assertEqual(fingerprint.source, "device")
+        self.assertEqual(fingerprint.major_version, 13)
+        self.assertEqual(fingerprint.minor_version, 0)
+        self.assertEqual(fingerprint.template_format, 0)
+
+    def test_fingerprint_push_missing_from_full_biodata_is_an_error(self):
+        Command = self.env["mdl.attendance.device.command"]
+        Command.search([("device_employee_id", "=", self.card.id)]).unlink()
+        fingerprint = self.env["mdl.attendance.device.fingerprint"].create({
+            "device_employee_id": self.card.id,
+            "finger_index": "1",
+            "template_file": base64.b64encode(b"rejected-template"),
+        })
+        push = Command.search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "update_fingerprint"),
+        ], limit=1)
+        push.mark_result(0, "ID=3&Return=0&CMD=DATA")
+        verification = Command.search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "request_fingerprints"),
+            ("fingerprint_index", "=", "1"),
+        ], limit=1)
+        verification.mark_result(0, "ID=4&Return=0&CMD=DATA")
+        log = self._log()
+        log.write({
+            "request_type": "BIODATA",
+            "query_string": "SN=TEST-SN&table=BIODATA&OpStamp=9999",
+        })
+        self.device._adapter().process_payload(
+            log,
+            "BIODATA",
+            b"",
+            "BIODATA Pin=75\tNo=0\tIndex=0\tValid=1\tDuress=0"
+            "\tType=9\tMajorVer=40\tMinorVer=1\tFormat=0\tTmp=face",
+        )
+        verification.invalidate_recordset()
+        fingerprint.invalidate_recordset()
+        self.card.invalidate_recordset(["has_fingerprint", "sync_state"])
+        self.assertEqual(verification.state, "failed")
+        self.assertIn("not returned", verification.error_message)
+        self.assertEqual(fingerprint.source, "odoo")
+        self.assertFalse(self.card.has_fingerprint)
+        self.assertEqual(self.card.sync_state, "error")
 
     def test_fingerprint_pull_stores_each_template_and_updates_checkbox(self):
         first_payload = base64.b64encode(b"finger-zero").decode("ascii")
@@ -1340,6 +1445,10 @@ class TestAttendanceDevices(TransactionCase):
             option_command.raw_command,
             "GET OPTIONS Language,RecheckMin,AlarmReRec",
         )
+        fingerprint_command = commands.filtered(
+            lambda item: item.command_type == "request_fingerprints"
+        )
+        self.assertEqual(fingerprint_command.raw_command, "DATA QUERY BIODATA")
 
     def test_single_device_sync_wizard_queues_complete_push(self):
         Command = self.env["mdl.attendance.device.command"]

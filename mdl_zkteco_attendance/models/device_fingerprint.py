@@ -59,6 +59,11 @@ class AttendanceDeviceFingerprint(models.Model):
         compute="_compute_template_size",
     )
     last_sync_at = fields.Datetime(string="סנכרון אחרון", readonly=True)
+    biodata_index = fields.Integer(default=0, readonly=True)
+    major_version = fields.Integer(default=13, readonly=True)
+    minor_version = fields.Integer(default=0, readonly=True)
+    template_format = fields.Integer(default=0, readonly=True)
+    is_duress = fields.Boolean(default=False, readonly=True)
 
     _card_finger_unique = models.Constraint(
         "UNIQUE(device_employee_id, finger_index)",
@@ -227,9 +232,13 @@ class AttendanceDeviceFingerprint(models.Model):
             card = fingerprint.device_employee_id
             payload = fingerprint._template_payload()
             raw_command = (
-                f"DATA UPDATE FINGERTMP PIN={card.device_user_id}"
-                f"\tFID={fingerprint.finger_index}"
-                f"\tSize={len(payload)}\tValid=1\tTMP={payload}"
+                f"DATA UPDATE BIODATA Pin={card.device_user_id}"
+                f"\tNo={fingerprint.finger_index}"
+                f"\tIndex={fingerprint.biodata_index}\tValid=1"
+                f"\tDuress={int(fingerprint.is_duress)}\tType=1"
+                f"\tMajorVer={fingerprint.major_version}"
+                f"\tMinorVer={fingerprint.minor_version}"
+                f"\tFormat={fingerprint.template_format}\tTmp={payload}"
             )
             Command.queue_fingerprint_command(
                 card,
@@ -243,8 +252,9 @@ class AttendanceDeviceFingerprint(models.Model):
         for fingerprint in self:
             card = fingerprint.device_employee_id
             raw_command = (
-                f"DATA DELETE FINGERTMP PIN={card.device_user_id}"
-                f"\tFID={fingerprint.finger_index}"
+                f"DATA DELETE BIODATA Pin={card.device_user_id}"
+                f"\tNo={fingerprint.finger_index}"
+                f"\tIndex={fingerprint.biodata_index}\tType=1"
             )
             Command.queue_fingerprint_command(
                 card,

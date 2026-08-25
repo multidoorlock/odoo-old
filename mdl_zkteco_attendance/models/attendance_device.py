@@ -277,7 +277,7 @@ class AttendanceDevice(models.Model):
                 continue
             requests = (
                 ("request_users", "DATA QUERY USERINFO"),
-                ("request_fingerprints", "DATA QUERY FINGERTMP"),
+                ("request_fingerprints", "DATA QUERY BIODATA"),
                 ("request_face_templates", "DATA QUERY BIODATA"),
                 # PUSH 3.1.2 posts the result asynchronously to
                 # /iclock/querydata?type=options.
