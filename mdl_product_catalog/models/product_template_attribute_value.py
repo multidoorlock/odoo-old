@@ -1,5 +1,4 @@
 from odoo import api, fields, models
-from odoo.fields import Command
 
 from .catalog_utils import clean_text
 
@@ -49,20 +48,6 @@ class ProductTemplateAttributeValue(models.Model):
         help=(
             "רכיב המק״ט שבפועל ישמש בדגם. עריכה משנה רק את הדגם הזה; "
             "איפוס מחזיר למק״ט ברירת המחדל של ערך המאפיין."
-        ),
-    )
-    mdl_excluded_value_ids = fields.Many2many(
-        comodel_name="product.template.attribute.value",
-        relation="mdl_ptav_excluded_value_rel",
-        column1="source_ptav_id",
-        column2="excluded_ptav_id",
-        string="לא תואם עם",
-        compute="_compute_mdl_excluded_value_ids",
-        inverse="_inverse_mdl_excluded_value_ids",
-        store=True,
-        help=(
-            "ערכים בדגם שלא ניתן לבחור יחד עם הערך הזה. "
-            "הכלל נשמר במנגנון התאימות הרגיל של Odoo."
         ),
     )
     mdl_attribute_group_label = fields.Char(
@@ -132,49 +117,6 @@ class ProductTemplateAttributeValue(models.Model):
                     {"mdl_sku_component_override": override}
                 )
 
-    def _mdl_local_excluded_values(self):
-        """Return same-template exclusions as a symmetric value set."""
-        self.ensure_one()
-        template = self.product_tmpl_id
-        if not template:
-            return self.env["product.template.attribute.value"]
-
-        outgoing_rules = self.exclude_for.filtered(
-            lambda rule: rule.product_tmpl_id == template
-        )
-        excluded_values = outgoing_rules.value_ids.filtered(
-            lambda other: (
-                other.product_tmpl_id == template
-                and other.attribute_id != self.attribute_id
-                and other.ptav_active
-            )
-        )
-
-        incoming_rules = self.env[
-            "product.template.attribute.exclusion"
-        ].search(
-            [
-                ("product_tmpl_id", "=", template.id),
-                ("value_ids", "in", self.ids),
-            ]
-        )
-        excluded_values |= incoming_rules.product_template_attribute_value_id.filtered(
-            lambda other: (
-                other.product_tmpl_id == template
-                and other.attribute_id != self.attribute_id
-                and other.ptav_active
-            )
-        )
-        return excluded_values
-
-    @api.depends(
-        "exclude_for.value_ids",
-        "product_tmpl_id.mdl_attribute_value_ids.exclude_for.value_ids",
-    )
-    def _compute_mdl_excluded_value_ids(self):
-        for value in self:
-            value.mdl_excluded_value_ids = value._mdl_local_excluded_values()
-
     @api.depends(
         "attribute_id.name",
         "attribute_line_id.product_template_value_ids",
@@ -190,77 +132,6 @@ class ProductTemplateAttributeValue(models.Model):
             value.mdl_attribute_group_label = (
                 value.attribute_id.display_name if is_first else False
             )
-
-    def _inverse_mdl_excluded_value_ids(self):
-        Exclusion = self.env["product.template.attribute.exclusion"]
-        templates_to_invalidate = self.env["product.template"]
-
-        for value in self:
-            template = value.product_tmpl_id
-            if not template:
-                continue
-
-            desired_values = value.mdl_excluded_value_ids.filtered(
-                lambda other: (
-                    other != value
-                    and other.product_tmpl_id == template
-                    and other.attribute_id != value.attribute_id
-                    and other.ptav_active
-                )
-            )
-            existing_values = value._mdl_local_excluded_values()
-            values_to_remove = existing_values - desired_values
-            values_to_add = desired_values - existing_values
-
-            if values_to_remove:
-                outgoing_rules = value.exclude_for.filtered(
-                    lambda rule: rule.product_tmpl_id == template
-                )
-                for rule in outgoing_rules:
-                    remaining_values = rule.value_ids - values_to_remove
-                    if remaining_values == rule.value_ids:
-                        continue
-                    if remaining_values:
-                        rule.write(
-                            {"value_ids": [Command.set(remaining_values.ids)]}
-                        )
-                    else:
-                        rule.unlink()
-
-                incoming_rules = Exclusion.search(
-                    [
-                        ("product_tmpl_id", "=", template.id),
-                        ("value_ids", "in", value.ids),
-                        (
-                            "product_template_attribute_value_id",
-                            "in",
-                            values_to_remove.ids,
-                        ),
-                    ]
-                )
-                for rule in incoming_rules:
-                    remaining_values = rule.value_ids - value
-                    if remaining_values:
-                        rule.write(
-                            {"value_ids": [Command.set(remaining_values.ids)]}
-                        )
-                    else:
-                        rule.unlink()
-
-            if values_to_add:
-                Exclusion.create(
-                    {
-                        "product_template_attribute_value_id": value.id,
-                        "product_tmpl_id": template.id,
-                        "value_ids": [Command.set(values_to_add.ids)],
-                    }
-                )
-
-            templates_to_invalidate |= template
-
-        templates_to_invalidate.mdl_attribute_value_ids.invalidate_recordset(
-            ["mdl_excluded_value_ids"]
-        )
 
     def _mdl_get_sku_component(self):
         self.ensure_one()

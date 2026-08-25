@@ -157,6 +157,15 @@ class ProductTemplate(models.Model):
         inverse_name="product_tmpl_id",
         string="ערכי מאפיינים בדגם",
     )
+    mdl_exclusion_ids = fields.One2many(
+        comodel_name="product.template.attribute.exclusion",
+        inverse_name="product_tmpl_id",
+        string="שילובים לא מורשים",
+        help=(
+            "כל שורה מגדירה ערך ותחתיו את הערכים שלא ניתן לבחור יחד "
+            "איתו. התנאים משתמשים במנגנון התאימות המקורי של Odoo."
+        ),
+    )
 
     # Kept out of the form: users manage the readable format through the
     # ordered attribute rows and their single "טקסט אחרי" field.

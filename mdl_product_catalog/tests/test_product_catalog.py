@@ -237,7 +237,7 @@ class TestProductCatalog(TransactionCase):
         self.assertEqual(product.default_code, "100180100")
         self.assertEqual(product.mdl_generated_name, "דלת כנף 80/100 +ידית")
 
-    def test_inline_incompatible_values_manage_native_exclusions(self):
+    def test_separate_exclusion_table_manages_native_rules(self):
         template = self._create_template()
         height_110 = self.env["product.attribute.value"].create(
             {
@@ -260,55 +260,36 @@ class TestProductCatalog(TransactionCase):
             lambda value: value.product_attribute_value_id == height_110
         )
 
-        width_value.write(
+        template.write(
             {
-                "mdl_excluded_value_ids": [
-                    Command.set((height_value | height_110_value).ids)
+                "mdl_exclusion_ids": [
+                    Command.create(
+                        {
+                            "product_template_attribute_value_id": width_value.id,
+                            "value_ids": [
+                                Command.set((height_value | height_110_value).ids)
+                            ],
+                        }
+                    )
                 ]
             }
         )
-        template.mdl_attribute_value_ids.invalidate_recordset(
-            ["mdl_excluded_value_ids"]
+        native_rule = template.mdl_exclusion_ids
+        self.assertEqual(len(native_rule), 1)
+        self.assertEqual(
+            native_rule.product_template_attribute_value_id,
+            width_value,
         )
-        self.assertIn(height_value, width_value.mdl_excluded_value_ids)
-        self.assertIn(height_110_value, width_value.mdl_excluded_value_ids)
-        self.assertIn(width_value, height_value.mdl_excluded_value_ids)
-        native_rule = self.env[
-            "product.template.attribute.exclusion"
-        ].search(
-            [
-                ("product_template_attribute_value_id", "=", width_value.id),
-                ("product_tmpl_id", "=", template.id),
-                ("value_ids", "in", height_value.ids),
-            ]
-        )
+        self.assertEqual(native_rule.mdl_source_attribute_id, self.width)
+        self.assertEqual(native_rule.value_ids, height_value | height_110_value)
         self.assertTrue(native_rule)
         self.assertEqual(len(template.product_variant_ids), 2)
 
-        width_value.write(
-            {
-                "mdl_excluded_value_ids": [
-                    Command.unlink(height_value.id)
-                ]
-            }
-        )
-        template.mdl_attribute_value_ids.invalidate_recordset(
-            ["mdl_excluded_value_ids"]
-        )
-        self.assertNotIn(height_value, width_value.mdl_excluded_value_ids)
-        self.assertIn(height_110_value, width_value.mdl_excluded_value_ids)
-        self.assertIn(width_value, height_110_value.mdl_excluded_value_ids)
-        native_rule.invalidate_recordset(["value_ids"])
+        native_rule.write({"value_ids": [Command.unlink(height_value.id)]})
         self.assertEqual(native_rule.value_ids, height_110_value)
         self.assertEqual(len(template.product_variant_ids), 3)
 
-        width_value.write({"mdl_excluded_value_ids": [Command.clear()]})
-        template.mdl_attribute_value_ids.invalidate_recordset(
-            ["mdl_excluded_value_ids"]
-        )
-        self.assertNotIn(height_value, width_value.mdl_excluded_value_ids)
-        self.assertNotIn(height_110_value, width_value.mdl_excluded_value_ids)
-        self.assertNotIn(width_value, height_value.mdl_excluded_value_ids)
+        template.write({"mdl_exclusion_ids": [Command.unlink(native_rule.id)]})
         self.assertFalse(native_rule.exists())
         self.assertEqual(len(template.product_variant_ids), 4)
 
