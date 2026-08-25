@@ -7,23 +7,16 @@
             <form>
                 <group>
                     <field name="device_id"/>
-                    <field name="direction"/>
-                    <field name="selection_mode" widget="radio"/>
-                    <field name="device_employee_ids" widget="many2many_tags"
-                           invisible="selection_mode != 'selected'"
-                           required="selection_mode == 'selected'"/>
+                    <field name="direction" widget="radio"/>
                 </group>
-                <group string="מידע">
-                    <field name="sync_name"/>
-                    <field name="sync_privilege"/>
-                    <field name="sync_verification_mode"/>
-                    <field name="sync_profile_photo"/>
-                    <field name="sync_biometric_photo" string="תמונת פנים לזיהוי"
-                           invisible="direction == 'pull'"
-                           groups="mdl_zkteco_attendance.group_attendance_device_manager"/>
-                </group>
-                <div class="alert alert-info" role="alert" invisible="not sync_biometric_photo or direction == 'pull'">
-                    התמונה נשלחת לשעון כ־BIOPHOTO Type 9, והשעון יוצר ממנה את תבנית זיהוי הפנים.
+                <div class="alert alert-info" role="alert" invisible="direction != 'pull'">
+                    המשיכה כוללת את הגדרות השעון, כל הכרטיסים, תמונות הפרופיל,
+                    מצב טביעות האצבע והפנים ורשומות הנוכחות. תמונה ביומטרית אינה
+                    נמשכת מפני שהשעון אינו מחזיר אותה.
+                </div>
+                <div class="alert alert-info" role="alert" invisible="direction != 'push'">
+                    השליחה כוללת את הגדרות השעון ואת כל פרטי כל הכרטיסים,
+                    כולל תמונות פרופיל ותמונות ביומטריות.
                 </div>
                 <footer>
                     <button name="action_confirm" type="object" string="אישור" class="btn-primary"/>

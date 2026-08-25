@@ -1012,8 +1012,11 @@ class TestAttendanceDevices(TransactionCase):
             ("device_id", "=", self.device.id),
             ("command_type", "=", "update_device_cooldown"),
         ], order="id desc", limit=1)
-        self.assertEqual(language_push.raw_command, "SET OPTION Language=69")
-        self.assertEqual(cooldown_push.raw_command, "SET OPTION ReCheckMin=7")
+        self.assertEqual(language_push.raw_command, "SET OPTIONS Language=69")
+        self.assertEqual(
+            cooldown_push.raw_command,
+            "SET OPTIONS RecheckMin=1,AlarmReRec=7",
+        )
         reload_command = Command.search([
             ("device_id", "=", self.device.id),
             ("command_type", "=", "reload_device_options"),
@@ -1027,11 +1030,13 @@ class TestAttendanceDevices(TransactionCase):
         cooldown_push.mark_result(0, "OK")
         reload_command.mark_result(0, "OK")
         options_query = self.device._queue_device_command(
-            "request_device_options", "INFO",
+            "request_device_options",
+            "GET OPTIONS Language,RecheckMin,AlarmReRec",
         )
         adapter = self.device._adapter()
         adapter.process_command_response(
-            options_query, "INFO\nOPTIONS\nLanguage=66\nReCheckMin=4",
+            options_query,
+            "Language=66,RecheckMin=1,AlarmReRec=4",
         )
         self.device.invalidate_recordset()
         self.assertEqual(self.device.device_language, "ar_001")
@@ -1041,6 +1046,96 @@ class TestAttendanceDevices(TransactionCase):
             ("command_type", "in", ["update_device_language", "update_device_cooldown"]),
             ("state", "=", "queued"),
         ]))
+
+    def test_unsolicited_options_payload_updates_managed_device_settings(self):
+        self.device.with_context(skip_device_setting_sync=True).write({
+            "device_language": "he_IL",
+            "attendance_cooldown_minutes": 0,
+        })
+        log = self._log()
+        log.request_type = "OPTIONS"
+        count = self.device._adapter().process_payload(
+            log,
+            "OPTIONS",
+            b"",
+            "~DeviceName=MB560-VL,Language=66,RecheckMin=1,AlarmReRec=9",
+        )
+        self.device.invalidate_recordset()
+        self.assertEqual(count, 2)
+        self.assertEqual(self.device.device_language, "ar_001")
+        self.assertEqual(self.device.attendance_cooldown_minutes, 9)
+        self.assertEqual(log.processing_state, "processed")
+
+    def test_device_setting_operlog_with_zero_pin_triggers_immediate_readback(self):
+        Command = self.env["mdl.attendance.device.command"]
+        Command.search([
+            ("device_id", "=", self.device.id),
+            ("command_type", "=", "request_device_options"),
+        ]).unlink()
+        log = self._log()
+        log.request_type = "OPERLOG"
+        self.device._adapter().process_payload(
+            log,
+            "OPERLOG",
+            b"",
+            "OPLOG 108\t0\t2026-08-25 11:22:42\t0\tLanguage\t0\t0",
+        )
+        command = Command.search([
+            ("device_id", "=", self.device.id),
+            ("command_type", "=", "request_device_options"),
+        ], limit=1)
+        self.assertEqual(
+            command.raw_command,
+            "GET OPTIONS Language,RecheckMin,AlarmReRec",
+        )
+
+    def test_single_device_sync_wizard_queues_complete_pull_without_biophoto(self):
+        Command = self.env["mdl.attendance.device.command"]
+        Command.search([("device_id", "=", self.device.id)]).unlink()
+        wizard = self.env["mdl.attendance.device.sync.wizard"].create({
+            "device_id": self.device.id,
+            "direction": "pull",
+        })
+        wizard.action_confirm()
+        commands = Command.search([("device_id", "=", self.device.id)])
+        self.assertTrue({
+            "request_users",
+            "request_fingerprints",
+            "request_face_templates",
+            "request_device_options",
+            "request_attendance_logs",
+            "request_profile_photo",
+        }.issubset(set(commands.mapped("command_type"))))
+        self.assertNotIn("request_biometric_photo", commands.mapped("command_type"))
+        option_command = commands.filtered(
+            lambda item: item.command_type == "request_device_options"
+        )
+        self.assertEqual(
+            option_command.raw_command,
+            "GET OPTIONS Language,RecheckMin,AlarmReRec",
+        )
+
+    def test_single_device_sync_wizard_queues_complete_push(self):
+        Command = self.env["mdl.attendance.device.command"]
+        Command.search([("device_id", "=", self.device.id)]).unlink()
+        self.card.with_context(skip_card_sync=True).write({
+            "profile_photo": False,
+            "biometric_photo": False,
+        })
+        wizard = self.env["mdl.attendance.device.sync.wizard"].create({
+            "device_id": self.device.id,
+            "direction": "push",
+        })
+        wizard.action_confirm()
+        commands = Command.search([("device_id", "=", self.device.id)])
+        self.assertTrue({
+            "update_device_language",
+            "update_device_cooldown",
+            "reload_device_options",
+            "create_user",
+            "update_profile_photo",
+            "update_biometric_photo",
+        }.issubset(set(commands.mapped("command_type"))))
 
     def test_hourly_fallback_queues_all_clock_reconciliation_requests(self):
         commands = self.device._queue_automatic_sync(force=True)

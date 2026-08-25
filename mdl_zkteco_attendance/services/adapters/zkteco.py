@@ -76,6 +76,8 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             request_type = first_token
         if request_type == "ATTLOG":
             return self._process_attlog(log, body_text)
+        if request_type == "OPTIONS":
+            return self._process_options(log, body_text)
         # Photos must be dispatched before the USERINFO fallback.  A JPEG's
         # base64 payload may coincidentally contain text such as ``NAME=``.
         if request_type in ("USERPIC", "BIOPHOTO"):
@@ -90,15 +92,51 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         return 0
 
     def process_command_response(self, command, response):
-        """Apply values returned by GET OPTION device commands."""
-        if command.command_type in ("request_device_language", "request_device_options"):
-            match = re.search(r"(?:^|[\s&])Language\s*=\s*(\d+)", response, re.I)
-            if match:
-                self.device.sudo()._apply_reported_language(match.group(1))
-        if command.command_type in ("request_device_cooldown", "request_device_options"):
-            match = re.search(r"(?:^|[\s&])ReCheckMin\s*=\s*(\d+)", response, re.I)
-            if match:
-                self.device.sudo()._apply_reported_cooldown(match.group(1))
+        """Apply values returned inline by older GET OPTION firmwares."""
+        if command.command_type in (
+            "request_device_language",
+            "request_device_cooldown",
+            "request_device_options",
+        ):
+            self._apply_options(response)
+
+    @staticmethod
+    def _option_value(body_text, option_name):
+        """Read one value from a comma/newline separated OPTIONS payload."""
+        match = re.search(
+            rf"(?:^|[,\t\r\n&$])\s*~?{re.escape(option_name)}\s*=\s*"
+            r"([^,\t\r\n&$]*)",
+            body_text or "",
+            re.I,
+        )
+        return match.group(1).strip() if match else None
+
+    def _apply_options(self, body_text):
+        applied = []
+        language = self._option_value(body_text, "Language")
+        if language is not None and self.device.sudo()._apply_reported_language(language):
+            applied.append("Language")
+
+        # RecheckMin is a unit flag on this terminal (1 = minutes), while
+        # AlarmReRec stores the actual duplicate-punch interval.  Older
+        # firmwares expose only ReCheckMin, so retain it as a fallback.
+        cooldown = self._option_value(body_text, "AlarmReRec")
+        if cooldown is None:
+            cooldown = self._option_value(body_text, "ReCheckMin")
+        if cooldown is not None and self.device.sudo()._apply_reported_cooldown(cooldown) is not False:
+            applied.append("AlarmReRec")
+        return applied
+
+    def _process_options(self, log, body_text):
+        applied = self._apply_options(body_text)
+        log.sudo().write({
+            "processing_state": "processed",
+            "processing_message": (
+                "Applied device option(s): %s" % ", ".join(applied)
+                if applied else "Received OPTIONS; no managed values were present"
+            ),
+        })
+        return len(applied)
 
     def _process_operlog(self, log, body_text):
         created = deleted = biometrics = 0
@@ -124,6 +162,18 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                 operation_type = int(columns[0].split()[1])
             except (IndexError, ValueError):
                 continue
+            if (
+                operation_type in (5, 108)
+                or re.search(r"(?:Language|RecheckMin|AlarmReRec)", line, re.I)
+            ):
+                # Setting changes commonly arrive with PIN=0 (the screenshot
+                # from MB560-VL reports Language as OPLOG 108).  Handle them
+                # before the user-PIN guard and read the current values back.
+                self.device._queue_device_command(
+                    "request_device_options",
+                    "GET OPTIONS Language,RecheckMin,AlarmReRec",
+                )
+                continue
             pin = columns[3].strip() if len(columns) > 3 else ""
             if not pin or pin == "0":
                 continue
@@ -133,12 +183,6 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                     card._queue_command("request_user")
                     card._queue_command("request_profile_photo")
                     created += 1
-            elif operation_type == 5:
-                # The option number differs between firmware builds. Query the
-                # full supported option table instead of guessing from that number.
-                self.device._queue_device_command(
-                    "request_device_options", "INFO",
-                )
             elif operation_type == 37:
                 card = self._get_or_create_card(pin)
                 if card:
@@ -283,6 +327,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             self._complete_pull_command(card, "request_user", log, line)
             self._complete_pull_command(card, "request_privilege", log, line)
             self._complete_pull_command(card, "request_verification_mode", log, line)
+            self._complete_pull_command(card, "request_profile_photo", log, line)
             count += 1
         bulk_command = self.env["mdl.attendance.device.command"].sudo().search([
             ("device_id", "=", self.device.id),
