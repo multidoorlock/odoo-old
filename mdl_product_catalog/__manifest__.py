@@ -1,7 +1,7 @@
 {
-    "name": "MDL ניהול קטלוג מוצרים",
+    "name": "Multi Doorlock - Product Catalog",
     "summary": "ניהול שמות ומק\"טים לווריאנטים לפי קבוצת פריטים, דגם ומאפיינים",
-    "version": "19.0.1.19.0",
+    "version": "19.0.1.20.0",
     "category": "Inventory/Inventory",
     "author": "Multi Doorlock",
     "license": "LGPL-3",
