@@ -258,8 +258,10 @@
         <field name="inherit_id" ref="product.product_product_tree_view"/>
         <field name="arch" type="xml">
             <field name="default_code" position="after">
-                <field name="mdl_generated_name"
-                       string="שם הפריט הסופי"
+                <field name="display_name"
+                       string="שם הפריט"
+                       context="{'display_default_code': False}"
+                       readonly="1"
                        optional="show"/>
             </field>
             <field name="name" position="attributes">
@@ -276,10 +278,10 @@
             <xpath expr="//div[hasclass('oe_title')]/label[@for='name']"
                    position="replace">
                 <label for="mdl_generated_name"
-                       string="שם הפריט הסופי"
+                       string="שם הפריט"
                        invisible="not mdl_generated_name"/>
                 <label for="name"
-                       string="שם המוצר"
+                       string="שם הפריט"
                        invisible="mdl_generated_name"/>
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]//field[@name='name']"
@@ -310,7 +312,7 @@
                         </group>
                     </group>
                     <div class="alert alert-info" role="alert">
-                        הנתונים בלשונית זו שייכים לפריט הסופי ואינם יוצרים
+                        הנתונים בלשונית זו שייכים לפריט ואינם יוצרים
                         שילובים חדשים. קיבולת, חברה ודגם מערכת מנוהלים
                         בלשונית המאפיינים של תבנית המוצר.
                     </div>
@@ -327,10 +329,10 @@
             <xpath expr="//div[hasclass('oe_title')]/label[@for='name']"
                    position="replace">
                 <label for="mdl_generated_name"
-                       string="שם הפריט הסופי"
+                       string="שם הפריט"
                        invisible="not mdl_generated_name"/>
                 <label for="name"
-                       string="שם המוצר"
+                       string="שם הפריט"
                        invisible="mdl_generated_name"/>
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]/h1/field[@name='name']"
@@ -351,7 +353,7 @@
         <field name="inherit_id" ref="product.product_search_form_view"/>
         <field name="arch" type="xml">
             <field name="name" position="after">
-                <field name="mdl_generated_name" string="שם פריט סופי"/>
+                <field name="mdl_generated_name" string="שם הפריט"/>
                 <field name="mdl_max_protected_area_m2"/>
                 <field name="mdl_installation_type"/>
             </field>

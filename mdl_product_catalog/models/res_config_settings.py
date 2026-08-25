@@ -15,7 +15,7 @@ class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
     mdl_variant_display_format = fields.Char(
-        string="פורמט תצוגת פריט סופי",
+        string="פורמט תצוגת פריט",
         config_parameter=VARIANT_DISPLAY_FORMAT_PARAM,
         default=DEFAULT_VARIANT_DISPLAY_FORMAT,
         help=(
