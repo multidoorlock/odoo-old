@@ -3,6 +3,7 @@ import gzip
 import hashlib
 import json
 import logging
+import os
 from pathlib import Path
 
 from odoo import Command
@@ -14,9 +15,10 @@ from odoo.addons.mdl_product_catalog.models.catalog_utils import (
 )
 
 
-_logger = logging.getLogger(__name__)
-MODULE = "mdl_product_catalog_test_data"
-DATA_FILE = Path(__file__).parent / "data" / "catalog.json.gz.b64"
+_logger = logging.getLogger("mdl_product_catalog_import")
+XMLID_NAMESPACE = "mdl_product_catalog_import"
+LEGACY_XMLID_NAMESPACE = "mdl_product_catalog_test_data"
+DATA_FILE = Path(__file__).parent / "catalog.json.gz.b64"
 
 # Product records from Odoo 19's official product_demo.xml. We archive their
 # templates instead of unlinking them because demo documents may reference them.
@@ -54,7 +56,7 @@ def _xmlid_name(prefix, key):
 def _register_xmlid(env, prefix, key, record):
     env["ir.model.data"].create(
         {
-            "module": MODULE,
+            "module": XMLID_NAMESPACE,
             "name": _xmlid_name(prefix, key),
             "model": record._name,
             "res_id": record.id,
@@ -110,8 +112,8 @@ def _check_existing_skus(env, data):
     if existing:
         examples = ", ".join(existing.mapped("default_code")[:10])
         raise UserError(
-            "לא ניתן להתקין את נתוני הבדיקה: קיימים כבר פריטים עם מק״טים "
-            f"מהקובץ ({examples}). יש לבצע את הבדיקה במסד נתוני בדיקות נקי."
+            "לא ניתן לייבא את הקטלוג: קיימים כבר פריטים עם מק״טים "
+            f"מהקובץ ({examples}) אך הם אינם שייכים לייבוא מזוהה."
         )
 
 
@@ -190,7 +192,7 @@ def _validate_and_register_variants(env, template, template_data, values):
     missing = expected_by_tuple.keys() - actual_by_tuple.keys()
     if missing:
         raise UserError(
-            "נתוני הבדיקה אינם מייצרים את כל השילובים בדגם "
+            "נתוני הקטלוג אינם מייצרים את כל השילובים בדגם "
             f"{template_data['key']}: חסרים {len(missing)} שילובים."
         )
     # Standard Odoo exclusions cover every pairwise rule.  If a legacy rule
@@ -224,7 +226,7 @@ def _validate_and_register_variants(env, template, template_data, values):
         )
         if actual_sku != expected["sku"] or actual_name != expected_name:
             raise UserError(
-                "אי־התאמה בנתוני הבדיקה עבור "
+                "אי־התאמה בנתוני הקטלוג עבור "
                 f"{expected['sku']}: התקבל {actual_sku} - {actual_name}."
             )
         if product.default_code != expected["sku"]:
@@ -390,9 +392,76 @@ def _create_unique_items(env, data, category):
     return Template.browse([template.id for template in templates])
 
 
-def post_init_hook(env):
-    _archive_odoo_demo_products(env)
+def _expected_skus(data):
+    return {
+        variant["sku"]
+        for template in data["templates"]
+        for variant in template["variants"]
+    } | {item["sku"] for item in data["unique_items"]}
+
+
+def _validate_existing_catalog(env, data):
+    expected_skus = _expected_skus(data)
+    products = env["product.product"].with_context(active_test=False).search(
+        [("default_code", "in", list(expected_skus))]
+    )
+    actual_skus = products.mapped("default_code")
+    actual_sku_set = set(actual_skus)
+    missing = expected_skus - actual_sku_set
+    duplicates = len(actual_skus) - len(actual_sku_set)
+    if missing or duplicates or len(products) != len(expected_skus):
+        raise UserError(
+            "קטלוג קיים נמצא אך אינו שלם: "
+            f"חסרים {len(missing)} מק״טים ונמצאו {duplicates} כפילויות."
+        )
+    return products
+
+
+def _prepare_existing_import(env, data):
+    ModelData = env["ir.model.data"].sudo()
+    current_xmlids = ModelData.search(
+        [("module", "=", XMLID_NAMESPACE)]
+    )
+    legacy_xmlids = ModelData.search(
+        [("module", "=", LEGACY_XMLID_NAMESPACE)]
+    )
+    if current_xmlids:
+        products = _validate_existing_catalog(env, data)
+        return products, "already_imported"
+    if legacy_xmlids:
+        products = _validate_existing_catalog(env, data)
+        legacy_xmlids.write({"module": XMLID_NAMESPACE})
+        return products, "legacy_migrated"
+    return env["product.product"], False
+
+
+def import_catalog(env):
+    """Import the catalog once, or validate a previous script import."""
+    catalog_module = env["ir.module.module"].sudo().search(
+        [
+            ("name", "=", "mdl_product_catalog"),
+            ("state", "=", "installed"),
+        ],
+        limit=1,
+    )
+    if not catalog_module:
+        raise UserError(
+            "יש להתקין תחילה את המודול mdl_product_catalog."
+        )
     data = _load_source()
+    existing_products, status = _prepare_existing_import(env, data)
+    if status:
+        _logger.info(
+            "MDL catalog already present: %s products (%s)",
+            len(existing_products),
+            status,
+        )
+        return {
+            "status": status,
+            "products": len(existing_products),
+        }
+
+    _archive_odoo_demo_products(env)
     _check_existing_skus(env, data)
     categories, unique_category = _create_categories(env, data)
     attributes, values = _create_attributes_and_values(env, data)
@@ -410,9 +479,46 @@ def post_init_hook(env):
             f"נוצרו {len(created_products)} פריטים במקום {expected_count}."
         )
     if len(set(created_products.mapped("default_code"))) != expected_count:
-        raise UserError("נוצרו מק״טים כפולים בנתוני הבדיקה.")
+        raise UserError("נוצרו מק״טים כפולים בקטלוג.")
     _logger.info(
-        "MDL test catalog loaded: %s templates, %s products",
+        "MDL catalog loaded: %s templates, %s products",
         len(structured_templates) + len(unique_templates),
         len(created_products),
+    )
+    return {
+        "status": "imported",
+        "templates": len(structured_templates) + len(unique_templates),
+        "products": len(created_products),
+    }
+
+
+def run_from_odoo_shell(env, mode="check"):
+    """Run transactionally; check mode always rolls back."""
+    if mode not in {"check", "apply"}:
+        raise UserError(
+            "MDL_CATALOG_MODE חייב להיות check או apply."
+        )
+    try:
+        result = import_catalog(env)
+        if mode == "apply":
+            env.cr.commit()
+            _logger.info("MDL catalog import committed: %s", result)
+        else:
+            env.cr.rollback()
+            _logger.info(
+                "MDL catalog check passed and was rolled back: %s",
+                result,
+            )
+        print(json.dumps(result, ensure_ascii=False))
+        return result
+    except Exception:
+        env.cr.rollback()
+        _logger.exception("MDL catalog import failed; transaction rolled back")
+        raise
+
+
+if "env" in globals():
+    run_from_odoo_shell(
+        env,
+        mode=os.environ.get("MDL_CATALOG_MODE", "check").strip().lower(),
     )
