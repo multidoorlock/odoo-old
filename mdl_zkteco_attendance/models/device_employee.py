@@ -49,8 +49,10 @@ class AttendanceDeviceEmployee(models.Model):
         ],
         string="מצב אימות בשעון", default="0", required=True,
     )
-    has_face = fields.Boolean(string="קיים פנים", readonly=True)
-    has_fingerprint = fields.Boolean(string="קיימת טביעת אצבע", readonly=True)
+    has_face = fields.Boolean(string="קיים פנים", default=False, readonly=True)
+    has_fingerprint = fields.Boolean(
+        string="קיימת טביעת אצבע", default=False, readonly=True,
+    )
     biometric_photo = fields.Image(
         string="תמונה ביומטרית", max_width=1920, max_height=1920,
         groups="mdl_zkteco_attendance.group_attendance_device_manager",
@@ -127,6 +129,18 @@ class AttendanceDeviceEmployee(models.Model):
         "UNIQUE(device_id, device_user_id)",
         "מזהה המשתמש חייב להיות ייחודי באותו שעון.",
     )
+
+    def init(self):
+        # ``has_face`` was introduced after face templates were already kept
+        # in Odoo.  Backfill those existing cards during every safe module
+        # upgrade so the readonly checkbox reflects the stored terminal data.
+        self.env.cr.execute("""
+            UPDATE mdl_attendance_device_employee
+               SET has_face = TRUE
+             WHERE COALESCE(has_face, FALSE) = FALSE
+               AND face_template IS NOT NULL
+               AND octet_length(face_template) > 0
+        """)
 
     @api.depends("employee_id")
     def _compute_pending_events(self):

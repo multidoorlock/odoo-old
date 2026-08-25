@@ -103,6 +103,18 @@ class AttendanceDeviceCommand(models.Model):
             "response_log_id": response_log.id if response_log else False,
             "completed_at": fields.Datetime.now(), "error_message": error,
         })
+        if (
+            state == "done"
+            and self.command_type == "update_biometric_photo"
+            and self.device_employee_id
+        ):
+            # A successful BIOPHOTO update/delete is authoritative for this
+            # card.  Previously the command completed but the readonly flag
+            # stayed unchanged until a later BIODATA upload happened.
+            self.device_employee_id.with_context(
+                skip_card_sync=True,
+                skip_biometric_verification_constraint=True,
+            ).write({"has_face": bool(self.device_employee_id.biometric_photo)})
         self._refresh_card_state()
 
     def _refresh_card_state(self):
