@@ -40,6 +40,12 @@
         <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
         <field name="groups" eval="[(4, ref('group_attendance_device_user'))]"/>
     </record>
+    <record id="rule_attendance_device_fingerprint_company" model="ir.rule">
+        <field name="name">Attendance device fingerprint multi-company</field>
+        <field name="model_id" ref="model_mdl_attendance_device_fingerprint"/>
+        <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('group_attendance_device_manager'))]"/>
+    </record>
     <record id="rule_attendance_command_company" model="ir.rule">
         <field name="name">Attendance command multi-company</field>
         <field name="model_id" ref="model_mdl_attendance_device_command"/>

@@ -34,6 +34,7 @@ class AttendanceDeviceSyncWizard(models.TransientModel):
                 card._queue_command("create_user")
                 card._queue_command("update_profile_photo")
                 card._queue_command("update_biometric_photo")
+                card.fingerprint_ids._queue_push()
         else:
             # The bulk requests also discover users created directly on the
             # terminal and refresh fingerprint/face enrollment flags.  A

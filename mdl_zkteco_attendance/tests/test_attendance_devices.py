@@ -1,3 +1,4 @@
+import base64
 from datetime import timedelta
 
 from odoo import fields
@@ -1060,6 +1061,135 @@ class TestAttendanceDevices(TransactionCase):
         self.card.invalidate_recordset(["has_face", "has_fingerprint"])
         self.assertTrue(self.card.has_fingerprint)
         self.assertFalse(self.card.has_face)
+
+    def test_fingerprint_binary_file_queues_push_and_delete_commands(self):
+        raw_template = b"ZKFP-template-binary\x00\x01\x02"
+        fingerprint = self.env["mdl.attendance.device.fingerprint"].create({
+            "device_employee_id": self.card.id,
+            "finger_index": "6",
+            "template_file": base64.b64encode(raw_template),
+            "filename": "finger_6.fpt",
+        })
+        self.card.invalidate_recordset(["has_fingerprint"])
+        self.assertTrue(self.card.has_fingerprint)
+        command = self.env["mdl.attendance.device.command"].search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "update_fingerprint"),
+            ("fingerprint_index", "=", "6"),
+            ("state", "=", "queued"),
+        ], limit=1)
+        payload = base64.b64encode(raw_template).decode("ascii")
+        self.assertIn("DATA UPDATE FINGERTMP PIN=74", command.raw_command)
+        self.assertIn("FID=6", command.raw_command)
+        self.assertIn(f"TMP={payload}", command.raw_command)
+
+        fingerprint.unlink()
+        self.card.invalidate_recordset(["has_fingerprint"])
+        self.assertFalse(self.card.has_fingerprint)
+        delete_command = self.env["mdl.attendance.device.command"].search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "delete_fingerprint"),
+            ("fingerprint_index", "=", "6"),
+            ("state", "=", "queued"),
+        ], limit=1)
+        self.assertEqual(
+            delete_command.raw_command,
+            "DATA DELETE FINGERTMP PIN=74\tFID=6",
+        )
+
+    def test_zkteco_ini_upload_extracts_matching_user_and_finger(self):
+        raw_template = b"ZKFP-from-ini\x00\x03"
+        payload = base64.b64encode(raw_template).decode("ascii")
+        ini_content = (
+            "[User_12]\nFPT_6=QUJD\nNoFingers=1\n\n"
+            f"[User_74]\nFPT_6={payload}\nNoFingers=1\n"
+        )
+        self.env["mdl.attendance.device.fingerprint"].create({
+            "device_employee_id": self.card.id,
+            "finger_index": "6",
+            "template_file": base64.b64encode(ini_content.encode("utf-8")),
+            "filename": "clock_backup.ini",
+        })
+        command = self.env["mdl.attendance.device.command"].search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "update_fingerprint"),
+            ("fingerprint_index", "=", "6"),
+        ], limit=1)
+        self.assertIn(f"TMP={payload}", command.raw_command)
+        self.assertNotIn("W1VzZXJf", command.raw_command)
+
+    def test_fingerprint_number_is_unique_per_card(self):
+        Fingerprint = self.env["mdl.attendance.device.fingerprint"].with_context(
+            skip_fingerprint_sync=True,
+        )
+        values = {
+            "device_employee_id": self.card.id,
+            "finger_index": "4",
+            "template_file": base64.b64encode(b"finger-four"),
+        }
+        Fingerprint.create(values)
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            Fingerprint.create(values)
+
+    def test_ini_user_number_matches_card_identifier_with_leading_zeroes(self):
+        zero_padded_card = self.env[
+            "mdl.attendance.device.employee"
+        ].with_context(attendance_device_discovery=True).create({
+            "device_id": self.device.id,
+            "device_user_id": "0075",
+            "device_name": "Zero padded",
+        })
+        payload = base64.b64encode(b"zero-padded-user-fingerprint").decode("ascii")
+        ini_content = f"[User_75]\nFPT_3={payload}\nNoFingers=1\n"
+        fingerprint = self.env["mdl.attendance.device.fingerprint"].create({
+            "device_employee_id": zero_padded_card.id,
+            "finger_index": "3",
+            "template_file": base64.b64encode(ini_content.encode("utf-8")),
+            "filename": "clock_backup.ini",
+        })
+        command = self.env["mdl.attendance.device.command"].search([
+            ("device_employee_id", "=", zero_padded_card.id),
+            ("command_type", "=", "update_fingerprint"),
+            ("fingerprint_index", "=", "3"),
+        ], limit=1)
+        self.assertEqual(fingerprint._template_payload(), payload)
+        self.assertIn(f"PIN=0075", command.raw_command)
+        self.assertIn(f"TMP={payload}", command.raw_command)
+
+    def test_fingerprint_pull_stores_each_template_and_updates_checkbox(self):
+        first_payload = base64.b64encode(b"finger-zero").decode("ascii")
+        second_payload = base64.b64encode(b"finger-six").decode("ascii")
+        self.device._adapter().process_payload(
+            self._log(),
+            "FINGERTMP",
+            b"",
+            f"FP PIN=74\tFID=0\tValid=1\tTMP={first_payload}\n"
+            f"FP PIN=74\tFID=6\tValid=1\tTMP={second_payload}",
+        )
+        fingerprints = self.card.fingerprint_ids.sorted("finger_index")
+        self.assertEqual(fingerprints.mapped("finger_index"), ["0", "6"])
+        self.assertEqual(
+            base64.b64decode(fingerprints[0].template_file), b"finger-zero"
+        )
+        self.assertEqual(
+            base64.b64decode(fingerprints[1].template_file), b"finger-six"
+        )
+        self.assertTrue(self.card.has_fingerprint)
+        self.assertFalse(self.env["mdl.attendance.device.command"].search_count([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "update_fingerprint"),
+        ]))
+
+        self.device._adapter().process_payload(
+            self._log(), "FINGERTMP", b"", "FP PIN=74\tFID=0\tValid=0\tTMP="
+        )
+        self.assertEqual(self.card.fingerprint_ids.mapped("finger_index"), ["6"])
+        self.assertTrue(self.card.has_fingerprint)
+        self.device._adapter().process_payload(
+            self._log(), "FINGERTMP", b"", "FP PIN=74\tFID=6\tValid=0\tTMP="
+        )
+        self.assertFalse(self.card.fingerprint_ids)
+        self.assertFalse(self.card.has_fingerprint)
 
     def test_successful_biometric_photo_push_updates_readonly_face_flag(self):
         image = (

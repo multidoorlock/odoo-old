@@ -53,6 +53,11 @@ class AttendanceDeviceEmployee(models.Model):
     has_fingerprint = fields.Boolean(
         string="קיימת טביעת אצבע", default=False, readonly=True,
     )
+    fingerprint_ids = fields.One2many(
+        "mdl.attendance.device.fingerprint",
+        "device_employee_id",
+        string="טביעות אצבע",
+    )
     biometric_photo = fields.Image(
         string="תמונה ביומטרית", max_width=1920, max_height=1920,
         groups="mdl_zkteco_attendance.group_attendance_device_manager",
@@ -103,6 +108,15 @@ class AttendanceDeviceEmployee(models.Model):
         if not missing:
             return False
         return _("מצב האימות שנבחר מחייב: %s. יש לסמן שהנתון קיים בכרטיס.") % ", ".join(missing)
+
+    def _refresh_has_fingerprint(self):
+        for card in self:
+            present = bool(card.sudo().fingerprint_ids)
+            if card.has_fingerprint != present:
+                card.with_context(
+                    skip_card_sync=True,
+                    skip_biometric_verification_constraint=True,
+                ).write({"has_fingerprint": present})
 
     @api.constrains("verification_mode", "has_face", "has_fingerprint")
     def _check_verification_mode_biometrics(self):
@@ -312,6 +326,7 @@ class AttendanceDeviceEmployee(models.Model):
                 card._queue_command("update_profile_photo")
             if card.biometric_photo:
                 card._queue_command("update_biometric_photo")
+            card.fingerprint_ids._queue_push()
 
     def action_open_push_wizard(self):
         self.ensure_one()

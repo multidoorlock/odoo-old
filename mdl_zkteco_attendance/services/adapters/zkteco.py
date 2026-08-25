@@ -1,4 +1,5 @@
 import base64
+import binascii
 import hashlib
 import io
 import logging
@@ -302,6 +303,10 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         face = reported_count("FACECOUNT", "FACECNT")
         if fingerprint is not None:
             update_values["has_fingerprint"] = fingerprint
+            if not fingerprint and card.fingerprint_ids:
+                card.fingerprint_ids.with_context(
+                    skip_fingerprint_sync=True,
+                ).unlink()
         if face is not None:
             update_values["has_face"] = face
 
@@ -381,23 +386,73 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         return int(state == "processed")
 
     def _apply_fingerprint_lines(self, lines):
-        states = {}
+        templates = {}
+        reported_present = {}
         for line in lines:
             values = self._values(line)
             pin = values.get("PIN")
             if not pin:
                 continue
             valid = values.get("VALID", "1") not in ("0", "False", "false")
-            states[pin] = states.get(pin, False) or bool(valid and values.get("TMP"))
+            template = values.get("TMP")
+            finger_index = (
+                values.get("FID")
+                or values.get("NO")
+                or values.get("INDEX")
+                or "0"
+            )
+            try:
+                finger_index = str(max(0, min(9, int(finger_index))))
+            except (TypeError, ValueError):
+                finger_index = "0"
+            templates[(pin, finger_index)] = (valid, template)
+            reported_present[pin] = reported_present.get(pin, False) or valid
+
+        Fingerprint = self.env["mdl.attendance.device.fingerprint"].sudo()
         updated = 0
-        for pin, present in states.items():
+        cards = {}
+        for (pin, finger_index), (valid, template) in templates.items():
             card = self._get_or_create_card(pin)
-            if card:
-                card.with_context(
-                    skip_card_sync=True,
-                    skip_biometric_verification_constraint=True,
-                ).write({"has_fingerprint": present})
+            if not card:
+                continue
+            cards[pin] = card
+            fingerprint = Fingerprint.search([
+                ("device_employee_id", "=", card.id),
+                ("finger_index", "=", finger_index),
+            ], limit=1)
+            if valid and template:
+                stored_template = template
+                try:
+                    base64.b64decode(template.encode("ascii"), validate=True)
+                except (binascii.Error, UnicodeEncodeError, ValueError):
+                    # The PUSH protocol specifies base64, but a few legacy
+                    # firmwares post their opaque template string directly.
+                    stored_template = base64.b64encode(
+                        template.encode("utf-8")
+                    ).decode("ascii")
+                values = {
+                    "device_employee_id": card.id,
+                    "finger_index": finger_index,
+                    "template_file": stored_template,
+                    "filename": f"finger_{pin}_{finger_index}.fpt",
+                    "source": "device",
+                    "last_sync_at": fields.Datetime.now(),
+                }
+                if fingerprint:
+                    fingerprint.with_context(skip_fingerprint_sync=True).write(values)
+                else:
+                    Fingerprint.with_context(skip_fingerprint_sync=True).create(values)
                 updated += 1
+            elif not valid and fingerprint:
+                fingerprint.with_context(skip_fingerprint_sync=True).unlink()
+                updated += 1
+
+        for pin, card in cards.items():
+            present = bool(card.fingerprint_ids) or reported_present.get(pin, False)
+            card.with_context(
+                skip_card_sync=True,
+                skip_biometric_verification_constraint=True,
+            ).write({"has_fingerprint": present})
         return updated
 
     def _partition_biodata_lines(self, lines):

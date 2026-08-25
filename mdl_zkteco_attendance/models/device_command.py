@@ -10,6 +10,12 @@ class AttendanceDeviceCommand(models.Model):
     device_id = fields.Many2one("mdl.attendance.device", required=True, ondelete="restrict", index=True, check_company=True)
     company_id = fields.Many2one(related="device_id.company_id", store=True, index=True)
     device_employee_id = fields.Many2one("mdl.attendance.device.employee", ondelete="set null", index=True, check_company=True)
+    fingerprint_index = fields.Selection(
+        [(str(index), str(index)) for index in range(10)],
+        string="מספר אצבע",
+        readonly=True,
+        index=True,
+    )
     command_type = fields.Selection([
         ("create_user", "יצירת משתמש"), ("update_name", "עדכון שם"),
         ("update_privilege", "עדכון הרשאה"), ("update_verification_mode", "עדכון מצב אימות"),
@@ -21,6 +27,8 @@ class AttendanceDeviceCommand(models.Model):
         ("request_biometric_photo", "בקשת תמונה ביומטרית"),
         ("request_users", "בקשת כל המשתמשים מהשעון"),
         ("request_fingerprints", "בקשת מצב טביעות אצבע"),
+        ("update_fingerprint", "עדכון טביעת אצבע"),
+        ("delete_fingerprint", "מחיקת טביעת אצבע"),
         ("request_face_templates", "בקשת מצב תבניות פנים"),
         ("request_attendance_logs", "בקשת השלמת רשומות נוכחות"),
         ("update_device_language", "עדכון שפת השעון"),
@@ -85,6 +93,51 @@ class AttendanceDeviceCommand(models.Model):
             "state": "queued",
         })
         return self.create(values)
+
+    @api.model
+    def queue_fingerprint_command(
+        self, card, fingerprint_index, command_type, raw_command
+    ):
+        """Queue one command per finger without overwriting another finger."""
+        opposite_type = {
+            "update_fingerprint": "delete_fingerprint",
+            "delete_fingerprint": "update_fingerprint",
+        }[command_type]
+        domain = [
+            ("device_id", "=", card.device_id.id),
+            ("device_employee_id", "=", card.id),
+            ("fingerprint_index", "=", str(fingerprint_index)),
+            ("state", "=", "queued"),
+        ]
+        opposite = self.search(domain + [("command_type", "=", opposite_type)])
+        if opposite:
+            opposite.write({
+                "state": "cancelled",
+                "completed_at": fields.Datetime.now(),
+            })
+        command = self.search(
+            domain + [("command_type", "=", command_type)], limit=1
+        )
+        values = {
+            "raw_command": raw_command,
+            "error_message": False,
+            "fingerprint_index": str(fingerprint_index),
+        }
+        if command:
+            command.write(values)
+        else:
+            values.update({
+                "device_id": card.device_id.id,
+                "device_employee_id": card.id,
+                "command_type": command_type,
+                "state": "queued",
+            })
+            command = self.create(values)
+        card.with_context(skip_card_sync=True).write({
+            "sync_state": "pending_push",
+            "last_sync_error": False,
+        })
+        return command
 
     def get_wire_command(self):
         self.ensure_one()
