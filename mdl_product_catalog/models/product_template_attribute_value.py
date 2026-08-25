@@ -50,7 +50,8 @@ class ProductTemplateAttributeValue(models.Model):
             "איפוס מחזיר למק״ט ברירת המחדל של ערך המאפיין."
         ),
     )
-    mdl_attribute_group_label = fields.Char(
+    mdl_attribute_group_id = fields.Many2one(
+        comodel_name="product.attribute",
         string="מאפיין",
         compute="_compute_mdl_attribute_group",
     )
@@ -129,8 +130,8 @@ class ProductTemplateAttributeValue(models.Model):
             )[:1]
             is_first = value == first_value
             value.mdl_is_attribute_group_start = is_first
-            value.mdl_attribute_group_label = (
-                value.attribute_id.display_name if is_first else False
+            value.mdl_attribute_group_id = (
+                value.attribute_id if is_first else False
             )
 
     def _mdl_get_sku_component(self):

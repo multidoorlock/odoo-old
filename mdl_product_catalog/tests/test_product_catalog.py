@@ -293,6 +293,36 @@ class TestProductCatalog(TransactionCase):
         self.assertFalse(native_rule.exists())
         self.assertEqual(len(template.product_variant_ids), 4)
 
+    def test_symmetric_exclusion_rows_are_collapsed(self):
+        template = self._create_template()
+        width_value = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.width_80
+        )
+        height_value = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.height_100
+        )
+        Exclusion = self.env["product.template.attribute.exclusion"]
+
+        first_rule = Exclusion.create(
+            {
+                "product_tmpl_id": template.id,
+                "product_template_attribute_value_id": width_value.id,
+                "value_ids": [Command.set(height_value.ids)],
+            }
+        )
+        reverse_rule = Exclusion.create(
+            {
+                "product_tmpl_id": template.id,
+                "product_template_attribute_value_id": height_value.id,
+                "value_ids": [Command.set(width_value.ids)],
+            }
+        )
+
+        self.assertFalse(first_rule.exists())
+        self.assertTrue(reverse_rule.exists())
+        self.assertEqual(template.mdl_exclusion_ids, reverse_rule)
+        self.assertEqual(len(template.product_variant_ids), 1)
+
     def test_base_defaults_and_overrides_drive_the_result(self):
         template = self._create_template()
         self.assertEqual(template.mdl_group_name_value, "דלת")
