@@ -208,7 +208,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                     card.with_context(skip_card_sync=True).write({"has_fingerprint": False})
                     self.device._queue_device_command(
                         "request_fingerprints",
-                        f"DATA QUERY FINGERTMP PIN={pin}",
+                        f"DATA QUERY BIODATA Pin={pin}",
                     )
             elif operation_type == 9:
                 card = self.env["mdl.attendance.device.employee"].sudo().with_context(
@@ -405,13 +405,19 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                 finger_index = str(max(0, min(9, int(finger_index))))
             except (TypeError, ValueError):
                 finger_index = "0"
-            templates[(pin, finger_index)] = (valid, template)
+            templates[(pin, finger_index)] = (valid, template, values)
             reported_present[pin] = reported_present.get(pin, False) or valid
 
         Fingerprint = self.env["mdl.attendance.device.fingerprint"].sudo()
         updated = 0
         cards = {}
-        for (pin, finger_index), (valid, template) in templates.items():
+        def integer(values, key, default):
+            try:
+                return int(values.get(key, default))
+            except (TypeError, ValueError):
+                return default
+
+        for (pin, finger_index), (valid, template, metadata) in templates.items():
             card = self._get_or_create_card(pin)
             if not card:
                 continue
@@ -437,6 +443,13 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                     "filename": f"finger_{pin}_{finger_index}.fpt",
                     "source": "device",
                     "last_sync_at": fields.Datetime.now(),
+                    "biodata_index": integer(metadata, "INDEX", 0),
+                    "major_version": integer(metadata, "MAJORVER", 13),
+                    "minor_version": integer(metadata, "MINORVER", 0),
+                    "template_format": integer(metadata, "FORMAT", 0),
+                    "is_duress": metadata.get("DURESS", "0") in (
+                        "1", "True", "true"
+                    ),
                 }
                 if fingerprint:
                     fingerprint.with_context(skip_fingerprint_sync=True).write(values)
@@ -448,12 +461,83 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                 updated += 1
 
         for pin, card in cards.items():
-            present = bool(card.fingerprint_ids) or reported_present.get(pin, False)
+            present = bool(card.fingerprint_ids.filtered(
+                lambda fingerprint: fingerprint.source == "device"
+            )) or reported_present.get(pin, False)
             card.with_context(
                 skip_card_sync=True,
                 skip_biometric_verification_constraint=True,
             ).write({"has_fingerprint": present})
         return updated
+
+    def _complete_fingerprint_verifications(self, lines, log):
+        """Compare a terminal BIODATA read-back with pending push requests."""
+        reported = {}
+        for line in lines:
+            values = self._values(line)
+            pin = values.get("PIN")
+            if not pin:
+                continue
+            finger_index = values.get("FID") or values.get("NO") or values.get("INDEX") or "0"
+            try:
+                finger_index = str(max(0, min(9, int(finger_index))))
+            except (TypeError, ValueError):
+                finger_index = "0"
+            valid = values.get("VALID", "1") not in ("0", "False", "false")
+            reported[(pin, finger_index)] = (valid, values.get("TMP"))
+
+        Command = self.env["mdl.attendance.device.command"].sudo()
+        commands = Command.search([
+            ("device_id", "=", self.device.id),
+            ("device_employee_id", "!=", False),
+            ("command_type", "=", "request_fingerprints"),
+            ("fingerprint_index", "!=", False),
+            ("state", "in", ["queued", "sent"]),
+        ], order="id")
+        full_table = bool(re.search(
+            r"(?:^|&)table=BIODATA(?:&|$)",
+            log.query_string or "",
+            re.I,
+        ))
+        completed = 0
+        for command in commands:
+            key = (
+                command.device_employee_id.device_user_id,
+                command.fingerprint_index,
+            )
+            result = reported.get(key)
+            expected_hash = command.fingerprint_verification_hash
+            return_code = False
+            message = False
+            if result:
+                valid, payload = result
+                if expected_hash:
+                    actual_hash = Command._fingerprint_payload_hash(payload) if valid and payload else False
+                    if actual_hash == expected_hash:
+                        return_code = 0
+                        message = "Fingerprint BIODATA read-back matched the pushed template"
+                    else:
+                        return_code = -1
+                        message = "Fingerprint BIODATA read-back did not match the pushed template"
+                elif valid and payload:
+                    return_code = -1
+                    message = "Fingerprint still exists on the terminal after deletion"
+                else:
+                    return_code = 0
+                    message = "Fingerprint deletion verified by BIODATA read-back"
+            elif full_table:
+                if expected_hash:
+                    return_code = -1
+                    message = "The pushed fingerprint was not returned by the terminal"
+                else:
+                    return_code = 0
+                    message = "Fingerprint deletion verified; the slot is absent from BIODATA"
+            if return_code is not False:
+                command.with_context(
+                    fingerprint_payload_verified=True,
+                ).mark_result(return_code, message, log)
+                completed += 1
+        return completed
 
     def _partition_biodata_lines(self, lines):
         """Split ZKTeco's unified BIODATA table by biometric type.
@@ -477,7 +561,9 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         return fingerprint_lines, face_lines
 
     def _process_fingertmp(self, log, body_text):
-        updated = self._apply_fingerprint_lines(body_text.replace("\r", "\n").split("\n"))
+        lines = body_text.replace("\r", "\n").split("\n")
+        updated = self._apply_fingerprint_lines(lines)
+        self._complete_fingerprint_verifications(lines, log)
         state = "processed" if updated else "not_applied"
         log.sudo().write({
             "processing_state": state,
@@ -529,6 +615,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         lines = body_text.replace("\r", "\n").split("\n")
         fingerprint_lines, face_lines = self._partition_biodata_lines(lines)
         updated_fingerprints = self._apply_fingerprint_lines(fingerprint_lines)
+        self._complete_fingerprint_verifications(fingerprint_lines, log)
         updated_faces = self._apply_face_lines(face_lines)
         for line in face_lines:
             values = self._values(line)
