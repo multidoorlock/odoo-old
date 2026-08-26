@@ -197,19 +197,22 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             elif operation_type == 6:
                 card = self._get_or_create_card(pin)
                 if card:
-                    card.with_context(skip_card_sync=True).write({"has_fingerprint": True})
+                    # OPLOG only reports that enrollment changed.  The actual
+                    # template follows a BIODATA query, so request it at once
+                    # instead of waiting for the hourly/manual synchronization.
+                    self.env[
+                        "mdl.attendance.device.command"
+                    ].sudo().queue_fingerprint_snapshot(card)
                     biometrics += 1
             elif operation_type == 10:
                 card = self._get_or_create_card(pin)
                 if card:
-                    # The deleted finger may have been the last one.  Mark it absent
-                    # immediately; a following FP payload restores True when another
-                    # enrolled finger still exists.
-                    card.with_context(skip_card_sync=True).write({"has_fingerprint": False})
-                    self.device._queue_device_command(
-                        "request_fingerprints",
-                        f"DATA QUERY BIODATA Pin={pin}",
-                    )
+                    # OPLOG 10 identifies the user but not the deleted slot.
+                    # Read the complete card snapshot and reconcile its slots.
+                    self.env[
+                        "mdl.attendance.device.command"
+                    ].sudo().queue_fingerprint_snapshot(card)
+                    biometrics += 1
             elif operation_type == 9:
                 card = self.env["mdl.attendance.device.employee"].sudo().with_context(
                     active_test=False
@@ -539,6 +542,73 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                 completed += 1
         return completed
 
+    def _complete_fingerprint_snapshots(self, lines, log):
+        """Reconcile one card after a terminal-side enroll/delete operation."""
+        Command = self.env["mdl.attendance.device.command"].sudo()
+        command = Command.search([
+            ("device_id", "=", self.device.id),
+            ("command_type", "=", "request_fingerprints"),
+            ("fingerprint_index", "=", False),
+            ("state", "=", "sent"),
+        ], order="sent_at, id", limit=1)
+        if not command:
+            return 0
+
+        all_pins = set()
+        reported = {}
+        for line in lines:
+            values = self._values(line)
+            pin = values.get("PIN")
+            if not pin:
+                continue
+            all_pins.add(pin)
+            biometric_type = str(
+                values.get("TYPE") or values.get("BIOTYPE") or ""
+            ).strip().upper()
+            if biometric_type not in ("1", "FP", "FINGER", "FINGERPRINT"):
+                continue
+            finger_index = (
+                values.get("FID")
+                or values.get("NO")
+                or values.get("INDEX")
+                or "0"
+            )
+            try:
+                finger_index = str(max(0, min(9, int(finger_index))))
+            except (TypeError, ValueError):
+                finger_index = "0"
+            valid = values.get("VALID", "1") not in ("0", "False", "false")
+            if valid:
+                reported.setdefault(pin, set()).add(finger_index)
+
+        card = command.device_employee_id
+        if card:
+            pin = card.device_user_id
+            # A one-record post for another user may be a spontaneous update,
+            # not the response to this query.  Wait for the requested card or
+            # for a multi-user/empty snapshot before reconciling absence.
+            if all_pins and pin not in all_pins and len(all_pins) == 1:
+                return 0
+            reported_indexes = reported.get(pin, set())
+            missing = card.fingerprint_ids.filtered(
+                lambda fingerprint: fingerprint.finger_index not in reported_indexes
+            )
+            if missing:
+                missing.with_context(skip_fingerprint_sync=True).unlink()
+            card.with_context(
+                skip_card_sync=True,
+                skip_biometric_verification_constraint=True,
+            ).write({
+                "has_fingerprint": bool(reported_indexes),
+                "last_sync_at": log.received_at,
+                "last_sync_error": False,
+            })
+
+        command.with_context(
+            fingerprint_payload_verified=True,
+        ).mark_result(0, "Fingerprint BIODATA snapshot reconciled", log)
+        return 1
+
     def _partition_biodata_lines(self, lines):
         """Split ZKTeco's unified BIODATA table by biometric type.
 
@@ -564,6 +634,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         lines = body_text.replace("\r", "\n").split("\n")
         updated = self._apply_fingerprint_lines(lines)
         self._complete_fingerprint_verifications(lines, log)
+        self._complete_fingerprint_snapshots(lines, log)
         state = "processed" if updated else "not_applied"
         log.sudo().write({
             "processing_state": state,
@@ -616,6 +687,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         fingerprint_lines, face_lines = self._partition_biodata_lines(lines)
         updated_fingerprints = self._apply_fingerprint_lines(fingerprint_lines)
         self._complete_fingerprint_verifications(fingerprint_lines, log)
+        self._complete_fingerprint_snapshots(lines, log)
         updated_faces = self._apply_face_lines(face_lines)
         for line in face_lines:
             values = self._values(line)

@@ -64,6 +64,10 @@ class AttendanceDeviceFingerprint(models.Model):
     minor_version = fields.Integer(default=0, readonly=True)
     template_format = fields.Integer(default=0, readonly=True)
     is_duress = fields.Boolean(default=False, readonly=True)
+    finger_index_locked = fields.Boolean(
+        compute="_compute_finger_index_locked",
+        readonly=True,
+    )
 
     _card_finger_unique = models.Constraint(
         "UNIQUE(device_employee_id, finger_index)",
@@ -79,6 +83,10 @@ class AttendanceDeviceFingerprint(models.Model):
                 )
             except (binascii.Error, ValueError, TypeError):
                 fingerprint.template_size = 0
+
+    def _compute_finger_index_locked(self):
+        for fingerprint in self:
+            fingerprint.finger_index_locked = bool(fingerprint.id)
 
     def _extract_ini_payload(self, text):
         """Extract this card/finger's FPT_n value from a ZKTeco INI backup."""
@@ -123,7 +131,7 @@ class AttendanceDeviceFingerprint(models.Model):
         return False
 
     def _template_payload(self):
-        """Return the base64 payload expected by FINGERTMP.
+        """Return the base64 payload expected by BIODATA.
 
         Odoo Binary fields contain base64 of the uploaded file.  The uploaded
         file may itself be raw ZK template bytes, a text file containing the
@@ -188,6 +196,16 @@ class AttendanceDeviceFingerprint(models.Model):
 
     def write(self, vals):
         old_cards = self.device_employee_id
+        if "finger_index" in vals:
+            new_index = str(vals["finger_index"])
+            if any(
+                fingerprint.finger_index != new_index
+                for fingerprint in self
+            ):
+                raise ValidationError(_(
+                    "לא ניתן לשנות מספר אצבע לאחר יצירת השורה. "
+                    "יש למחוק את השורה וליצור שורה חדשה."
+                ))
         if "finger_index" in vals or "device_employee_id" in vals:
             for fingerprint in self:
                 card_id = vals.get(
@@ -253,8 +271,7 @@ class AttendanceDeviceFingerprint(models.Model):
             card = fingerprint.device_employee_id
             raw_command = (
                 f"DATA DELETE BIODATA Pin={card.device_user_id}"
-                f"\tNo={fingerprint.finger_index}"
-                f"\tIndex={fingerprint.biodata_index}\tType=1"
+                f"\tType=1\tNo={fingerprint.finger_index}"
             )
             Command.queue_fingerprint_command(
                 card,
