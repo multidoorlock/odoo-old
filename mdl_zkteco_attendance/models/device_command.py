@@ -133,6 +133,38 @@ class AttendanceDeviceCommand(models.Model):
         return existing
 
     @api.model
+    def queue_fingerprint_snapshot(self, card):
+        """Read every fingerprint slot of one card after an OPERLOG change."""
+        domain = [
+            ("device_id", "=", card.device_id.id),
+            ("device_employee_id", "=", card.id),
+            ("command_type", "=", "request_fingerprints"),
+            ("fingerprint_index", "=", False),
+            ("state", "=", "queued"),
+        ]
+        command = self.search(domain, order="id desc", limit=1)
+        values = {
+            "raw_command": f"DATA QUERY BIODATA Pin={card.device_user_id}",
+            "fingerprint_verification_hash": False,
+            "error_message": False,
+        }
+        if command:
+            command.write(values)
+        else:
+            values.update({
+                "device_id": card.device_id.id,
+                "device_employee_id": card.id,
+                "command_type": "request_fingerprints",
+                "state": "queued",
+            })
+            command = self.create(values)
+        card.with_context(skip_card_sync=True).write({
+            "sync_state": "pending_pull",
+            "last_sync_error": False,
+        })
+        return command
+
+    @api.model
     def queue_device_command(self, device, command_type, raw_command):
         """Queue a device-level setting/query without creating duplicates."""
         existing = self.search([
@@ -207,13 +239,9 @@ class AttendanceDeviceCommand(models.Model):
 
     def mark_result(self, return_code, raw_response, response_log=None):
         self.ensure_one()
-        fingerprint_verification = (
-            self.command_type == "request_fingerprints"
-            and bool(self.device_employee_id)
-            and self.fingerprint_index is not False
-        )
+        fingerprint_readback = self.command_type == "request_fingerprints"
         if (
-            fingerprint_verification
+            fingerprint_readback
             and return_code >= 0
             and not self.env.context.get("fingerprint_payload_verified")
         ):

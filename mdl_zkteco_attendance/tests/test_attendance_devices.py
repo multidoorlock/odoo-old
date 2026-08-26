@@ -1086,7 +1086,7 @@ class TestAttendanceDevices(TransactionCase):
             f"\tTmp={payload}",
         )
 
-        fingerprint.unlink()
+        fingerprint.with_context(skip_fingerprint_sync=False).unlink()
         self.card.invalidate_recordset(["has_fingerprint"])
         self.assertFalse(self.card.has_fingerprint)
         delete_command = self.env["mdl.attendance.device.command"].search([
@@ -1097,8 +1097,185 @@ class TestAttendanceDevices(TransactionCase):
         ], limit=1)
         self.assertEqual(
             delete_command.raw_command,
-            "DATA DELETE BIODATA Pin=74\tNo=6\tIndex=0\tType=1",
+            "DATA DELETE BIODATA Pin=74\tType=1\tNo=6",
         )
+
+    def test_terminal_fingerprint_enrollment_is_pulled_automatically(self):
+        Command = self.env["mdl.attendance.device.command"]
+        Command.search([("device_employee_id", "=", self.card.id)]).unlink()
+        adapter = self.device._adapter()
+
+        adapter.process_payload(
+            self._log(),
+            "OPERLOG",
+            b"",
+            "OPLOG 6\t0\t2026-08-26 09:00:00\t74\t6\t1048\t0",
+        )
+        snapshot = Command.search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "request_fingerprints"),
+            ("fingerprint_index", "=", False),
+        ], limit=1)
+        self.assertTrue(snapshot)
+        self.assertEqual(snapshot.raw_command, "DATA QUERY BIODATA Pin=74")
+
+        snapshot.mark_sent()
+        snapshot.mark_result(0, "ID=10&Return=0&CMD=DATA")
+        self.assertEqual(snapshot.state, "sent")
+        payload = base64.b64encode(b"enrolled-directly-on-clock").decode("ascii")
+        log = self._log()
+        log.write({
+            "request_type": "BIODATA",
+            "query_string": "SN=TEST-SN&table=BIODATA&OpStamp=10000",
+        })
+        adapter.process_payload(
+            log,
+            "BIODATA",
+            b"",
+            "BIODATA Pin=74\tNo=6\tIndex=0\tValid=1\tDuress=0"
+            "\tType=1\tMajorVer=13\tMinorVer=0\tFormat=0"
+            f"\tTmp={payload}",
+        )
+
+        fingerprint = self.card.fingerprint_ids
+        snapshot.invalidate_recordset()
+        self.card.invalidate_recordset(["has_fingerprint"])
+        self.assertEqual(snapshot.state, "done")
+        self.assertEqual(fingerprint.finger_index, "6")
+        self.assertEqual(fingerprint.source, "device")
+        self.assertTrue(self.card.has_fingerprint)
+
+    def test_terminal_fingerprint_delete_reconciles_only_missing_slot(self):
+        Fingerprint = self.env[
+            "mdl.attendance.device.fingerprint"
+        ].with_context(skip_fingerprint_sync=True)
+        first = Fingerprint.create({
+            "device_employee_id": self.card.id,
+            "finger_index": "1",
+            "template_file": base64.b64encode(b"finger-one"),
+            "source": "device",
+        })
+        second = Fingerprint.create({
+            "device_employee_id": self.card.id,
+            "finger_index": "6",
+            "template_file": base64.b64encode(b"finger-six"),
+            "source": "device",
+        })
+        adapter = self.device._adapter()
+        adapter.process_payload(
+            self._log(),
+            "OPERLOG",
+            b"",
+            "OPLOG 10\t0\t2026-08-26 09:05:00\t74\t0\t0\t0",
+        )
+        snapshot = self.env["mdl.attendance.device.command"].search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "request_fingerprints"),
+            ("fingerprint_index", "=", False),
+        ], limit=1)
+        snapshot.mark_sent()
+        snapshot.mark_result(0, "ID=11&Return=0&CMD=DATA")
+        payload = base64.b64encode(b"finger-six").decode("ascii")
+        log = self._log()
+        log.write({
+            "request_type": "BIODATA",
+            "query_string": "SN=TEST-SN&table=BIODATA&OpStamp=10001",
+        })
+        adapter.process_payload(
+            log,
+            "BIODATA",
+            b"",
+            "BIODATA Pin=74\tNo=6\tIndex=0\tValid=1\tDuress=0"
+            "\tType=1\tMajorVer=13\tMinorVer=0\tFormat=0"
+            f"\tTmp={payload}",
+        )
+
+        self.assertFalse(first.exists())
+        self.assertTrue(second.exists())
+        self.assertEqual(self.card.fingerprint_ids.mapped("finger_index"), ["6"])
+        self.card.invalidate_recordset(["has_fingerprint"])
+        self.assertTrue(self.card.has_fingerprint)
+
+        adapter.process_payload(
+            self._log(),
+            "OPERLOG",
+            b"",
+            "OPLOG 10\t0\t2026-08-26 09:06:00\t74\t0\t0\t0",
+        )
+        last_snapshot = self.env["mdl.attendance.device.command"].search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "request_fingerprints"),
+            ("fingerprint_index", "=", False),
+            ("state", "=", "queued"),
+        ], limit=1)
+        last_snapshot.mark_sent()
+        last_snapshot.mark_result(0, "ID=14&Return=0&CMD=DATA")
+        empty_log = self._log()
+        empty_log.write({
+            "request_type": "BIODATA",
+            "query_string": "SN=TEST-SN&table=BIODATA&OpStamp=10003",
+        })
+        adapter.process_payload(empty_log, "BIODATA", b"", "")
+        self.assertFalse(second.exists())
+        self.card.invalidate_recordset(["has_fingerprint"])
+        self.assertFalse(self.card.has_fingerprint)
+
+    def test_odoo_fingerprint_delete_is_verified_absent_on_terminal(self):
+        fingerprint = self.env[
+            "mdl.attendance.device.fingerprint"
+        ].with_context(skip_fingerprint_sync=True).create({
+            "device_employee_id": self.card.id,
+            "finger_index": "4",
+            "template_file": base64.b64encode(b"finger-four"),
+            "source": "device",
+        })
+        fingerprint.with_context(skip_fingerprint_sync=False).unlink()
+        Command = self.env["mdl.attendance.device.command"]
+        delete = Command.search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "delete_fingerprint"),
+            ("fingerprint_index", "=", "4"),
+        ], limit=1)
+        self.assertEqual(
+            delete.raw_command,
+            "DATA DELETE BIODATA Pin=74\tType=1\tNo=4",
+        )
+        delete.mark_sent()
+        delete.mark_result(0, "ID=12&Return=0&CMD=DATA")
+        verification = Command.search([
+            ("device_employee_id", "=", self.card.id),
+            ("command_type", "=", "request_fingerprints"),
+            ("fingerprint_index", "=", "4"),
+        ], limit=1)
+        verification.mark_sent()
+        verification.mark_result(0, "ID=13&Return=0&CMD=DATA")
+        log = self._log()
+        log.write({
+            "request_type": "BIODATA",
+            "query_string": "SN=TEST-SN&table=BIODATA&OpStamp=10002",
+        })
+        self.device._adapter().process_payload(log, "BIODATA", b"", "")
+        verification.invalidate_recordset()
+        self.card.invalidate_recordset(["has_fingerprint", "sync_state"])
+        self.assertEqual(verification.state, "done")
+        self.assertFalse(self.card.has_fingerprint)
+        self.assertEqual(self.card.sync_state, "synced")
+
+    def test_fingerprint_number_cannot_change_after_creation(self):
+        fingerprint = self.env[
+            "mdl.attendance.device.fingerprint"
+        ].with_context(skip_fingerprint_sync=True).create({
+            "device_employee_id": self.card.id,
+            "finger_index": "3",
+            "template_file": base64.b64encode(b"finger-three"),
+        })
+        self.assertTrue(fingerprint.finger_index_locked)
+        fingerprint.write({"finger_index": "3"})
+        fingerprint.write({
+            "template_file": base64.b64encode(b"replacement-template"),
+        })
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            fingerprint.write({"finger_index": "4"})
 
     def test_zkteco_ini_upload_extracts_matching_user_and_finger(self):
         raw_template = b"ZKFP-from-ini\x00\x03"
