@@ -77,7 +77,12 @@ class TestAttendanceDevices(TransactionCase):
     def test_device_language_syncs_employee_translation_to_card(self):
         self.assertFalse(self.env["resource.resource"]._fields["name"].translate)
         self.assertTrue(self.env["hr.employee"]._fields["name"].translate)
+        self.assertTrue(self.env["hr.employee.public"]._fields["name"].translate)
         self.assertFalse(self.env["mdl.attendance.device.employee"]._fields["device_name"].translate)
+
+        public_employee = self.env["hr.employee.public"].browse(self.employee.id)
+        self.assertIsInstance(public_employee.name, str)
+        self.assertTrue(public_employee.avatar_128)
 
         language = self.env["res.lang"].search([
             ("code", "in", ["he_IL", "ar_001", "en_US"]),

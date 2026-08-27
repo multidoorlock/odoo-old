@@ -1,6 +1,17 @@
 from odoo import api, fields, models
 
 
+class HrEmployeePublic(models.Model):
+    _inherit = "hr.employee.public"
+
+    # ``hr.employee.public`` is a SQL view over ``hr.employee``.  The private
+    # employee name is translated below and is therefore stored as JSONB, so
+    # the public view must describe the same column as translated too.  Without
+    # this, Odoo returns the whole translations dictionary as ``name`` and the
+    # /web/image controller crashes while using it as the avatar filename.
+    name = fields.Char(readonly=True, translate=True)
+
+
 class HrEmployee(models.Model):
     _inherit = "hr.employee"
 
