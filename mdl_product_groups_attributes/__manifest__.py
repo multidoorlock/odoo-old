@@ -1,7 +1,7 @@
 {
     "name": "Multi Doorlock - Product Groups & Attributes",
     "summary": "הרחבת קבוצות פריטים, מאפיינים, ערכים ושמות ומק\"טים של וריאנטים",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.0.1",
     "category": "Inventory/Inventory",
     "author": "Multi Doorlock",
     "license": "LGPL-3",
