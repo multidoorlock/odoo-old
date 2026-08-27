@@ -28,15 +28,12 @@ def _adopt_external_ids(env):
 
 
 def _adopt_model_metadata(env, old_module, new_module):
-    """Keep field and database-object ownership attached to the new add-on."""
-    env.cr.execute(
-        """
-        UPDATE ir_model_fields
-           SET modules = REPLACE(modules, %s, %s)
-         WHERE modules LIKE %s
-        """,
-        (OLD_MODULE, NEW_MODULE, f"%{OLD_MODULE}%"),
-    )
+    """Keep database-object ownership attached to the new add-on.
+
+    Odoo 19 no longer stores a ``modules`` column on ``ir_model_fields``.
+    Field ownership is reconstructed from the Python registry when the new
+    add-on is installed, so only constraint/relation metadata needs adopting.
+    """
     for model_name in ("ir.model.constraint", "ir.model.relation"):
         try:
             metadata = env[model_name]
