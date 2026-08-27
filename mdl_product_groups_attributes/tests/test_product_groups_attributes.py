@@ -5,7 +5,7 @@ from odoo.tests.common import TransactionCase
 
 
 @tagged("post_install", "-at_install")
-class TestProductCatalog(TransactionCase):
+class TestProductGroupsAttributes(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -122,7 +122,7 @@ class TestProductCatalog(TransactionCase):
         )
 
         self.env["ir.config_parameter"].sudo().set_param(
-            "mdl_product_catalog.variant_display_format",
+            "mdl_product_groups_attributes.variant_display_format",
             "[מק״ט] | [שם הפריט]",
         )
         product.invalidate_recordset(["display_name"])
@@ -133,7 +133,7 @@ class TestProductCatalog(TransactionCase):
             "[100180100] | דלת כנף 80/100 +ידית",
         )
         self.env["ir.config_parameter"].sudo().set_param(
-            "mdl_product_catalog.variant_display_format",
+            "mdl_product_groups_attributes.variant_display_format",
             "[מק״ט] [שם הפריט]",
         )
 
