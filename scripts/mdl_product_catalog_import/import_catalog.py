@@ -8,14 +8,14 @@ from pathlib import Path
 
 from odoo import Command
 from odoo.exceptions import UserError
-from odoo.addons.mdl_product_catalog.models.catalog_utils import (
+from odoo.addons.mdl_product_groups_attributes.models.catalog_utils import (
     normalize_token,
     split_direction_marker,
     split_legacy_name_format,
 )
 
 
-_logger = logging.getLogger("mdl_product_catalog_import")
+_logger = logging.getLogger("mdl_product_groups_attributes_import")
 XMLID_NAMESPACE = "mdl_product_catalog_import"
 LEGACY_XMLID_NAMESPACE = "mdl_product_catalog_test_data"
 DATA_FILE = Path(__file__).parent / "catalog.json.gz.b64"
@@ -439,14 +439,14 @@ def import_catalog(env):
     """Import the catalog once, or validate a previous script import."""
     catalog_module = env["ir.module.module"].sudo().search(
         [
-            ("name", "=", "mdl_product_catalog"),
+            ("name", "=", "mdl_product_groups_attributes"),
             ("state", "=", "installed"),
         ],
         limit=1,
     )
     if not catalog_module:
         raise UserError(
-            "יש להתקין תחילה את המודול mdl_product_catalog."
+            "יש להתקין תחילה את המודול mdl_product_groups_attributes."
         )
     data = _load_source()
     existing_products, status = _prepare_existing_import(env, data)

@@ -5,7 +5,9 @@ TOKEN_RE = re.compile(r"\[([^\[\]]+)\]")
 DIRECTION_MARKER_RE = re.compile(r"(?<![A-Za-z])([LRD])(?![A-Za-z])", re.IGNORECASE)
 HEBREW_RE = re.compile(r"[\u0590-\u05ff]")
 DEFAULT_VARIANT_DISPLAY_FORMAT = "[מק״ט] [שם הפריט]"
-VARIANT_DISPLAY_FORMAT_PARAM = "mdl_product_catalog.variant_display_format"
+VARIANT_DISPLAY_FORMAT_PARAM = (
+    "mdl_product_groups_attributes.variant_display_format"
+)
 BASE_NAME_TOKENS = {
     "שם קבוצת פריטים",
     "קבוצת פריטים",
