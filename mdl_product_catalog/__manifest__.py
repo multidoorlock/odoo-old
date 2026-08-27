@@ -1,7 +1,7 @@
 {
     "name": "Multi Doorlock - Product Groups & Attributes Migration Bridge",
     "summary": "מעבר חד-פעמי לשם הטכני החדש של תוסף קבוצות הפריטים והמאפיינים",
-    "version": "19.0.2.0.0",
+    "version": "19.0.2.0.1",
     "category": "Inventory/Inventory",
     "author": "Multi Doorlock",
     "license": "LGPL-3",
