@@ -42,7 +42,7 @@ def _adopt_model_metadata(env, old_module, new_module):
             metadata = env[model_name]
         except KeyError:
             continue
-        if metadata and "module" in metadata._fields:
+        if "module" in metadata._fields:
             metadata.sudo().search(
                 [("module", "=", old_module.id)]
             ).write({"module": new_module.id})
