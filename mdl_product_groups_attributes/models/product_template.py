@@ -546,6 +546,11 @@ class ProductTemplate(models.Model):
             ProductTemplate,
             self.with_context(skip_mdl_catalog_sync=True),
         ).copy(default=default)
+        # The skip flag is needed only while Odoo creates the duplicate.  Do
+        # not leak it to the recordset returned to normal callers: subsequent
+        # edits (for example assigning the new group SKU) must synchronize in
+        # the usual way.
+        copied = copied.with_context(skip_mdl_catalog_sync=False)
         for source_template, copied_template in zip(self, copied):
             if not (
                 source_template.mdl_catalog_managed

@@ -93,6 +93,26 @@ class TestVariantLifecycleHardening(TransactionCase):
         )
         width_value = self._template_value(template, self.width_80)
         height_value = self._template_value(template, self.height_100)
+        referenced_product = template.product_variant_ids.filtered(
+            lambda variant: self.width_80
+            in variant.product_template_attribute_value_ids.product_attribute_value_id
+        )
+        partner = self.env["res.partner"].create(
+            {"name": "Lifecycle archive customer"}
+        )
+        self.env["sale.order"].create(
+            {
+                "partner_id": partner.id,
+                "order_line": [
+                    Command.create(
+                        {
+                            "product_id": referenced_product.id,
+                            "product_uom_qty": 1,
+                        }
+                    )
+                ],
+            }
+        )
         rule = self.env["product.template.attribute.exclusion"].create(
             {
                 "product_tmpl_id": template.id,

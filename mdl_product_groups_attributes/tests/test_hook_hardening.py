@@ -168,7 +168,9 @@ class TestHookHardening(TransactionCase):
             }
         )
         values = template.attribute_line_ids.product_template_value_ids
-        self.env["product.template.attribute.exclusion"].create(
+        self.env["product.template.attribute.exclusion"].with_context(
+            mdl_defer_variant_rebuild=True
+        ).create(
             {
                 "product_tmpl_id": template.id,
                 "mdl_is_catalog_condition": True,
@@ -182,4 +184,3 @@ class TestHookHardening(TransactionCase):
 
         with self.assertRaisesRegex(UserError, "כללי קטלוג מותאמים"):
             uninstall_hook(self.env)
-
