@@ -83,7 +83,7 @@ class ProductTemplate(models.Model):
         ),
     )
     mdl_group_default_name = fields.Char(
-        string="שם קבוצת פריטים",
+        string="שם המקור של קבוצת הפריטים",
         index=True,
         help=(
             "שם הבסיס המשותף לפריטים בקבוצה. השדה נפרד מקטגוריית המוצר "

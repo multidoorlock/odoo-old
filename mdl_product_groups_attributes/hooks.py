@@ -192,7 +192,7 @@ def migrate_catalog_structure(env):
             lambda value: value.attribute_id.create_variant != "no_variant"
         )
         if len(combination) < 2:
-            _logger.warning(
+            _logger.info(
                 "Could not convert legacy blocked product %s to a rule: "
                 "its combination has fewer than two values",
                 product.id,
@@ -208,7 +208,7 @@ def migrate_catalog_structure(env):
                 )
             )
         ):
-            _logger.warning(
+            _logger.info(
                 "Could not convert legacy blocked product %s to an n-ary "
                 "rule because its template uses dynamic or no-variant "
                 "attributes",
