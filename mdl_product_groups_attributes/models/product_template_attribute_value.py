@@ -154,6 +154,18 @@ class ProductTemplateAttributeValue(models.Model):
         )
 
     def write(self, vals):
+        reactivated_rules = self.env[
+            "product.template.attribute.exclusion"
+        ]
+        if vals.get("ptav_active") is True:
+            reactivated_rules = self.env[
+                "product.template.attribute.exclusion"
+            ].search(
+                [
+                    ("mdl_is_catalog_condition", "=", True),
+                    ("mdl_combination_value_ids", "in", self.ids),
+                ]
+            )
         for field_name in (
             "mdl_sku_component_override",
             "mdl_name_component_override",
@@ -161,6 +173,11 @@ class ProductTemplateAttributeValue(models.Model):
             if field_name in vals:
                 vals[field_name] = clean_text(vals[field_name])
         result = super().write(vals)
+        if reactivated_rules:
+            # Odoo may clear the native pair representation while a PTAV is
+            # unavailable.  The MDL combination remains the source of truth,
+            # so restore the native fields when the same PTAV is reactivated.
+            reactivated_rules.exists()._mdl_sync_native_from_combination()
         if not self.env.context.get("skip_mdl_catalog_sync") and any(
             field_name in vals
             for field_name in (
@@ -178,15 +195,35 @@ class ProductTemplateAttributeValue(models.Model):
 
     def unlink(self):
         templates = self.product_tmpl_id
+        removed_value_ids = set(self.ids)
         rules = self.env["product.template.attribute.exclusion"].search(
             [
                 ("mdl_is_catalog_condition", "=", True),
                 ("mdl_combination_value_ids", "in", self.ids),
             ]
         )
-        if rules:
-            rules.unlink()
+        rule_dependencies = {
+            rule.id: set(rule.mdl_combination_value_ids.ids)
+            & removed_value_ids
+            for rule in rules
+        }
         result = super().unlink()
+        # Native Odoo commonly implements removal from an attribute line by
+        # archiving the PTAV (``ptav_active = False``), even though the public
+        # operation is named ``unlink``.  Keep catalog rules in that case so
+        # re-adding the value restores the exact business rule.  Only discard
+        # rules that became structurally invalid after a genuine deletion.
+        deleted_value_ids = removed_value_ids - set(self.exists().ids)
+        invalid_rules = rules.exists().filtered(
+            lambda rule: (
+                bool(rule_dependencies.get(rule.id, set()) & deleted_value_ids)
+                or len(rule.mdl_combination_value_ids) < 2
+            )
+        )
+        if invalid_rules:
+            invalid_rules.with_context(
+                mdl_skip_combination_sync=True
+            ).unlink()
         if not self.env.context.get("skip_mdl_catalog_sync"):
             templates._mdl_ensure_full_model_names()
             templates._mdl_sync_variant_codes()

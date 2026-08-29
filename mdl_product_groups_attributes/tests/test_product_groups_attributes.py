@@ -1165,6 +1165,21 @@ class TestProductGroupsAttributes(TransactionCase):
         )
         self.assertFalse(template.mdl_sku_prefix)
 
+        Modules = self.env["ir.module.module"].sudo()
+        bridge = Modules.search(
+            [("name", "=", "mdl_product_catalog")],
+            limit=1,
+        )
+        if bridge:
+            bridge.write({"state": "uninstalled"})
+        else:
+            bridge = Modules.create(
+                {
+                    "name": "mdl_product_catalog",
+                    "state": "uninstalled",
+                }
+            )
+
         migrate_catalog_structure(self.env)
 
         self.assertTrue(template.mdl_catalog_managed)
@@ -1311,10 +1326,12 @@ class TestProductGroupsAttributes(TransactionCase):
             archived_combinations,
         )
 
-        model_line.write(
+        model_line.with_context(mdl_preserve_variant_ids=True).write(
             {"value_ids": [Command.unlink(first_model_value.product_attribute_value_id.id)]}
         )
-        self.assertFalse(rule.exists())
+        self.assertTrue(rule.exists())
+        self.assertTrue(first_model_value.exists())
+        self.assertFalse(first_model_value.ptav_active)
         self.assertEqual(len(template.product_variant_ids), 2)
 
     def test_allowed_rules_form_an_explicit_whitelist(self):

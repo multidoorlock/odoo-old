@@ -3,7 +3,7 @@
     <record id="mdl_product_attribute_value_form_view" model="ir.ui.view">
         <field name="name">product.attribute.value.form.mdl.catalog</field>
         <field name="model">product.attribute.value</field>
-        <field name="priority" eval="5"/>
+        <field name="priority" eval="99"/>
         <field name="arch" type="xml">
             <form string="ערך מאפיין" create="0" delete="0">
                 <sheet>
@@ -95,13 +95,8 @@
                         type="object"
                         icon="fa-undo"
                         title="בטל את שינוי הטקסט וחזור לערך של Odoo"
+                        class="btn-link p-0"
                         invisible="not mdl_name_component_override"/>
-                <button name="action_mdl_reset_name_component"
-                        type="object"
-                        icon="fa-undo"
-                        title="-"
-                        class="disabled opacity-0"
-                        invisible="mdl_name_component_override"/>
                 <field name="mdl_sku_component_value"
                        string="מק״ט בקבוצה"
                        decoration-muted="not mdl_sku_component_override"/>
@@ -109,13 +104,8 @@
                         type="object"
                         icon="fa-undo"
                         title="בטל את שינוי המק״ט וחזור לערך המקור"
+                        class="btn-link p-0"
                         invisible="not mdl_sku_component_override"/>
-                <button name="action_mdl_reset_sku_component"
-                        type="object"
-                        icon="fa-undo"
-                        title="-"
-                        class="disabled opacity-0"
-                        invisible="mdl_sku_component_override"/>
             </field>
             <field name="html_color" position="attributes">
                 <attribute name="optional">hide</attribute>
@@ -140,6 +130,8 @@
                 <field name="mdl_group_sku_override" invisible="1"/>
                 <field name="mdl_model_name_override" invisible="1"/>
                 <field name="mdl_model_sku_override" invisible="1"/>
+                <field name="mdl_native_name_override" invisible="1"/>
+                <field name="mdl_copy_requires_new_sku" invisible="1"/>
                 <field name="mdl_model_as_attribute" invisible="1"/>
                 <field name="mdl_catalog_managed"
                        string="ניהול שמות ומק״טים לפי מאפיינים"/>
@@ -159,7 +151,7 @@
                                     icon="fa-undo"
                                     title="בטל את שינוי השם וחזור לשם המקור"
                                     class="btn-link p-0"
-                                    invisible="not mdl_group_name_override and (mdl_model_as_attribute or not mdl_model_name_override)"/>
+                                    invisible="not mdl_native_name_override and not mdl_group_name_override and (mdl_model_as_attribute or not mdl_model_name_override)"/>
                         </div>
                         <label for="mdl_sku_prefix"/>
                         <div class="o_row">
@@ -170,6 +162,11 @@
                                     title="בטל את שינוי המק״ט וחזור למק״ט המקור"
                                     class="btn-link p-0"
                                     invisible="not mdl_group_sku_override and (mdl_model_as_attribute or not mdl_model_sku_override)"/>
+                        </div>
+                        <div class="alert alert-warning mb-0"
+                             role="alert"
+                             invisible="not mdl_copy_requires_new_sku">
+                            זו קבוצה מועתקת. יש להגדיר מק״ט קבוצה חדש לפני יצירת מק״טים לפריטים.
                         </div>
                         <button name="action_mdl_convert_model_to_attribute"
                                 type="object"
@@ -261,13 +258,8 @@
                                 type="object"
                                 icon="fa-undo"
                                 title="בטל את שינוי הטקסט וחזור לערך של Odoo"
+                                class="btn-link p-0"
                                 invisible="not mdl_name_component_override"/>
-                        <button name="action_mdl_reset_name_component"
-                                type="object"
-                                icon="fa-undo"
-                                title="-"
-                                class="disabled opacity-0"
-                                invisible="mdl_name_component_override"/>
                         <field name="mdl_sku_component_value"
                                string="מק״ט בקבוצה"
                                decoration-muted="not mdl_sku_component_override"/>
@@ -275,13 +267,8 @@
                                 type="object"
                                 icon="fa-undo"
                                 title="בטל את שינוי המק״ט וחזור לערך המקור"
+                                class="btn-link p-0"
                                 invisible="not mdl_sku_component_override"/>
-                        <button name="action_mdl_reset_sku_component"
-                                type="object"
-                                icon="fa-undo"
-                                title="-"
-                                class="disabled opacity-0"
-                                invisible="mdl_sku_component_override"/>
                     </list>
                 </field>
 

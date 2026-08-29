@@ -1,7 +1,7 @@
 {
     "name": "Multi Doorlock - Product Groups & Attributes",
     "summary": "הרחבת קבוצות פריטים, מאפיינים, ערכים ושמות ומק\"טים של וריאנטים",
-    "version": "19.0.2.0.0",
+    "version": "19.0.2.1.0",
     "category": "Inventory/Inventory",
     "author": "Multi Doorlock",
     "license": "LGPL-3",
@@ -14,6 +14,7 @@
     ],
     "pre_init_hook": "pre_init_hook",
     "post_init_hook": "post_init_hook",
+    "uninstall_hook": "uninstall_hook",
     "installable": True,
     "application": False,
     "auto_install": True,

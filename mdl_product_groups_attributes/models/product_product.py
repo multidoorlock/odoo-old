@@ -91,13 +91,27 @@ class ProductProduct(models.Model):
         result = super().write(vals)
         if not self.env.context.get("skip_mdl_catalog_sync") and (
             "product_template_attribute_value_ids" in vals
+            or vals.get("active") is True
         ):
+            # ``product_variant_ids`` normally hides archived products.  A
+            # variant can therefore retain an obsolete generated reference
+            # while archived.  Re-check it when Odoo reactivates the record;
+            # source changes are also propagated to archived variants by the
+            # template-level synchronizer.
             self._mdl_sync_default_code()
         return result
 
     def _unlink_or_archive(self, check_access=True):
         if self.env.context.get("mdl_preserve_variant_ids"):
-            self.with_context(skip_mdl_catalog_sync=True).write(
+            # Keep Odoo 19's security contract even though this migration
+            # context deliberately archives instead of attempting deletion.
+            # The explicit checks run as the caller; only the final archive
+            # uses sudo to avoid cross-company recompute/access failures, just
+            # like Odoo's native ``_unlink_or_archive`` implementation.
+            if check_access:
+                self.check_access("unlink")
+                self.check_access("write")
+            self.sudo().with_context(skip_mdl_catalog_sync=True).write(
                 {"active": False}
             )
             return
@@ -107,6 +121,15 @@ class ProductProduct(models.Model):
         for product in self:
             template = product.product_tmpl_id
             if not template.mdl_catalog_managed:
+                continue
+            if template.mdl_copy_requires_new_sku:
+                # A native Duplicate keeps the catalog structure but must not
+                # reuse internal references.  This guard also applies when an
+                # archived copied variant is reactivated directly.
+                if product.default_code:
+                    product.with_context(skip_mdl_catalog_sync=True).write(
+                        {"default_code": False}
+                    )
                 continue
             generated_sku, _name, missing = template._mdl_render_catalog_values(
                 product.product_template_attribute_value_ids
