@@ -195,12 +195,21 @@ class ProductTemplateAttributeExclusion(models.Model):
 
         return normalized
 
-    def _mdl_merge_duplicate_rules(self):
-        """Keep one row when the same unordered rule was entered twice."""
+    def _mdl_merge_duplicate_rules(self, protected_rules=None):
+        """Keep one row when the same unordered rule was entered twice.
+
+        Records returned by a multi-create are protected.  Deleting one of
+        them before ``create()`` returns violates Odoo's create contract and
+        leaves callers holding a non-existing record.  Existing duplicates
+        and helper rows made while expanding native exclusions can still be
+        folded safely; two equivalent rows submitted in the *same* batch stay
+        separate and can be edited normally.
+        """
         if self.env.context.get("mdl_skip_combination_sync"):
             return
 
         Exclusion = self.env["product.template.attribute.exclusion"]
+        protected_ids = set(protected_rules.ids) if protected_rules else set()
         for rule_id in self.ids:
             keeper = Exclusion.browse(rule_id).exists()
             if not keeper or not keeper.mdl_is_catalog_condition:
@@ -218,7 +227,8 @@ class ProductTemplateAttributeExclusion(models.Model):
             )
             duplicates = candidates.filtered(
                 lambda other: (
-                    frozenset(other.mdl_combination_value_ids.ids)
+                    other.id not in protected_ids
+                    and frozenset(other.mdl_combination_value_ids.ids)
                     == combination
                 )
             )
@@ -242,7 +252,9 @@ class ProductTemplateAttributeExclusion(models.Model):
         combination_rules._mdl_sync_native_from_combination()
         native_rules = rules - combination_rules
         normalized_rules = native_rules._mdl_expand_native_rules()
-        (combination_rules | normalized_rules)._mdl_merge_duplicate_rules()
+        (combination_rules | normalized_rules)._mdl_merge_duplicate_rules(
+            protected_rules=rules,
+        )
         if not self.env.context.get(DEFER_VARIANT_REBUILD_CONTEXT_KEY):
             templates.with_context(
                 **{DEFER_VARIANT_REBUILD_CONTEXT_KEY: False}

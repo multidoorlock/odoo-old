@@ -1311,10 +1311,12 @@ class TestProductGroupsAttributes(TransactionCase):
             archived_combinations,
         )
 
-        model_line.write(
+        model_line.with_context(mdl_preserve_variant_ids=True).write(
             {"value_ids": [Command.unlink(first_model_value.product_attribute_value_id.id)]}
         )
-        self.assertFalse(rule.exists())
+        self.assertTrue(rule.exists())
+        self.assertTrue(first_model_value.exists())
+        self.assertFalse(first_model_value.ptav_active)
         self.assertEqual(len(template.product_variant_ids), 2)
 
     def test_allowed_rules_form_an_explicit_whitelist(self):

@@ -140,6 +140,8 @@
                 <field name="mdl_group_sku_override" invisible="1"/>
                 <field name="mdl_model_name_override" invisible="1"/>
                 <field name="mdl_model_sku_override" invisible="1"/>
+                <field name="mdl_native_name_override" invisible="1"/>
+                <field name="mdl_copy_requires_new_sku" invisible="1"/>
                 <field name="mdl_model_as_attribute" invisible="1"/>
                 <field name="mdl_catalog_managed"
                        string="ניהול שמות ומק״טים לפי מאפיינים"/>
@@ -159,7 +161,7 @@
                                     icon="fa-undo"
                                     title="בטל את שינוי השם וחזור לשם המקור"
                                     class="btn-link p-0"
-                                    invisible="not mdl_group_name_override and (mdl_model_as_attribute or not mdl_model_name_override)"/>
+                                    invisible="not mdl_native_name_override and not mdl_group_name_override and (mdl_model_as_attribute or not mdl_model_name_override)"/>
                         </div>
                         <label for="mdl_sku_prefix"/>
                         <div class="o_row">
@@ -170,6 +172,11 @@
                                     title="בטל את שינוי המק״ט וחזור למק״ט המקור"
                                     class="btn-link p-0"
                                     invisible="not mdl_group_sku_override and (mdl_model_as_attribute or not mdl_model_sku_override)"/>
+                        </div>
+                        <div class="alert alert-warning mb-0"
+                             role="alert"
+                             invisible="not mdl_copy_requires_new_sku">
+                            זו קבוצה מועתקת. יש להגדיר מק״ט קבוצה חדש לפני יצירת מק״טים לפריטים.
                         </div>
                         <button name="action_mdl_convert_model_to_attribute"
                                 type="object"
