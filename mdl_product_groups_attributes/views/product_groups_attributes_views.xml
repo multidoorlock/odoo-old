@@ -133,8 +133,21 @@
                 <field name="mdl_native_name_override" invisible="1"/>
                 <field name="mdl_copy_requires_new_sku" invisible="1"/>
                 <field name="mdl_model_as_attribute" invisible="1"/>
-                <field name="mdl_catalog_managed"
-                       string="ניהול שמות ומק״טים לפי מאפיינים"/>
+                <group string="קבוצת פריטים ומאפיינים">
+                    <group>
+                        <field name="mdl_catalog_managed"/>
+                    </group>
+                    <group>
+                        <div class="text-muted"
+                             invisible="mdl_catalog_managed">
+                            הפעל כדי לנהל כאן את טקסט השם, רכיבי המק״ט וכללי השילובים של ערכי המאפיינים.
+                        </div>
+                        <div class="text-muted"
+                             invisible="not mdl_catalog_managed">
+                            ניהול קבוצת הפריטים פעיל. כל הגדרות השם והמק״ט מופיעות בהמשך הטאב.
+                        </div>
+                    </group>
+                </group>
                 <group string="הגדרת קבוצת הפריטים"
                        invisible="not mdl_catalog_managed">
                     <group>
