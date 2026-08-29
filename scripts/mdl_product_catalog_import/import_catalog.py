@@ -1,6 +1,7 @@
 import base64
 import gzip
 import hashlib
+import itertools
 import json
 import logging
 import os
@@ -18,7 +19,27 @@ from odoo.addons.mdl_product_groups_attributes.models.catalog_utils import (
 _logger = logging.getLogger("mdl_product_groups_attributes_import")
 XMLID_NAMESPACE = "mdl_product_catalog_import"
 LEGACY_XMLID_NAMESPACE = "mdl_product_catalog_test_data"
-DATA_FILE = Path(__file__).parent / "catalog.json.gz.b64"
+
+
+def _catalog_data_file():
+    """Resolve data both as a file and through ``odoo-bin shell < script``."""
+    explicit_path = os.environ.get("MDL_CATALOG_DATA_FILE")
+    if explicit_path:
+        return Path(explicit_path).expanduser().resolve()
+    script_file = globals().get("__file__")
+    if script_file:
+        candidate = Path(script_file).resolve().parent / "catalog.json.gz.b64"
+        if candidate.exists():
+            return candidate
+    return (
+        Path.cwd()
+        / "scripts"
+        / "mdl_product_catalog_import"
+        / "catalog.json.gz.b64"
+    )
+
+
+DATA_FILE = _catalog_data_file()
 
 # Product records from Odoo 19's official product_demo.xml. We archive their
 # templates instead of unlinking them because demo documents may reference them.
@@ -184,6 +205,9 @@ def _validate_and_register_variants(env, template, template_data, values):
         tuple(
             sorted(
                 product.product_template_attribute_value_ids
+                .filtered(
+                    lambda value: not value.attribute_line_id.mdl_is_model_attribute
+                )
                 .product_attribute_value_id.ids
             )
         ): product
@@ -192,12 +216,11 @@ def _validate_and_register_variants(env, template, template_data, values):
     missing = expected_by_tuple.keys() - actual_by_tuple.keys()
     if missing:
         raise UserError(
-            "נתוני הקטלוג אינם מייצרים את כל השילובים בדגם "
+            "נתוני הקטלוג אינם מייצרים את כל השילובים בקבוצה "
             f"{template_data['key']}: חסרים {len(missing)} שילובים."
         )
-    # Standard Odoo exclusions cover every pairwise rule.  If a legacy rule
-    # depends on three or more values, archive only the remaining exact
-    # combinations that cannot be expressed by ``Exclude for``.
+    # Pairwise rules use Odoo's native exclusion fields. Exact n-ary blocks use
+    # the same exclusion model with the addon's generic combination field.
     extra_products = env["product.product"].browse(
         [
             actual_by_tuple[value_tuple].id
@@ -205,8 +228,25 @@ def _validate_and_register_variants(env, template, template_data, values):
         ]
     )
     if extra_products:
-        extra_products.with_context(skip_mdl_catalog_sync=True).write(
-            {"mdl_catalog_allowed": False, "active": False}
+        env["product.template.attribute.exclusion"].create(
+            [
+                {
+                    "product_tmpl_id": product.product_tmpl_id.id,
+                    "mdl_is_catalog_condition": True,
+                    "mdl_rule_type": "forbidden",
+                    "mdl_combination_value_ids": [
+                        Command.set(
+                            product.product_template_attribute_value_ids.filtered(
+                                lambda value: (
+                                    value.attribute_id.create_variant
+                                    != "no_variant"
+                                )
+                            ).ids
+                        )
+                    ],
+                }
+                for product in extra_products
+            ]
         )
     expected_products = env["product.product"].browse(
         [actual_by_tuple[value_tuple].id for value_tuple in expected_by_tuple]
@@ -249,28 +289,33 @@ def _validate_and_register_variants(env, template, template_data, values):
 
 
 def _create_standard_exclusions(env, template, template_data, values):
-    """Create Odoo's native ``Exclude for`` rules from safe value pairs."""
+    """Create editable pair rules backed by Odoo's native exclusions."""
     if not template_data.get("forbidden_pairs"):
         return
     template_values = {
         value.product_attribute_value_id.id: value
         for value in template.attribute_line_ids.product_template_value_ids
     }
-    excluded_by_value = {}
+    rule_values = []
+    seen = set()
     for pair in template_data["forbidden_pairs"]:
         source = template_values[values[pair["value_key"]].id]
         excluded = template_values[values[pair["excluded_value_key"]].id]
-        excluded_by_value.setdefault(source.id, set()).add(excluded.id)
-    env["product.template.attribute.exclusion"].create(
-        [
+        key = frozenset((source.id, excluded.id))
+        if key in seen:
+            continue
+        seen.add(key)
+        rule_values.append(
             {
-                "product_template_attribute_value_id": source_id,
                 "product_tmpl_id": template.id,
-                "value_ids": [Command.set(sorted(excluded_ids))],
+                "mdl_is_catalog_condition": True,
+                "mdl_rule_type": "forbidden",
+                "mdl_combination_value_ids": [
+                    Command.set((source | excluded).ids)
+                ],
             }
-            for source_id, excluded_ids in excluded_by_value.items()
-        ]
-    )
+        )
+    env["product.template.attribute.exclusion"].create(rule_values)
 
 
 def _create_templates(env, data, categories, attributes, values):
@@ -369,6 +414,12 @@ def _create_templates(env, data, categories, attributes, values):
                     template_value.mdl_sku_component_override = value_data[
                         "sku_override"
                     ]
+        # Model is no longer a special prefix.  Converting it to a normal,
+        # ordered single-value attribute keeps the generated products and their
+        # SKUs identical while allowing users to position it like any attribute.
+        template.with_context(
+            skip_mdl_catalog_sync=False
+        )._mdl_convert_models_to_attributes()
         _create_standard_exclusions(env, template, item, values)
         _register_xmlid(env, "template", item["key"], template)
         _validate_and_register_variants(env, template, item, values)
@@ -400,7 +451,246 @@ def _expected_skus(data):
     } | {item["sku"] for item in data["unique_items"]}
 
 
-def _validate_existing_catalog(env, data):
+def _expected_owned_records(data):
+    """Return every record whose ownership makes the import identifiable."""
+    expected = {}
+
+    def add(prefix, key, model):
+        expected[_xmlid_name(prefix, key)] = {
+            "model": model,
+            "label": f"{prefix}:{key}",
+        }
+
+    for item in data["groups"]:
+        add("category", item["key"], "product.category")
+    add("category", "unique_items", "product.category")
+    for item in data["attributes"]:
+        add("attribute", item["key"], "product.attribute")
+    for item in data["values"]:
+        add("attribute_value", item["key"], "product.attribute.value")
+    for item in data["templates"]:
+        add("template", item["key"], "product.template")
+    for item in data["unique_items"]:
+        add("unique_template", item["sku"], "product.template")
+    return expected
+
+
+def _resolve_owned_records(env, data, xmlid_module):
+    """Resolve and validate all deterministic external IDs in one pass."""
+    expected = _expected_owned_records(data)
+    xmlids = env["ir.model.data"].sudo().search(
+        [
+            ("module", "=", xmlid_module),
+            ("name", "in", list(expected)),
+        ]
+    )
+    xmlids_by_name = {xmlid.name: xmlid for xmlid in xmlids}
+    missing_names = set(expected) - set(xmlids_by_name)
+    wrong_model_names = {
+        name
+        for name, xmlid in xmlids_by_name.items()
+        if xmlid.model != expected[name]["model"]
+    }
+
+    existing_ids_by_model = {}
+    for model_name in {item["model"] for item in expected.values()}:
+        ids = [
+            xmlid.res_id
+            for name, xmlid in xmlids_by_name.items()
+            if expected[name]["model"] == model_name
+            and name not in wrong_model_names
+        ]
+        existing_ids_by_model[model_name] = set(
+            env[model_name]
+            .with_context(active_test=False)
+            .browse(ids)
+            .exists()
+            .ids
+        )
+    missing_record_names = {
+        name
+        for name, xmlid in xmlids_by_name.items()
+        if name not in wrong_model_names
+        and xmlid.res_id not in existing_ids_by_model[expected[name]["model"]]
+    }
+    invalid_names = missing_names | wrong_model_names | missing_record_names
+    if invalid_names:
+        examples = ", ".join(
+            expected[name]["label"] for name in sorted(invalid_names)[:5]
+        )
+        raise UserError(
+            "קטלוג קיים נמצא אך מזהי הייבוא שלו אינם שלמים או אינם תקינים: "
+            f"{len(invalid_names)} רשומות ({examples})."
+        )
+
+    return {
+        name: env[expected[name]["model"]]
+        .with_context(active_test=False)
+        .browse(xmlid.res_id)
+        for name, xmlid in xmlids_by_name.items()
+    }
+
+
+def _source_model_name(template_data, groups_by_key):
+    group_name = _clean(groups_by_key[template_data["group_key"]]["name"])
+    model_name = _clean(
+        template_data["model_name_component"] or template_data["name"]
+    )
+    if model_name == group_name:
+        return ""
+    group_prefix = f"{group_name} " if group_name else ""
+    if group_prefix and model_name.startswith(group_prefix):
+        return _clean(model_name[len(group_prefix):])
+    return model_name
+
+
+def _validate_structured_templates(
+    data,
+    owned_records,
+    products_by_sku,
+):
+    """Verify structure and the effective rule outcome without changing it."""
+    groups_by_key = {item["key"]: item for item in data["groups"]}
+    attributes_by_key = {
+        item["key"]: owned_records[_xmlid_name("attribute", item["key"])]
+        for item in data["attributes"]
+    }
+    values_by_key = {
+        item["key"]: owned_records[
+            _xmlid_name("attribute_value", item["key"])
+        ]
+        for item in data["values"]
+    }
+
+    for template_data in data["templates"]:
+        template = owned_records[
+            _xmlid_name("template", template_data["key"])
+        ].with_context(active_test=True)
+        expected_products = [
+            products_by_sku[variant["sku"]]
+            for variant in template_data["variants"]
+        ]
+        wrong_template_skus = [
+            product.default_code
+            for product in expected_products
+            if product.product_tmpl_id != template
+        ]
+        if wrong_template_skus:
+            raise UserError(
+                "קטלוג קיים נמצא אך מק״טים משויכים לתבנית הלא נכונה "
+                f"בקבוצה {template_data['key']}: "
+                + ", ".join(wrong_template_skus[:5])
+                + "."
+            )
+        if not template.mdl_catalog_managed or not template.mdl_model_as_attribute:
+            raise UserError(
+                "קטלוג קיים נמצא אך הקבוצה אינה מנוהלת במבנה החדש: "
+                f"{template_data['key']}."
+            )
+        if any(not product.mdl_catalog_allowed for product in expected_products):
+            raise UserError(
+                "קטלוג קיים נמצא אך פריט מקור מסומן כשילוב חסום בקבוצה "
+                f"{template_data['key']}."
+            )
+
+        model_lines = template.attribute_line_ids.filtered(
+            "mdl_is_model_attribute"
+        )
+        expects_model_line = bool(
+            _source_model_name(template_data, groups_by_key)
+        )
+        if len(model_lines) != int(expects_model_line) or any(
+            line.attribute_id.create_variant != "always"
+            or len(line.product_template_value_ids._only_active()) != 1
+            for line in model_lines
+        ):
+            raise UserError(
+                "קטלוג קיים נמצא אך שורת הדגם אינה תקינה בקבוצה "
+                f"{template_data['key']}."
+            )
+
+        variant_lines = (
+            template.valid_product_template_attribute_line_ids
+            ._without_no_variant_attributes()
+        )
+        source_lines = variant_lines - model_lines
+        expected_attribute_ids = {
+            attributes_by_key[line["attribute_key"]].id
+            for line in template_data["attribute_lines"]
+        }
+        if set(source_lines.attribute_id.ids) != expected_attribute_ids:
+            raise UserError(
+                "קטלוג קיים נמצא אך רשימת המאפיינים השתנתה בקבוצה "
+                f"{template_data['key']}."
+            )
+        source_lines_by_attribute = {
+            line.attribute_id.id: line for line in source_lines
+        }
+        for line_data in template_data["attribute_lines"]:
+            attribute = attributes_by_key[line_data["attribute_key"]]
+            line = source_lines_by_attribute[attribute.id]
+            expected_value_ids = {
+                values_by_key[value["value_key"]].id
+                for value in line_data["values"]
+            }
+            actual_value_ids = set(
+                line.product_template_value_ids
+                ._only_active()
+                .product_attribute_value_id
+                .ids
+            )
+            if (
+                attribute.create_variant != "always"
+                or actual_value_ids != expected_value_ids
+            ):
+                raise UserError(
+                    "קטלוג קיים נמצא אך ערכי המאפיין השתנו בקבוצה "
+                    f"{template_data['key']} ({attribute.display_name})."
+                )
+
+        expected_combinations = {
+            tuple(
+                sorted(values_by_key[key].id for key in variant["value_keys"])
+            )
+            for variant in template_data["variants"]
+        }
+        value_sets = [
+            line.product_template_value_ids._only_active()
+            for line in variant_lines
+        ]
+        possible_combinations = set()
+        possible_count = 0
+        for combination in template._filter_combinations_impossible_by_config(
+            itertools.product(*value_sets),
+            ignore_no_variant=True,
+        ):
+            possible_count += 1
+            possible_combinations.add(
+                tuple(
+                    sorted(
+                        combination.filtered(
+                            lambda value: (
+                                not value.attribute_line_id.mdl_is_model_attribute
+                            )
+                        ).product_attribute_value_id.ids
+                    )
+                )
+            )
+        if (
+            possible_count != len(expected_combinations)
+            or possible_combinations != expected_combinations
+        ):
+            missing = len(expected_combinations - possible_combinations)
+            extra = len(possible_combinations - expected_combinations)
+            raise UserError(
+                "קטלוג קיים נמצא אך תוצאת כללי השילובים אינה תואמת למקור "
+                f"בקבוצה {template_data['key']}: "
+                f"חסרים {missing}, עודפים {extra}."
+            )
+
+
+def _validate_existing_catalog(env, data, xmlid_module):
+    owned_records = _resolve_owned_records(env, data, xmlid_module)
     expected_skus = _expected_skus(data)
     products = env["product.product"].with_context(active_test=False).search(
         [("default_code", "in", list(expected_skus))]
@@ -414,22 +704,42 @@ def _validate_existing_catalog(env, data):
             "קטלוג קיים נמצא אך אינו שלם: "
             f"חסרים {len(missing)} מק״טים ונמצאו {duplicates} כפילויות."
         )
+    products_by_sku = {product.default_code: product for product in products}
+    _validate_structured_templates(
+        data,
+        owned_records,
+        products_by_sku,
+    )
+    for item in data["unique_items"]:
+        template = owned_records[
+            _xmlid_name("unique_template", item["sku"])
+        ]
+        if products_by_sku[item["sku"]].product_tmpl_id != template:
+            raise UserError(
+                "קטלוג קיים נמצא אך הפריט הייחודי משויך לתבנית הלא נכונה: "
+                f"{item['sku']}."
+            )
     return products
 
 
 def _prepare_existing_import(env, data):
     ModelData = env["ir.model.data"].sudo()
-    current_xmlids = ModelData.search(
-        [("module", "=", XMLID_NAMESPACE)]
+    current_xmlid = ModelData.search(
+        [("module", "=", XMLID_NAMESPACE)],
+        limit=1,
     )
+    if current_xmlid:
+        products = _validate_existing_catalog(env, data, XMLID_NAMESPACE)
+        return products, "already_imported"
     legacy_xmlids = ModelData.search(
         [("module", "=", LEGACY_XMLID_NAMESPACE)]
     )
-    if current_xmlids:
-        products = _validate_existing_catalog(env, data)
-        return products, "already_imported"
     if legacy_xmlids:
-        products = _validate_existing_catalog(env, data)
+        products = _validate_existing_catalog(
+            env,
+            data,
+            LEGACY_XMLID_NAMESPACE,
+        )
         legacy_xmlids.write({"module": XMLID_NAMESPACE})
         return products, "legacy_migrated"
     return env["product.product"], False

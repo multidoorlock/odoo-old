@@ -2,6 +2,19 @@ from odoo import Command, api, fields, models
 from odoo.exceptions import ValidationError
 
 
+DEFER_VARIANT_REBUILD_CONTEXT_KEY = "mdl_defer_variant_rebuild"
+
+
+class ProductTemplate(models.Model):
+    _inherit = "product.template"
+
+    def _create_variant_ids(self):
+        """Let exclusion updates make their native and MDL state atomic."""
+        if self.env.context.get(DEFER_VARIANT_REBUILD_CONTEXT_KEY):
+            return True
+        return super()._create_variant_ids()
+
+
 class ProductTemplateAttributeExclusion(models.Model):
     _inherit = "product.template.attribute.exclusion"
 
@@ -10,34 +23,76 @@ class ProductTemplateAttributeExclusion(models.Model):
         default=False,
         index=True,
     )
+    mdl_rule_type = fields.Selection(
+        selection=[
+            ("forbidden", "שילוב אסור"),
+            ("allowed", "שילוב מותר"),
+        ],
+        string="סוג כלל",
+        default="forbidden",
+        required=True,
+        help=(
+            "שילוב אסור חוסם כל פריט שמכיל את כל הערכים שנבחרו. אם קיימים "
+            "כללי שילוב מותר, רק פריטים שמתאימים לפחות לאחד מהם יהיו זמינים."
+        ),
+    )
     mdl_combination_value_ids = fields.Many2many(
         comodel_name="product.template.attribute.value",
         relation="mdl_product_exclusion_combination_rel",
         column1="exclusion_id",
         column2="ptav_id",
-        string="שילוב אסור",
-        help="בחר בדיוק שני ערכים שלא ניתן לשלב יחד.",
+        string="ערכי הכלל",
+        help=(
+            "בחר שני ערכים או יותר ממאפיינים שונים. ניתן ליצור גם תנאי "
+            "שתלוי בדגם ובכמה מאפיינים יחד."
+        ),
     )
 
     @api.constrains(
         "mdl_is_catalog_condition",
         "mdl_combination_value_ids",
+        "mdl_rule_type",
         "product_tmpl_id",
     )
     def _check_mdl_combination_values(self):
         for rule in self.filtered("mdl_is_catalog_condition"):
             values = rule.mdl_combination_value_ids
-            if len(values) != 2:
+            if len(values) < 2:
                 raise ValidationError(
-                    "בכל שורת שילוב אסור יש לבחור בדיוק שני ערכים."
+                    "בכל כלל שילוב יש לבחור לפחות שני ערכים."
                 )
             if any(value.product_tmpl_id != rule.product_tmpl_id for value in values):
                 raise ValidationError(
-                    "ניתן לבחור רק ערכים השייכים לדגם הנוכחי."
+                    "ניתן לבחור רק ערכים השייכים לקבוצה הנוכחית."
                 )
-            if len(values.attribute_id) != 2:
+            if any(
+                value.attribute_id.create_variant == "no_variant"
+                for value in values
+            ):
                 raise ValidationError(
-                    "שילוב אסור חייב לכלול ערכים משני מאפיינים שונים."
+                    "לא ניתן להשתמש בכלל שילוב בערך של מאפיין שאינו יוצר "
+                    "וריאנטים."
+                )
+            if len(values.attribute_id) != len(values):
+                raise ValidationError(
+                    "בכל כלל ניתן לבחור ערך אחד בלבד מכל מאפיין."
+                )
+            uses_custom_rule_engine = (
+                rule.mdl_rule_type == "allowed" or len(values) > 2
+            )
+            has_no_variant_line = any(
+                line.attribute_id.create_variant == "no_variant"
+                for line in rule.product_tmpl_id.attribute_line_ids
+            )
+            if uses_custom_rule_engine and has_no_variant_line:
+                raise ValidationError(
+                    "כלל מותר או כלל של שלושה ערכים ומעלה אינו נתמך "
+                    "בקבוצה שיש בה מאפיין שאינו יוצר וריאנטים."
+                )
+            if uses_custom_rule_engine and rule.product_tmpl_id.has_dynamic_attributes():
+                raise ValidationError(
+                    "כלל מותר או כלל של שלושה ערכים ומעלה דורש שמאפייני "
+                    "הקבוצה ייצרו וריאנטים באופן מיידי."
                 )
 
     @staticmethod
@@ -49,12 +104,23 @@ class ProductTemplateAttributeExclusion(models.Model):
             values = rule.mdl_combination_value_ids.sorted(
                 self._mdl_value_sort_key
             )
-            if len(values) != 2:
+            if (
+                not rule.mdl_is_catalog_condition
+                or rule.mdl_rule_type != "forbidden"
+                or len(values) != 2
+            ):
+                rule.with_context(mdl_skip_combination_sync=True).write(
+                    {
+                        "product_template_attribute_value_id": False,
+                        "value_ids": [Command.clear()],
+                    }
+                )
                 continue
             source, target = values
             rule.with_context(mdl_skip_combination_sync=True).write(
                 {
                     "mdl_is_catalog_condition": True,
+                    "mdl_rule_type": "forbidden",
                     "product_template_attribute_value_id": source.id,
                     "value_ids": [Command.set(target.ids)],
                 }
@@ -73,12 +139,26 @@ class ProductTemplateAttributeExclusion(models.Model):
             template = rule.product_tmpl_id
             if not source or source.product_tmpl_id != template:
                 continue
-            targets = rule.value_ids.filtered(
+            native_targets = rule.value_ids
+            targets = native_targets.filtered(
                 lambda target: (
                     target.product_tmpl_id == template
                     and target.attribute_id != source.attribute_id
                 )
             ).sorted(self._mdl_value_sort_key)
+            if set(targets.ids) != set(native_targets.ids):
+                # Native Odoo exclusions can also target values belonging to
+                # optional or accessory products.  A mixed local/external rule
+                # must remain entirely native: partially normalizing it would
+                # silently discard the external part of the rule.
+                if rule.mdl_is_catalog_condition:
+                    rule.with_context(mdl_skip_combination_sync=True).write(
+                        {
+                            "mdl_is_catalog_condition": False,
+                            "mdl_combination_value_ids": [Command.clear()],
+                        }
+                    )
+                continue
             if not targets:
                 continue
 
@@ -86,6 +166,7 @@ class ProductTemplateAttributeExclusion(models.Model):
             rule.with_context(mdl_skip_combination_sync=True).write(
                 {
                     "mdl_is_catalog_condition": True,
+                    "mdl_rule_type": "forbidden",
                     "mdl_combination_value_ids": [
                         Command.set((source | first_target).ids)
                     ],
@@ -100,6 +181,7 @@ class ProductTemplateAttributeExclusion(models.Model):
                     "product_template_attribute_value_id": source.id,
                     "value_ids": [Command.set(target.ids)],
                     "mdl_is_catalog_condition": True,
+                    "mdl_rule_type": "forbidden",
                     "mdl_combination_value_ids": [
                         Command.set((source | target).ids)
                     ],
@@ -113,8 +195,8 @@ class ProductTemplateAttributeExclusion(models.Model):
 
         return normalized
 
-    def _mdl_merge_duplicate_pairs(self):
-        """Keep one row when the same unordered pair was entered twice."""
+    def _mdl_merge_duplicate_rules(self):
+        """Keep one row when the same unordered rule was entered twice."""
         if self.env.context.get("mdl_skip_combination_sync"):
             return
 
@@ -123,19 +205,21 @@ class ProductTemplateAttributeExclusion(models.Model):
             keeper = Exclusion.browse(rule_id).exists()
             if not keeper or not keeper.mdl_is_catalog_condition:
                 continue
-            pair = frozenset(keeper.mdl_combination_value_ids.ids)
-            if len(pair) != 2:
+            combination = frozenset(keeper.mdl_combination_value_ids.ids)
+            if len(combination) < 2:
                 continue
             candidates = Exclusion.search(
                 [
                     ("product_tmpl_id", "=", keeper.product_tmpl_id.id),
                     ("mdl_is_catalog_condition", "=", True),
+                    ("mdl_rule_type", "=", keeper.mdl_rule_type),
                     ("id", "!=", keeper.id),
                 ]
             )
             duplicates = candidates.filtered(
                 lambda other: (
-                    frozenset(other.mdl_combination_value_ids.ids) == pair
+                    frozenset(other.mdl_combination_value_ids.ids)
+                    == combination
                 )
             )
             if duplicates:
@@ -143,32 +227,60 @@ class ProductTemplateAttributeExclusion(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        rules = super().create(vals_list)
+        deferred_self = self.with_context(
+            **{DEFER_VARIANT_REBUILD_CONTEXT_KEY: True}
+        )
+        rules = super(
+            ProductTemplateAttributeExclusion,
+            deferred_self,
+        ).create(vals_list)
         if self.env.context.get("mdl_skip_combination_sync"):
             return rules
 
+        templates = rules.product_tmpl_id
         combination_rules = rules.filtered("mdl_combination_value_ids")
         combination_rules._mdl_sync_native_from_combination()
         native_rules = rules - combination_rules
         normalized_rules = native_rules._mdl_expand_native_rules()
-        (combination_rules | normalized_rules)._mdl_merge_duplicate_pairs()
-        return rules
+        (combination_rules | normalized_rules)._mdl_merge_duplicate_rules()
+        if not self.env.context.get(DEFER_VARIANT_REBUILD_CONTEXT_KEY):
+            templates.with_context(
+                **{DEFER_VARIANT_REBUILD_CONTEXT_KEY: False}
+            )._create_variant_ids()
+        return rules.with_env(self.env)
 
     def write(self, vals):
-        result = super().write(vals)
+        templates = self.product_tmpl_id
+        deferred_self = self.with_context(
+            **{DEFER_VARIANT_REBUILD_CONTEXT_KEY: True}
+        )
+        result = super(
+            ProductTemplateAttributeExclusion,
+            deferred_self,
+        ).write(vals)
         if self.env.context.get("mdl_skip_combination_sync"):
             return result
 
-        if "mdl_combination_value_ids" in vals:
-            self._mdl_sync_native_from_combination()
-            normalized_rules = self
+        rules = deferred_self
+        templates |= rules.product_tmpl_id
+        if {
+            "mdl_combination_value_ids",
+            "mdl_rule_type",
+            "mdl_is_catalog_condition",
+        } & vals.keys():
+            rules._mdl_sync_native_from_combination()
+            normalized_rules = rules
         elif {
             "product_tmpl_id",
             "product_template_attribute_value_id",
             "value_ids",
         } & vals.keys():
-            normalized_rules = self._mdl_expand_native_rules()
+            normalized_rules = rules._mdl_expand_native_rules()
         else:
-            normalized_rules = self
-        normalized_rules._mdl_merge_duplicate_pairs()
+            normalized_rules = rules
+        normalized_rules._mdl_merge_duplicate_rules()
+        if not self.env.context.get(DEFER_VARIANT_REBUILD_CONTEXT_KEY):
+            templates.with_context(
+                **{DEFER_VARIANT_REBUILD_CONTEXT_KEY: False}
+            )._create_variant_ids()
         return result

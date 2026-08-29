@@ -57,6 +57,7 @@ class ProductProduct(models.Model):
     )
 
     @api.depends(
+        "product_tmpl_id.mdl_catalog_managed",
         "product_tmpl_id.mdl_sku_prefix",
         "product_tmpl_id.mdl_effective_base_name",
         "product_tmpl_id.mdl_name_suffix",
@@ -64,13 +65,14 @@ class ProductProduct(models.Model):
         "product_tmpl_id.attribute_line_ids.mdl_name_mode",
         "product_tmpl_id.attribute_line_ids.mdl_name_suffix",
         "product_template_attribute_value_ids",
+        "product_template_attribute_value_ids.attribute_id.name",
         "product_template_attribute_value_ids.product_attribute_value_id.name",
         "product_template_attribute_value_ids.mdl_name_component_override",
     )
     def _compute_mdl_catalog_values(self):
         for product in self:
             template = product.product_tmpl_id
-            if not template.mdl_sku_prefix:
+            if not template.mdl_catalog_managed:
                 product.mdl_generated_name = False
                 continue
             _sku, name, _missing = template._mdl_render_catalog_values(
@@ -93,17 +95,26 @@ class ProductProduct(models.Model):
             self._mdl_sync_default_code()
         return result
 
+    def _unlink_or_archive(self, check_access=True):
+        if self.env.context.get("mdl_preserve_variant_ids"):
+            self.with_context(skip_mdl_catalog_sync=True).write(
+                {"active": False}
+            )
+            return
+        return super()._unlink_or_archive(check_access=check_access)
+
     def _mdl_sync_default_code(self):
         for product in self:
             template = product.product_tmpl_id
-            if not template.mdl_sku_prefix:
+            if not template.mdl_catalog_managed:
                 continue
             generated_sku, _name, missing = template._mdl_render_catalog_values(
                 product.product_template_attribute_value_ids
             )
-            if generated_sku and not missing and product.default_code != generated_sku:
+            desired_sku = generated_sku or False
+            if not missing and product.default_code != desired_sku:
                 product.with_context(skip_mdl_catalog_sync=True).write(
-                    {"default_code": generated_sku}
+                    {"default_code": desired_sku}
                 )
 
     @api.model
@@ -130,6 +141,7 @@ class ProductProduct(models.Model):
         "default_code",
         "product_tmpl_id",
         "mdl_generated_name",
+        "product_tmpl_id.mdl_catalog_managed",
         "product_tmpl_id.mdl_sku_prefix",
     )
     @api.depends_context(
@@ -142,16 +154,40 @@ class ProductProduct(models.Model):
     )
     def _compute_display_name(self):
         super()._compute_display_name()
-        if self.env.context.get("seller_id"):
+        if (
+            self.env.context.get("seller_id")
+            or self.env.context.get("formatted_display_name")
+        ):
             return
+        supplier_template_ids = set()
+        partner_id = self.env.context.get("partner_id")
+        if partner_id:
+            partner = self.env["res.partner"].browse(partner_id).exists()
+            partner_ids = (partner | partner.commercial_partner_id).ids
+            supplier_domain = [
+                ("product_tmpl_id", "in", self.product_tmpl_id.ids),
+                ("partner_id", "in", partner_ids),
+            ]
+            if company_id := self.env.context.get("company_id"):
+                supplier_domain.append(
+                    ("company_id", "in", (company_id, False))
+                )
+            supplier_template_ids = set(
+                self.env["product.supplierinfo"]
+                .sudo()
+                .search(supplier_domain)
+                .product_tmpl_id.ids
+            )
         display_default_code = self.env.context.get("display_default_code", True)
         display_format = self.env["ir.config_parameter"].sudo().get_param(
             VARIANT_DISPLAY_FORMAT_PARAM,
             DEFAULT_VARIANT_DISPLAY_FORMAT,
         )
         for product in self:
+            if product.product_tmpl_id.id in supplier_template_ids:
+                continue
             if not (
-                product.product_tmpl_id.mdl_sku_prefix
+                product.product_tmpl_id.mdl_catalog_managed
                 and product.mdl_generated_name
             ):
                 continue
