@@ -103,7 +103,15 @@ class ProductProduct(models.Model):
 
     def _unlink_or_archive(self, check_access=True):
         if self.env.context.get("mdl_preserve_variant_ids"):
-            self.with_context(skip_mdl_catalog_sync=True).write(
+            # Keep Odoo 19's security contract even though this migration
+            # context deliberately archives instead of attempting deletion.
+            # The explicit checks run as the caller; only the final archive
+            # uses sudo to avoid cross-company recompute/access failures, just
+            # like Odoo's native ``_unlink_or_archive`` implementation.
+            if check_access:
+                self.check_access("unlink")
+                self.check_access("write")
+            self.sudo().with_context(skip_mdl_catalog_sync=True).write(
                 {"active": False}
             )
             return

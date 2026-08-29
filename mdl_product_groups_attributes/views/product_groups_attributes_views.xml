@@ -3,7 +3,7 @@
     <record id="mdl_product_attribute_value_form_view" model="ir.ui.view">
         <field name="name">product.attribute.value.form.mdl.catalog</field>
         <field name="model">product.attribute.value</field>
-        <field name="priority" eval="5"/>
+        <field name="priority" eval="99"/>
         <field name="arch" type="xml">
             <form string="ערך מאפיין" create="0" delete="0">
                 <sheet>
@@ -95,13 +95,8 @@
                         type="object"
                         icon="fa-undo"
                         title="בטל את שינוי הטקסט וחזור לערך של Odoo"
+                        class="btn-link p-0"
                         invisible="not mdl_name_component_override"/>
-                <button name="action_mdl_reset_name_component"
-                        type="object"
-                        icon="fa-undo"
-                        title="-"
-                        class="disabled opacity-0"
-                        invisible="mdl_name_component_override"/>
                 <field name="mdl_sku_component_value"
                        string="מק״ט בקבוצה"
                        decoration-muted="not mdl_sku_component_override"/>
@@ -109,13 +104,8 @@
                         type="object"
                         icon="fa-undo"
                         title="בטל את שינוי המק״ט וחזור לערך המקור"
+                        class="btn-link p-0"
                         invisible="not mdl_sku_component_override"/>
-                <button name="action_mdl_reset_sku_component"
-                        type="object"
-                        icon="fa-undo"
-                        title="-"
-                        class="disabled opacity-0"
-                        invisible="mdl_sku_component_override"/>
             </field>
             <field name="html_color" position="attributes">
                 <attribute name="optional">hide</attribute>
@@ -268,13 +258,8 @@
                                 type="object"
                                 icon="fa-undo"
                                 title="בטל את שינוי הטקסט וחזור לערך של Odoo"
+                                class="btn-link p-0"
                                 invisible="not mdl_name_component_override"/>
-                        <button name="action_mdl_reset_name_component"
-                                type="object"
-                                icon="fa-undo"
-                                title="-"
-                                class="disabled opacity-0"
-                                invisible="mdl_name_component_override"/>
                         <field name="mdl_sku_component_value"
                                string="מק״ט בקבוצה"
                                decoration-muted="not mdl_sku_component_override"/>
@@ -282,13 +267,8 @@
                                 type="object"
                                 icon="fa-undo"
                                 title="בטל את שינוי המק״ט וחזור לערך המקור"
+                                class="btn-link p-0"
                                 invisible="not mdl_sku_component_override"/>
-                        <button name="action_mdl_reset_sku_component"
-                                type="object"
-                                icon="fa-undo"
-                                title="-"
-                                class="disabled opacity-0"
-                                invisible="mdl_sku_component_override"/>
                     </list>
                 </field>
 

@@ -1,6 +1,7 @@
 from odoo import Command
+from odoo.exceptions import AccessError
 from odoo.tests import tagged
-from odoo.tests.common import TransactionCase
+from odoo.tests.common import TransactionCase, new_test_user
 
 
 @tagged("post_install", "-at_install")
@@ -85,6 +86,26 @@ class TestVariantLifecycleHardening(TransactionCase):
         product.with_context(skip_mdl_catalog_sync=True).default_code = "STALE"
         product.active = True
         self.assertEqual(product.default_code, "1001080100")
+
+    def test_preserve_variant_ids_keeps_native_access_contract(self):
+        template = self._create_template()
+        product = template.product_variant_ids[:1]
+        restricted_user = new_test_user(
+            self.env,
+            login="variant_lifecycle_portal",
+            groups="base.group_portal",
+        )
+        restricted_product = product.with_user(restricted_user).with_context(
+            mdl_preserve_variant_ids=True
+        )
+
+        with self.assertRaises(AccessError):
+            restricted_product._unlink_or_archive(check_access=True)
+        self.assertTrue(product.active)
+
+        restricted_product._unlink_or_archive(check_access=False)
+        product.invalidate_recordset(["active"])
+        self.assertFalse(product.active)
 
     def test_catalog_rule_survives_ptav_archive_and_reactivation(self):
         template = self._create_template()

@@ -1,6 +1,6 @@
 import logging
 
-from odoo import Command, _
+from odoo import Command
 from odoo.exceptions import UserError
 from odoo.fields import Domain
 
@@ -60,7 +60,7 @@ def _adopt_external_ids(env):
             in conflicts
         )
         raise UserError(
-            _(
+            env._(
                 "לא ניתן להשלים את החלפת התוסף: מזהי XML קיימים בשני "
                 "המרחבים ומצביעים לרשומות שונות. %(details)s",
                 details=details,
@@ -117,7 +117,7 @@ def _adopt_view_keys(env):
             for old_key, old_id, new_key, new_id in collisions
         )
         raise UserError(
-            _(
+            env._(
                 "לא ניתן להשלים את החלפת התוסף: מפתח תצוגה חדש כבר "
                 "שייך לתצוגה אחרת. %(details)s",
                 details=details,
@@ -161,9 +161,34 @@ def _assert_no_old_namespace(env):
     ):
         residues.append(f"parameter: {OLD_DISPLAY_FORMAT_PARAM}")
 
+    old_module = env["ir.module.module"].sudo().search(
+        [("name", "=", OLD_MODULE)],
+        limit=1,
+    )
+    if old_module:
+        for model_name in ("ir.model.constraint", "ir.model.relation"):
+            try:
+                metadata = env[model_name]
+            except KeyError:
+                continue
+            if "module" not in metadata._fields:
+                continue
+            owned_metadata = metadata.sudo().search(
+                [("module", "=", old_module.id)],
+                limit=5,
+            )
+            if owned_metadata:
+                residues.append(
+                    "%s ownership: %s"
+                    % (
+                        model_name,
+                        ", ".join(map(str, owned_metadata.ids)),
+                    )
+                )
+
     if residues:
         raise UserError(
-            _(
+            env._(
                 "לא ניתן להסיר את גשר ההעברה לפני שכל הרשומות הועברו "
                 "מהמרחב הטכני הישן: %(details)s",
                 details="; ".join(residues),
@@ -179,7 +204,7 @@ def _validate_old_module_state(old_module):
             "transient" if state in UNSAFE_TRANSIENT_STATES else "unsupported"
         )
         raise UserError(
-            _(
+            old_module.env._(
                 "לא ניתן להחליף את התוסף %(module)s כשהוא במצב %(state)s "
                 "(%(state_kind)s). יש להשלים או לבטל תחילה את פעולת "
                 "ההתקנה/השדרוג/ההסרה.",
@@ -206,6 +231,27 @@ def _adopt_display_format(env):
     params.search([("key", "=", OLD_DISPLAY_FORMAT_PARAM)]).unlink()
 
 
+def _adopt_retired_module(env, old_module, new_module):
+    """Fully transfer bridge ownership and verify it before retirement."""
+    _validate_old_module_state(old_module)
+    if not new_module:
+        raise UserError(
+            env._(
+                "לא ניתן להעביר את %(old)s ללא רשומת המודול החלופי "
+                "%(new)s.",
+                old=OLD_MODULE,
+                new=NEW_MODULE,
+            )
+        )
+
+    _adopt_display_format(env)
+    _adopt_external_ids(env)
+    _adopt_model_metadata(env, old_module, new_module)
+    _adopt_view_keys(env)
+    _assert_no_old_namespace(env)
+    _retire_old_module(old_module)
+
+
 def _remove_retired_module_record(env):
     """Hide the completed migration bridge from Apps once it is inactive."""
     old_module = env["ir.module.module"].sudo().search(
@@ -214,13 +260,15 @@ def _remove_retired_module_record(env):
     )
     if not old_module:
         return
-    if old_module.state in ("installed", "to install", "to upgrade", "to remove"):
-        _logger.warning(
-            "Keeping retired add-on record %s because its state is %s",
-            OLD_MODULE,
-            old_module.state,
+    _validate_old_module_state(old_module)
+    if old_module.state == "installed":
+        raise UserError(
+            env._(
+                "לא ניתן להסיר את גשר ההעברה %(module)s כשהוא עדיין "
+                "מותקן. העברת הבעלות למודול החלופי לא הושלמה.",
+                module=OLD_MODULE,
+            )
         )
-        return
     _assert_no_old_namespace(env)
     old_module.unlink()
     _logger.info("Removed retired add-on record %s from Apps", OLD_MODULE)
@@ -232,25 +280,10 @@ def pre_init_hook(env):
     old_module = modules.search([("name", "=", OLD_MODULE)], limit=1)
     new_module = modules.search([("name", "=", NEW_MODULE)], limit=1)
 
-    if old_module:
-        _validate_old_module_state(old_module)
-    _adopt_display_format(env)
     if not old_module:
+        _adopt_display_format(env)
         return
-    if not new_module:
-        raise UserError(
-            _(
-                "לא ניתן להעביר את %(old)s ללא רשומת המודול החלופי "
-                "%(new)s.",
-                old=OLD_MODULE,
-                new=NEW_MODULE,
-            )
-        )
-
-    _adopt_external_ids(env)
-    _adopt_model_metadata(env, old_module, new_module)
-    _adopt_view_keys(env)
-    _retire_old_module(old_module)
+    _adopt_retired_module(env, old_module, new_module)
     _logger.info(
         "Replaced installed add-on %s with %s",
         OLD_MODULE,
@@ -260,18 +293,31 @@ def pre_init_hook(env):
 
 def migrate_catalog_structure(env):
     """Apply the idempotent catalog conversion on install or upgrade."""
+    modules = env["ir.module.module"].sudo()
+    old_module = modules.search([("name", "=", OLD_MODULE)], limit=1)
+    legacy_bridge_present = bool(old_module)
+    if old_module:
+        new_module = modules.search([("name", "=", NEW_MODULE)], limit=1)
+        _adopt_retired_module(env, old_module, new_module)
+
+    explicit_catalog_domain = (
+        Domain("mdl_sku_prefix", "!=", False)
+        | Domain("mdl_group_default_name", "!=", False)
+        | Domain("mdl_model_sku_component", "!=", False)
+        | Domain("mdl_group_name_override", "!=", False)
+        | Domain("mdl_group_sku_override", "!=", False)
+        | Domain("mdl_model_name_override", "!=", False)
+        | Domain("mdl_model_sku_override", "!=", False)
+    )
+    if legacy_bridge_present:
+        # A category SKU alone is legacy provenance only when the old bridge
+        # record proves this database went through the retired add-on.
+        explicit_catalog_domain |= Domain(
+            "categ_id.mdl_sku_component", "!=", False
+        )
     templates = env["product.template"].with_context(active_test=False).search(
         Domain("mdl_model_as_attribute", "=", False)
-        & (
-            Domain("mdl_sku_prefix", "!=", False)
-            | Domain("mdl_group_default_name", "!=", False)
-            | Domain("mdl_model_sku_component", "!=", False)
-            | Domain("mdl_group_name_override", "!=", False)
-            | Domain("mdl_group_sku_override", "!=", False)
-            | Domain("mdl_model_name_override", "!=", False)
-            | Domain("mdl_model_sku_override", "!=", False)
-            | Domain("categ_id.mdl_sku_component", "!=", False)
-        )
+        & explicit_catalog_domain
     )
     templates.with_context(skip_mdl_catalog_sync=True).write(
         {"mdl_catalog_managed": True}
@@ -434,7 +480,7 @@ def uninstall_hook(env):
         return
 
     raise UserError(
-        _(
+        env._(
             "לא ניתן להסיר את Multi Doorlock - Product Groups & Attributes "
             "כל עוד קיימים נתונים שמסתמכים עליו. נמצאו %(templates)s "
             "קבוצות פריטים מנוהלות, %(rules)s כללי קטלוג מותאמים ו-%(variants)s "

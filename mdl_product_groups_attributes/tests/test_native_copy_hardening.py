@@ -1,3 +1,4 @@
+from odoo.exceptions import UserError
 from odoo.fields import Command
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
@@ -115,6 +116,55 @@ class TestNativeCopyHardening(TransactionCase):
         )
         self.assertFalse(explicitly_native.mdl_catalog_managed)
 
+    def test_enabling_catalog_seeds_category_source_only_once(self):
+        second_category = self.env["product.category"].create(
+            {"name": "חלון", "mdl_sku_component": "20"}
+        )
+        ordinary = self.env["product.template"].create(
+            {"name": "מוצר רגיל", "categ_id": self.category.id}
+        )
+
+        ordinary.write({"mdl_catalog_managed": True})
+
+        self.assertEqual(ordinary.mdl_group_default_name, "דלת")
+        self.assertEqual(ordinary.mdl_group_default_sku, "10")
+        ordinary.categ_id = second_category
+        self.assertEqual(ordinary.mdl_group_default_name, "דלת")
+        self.assertEqual(ordinary.mdl_group_default_sku, "10")
+
+        implicit = self.env["product.template"].create(
+            {"name": "מוצר נוסף", "categ_id": second_category.id}
+        )
+        implicit.write({"mdl_group_name_override": "קבוצה מיוחדת"})
+        self.assertTrue(implicit.mdl_catalog_managed)
+        self.assertEqual(implicit.mdl_group_default_name, "חלון")
+        self.assertEqual(implicit.mdl_group_default_sku, "20")
+
+        explicit = self.env["product.template"].create(
+            {"name": "מקור מפורש", "categ_id": self.category.id}
+        )
+        explicit.write(
+            {
+                "mdl_catalog_managed": True,
+                "mdl_group_default_name": "מקור ידני",
+                "mdl_group_default_sku": "77",
+            }
+        )
+        self.assertEqual(explicit.mdl_group_default_name, "מקור ידני")
+        self.assertEqual(explicit.mdl_group_default_sku, "77")
+
+        first_bulk = self.env["product.template"].create(
+            {"name": "ראשון", "categ_id": self.category.id}
+        )
+        second_bulk = self.env["product.template"].create(
+            {"name": "שני", "categ_id": second_category.id}
+        )
+        (first_bulk | second_bulk).write({"mdl_catalog_managed": True})
+        self.assertEqual(first_bulk.mdl_group_default_name, "דלת")
+        self.assertEqual(first_bulk.mdl_group_default_sku, "10")
+        self.assertEqual(second_bulk.mdl_group_default_name, "חלון")
+        self.assertEqual(second_bulk.mdl_group_default_sku, "20")
+
     def test_native_name_drives_variants_reset_and_copy(self):
         legacy_template = self._managed_template()
         legacy_template.name = "שם מותאם לפני המרה"
@@ -146,6 +196,27 @@ class TestNativeCopyHardening(TransactionCase):
         self.assertEqual(copied.name, "שם Odoo מותאם (copy)")
         self.assertEqual(copied.mdl_native_name_override, copied.name)
         self.assertEqual(copied.mdl_effective_base_name, copied.name)
+
+        copied.mdl_effective_base_name = "בסיס ערוך בעותק"
+        self.assertEqual(copied.mdl_native_name_override, "בסיס ערוך בעותק")
+        self.assertEqual(copied.name, "בסיס ערוך בעותק")
+        self.assertEqual(copied.mdl_effective_base_name, "בסיס ערוך בעותק")
+        self.assertTrue(
+            all(
+                name.startswith("בסיס ערוך בעותק")
+                for name in copied.product_variant_ids.mapped(
+                    "mdl_generated_name"
+                )
+            )
+        )
+
+        copied.mdl_effective_base_name = False
+        self.assertEqual(copied.mdl_native_name_override, "—")
+        self.assertFalse(copied.mdl_effective_base_name)
+        self.assertNotEqual(copied.name, "—")
+        copied.action_mdl_reset_base_name()
+        self.assertFalse(copied.mdl_native_name_override)
+        self.assertEqual(copied.name, "דלת (copy) כנף")
 
         explicitly_named = template.copy({"name": "שם העתק מפורש"})
         self.assertEqual(explicitly_named.name, "שם העתק מפורש")
@@ -294,6 +365,108 @@ class TestNativeCopyHardening(TransactionCase):
         self.assertEqual(wing_template_value.mdl_sku_component_override, "01")
         self.assertFalse(frame_template_value.mdl_sku_component_override)
 
+    def test_group_only_multi_model_line_keeps_native_line_configuration(self):
+        model_attribute = self.env["product.attribute"].create(
+            {"name": "דגם", "create_variant": "always"}
+        )
+        first_model = self.env["product.attribute.value"].create(
+            {"name": "ראשון", "attribute_id": model_attribute.id}
+        )
+        second_model = self.env["product.attribute.value"].create(
+            {"name": "שני", "attribute_id": model_attribute.id}
+        )
+        template = self.env["product.template"].create(
+            {
+                "name": "דלת",
+                "categ_id": self.category.id,
+                "mdl_group_default_name": "דלת",
+                "mdl_group_default_sku": "10",
+                "attribute_line_ids": [
+                    Command.create(
+                        {
+                            "attribute_id": model_attribute.id,
+                            "sequence": 37,
+                            "mdl_name_mode": "attribute_value",
+                            "mdl_name_suffix": " / ",
+                            "mdl_include_in_sku": False,
+                            "value_ids": [
+                                Command.set((first_model | second_model).ids)
+                            ],
+                        }
+                    )
+                ],
+            }
+        )
+        model_line = template.attribute_line_ids
+        values_before = set(model_line.value_ids.ids)
+        product_ids_before = set(
+            template.with_context(active_test=False).product_variant_ids.ids
+        )
+        line_state_before = (
+            model_line.active,
+            model_line.sequence,
+            model_line.mdl_name_mode,
+            model_line.mdl_name_suffix,
+            model_line.mdl_include_in_sku,
+        )
+
+        template._mdl_convert_models_to_attributes()
+
+        self.assertTrue(model_line.mdl_is_model_attribute)
+        self.assertEqual(set(model_line.value_ids.ids), values_before)
+        self.assertEqual(
+            set(template.with_context(active_test=False).product_variant_ids.ids),
+            product_ids_before,
+        )
+        self.assertEqual(
+            (
+                model_line.active,
+                model_line.sequence,
+                model_line.mdl_name_mode,
+                model_line.mdl_name_suffix,
+                model_line.mdl_include_in_sku,
+            ),
+            line_state_before,
+        )
+        self.assertFalse(
+            model_line.product_template_value_ids.filtered(
+                lambda value: (
+                    value.mdl_name_component_override
+                    or value.mdl_sku_component_override
+                )
+            )
+        )
+
+    def test_duplicate_normalized_global_model_values_fail_before_conversion(self):
+        model_attribute = self.env["product.template"]._mdl_get_model_attribute()
+        unique_model_name = "Native Duplicate Guard 93817"
+        self.env["product.attribute.value"].create(
+            [
+                {
+                    "name": unique_model_name.upper(),
+                    "attribute_id": model_attribute.id,
+                },
+                {
+                    "name": unique_model_name.lower(),
+                    "attribute_id": model_attribute.id,
+                },
+            ]
+        )
+        first = self.env["product.template"].create(
+            {
+                "name": f"דלת {unique_model_name}",
+                "categ_id": self.category.id,
+                "mdl_group_default_name": "דלת",
+            }
+        )
+        second = self._managed_template()
+
+        with self.assertRaises(UserError):
+            (second | first)._mdl_convert_models_to_attributes()
+
+        self.assertFalse(first.mdl_model_as_attribute)
+        self.assertFalse(second.mdl_model_as_attribute)
+
     def test_duplicate_codes_wait_for_a_distinct_group_sku(self):
         template = self._managed_template()
         template._mdl_convert_models_to_attributes()
@@ -318,14 +491,35 @@ class TestNativeCopyHardening(TransactionCase):
             {False},
         )
 
+        copied.mdl_group_default_sku = "10"
+        self.assertTrue(copied.mdl_copy_requires_new_sku)
+        self.assertEqual(
+            set(copied.product_variant_ids.mapped("default_code")),
+            {False},
+        )
+        copied.mdl_group_sku_override = "10"
+        copied.mdl_group_default_sku = "99"
+        self.assertTrue(copied.mdl_copy_requires_new_sku)
+        self.assertEqual(copied.mdl_group_sku_value, "10")
+
         copied.mdl_group_sku_override = "20"
         self.assertFalse(copied.mdl_copy_requires_new_sku)
+        self.assertFalse(copied.mdl_copy_source_group_sku)
+        self.assertEqual(copied.mdl_group_default_sku, "20")
+        self.assertFalse(copied.mdl_group_sku_override)
         copied_codes = set(
             copied.with_context(active_test=False)
             .product_variant_ids.mapped("default_code")
         )
         self.assertNotIn(False, copied_codes)
         self.assertFalse(source_codes & copied_codes)
+        copied.action_mdl_reset_base_sku()
+        self.assertEqual(copied.mdl_group_default_sku, "20")
+        self.assertFalse(copied.mdl_group_sku_override)
+        self.assertEqual(
+            set(copied.product_variant_ids.mapped("default_code")),
+            copied_codes,
+        )
 
         copied_with_sku = template.copy({"mdl_group_default_sku": "30"})
         self.assertFalse(copied_with_sku.mdl_copy_requires_new_sku)
@@ -333,3 +527,26 @@ class TestNativeCopyHardening(TransactionCase):
             source_codes
             & set(copied_with_sku.product_variant_ids.mapped("default_code"))
         )
+        same_source_copy = template.copy({"mdl_group_default_sku": "10"})
+        self.assertTrue(same_source_copy.mdl_copy_requires_new_sku)
+        self.assertEqual(
+            set(same_source_copy.product_variant_ids.mapped("default_code")),
+            {False},
+        )
+
+        source_with_override = self._managed_template()
+        source_with_override._mdl_convert_models_to_attributes()
+        source_with_override.mdl_group_sku_override = "15"
+        explicit_source_copy = source_with_override.copy(
+            {"mdl_group_default_sku": "30"}
+        )
+        self.assertFalse(explicit_source_copy.mdl_copy_requires_new_sku)
+        self.assertEqual(explicit_source_copy.mdl_group_default_sku, "30")
+        self.assertFalse(explicit_source_copy.mdl_group_sku_override)
+
+        explicit_override_copy = template.copy(
+            {"mdl_group_sku_override": "40"}
+        )
+        self.assertFalse(explicit_override_copy.mdl_copy_requires_new_sku)
+        self.assertEqual(explicit_override_copy.mdl_group_default_sku, "40")
+        self.assertFalse(explicit_override_copy.mdl_group_sku_override)

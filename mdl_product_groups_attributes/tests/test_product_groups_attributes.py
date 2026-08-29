@@ -1165,6 +1165,21 @@ class TestProductGroupsAttributes(TransactionCase):
         )
         self.assertFalse(template.mdl_sku_prefix)
 
+        Modules = self.env["ir.module.module"].sudo()
+        bridge = Modules.search(
+            [("name", "=", "mdl_product_catalog")],
+            limit=1,
+        )
+        if bridge:
+            bridge.write({"state": "uninstalled"})
+        else:
+            bridge = Modules.create(
+                {
+                    "name": "mdl_product_catalog",
+                    "state": "uninstalled",
+                }
+            )
+
         migrate_catalog_structure(self.env)
 
         self.assertTrue(template.mdl_catalog_managed)
