@@ -26,11 +26,32 @@ class ProductTemplateAttributeLine(models.Model):
             "אוטומטית; סימנים כמו / או + נשארים צמודים."
         ),
     )
+    mdl_include_in_sku = fields.Boolean(
+        string="כלול במק״ט",
+        default=True,
+        help=(
+            "כאשר מסומן, רכיב המק״ט של הערך מתווסף למק״ט לפי סדר השורה."
+        ),
+    )
+    mdl_variant_creation_mode = fields.Selection(
+        related="attribute_id.create_variant",
+        string="יצירת וריאנטים",
+        readonly=True,
+    )
+    mdl_is_model_attribute = fields.Boolean(
+        string="שורת דגם שהוסבה",
+        default=False,
+        copy=True,
+        help=(
+            "סימון תאימות טכני בלבד. השורה מתנהגת כמו כל מאפיין אחר."
+        ),
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
         lines = super().create(vals_list)
         if not self.env.context.get("skip_mdl_catalog_sync"):
+            lines.product_tmpl_id._mdl_ensure_full_model_names()
             lines.product_tmpl_id._mdl_sync_variant_codes()
         return lines
 
@@ -38,12 +59,15 @@ class ProductTemplateAttributeLine(models.Model):
         templates_before = self.product_tmpl_id
         result = super().write(vals)
         if not self.env.context.get("skip_mdl_catalog_sync"):
-            (templates_before | self.product_tmpl_id)._mdl_sync_variant_codes()
+            templates = templates_before | self.product_tmpl_id
+            templates._mdl_ensure_full_model_names()
+            templates._mdl_sync_variant_codes()
         return result
 
     def unlink(self):
         templates = self.product_tmpl_id
         result = super().unlink()
         if not self.env.context.get("skip_mdl_catalog_sync"):
+            templates._mdl_ensure_full_model_names()
             templates._mdl_sync_variant_codes()
         return result

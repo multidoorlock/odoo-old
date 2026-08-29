@@ -1,7 +1,11 @@
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.fields import Command
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
+
+from odoo.addons.mdl_product_groups_attributes.hooks import (
+    migrate_catalog_structure,
+)
 
 
 @tagged("post_install", "-at_install")
@@ -74,7 +78,7 @@ class TestProductGroupsAttributes(TransactionCase):
     def test_generates_standard_internal_reference_and_final_name(self):
         template = self._create_template()
         self.assertEqual(template.name, "דלת כנף")
-        self.assertEqual(template.display_name, "1001 - דלת כנף")
+        self.assertEqual(template.display_name, "דלת כנף")
         self.assertEqual(len(template.product_variant_ids), 2)
         by_width = {
             product.product_template_attribute_value_ids.filtered(
@@ -329,6 +333,94 @@ class TestProductGroupsAttributes(TransactionCase):
         self.assertFalse(native_rule.exists())
         self.assertEqual(len(template.product_variant_ids), 2)
 
+    def test_switching_forbidden_rule_to_allowed_is_atomic(self):
+        template = self._create_template()
+        values = template.mdl_attribute_value_ids
+        width_80 = values.filtered(
+            lambda value: value.product_attribute_value_id == self.width_80
+        )
+        height_100 = values.filtered(
+            lambda value: value.product_attribute_value_id == self.height_100
+        )
+        rule = self.env["product.template.attribute.exclusion"].create(
+            {
+                "product_tmpl_id": template.id,
+                "mdl_is_catalog_condition": True,
+                "mdl_rule_type": "forbidden",
+                "mdl_combination_value_ids": [
+                    Command.set((width_80 | height_100).ids)
+                ],
+            }
+        )
+        self.assertEqual(
+            template.product_variant_ids.product_template_attribute_value_ids
+            .product_attribute_value_id.filtered(
+                lambda value: value.attribute_id == self.width
+            ),
+            self.width_90,
+        )
+
+        rule.mdl_rule_type = "allowed"
+
+        self.assertFalse(rule.product_template_attribute_value_id)
+        self.assertFalse(rule.value_ids)
+        self.assertEqual(
+            template.product_variant_ids.product_template_attribute_value_ids
+            .product_attribute_value_id.filtered(
+                lambda value: value.attribute_id == self.width
+            ),
+            self.width_80,
+        )
+
+    def test_no_variant_value_cannot_be_used_in_combination_rule(self):
+        template = self._create_template()
+        note_attribute = self.env["product.attribute"].create(
+            {"name": "הערה", "create_variant": "no_variant"}
+        )
+        note_value = self.env["product.attribute.value"].create(
+            {"name": "מיוחד", "attribute_id": note_attribute.id}
+        )
+        template.attribute_line_ids = [
+            Command.create(
+                {
+                    "attribute_id": note_attribute.id,
+                    "value_ids": [Command.set(note_value.ids)],
+                }
+            )
+        ]
+        values = template.mdl_attribute_value_ids
+        width_80 = values.filtered(
+            lambda value: value.product_attribute_value_id == self.width_80
+        )
+        note_template_value = values.filtered(
+            lambda value: value.product_attribute_value_id == note_value
+        )
+        with self.assertRaises(ValidationError):
+            self.env["product.template.attribute.exclusion"].create(
+                {
+                    "product_tmpl_id": template.id,
+                    "mdl_is_catalog_condition": True,
+                    "mdl_rule_type": "forbidden",
+                    "mdl_combination_value_ids": [
+                        Command.set((width_80 | note_template_value).ids)
+                    ],
+                }
+            )
+        height_100 = values.filtered(
+            lambda value: value.product_attribute_value_id == self.height_100
+        )
+        with self.assertRaises(ValidationError):
+            self.env["product.template.attribute.exclusion"].create(
+                {
+                    "product_tmpl_id": template.id,
+                    "mdl_is_catalog_condition": True,
+                    "mdl_rule_type": "allowed",
+                    "mdl_combination_value_ids": [
+                        Command.set((width_80 | height_100).ids)
+                    ],
+                }
+            )
+
     def test_symmetric_exclusion_rows_are_collapsed(self):
         template = self._create_template()
         width_value = template.mdl_attribute_value_ids.filtered(
@@ -362,6 +454,53 @@ class TestProductGroupsAttributes(TransactionCase):
             width_value | height_value,
         )
         self.assertEqual(len(template.product_variant_ids), 1)
+
+    def test_mixed_optional_product_exclusion_stays_fully_native(self):
+        template = self._create_template()
+        optional_template = self.env["product.template"].create(
+            {
+                "name": "אביזר",
+                "attribute_line_ids": [
+                    Command.create(
+                        {
+                            "attribute_id": self.height.id,
+                            "value_ids": [Command.set(self.height_100.ids)],
+                        }
+                    )
+                ],
+            }
+        )
+        template.optional_product_ids = [Command.set(optional_template.ids)]
+        source = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.width_80
+        )
+        local_target = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.height_100
+        )
+        external_target = (
+            optional_template.attribute_line_ids.product_template_value_ids
+        )
+        native_targets = local_target | external_target
+        rule = self.env[
+            "product.template.attribute.exclusion"
+        ].with_context(mdl_skip_combination_sync=True).create(
+            {
+                "product_tmpl_id": template.id,
+                "product_template_attribute_value_id": source.id,
+                "value_ids": [Command.set(native_targets.ids)],
+                "mdl_is_catalog_condition": True,
+                "mdl_combination_value_ids": [
+                    Command.set((source | local_target).ids)
+                ],
+            }
+        )
+
+        normalized = rule._mdl_expand_native_rules()
+
+        self.assertFalse(normalized)
+        self.assertEqual(set(rule.value_ids.ids), set(native_targets.ids))
+        self.assertFalse(rule.mdl_is_catalog_condition)
+        self.assertFalse(rule.mdl_combination_value_ids)
 
     def test_base_defaults_and_overrides_drive_the_result(self):
         template = self._create_template()
@@ -578,30 +717,676 @@ class TestProductGroupsAttributes(TransactionCase):
             )
         )
 
-    def test_group_change_updates_model_and_final_names(self):
+    def test_category_change_does_not_change_group_names_or_skus(self):
         template = self._create_template()
+        original_codes = set(template.product_variant_ids.mapped("default_code"))
+        original_names = set(
+            template.product_variant_ids.mapped("mdl_generated_name")
+        )
         frame_category = self.env["product.category"].create(
             {"name": "משקוף", "mdl_sku_component": "11"}
         )
         template.categ_id = frame_category
-        self.assertEqual(template.name, "משקוף כנף")
+        self.assertEqual(template.categ_id, frame_category)
+        self.assertEqual(template.mdl_group_default_name, "דלת")
+        self.assertEqual(
+            set(template.product_variant_ids.mapped("default_code")),
+            original_codes,
+        )
+        self.assertEqual(
+            set(template.product_variant_ids.mapped("mdl_generated_name")),
+            original_names,
+        )
+
+    def test_attribute_name_mode_recomputes_after_native_attribute_rename(self):
+        template = self._create_template()
+        width_line = template.attribute_line_ids.filtered(
+            lambda line: line.attribute_id == self.width
+        )
+        width_line.mdl_name_mode = "attribute_value"
+        product = template.product_variant_ids.filtered(
+            lambda variant: self.width_80
+            in variant.product_template_attribute_value_ids.product_attribute_value_id
+        )
+        self.assertIn("רוחב 80", product.mdl_generated_name)
+
+        self.width.name = "מידה"
+
+        self.assertIn("מידה 80", product.mdl_generated_name)
+        self.assertNotIn("רוחב 80", product.mdl_generated_name)
+
+    def test_category_rename_does_not_change_the_catalog_group(self):
+        template = self._create_template()
+        original_codes = set(template.product_variant_ids.mapped("default_code"))
+        original_names = set(
+            template.product_variant_ids.mapped("mdl_generated_name")
+        )
+        self.category.name = "דלתות"
+        self.assertEqual(template.mdl_group_default_name, "דלת")
+        self.assertEqual(
+            set(template.product_variant_ids.mapped("default_code")),
+            original_codes,
+        )
+        self.assertEqual(
+            set(template.product_variant_ids.mapped("mdl_generated_name")),
+            original_names,
+        )
+
+    def test_model_is_converted_to_an_ordered_regular_attribute(self):
+        template = self._create_template()
+        products_before = template.product_variant_ids
+        expected_before = {
+            product.id: (product.default_code, product.mdl_generated_name)
+            for product in products_before
+        }
+
+        converted = template._mdl_convert_models_to_attributes()
+
+        self.assertEqual(converted, template)
+        self.assertTrue(template.mdl_model_as_attribute)
+        model_line = template.attribute_line_ids.filtered(
+            "mdl_is_model_attribute"
+        )
+        self.assertEqual(len(model_line), 1)
+        self.assertEqual(model_line.attribute_id.name, "דגם")
+        self.assertEqual(model_line.value_ids.name, "כנף")
+        self.assertEqual(model_line.value_ids.mdl_sku_component, "01")
+        model_template_value = model_line.product_template_value_ids
+        self.assertFalse(model_template_value.mdl_sku_component_override)
+        self.assertLess(
+            model_line.sequence,
+            min((template.attribute_line_ids - model_line).mapped("sequence")),
+        )
+        self.assertEqual(template.mdl_effective_base_name, "דלת")
+        self.assertEqual(template.mdl_sku_prefix, "10")
+        self.assertEqual(template.product_variant_ids.ids, products_before.ids)
+        self.assertEqual(
+            {
+                product.id: (product.default_code, product.mdl_generated_name)
+                for product in template.product_variant_ids
+            },
+            expected_before,
+        )
+
+        model_template_value.mdl_sku_component_value = "99"
+        self.assertEqual(model_template_value.mdl_sku_component_override, "99")
+        model_template_value.action_mdl_reset_sku_component()
+        self.assertFalse(model_template_value.mdl_sku_component_override)
+        self.assertEqual(
+            {
+                product.id: product.default_code
+                for product in template.product_variant_ids
+            },
+            {
+                product_id: values[0]
+                for product_id, values in expected_before.items()
+            },
+        )
+
+        model_line.sequence = 30
+        self.assertEqual(
+            set(template.product_variant_ids.mapped("mdl_generated_name")),
+            {
+                "דלת 80/100 כנף +ידית",
+                "דלת 90/100 כנף +ידית",
+            },
+        )
+        self.assertEqual(
+            set(template.product_variant_ids.mapped("default_code")),
+            {"108010001", "109010001"},
+        )
+
+    def test_native_template_name_tracks_single_or_multiple_model_values(self):
+        template = self._create_template()
+        template._mdl_convert_models_to_attributes()
+        model_line = template.attribute_line_ids.filtered(
+            "mdl_is_model_attribute"
+        )
+        first_model = model_line.value_ids
+        second_model = self.env["product.attribute.value"].create(
+            {
+                "name": "משקוף",
+                "attribute_id": model_line.attribute_id.id,
+                "mdl_sku_component": "02",
+            }
+        )
+        self.assertEqual(template.name, "דלת כנף")
+
+        model_line.value_ids = [Command.set((first_model | second_model).ids)]
+
+        self.assertEqual(template.name, "דלת")
         self.assertTrue(
             all(
-                product.mdl_generated_name.startswith("משקוף כנף")
-                for product in template.product_variant_ids
+                name.count("כנף") <= 1 and name.count("משקוף") <= 1
+                for name in template.product_variant_ids.mapped(
+                    "mdl_generated_name"
+                )
             )
         )
 
-    def test_group_rename_updates_model_and_final_names(self):
+        model_line.value_ids = [Command.set(first_model.ids)]
+        self.assertEqual(template.name, "דלת כנף")
+
+    def test_copy_preserves_converted_structure_overrides_and_rules(self):
         template = self._create_template()
-        self.category.name = "דלתות"
-        self.assertEqual(template.name, "דלתות כנף")
+        template._mdl_convert_models_to_attributes()
+        width_value = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.width_80
+        )
+        width_value.write(
+            {
+                "mdl_name_component_value": "80 ס״מ",
+                "mdl_sku_component_value": "080",
+            }
+        )
+        source_rule = self.env[
+            "product.template.attribute.exclusion"
+        ].create(
+            {
+                "product_tmpl_id": template.id,
+                "mdl_is_catalog_condition": True,
+                "mdl_rule_type": "forbidden",
+                "mdl_combination_value_ids": [
+                    Command.set(
+                        template.mdl_attribute_value_ids.filtered(
+                            lambda value: value.product_attribute_value_id
+                            in (self.width_90 | self.height_100)
+                        ).ids
+                    )
+                ],
+            }
+        )
+
+        copied = template.copy()
+
+        self.assertNotEqual(copied.id, template.id)
+        self.assertTrue(copied.mdl_model_as_attribute)
+        self.assertEqual(
+            len(copied.attribute_line_ids.filtered("mdl_is_model_attribute")),
+            1,
+        )
+        copied_width = copied.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.width_80
+        )
+        self.assertEqual(copied_width.mdl_name_component_override, "80 ס״מ")
+        self.assertEqual(copied_width.mdl_sku_component_override, "080")
+        copied_rules = copied.mdl_exclusion_ids.filtered(
+            "mdl_is_catalog_condition"
+        )
+        self.assertEqual(len(copied_rules), 1)
+        self.assertEqual(copied_rules.mdl_rule_type, source_rule.mdl_rule_type)
         self.assertTrue(
             all(
-                product.mdl_generated_name.startswith("דלתות כנף")
-                for product in template.product_variant_ids
+                name.count("כנף") <= 1
+                for name in copied.product_variant_ids.mapped(
+                    "mdl_generated_name"
+                )
             )
         )
+
+    def test_bulk_template_copy_uses_odoo_multi_record_contract(self):
+        first = self._create_template()
+        second = self._create_template()
+        (first | second)._mdl_convert_models_to_attributes()
+
+        copied = (first | second).copy()
+
+        self.assertEqual(len(copied), 2)
+        for source, target in zip(first | second, copied):
+            self.assertNotEqual(source.id, target.id)
+            self.assertTrue(target.mdl_model_as_attribute)
+            self.assertEqual(
+                target.mdl_group_default_name,
+                f"{source.mdl_group_default_name} (copy)",
+            )
+
+    def test_copy_with_explicit_name_preserves_odoo_copy_default(self):
+        template = self._create_template()
+        template._mdl_convert_models_to_attributes()
+
+        copied = template.copy({"name": "קבוצה מועתקת"})
+
+        self.assertEqual(copied.name, "קבוצה מועתקת")
+        self.assertEqual(copied.mdl_group_default_name, "קבוצה מועתקת")
+        copied._mdl_ensure_full_model_names()
+        self.assertEqual(copied.name, "קבוצה מועתקת")
+
+        separate_group = template.copy(
+            {
+                "name": "שם תבנית מפורש",
+                "mdl_group_default_name": "שם קבוצה מפורש",
+            }
+        )
+        separate_group._mdl_ensure_full_model_names()
+        self.assertEqual(separate_group.name, "שם תבנית מפורש")
+        self.assertEqual(
+            separate_group.mdl_group_default_name,
+            "שם קבוצה מפורש",
+        )
+
+    def test_copy_ignores_historical_archived_template_values(self):
+        template = self._create_template()
+        width_line = template.attribute_line_ids.filtered(
+            lambda line: line.attribute_id == self.width
+        )
+        width_line.value_ids = [Command.set(self.width_80.ids)]
+        historical = width_line.product_template_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.width_90
+        )
+        if not historical:
+            historical = self.env["product.template.attribute.value"].create(
+                {
+                    "attribute_line_id": width_line.id,
+                    "product_attribute_value_id": self.width_90.id,
+                    "ptav_active": False,
+                }
+            )
+        else:
+            historical.ptav_active = False
+        self.assertFalse(historical.ptav_active)
+
+        copied = template.copy()
+
+        self.assertTrue(copied)
+        self.assertFalse(
+            copied.attribute_line_ids.product_template_value_ids.filtered(
+                lambda value: (
+                    not value.ptav_active
+                    and value.product_attribute_value_id == self.width_90
+                )
+            )
+        )
+
+    def test_field_specific_reset_matches_native_undo_behavior(self):
+        template = self._create_template()
+        value = template.mdl_attribute_value_ids.filtered(
+            lambda item: item.product_attribute_value_id == self.width_80
+        )
+        value.write(
+            {
+                "mdl_name_component_value": "80 ס״מ",
+                "mdl_sku_component_value": "080",
+            }
+        )
+
+        value.action_mdl_reset_name_component()
+
+        self.assertFalse(value.mdl_name_component_override)
+        self.assertEqual(value.mdl_sku_component_override, "080")
+
+        value.write({"mdl_name_component_value": "80 ס״מ"})
+        value.action_mdl_reset_sku_component()
+
+        self.assertEqual(value.mdl_name_component_override, "80 ס״מ")
+        self.assertFalse(value.mdl_sku_component_override)
+
+    def test_sync_clears_stale_code_when_every_component_is_blank(self):
+        no_code_value = self.env["product.attribute.value"].create(
+            {
+                "name": "ללא קוד",
+                "attribute_id": self.width.id,
+                "mdl_sku_component": "—",
+            }
+        )
+        template = self.env["product.template"].create(
+            {
+                "name": "ללא קוד",
+                "categ_id": self.category.id,
+                "mdl_group_sku_override": "—",
+                "mdl_model_sku_override": "—",
+                "attribute_line_ids": [
+                    Command.create(
+                        {
+                            "attribute_id": self.width.id,
+                            "value_ids": [Command.set(no_code_value.ids)],
+                        }
+                    )
+                ],
+            }
+        )
+        product = template.product_variant_id
+        product.with_context(skip_mdl_catalog_sync=True).default_code = "STALE"
+
+        product._mdl_sync_default_code()
+
+        self.assertFalse(product.default_code)
+
+    def test_install_upgrade_migration_preserves_ids_and_archive_state(self):
+        template = self._create_template()
+        variants = template.product_variant_ids.sorted("id")
+        manually_archived = variants[0]
+        legacy_blocked = variants[1]
+        original_ids = set(variants.ids)
+        manually_archived.active = False
+        legacy_blocked.with_context(skip_mdl_catalog_sync=True).write(
+            {"mdl_catalog_allowed": False, "active": False}
+        )
+
+        migrate_catalog_structure(self.env)
+
+        migrated_variants = template.with_context(
+            active_test=False
+        ).product_variant_ids
+        self.assertEqual(set(migrated_variants.ids), original_ids)
+        self.assertFalse(manually_archived.active)
+        self.assertFalse(legacy_blocked.active)
+        self.assertTrue(legacy_blocked.mdl_catalog_allowed)
+        self.assertTrue(template.mdl_model_as_attribute)
+        exact_rules = template.mdl_exclusion_ids.filtered(
+            lambda rule: (
+                rule.mdl_is_catalog_condition
+                and rule.mdl_rule_type == "forbidden"
+                and len(rule.mdl_combination_value_ids) == 3
+            )
+        )
+        self.assertEqual(len(exact_rules), 1)
+
+    def test_migration_preserves_archive_on_already_converted_template(self):
+        template = self._create_template()
+        template._mdl_convert_models_to_attributes()
+        variants = template.product_variant_ids.sorted("id")
+        manually_archived = variants[0]
+        original_ids = set(variants.ids)
+        manually_archived.active = False
+
+        migrate_catalog_structure(self.env)
+
+        migrated_variants = template.with_context(
+            active_test=False
+        ).product_variant_ids
+        self.assertEqual(set(migrated_variants.ids), original_ids)
+        self.assertFalse(manually_archived.active)
+
+    def test_migration_keeps_legacy_flag_when_nary_rule_is_not_supported(self):
+        note_attribute = self.env["product.attribute"].create(
+            {"name": "הערה", "create_variant": "no_variant"}
+        )
+        note_value = self.env["product.attribute.value"].create(
+            {
+                "name": "מיוחד",
+                "attribute_id": note_attribute.id,
+                "mdl_sku_component": "—",
+            }
+        )
+        template = self._create_template()
+        template.attribute_line_ids = [
+            Command.create(
+                {
+                    "attribute_id": note_attribute.id,
+                    "value_ids": [Command.set(note_value.ids)],
+                }
+            )
+        ]
+        legacy_blocked = template.product_variant_ids[:1]
+        legacy_blocked.with_context(skip_mdl_catalog_sync=True).write(
+            {"mdl_catalog_allowed": False, "active": False}
+        )
+
+        migrate_catalog_structure(self.env)
+
+        self.assertFalse(legacy_blocked.mdl_catalog_allowed)
+        self.assertFalse(legacy_blocked.active)
+        self.assertFalse(
+            template.mdl_exclusion_ids.filtered(
+                lambda rule: (
+                    rule.mdl_is_catalog_condition
+                    and len(rule.mdl_combination_value_ids) > 2
+                )
+            )
+        )
+
+    def test_preserve_variant_ids_context_accepts_odoo_access_argument(self):
+        template = self._create_template()
+        product = template.product_variant_ids[:1]
+
+        product.with_context(
+            mdl_preserve_variant_ids=True
+        )._unlink_or_archive(check_access=False)
+
+        self.assertTrue(product.exists())
+        self.assertFalse(product.active)
+
+    def test_migration_detects_legacy_template_from_category_code_only(self):
+        template = self.env["product.template"].create(
+            {
+                "name": self.category.name,
+                "categ_id": self.category.id,
+            }
+        )
+        product_id = template.product_variant_id.id
+        template.with_context(skip_mdl_catalog_sync=True).write(
+            {
+                "mdl_catalog_managed": False,
+                "mdl_group_default_name": False,
+                "mdl_group_default_sku": False,
+                "mdl_model_sku_component": False,
+                "mdl_model_as_attribute": False,
+            }
+        )
+        self.assertFalse(template.mdl_sku_prefix)
+
+        migrate_catalog_structure(self.env)
+
+        self.assertTrue(template.mdl_catalog_managed)
+        self.assertTrue(template.mdl_model_as_attribute)
+        self.assertEqual(template.mdl_group_default_name, self.category.name)
+        self.assertEqual(template.mdl_sku_prefix, self.category.mdl_sku_component)
+        self.assertEqual(template.product_variant_id.id, product_id)
+        self.assertFalse(
+            template.attribute_line_ids.filtered("mdl_is_model_attribute")
+        )
+
+    def test_migration_removes_inactive_bridge_from_apps(self):
+        Modules = self.env["ir.module.module"].sudo()
+        bridge = Modules.search(
+            [("name", "=", "mdl_product_catalog")],
+            limit=1,
+        )
+        if bridge:
+            bridge.write({"state": "uninstalled"})
+        else:
+            bridge = Modules.create(
+                {
+                    "name": "mdl_product_catalog",
+                    "state": "uninstalled",
+                }
+            )
+
+        migrate_catalog_structure(self.env)
+
+        self.assertFalse(bridge.exists())
+
+    def test_group_without_distinct_model_does_not_duplicate_its_name(self):
+        template = self.env["product.template"].create(
+            {
+                "name": "דלת",
+                "categ_id": self.category.id,
+                "mdl_model_sku_component": "01",
+                "attribute_line_ids": [
+                    Command.create(
+                        {
+                            "attribute_id": self.width.id,
+                            "value_ids": [Command.set(self.width_80.ids)],
+                        }
+                    )
+                ],
+            }
+        )
+        product = template.product_variant_id
+        product_id = product.id
+        code_before = product.default_code
+        name_before = product.mdl_generated_name
+
+        template._mdl_convert_models_to_attributes()
+
+        self.assertTrue(template.mdl_model_as_attribute)
+        self.assertFalse(
+            template.attribute_line_ids.filtered("mdl_is_model_attribute")
+        )
+        self.assertEqual(template.product_variant_id.id, product_id)
+        self.assertEqual(template.product_variant_id.default_code, code_before)
+        self.assertEqual(template.product_variant_id.mdl_generated_name, name_before)
+        self.assertNotIn("דלת דלת", template.product_variant_id.mdl_generated_name)
+
+        template.action_mdl_reset_base_values()
+        self.assertEqual(template.product_variant_id.default_code, code_before)
+
+    def test_attribute_can_be_excluded_from_sku_without_hiding_its_name(self):
+        template = self._create_template()
+        height_line = template.attribute_line_ids.filtered(
+            lambda line: line.attribute_id == self.height
+        )
+        height_line.mdl_include_in_sku = False
+
+        self.assertEqual(
+            set(template.product_variant_ids.mapped("default_code")),
+            {"100180", "100190"},
+        )
+        self.assertEqual(
+            set(template.product_variant_ids.mapped("mdl_generated_name")),
+            {
+                "דלת כנף 80/100 +ידית",
+                "דלת כנף 90/100 +ידית",
+            },
+        )
+
+    def test_multi_value_rule_can_depend_on_model_and_other_attributes(self):
+        template = self._create_template()
+        template._mdl_convert_models_to_attributes()
+        model_line = template.attribute_line_ids.filtered(
+            "mdl_is_model_attribute"
+        )
+        second_model = self.env["product.attribute.value"].create(
+            {
+                "name": "כנף מתקדמת",
+                "attribute_id": model_line.attribute_id.id,
+                "mdl_sku_component": "02",
+            }
+        )
+        model_line.write(
+            {"value_ids": [Command.link(second_model.id)]}
+        )
+        self.assertEqual(len(template.product_variant_ids), 4)
+
+        template_values = template.mdl_attribute_value_ids
+        first_model_value = template_values.filtered(
+            lambda value: (
+                value.attribute_line_id == model_line
+                and value.product_attribute_value_id.name == "כנף"
+            )
+        )
+        width_value = template_values.filtered(
+            lambda value: value.product_attribute_value_id == self.width_80
+        )
+        height_value = template_values.filtered(
+            lambda value: value.product_attribute_value_id == self.height_100
+        )
+        rule = self.env["product.template.attribute.exclusion"].create(
+            {
+                "product_tmpl_id": template.id,
+                "mdl_is_catalog_condition": True,
+                "mdl_rule_type": "forbidden",
+                "mdl_combination_value_ids": [
+                    Command.set(
+                        (first_model_value | width_value | height_value).ids
+                    )
+                ],
+            }
+        )
+
+        self.assertFalse(rule.product_template_attribute_value_id)
+        self.assertFalse(rule.value_ids)
+        self.assertEqual(len(template.product_variant_ids), 3)
+        self.assertEqual(template.mdl_blocked_variant_count, 1)
+        archived_combinations = {
+            frozenset(combination)
+            for combination in template._get_attribute_exclusions()[
+                "archived_combinations"
+            ]
+        }
+        self.assertIn(
+            frozenset(
+                (first_model_value | width_value | height_value).ids
+            ),
+            archived_combinations,
+        )
+
+        model_line.write(
+            {"value_ids": [Command.unlink(first_model_value.product_attribute_value_id.id)]}
+        )
+        self.assertFalse(rule.exists())
+        self.assertEqual(len(template.product_variant_ids), 2)
+
+    def test_allowed_rules_form_an_explicit_whitelist(self):
+        template = self._create_template()
+        template._mdl_convert_models_to_attributes()
+        model_line = template.attribute_line_ids.filtered(
+            "mdl_is_model_attribute"
+        )
+        second_model = self.env["product.attribute.value"].create(
+            {
+                "name": "כנף מתקדמת",
+                "attribute_id": model_line.attribute_id.id,
+                "mdl_sku_component": "02",
+            }
+        )
+        model_line.write(
+            {"value_ids": [Command.link(second_model.id)]}
+        )
+        values = template.mdl_attribute_value_ids
+        first_model_value = values.filtered(
+            lambda value: (
+                value.attribute_line_id == model_line
+                and value.product_attribute_value_id.name == "כנף"
+            )
+        )
+        second_model_value = values.filtered(
+            lambda value: value.product_attribute_value_id == second_model
+        )
+        width_80 = values.filtered(
+            lambda value: value.product_attribute_value_id == self.width_80
+        )
+        width_90 = values.filtered(
+            lambda value: value.product_attribute_value_id == self.width_90
+        )
+
+        self.env["product.template.attribute.exclusion"].create(
+            [
+                {
+                    "product_tmpl_id": template.id,
+                    "mdl_is_catalog_condition": True,
+                    "mdl_rule_type": "allowed",
+                    "mdl_combination_value_ids": [
+                        Command.set((first_model_value | width_80).ids)
+                    ],
+                },
+                {
+                    "product_tmpl_id": template.id,
+                    "mdl_is_catalog_condition": True,
+                    "mdl_rule_type": "allowed",
+                    "mdl_combination_value_ids": [
+                        Command.set((second_model_value | width_90).ids)
+                    ],
+                },
+            ]
+        )
+
+        combinations = {
+            tuple(
+                sorted(
+                    product.product_template_attribute_value_ids
+                    .product_attribute_value_id.mapped("name")
+                )
+            )
+            for product in template.product_variant_ids
+        }
+        self.assertIn(tuple(sorted(("כנף", "80", "100"))), combinations)
+        self.assertIn(
+            tuple(sorted(("כנף מתקדמת", "90", "100"))),
+            combinations,
+        )
+        self.assertEqual(len(combinations), 2)
+        self.assertEqual(template.mdl_blocked_variant_count, 2)
 
     def test_missing_attribute_code_is_reported(self):
         color = self.env["product.attribute"].create(
@@ -652,6 +1437,16 @@ class TestProductGroupsAttributes(TransactionCase):
         product = template.product_variant_id
         self.assertEqual(product.default_code, "TEST-NO-COMPONENT-3040")
         self.assertFalse(template._mdl_get_catalog_issues())
+
+        product_id = product.id
+        template._mdl_convert_models_to_attributes()
+        self.assertTrue(template.mdl_catalog_managed)
+        self.assertEqual(template.product_variant_id.id, product_id)
+        self.assertEqual(
+            template.product_variant_id.default_code,
+            "TEST-NO-COMPONENT-3040",
+        )
+        self.assertTrue(template.product_variant_id.mdl_generated_name)
 
     def test_variant_base_name_can_differ_from_model_name(self):
         template = self._create_template()
