@@ -232,6 +232,24 @@ class TestProductGroupsAttributes(TransactionCase):
             "product.template.attribute.exclusion",
         )
 
+    def test_variant_list_name_omits_the_separate_internal_reference(self):
+        template = self._create_template()
+        product = template.product_variant_ids.filtered(
+            lambda variant: variant.default_code == "100180100"
+        )
+
+        self.assertEqual(
+            product.mdl_variant_list_name,
+            product.mdl_generated_name,
+        )
+        self.assertNotIn(product.default_code, product.mdl_variant_list_name)
+
+        ordinary = self.env["product.template"].create(
+            {"name": "מוצר Odoo רגיל"}
+        ).product_variant_id
+        ordinary.default_code = "ODOO-NATIVE-1"
+        self.assertEqual(ordinary.mdl_variant_list_name, "מוצר Odoo רגיל")
+
     def test_quotation_keeps_only_real_extra_description_below_product(self):
         template = self._create_template()
         product = template.product_variant_ids.filtered(

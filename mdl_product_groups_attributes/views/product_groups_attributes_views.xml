@@ -309,9 +309,8 @@
         <field name="inherit_id" ref="product.product_product_tree_view"/>
         <field name="arch" type="xml">
             <field name="name" position="replace">
-                <field name="display_name"
+                <field name="mdl_variant_list_name"
                        string="שם הפריט"
-                       context="{'display_default_code': False}"
                        readonly="1"/>
             </field>
         </field>
