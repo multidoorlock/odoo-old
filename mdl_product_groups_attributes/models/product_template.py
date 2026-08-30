@@ -30,10 +30,13 @@ def _name_with_group(group_name, model_name):
 
 def _resolved_component(default_value, override_value):
     """Return an optional override, with an em dash meaning intentional blank."""
+    default_value = clean_text(default_value)
+    if default_value == "—":
+        default_value = ""
     override_value = clean_text(override_value)
     if override_value == "—":
         return ""
-    return override_value or clean_text(default_value)
+    return override_value or default_value
 
 
 def _override_from_effective_value(default_value, effective_value):
@@ -44,6 +47,8 @@ def _override_from_effective_value(default_value, effective_value):
     "inherit from the source" while the user works with one effective field.
     """
     default_value = clean_text(default_value)
+    if default_value == "—":
+        default_value = ""
     effective_value = clean_text(effective_value)
     if effective_value == default_value:
         return False
@@ -84,17 +89,20 @@ class ProductTemplate(models.Model):
         ),
     )
     mdl_group_default_name = fields.Char(
-        string="שם המקור של קבוצת הפריטים",
+        string="שם קבוצת הפריטים",
         index=True,
         help=(
-            "שם הבסיס המשותף לפריטים בקבוצה. השדה נפרד מקטגוריית המוצר "
-            "כדי שניתן יהיה לשנות קטגוריה בלי לשנות שמות פריטים."
+            "שם הקבוצה המשותף לפריטים. בחירת קטגוריית מוצר מעתיקה לכאן "
+            "את שם הקטגוריה, ולאחר מכן ניתן להתאים אותו לקבוצה."
         ),
     )
     mdl_group_default_sku = fields.Char(
-        string="מק״ט בסיס לקבוצה",
+        string="מק״ט קבוצת הפריטים",
         index=True,
-        help="רכיב המק״ט המשותף שמופיע לפני רכיבי ערכי המאפיינים.",
+        help=(
+            "רכיב המק״ט המשותף שמופיע לפני רכיבי ערכי המאפיינים. בחירת "
+            "קטגוריית מוצר מעתיקה לכאן את רכיב המק״ט של הקטגוריה."
+        ),
     )
     mdl_group_name_override = fields.Char(
         string="שינוי טקסט לקבוצה",
@@ -242,11 +250,6 @@ class ProductTemplate(models.Model):
         string="שילובים חסומים",
         compute="_compute_mdl_variant_overview",
     )
-    mdl_variant_preview = fields.Text(
-        string="דוגמאות לפריטים",
-        compute="_compute_mdl_variant_overview",
-    )
-
     @api.depends(
         "attribute_line_ids.mdl_is_model_attribute",
         "attribute_line_ids.value_ids.name",
@@ -771,6 +774,34 @@ class ProductTemplate(models.Model):
             templates._mdl_sync_variant_codes()
         return templates
 
+    @api.onchange("categ_id")
+    def _onchange_mdl_category_sources(self):
+        """Use the selected native Odoo category as the group source."""
+        for template in self.filtered("mdl_catalog_managed"):
+            if not template.categ_id:
+                continue
+            template.mdl_group_default_name = clean_text(
+                template.categ_id.name
+            )
+            template.mdl_group_default_sku = clean_text(
+                template.categ_id.mdl_sku_component
+            )
+
+    @api.onchange("mdl_catalog_managed")
+    def _onchange_mdl_catalog_managed(self):
+        """Seed empty sources without overwriting settings on re-enable."""
+        for template in self.filtered("mdl_catalog_managed"):
+            if not template.categ_id:
+                continue
+            if not template.mdl_group_default_name:
+                template.mdl_group_default_name = clean_text(
+                    template.categ_id.name
+                )
+            if not template.mdl_group_default_sku:
+                template.mdl_group_default_sku = clean_text(
+                    template.categ_id.mdl_sku_component
+                )
+
     def write(self, vals):
         vals = dict(vals)
         catalog_source_fields = (
@@ -796,6 +827,27 @@ class ProductTemplate(models.Model):
             if will_enable_catalog
             else []
         )
+        category = (
+            self.env["product.category"].browse(vals.get("categ_id")).exists()
+            if "categ_id" in vals and vals.get("categ_id")
+            else self.env["product.category"]
+        )
+        catalog_active_for_all = (
+            vals.get("mdl_catalog_managed") is True
+            or (
+                "mdl_catalog_managed" not in vals
+                and all(template.mdl_catalog_managed for template in self)
+            )
+        )
+        if category and catalog_active_for_all:
+            vals.setdefault(
+                "mdl_group_default_name",
+                clean_text(category.name),
+            )
+            vals.setdefault(
+                "mdl_group_default_sku",
+                clean_text(category.mdl_sku_component),
+            )
         group_name_was_provided = "mdl_group_default_name" in vals
         group_sku_was_provided = "mdl_group_default_sku" in vals
         pending_source_skus = {
@@ -944,12 +996,8 @@ class ProductTemplate(models.Model):
         self.ensure_one()
         self.write(
             {
-                "mdl_model_name_override": (
-                    "—" if self.mdl_model_as_attribute else False
-                ),
-                "mdl_model_sku_override": (
-                    "—" if self.mdl_model_as_attribute else False
-                ),
+                "mdl_model_name_override": False,
+                "mdl_model_sku_override": False,
             }
         )
 
@@ -957,9 +1005,7 @@ class ProductTemplate(models.Model):
         self.ensure_one()
         values = {
             "mdl_group_name_override": False,
-            "mdl_model_name_override": (
-                "—" if self.mdl_model_as_attribute else False
-            ),
+            "mdl_model_name_override": False,
             "mdl_native_name_override": False,
             "mdl_native_name_source": False,
         }
@@ -972,9 +1018,7 @@ class ProductTemplate(models.Model):
         self.write(
             {
                 "mdl_group_sku_override": False,
-                "mdl_model_sku_override": (
-                    "—" if self.mdl_model_as_attribute else False
-                ),
+                "mdl_model_sku_override": False,
             }
         )
 
@@ -983,12 +1027,8 @@ class ProductTemplate(models.Model):
         values = {
             "mdl_group_name_override": False,
             "mdl_group_sku_override": False,
-            "mdl_model_name_override": (
-                "—" if self.mdl_model_as_attribute else False
-            ),
-            "mdl_model_sku_override": (
-                "—" if self.mdl_model_as_attribute else False
-            ),
+            "mdl_model_name_override": False,
+            "mdl_model_sku_override": False,
             "mdl_native_name_override": False,
             "mdl_native_name_source": False,
         }
@@ -1187,24 +1227,31 @@ class ProductTemplate(models.Model):
     def _mdl_sync_variant_codes(self):
         if self.env.context.get("skip_mdl_catalog_sync"):
             return
-        for template in self.filtered(
-            lambda item: (
-                item.mdl_catalog_managed
-                and not item.mdl_copy_requires_new_sku
-            )
-        ):
+        for template in self:
             # Catalog data belongs to the product identity, not to its current
             # archive state.  Keep internal references ready for a native Odoo
             # unarchive and include archived IDs in collision/QA checks.
-            template.with_context(
+            products = template.with_context(
                 active_test=False
-            ).product_variant_ids._mdl_sync_default_code()
+            ).product_variant_ids
+            # Refresh names explicitly as part of the same automatic sync.
+            # This also makes disabling and re-enabling catalog management
+            # deterministic without deleting the saved configuration.
+            products._compute_mdl_catalog_values()
+            if (
+                template.mdl_catalog_managed
+                and not template.mdl_copy_requires_new_sku
+            ):
+                products._mdl_sync_default_code()
+            products.invalidate_recordset(["display_name"])
 
     @api.depends(
         "product_variant_ids.active",
-        "product_variant_ids.default_code",
-        "product_variant_ids.mdl_generated_name",
         "product_variant_ids.mdl_catalog_allowed",
+        "attribute_line_ids.product_template_value_ids.ptav_active",
+        "attribute_line_ids.attribute_id.create_variant",
+        "mdl_exclusion_ids.mdl_rule_type",
+        "mdl_exclusion_ids.mdl_combination_value_ids",
     )
     def _compute_mdl_variant_overview(self):
         for template in self:
@@ -1245,20 +1292,9 @@ class ProductTemplate(models.Model):
                     not product.active and product.mdl_catalog_allowed
                 )
             )
-            examples = []
-            for product in active.sorted("id")[:5]:
-                name = product.mdl_generated_name or product.name
-                examples.append(
-                    clean_text(
-                        f"[{product.default_code}] {name}"
-                        if product.default_code
-                        else name
-                    )
-                )
             template.mdl_active_variant_count = len(active)
             template.mdl_archived_variant_count = len(archived)
             template.mdl_blocked_variant_count = blocked_count
-            template.mdl_variant_preview = "\n".join(examples) or "אין פריטים להצגה."
 
     @api.model
     def _mdl_get_model_attribute(self):
@@ -1784,44 +1820,62 @@ class ProductTemplate(models.Model):
             },
         }
 
-    def action_mdl_preview_catalog(self):
-        self.ensure_one()
-        self._compute_mdl_variant_overview()
-        message = (
-            f"פעילים: {self.mdl_active_variant_count} | "
-            f"בארכיון: {self.mdl_archived_variant_count} | "
-            f"חסומים: {self.mdl_blocked_variant_count}\n"
-            f"{self.mdl_variant_preview}"
-        )
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": "תצוגה מקדימה של הקבוצה",
-                "message": message,
-                "type": "info",
-                "sticky": True,
-            },
-        }
-
-    def action_mdl_open_variants(self):
+    def _mdl_variant_action(self, title, extra_domain=None):
         self.ensure_one()
         action = self.env["ir.actions.act_window"]._for_xml_id(
             "product.product_variant_action"
         )
         normal_form = self.env.ref("product.product_normal_form_view")
+        action["name"] = title
         action["views"] = [
             (view_id, view_type)
             for view_id, view_type in action.get("views", [])
             if view_type != "form"
         ] + [(normal_form.id, "form")]
-        action["domain"] = [("product_tmpl_id", "=", self.id)]
+        action["domain"] = [
+            ("product_tmpl_id", "=", self.id),
+            *(extra_domain or []),
+        ]
         action["context"] = {
+            "active_test": False,
             "default_product_tmpl_id": self.id,
             "search_default_product_tmpl_id": self.id,
             "form_view_ref": "product.product_normal_form_view",
         }
         return action
+
+    def action_mdl_open_active_variants(self):
+        return self._mdl_variant_action(
+            "פריטים פעילים",
+            [("active", "=", True), ("mdl_catalog_allowed", "=", True)],
+        )
+
+    def action_mdl_open_archived_variants(self):
+        return self._mdl_variant_action(
+            "פריטים בארכיון",
+            [("active", "=", False), ("mdl_catalog_allowed", "=", True)],
+        )
+
+    def action_mdl_open_blocked_rules(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": "כללי שילובים חסומים",
+            "res_model": "product.template.attribute.exclusion",
+            "view_mode": "list,form",
+            "domain": [
+                ("product_tmpl_id", "=", self.id),
+                ("mdl_is_catalog_condition", "=", True),
+            ],
+            "context": {
+                "default_product_tmpl_id": self.id,
+                "default_mdl_is_catalog_condition": True,
+                "default_mdl_rule_type": "forbidden",
+            },
+        }
+
+    def action_mdl_open_variants(self):
+        return self._mdl_variant_action("פריטי הקבוצה")
 
     @api.model
     def name_search(self, name="", domain=None, operator="ilike", limit=100):

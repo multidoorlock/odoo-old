@@ -222,6 +222,16 @@ class TestProductGroupsAttributes(TransactionCase):
             "product.product_normal_form_view",
         )
 
+        archived_action = template.action_mdl_open_archived_variants()
+        self.assertIn(("active", "=", False), archived_action["domain"])
+        self.assertFalse(archived_action["context"]["active_test"])
+
+        blocked_action = template.action_mdl_open_blocked_rules()
+        self.assertEqual(
+            blocked_action["res_model"],
+            "product.template.attribute.exclusion",
+        )
+
     def test_quotation_keeps_only_real_extra_description_below_product(self):
         template = self._create_template()
         product = template.product_variant_ids.filtered(
@@ -1452,6 +1462,13 @@ class TestProductGroupsAttributes(TransactionCase):
             }
         )
         product = template.product_variant_id
+        template_value = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == drawing
+        )
+        self.assertFalse(template_value.mdl_sku_component_value)
+        template_value.action_mdl_reset_sku_component()
+        self.assertFalse(template_value.mdl_sku_component_override)
+        self.assertFalse(template_value.mdl_sku_component_value)
         self.assertEqual(product.default_code, "TEST-NO-COMPONENT-3040")
         self.assertFalse(template._mdl_get_catalog_issues())
 
