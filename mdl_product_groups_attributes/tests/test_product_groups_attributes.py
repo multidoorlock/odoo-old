@@ -231,6 +231,13 @@ class TestProductGroupsAttributes(TransactionCase):
             product.with_context(display_default_code=True).display_name,
         )
 
+        sale_view = self.env.ref(
+            "mdl_product_groups_attributes.mdl_sale_order_form_final_product"
+        )
+        self.assertTrue(sale_view.active)
+        self.assertIn("product_id", sale_view.arch)
+        self.assertIn("product_template_id", sale_view.arch)
+
     def test_variant_action_uses_full_product_form(self):
         template = self._create_template()
         action = template.action_mdl_open_variants()
