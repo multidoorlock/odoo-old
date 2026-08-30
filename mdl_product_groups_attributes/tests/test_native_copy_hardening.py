@@ -116,7 +116,7 @@ class TestNativeCopyHardening(TransactionCase):
         )
         self.assertFalse(explicitly_native.mdl_catalog_managed)
 
-    def test_enabling_catalog_seeds_category_source_only_once(self):
+    def test_category_selection_updates_group_sources(self):
         second_category = self.env["product.category"].create(
             {"name": "חלון", "mdl_sku_component": "20"}
         )
@@ -129,8 +129,8 @@ class TestNativeCopyHardening(TransactionCase):
         self.assertEqual(ordinary.mdl_group_default_name, "דלת")
         self.assertEqual(ordinary.mdl_group_default_sku, "10")
         ordinary.categ_id = second_category
-        self.assertEqual(ordinary.mdl_group_default_name, "דלת")
-        self.assertEqual(ordinary.mdl_group_default_sku, "10")
+        self.assertEqual(ordinary.mdl_group_default_name, "חלון")
+        self.assertEqual(ordinary.mdl_group_default_sku, "20")
 
         implicit = self.env["product.template"].create(
             {"name": "מוצר נוסף", "categ_id": second_category.id}
@@ -164,6 +164,47 @@ class TestNativeCopyHardening(TransactionCase):
         self.assertEqual(first_bulk.mdl_group_default_sku, "10")
         self.assertEqual(second_bulk.mdl_group_default_name, "חלון")
         self.assertEqual(second_bulk.mdl_group_default_sku, "20")
+
+    def test_catalog_toggle_preserves_configuration_and_rebuilds_names(self):
+        template = self._managed_template()
+        template._mdl_convert_models_to_attributes()
+        variants = template.with_context(active_test=False).product_variant_ids
+        original_names = {
+            product.id: product.mdl_generated_name for product in variants
+        }
+        original_codes = {
+            product.id: product.default_code for product in variants
+        }
+        original_sources = (
+            template.mdl_group_default_name,
+            template.mdl_group_default_sku,
+        )
+
+        template.mdl_catalog_managed = False
+
+        self.assertEqual(
+            (
+                template.mdl_group_default_name,
+                template.mdl_group_default_sku,
+            ),
+            original_sources,
+        )
+        self.assertTrue(all(not product.mdl_generated_name for product in variants))
+        self.assertEqual(
+            {product.id: product.default_code for product in variants},
+            original_codes,
+        )
+
+        template.mdl_catalog_managed = True
+
+        self.assertEqual(
+            {product.id: product.mdl_generated_name for product in variants},
+            original_names,
+        )
+        self.assertEqual(
+            {product.id: product.default_code for product in variants},
+            original_codes,
+        )
 
     def test_native_name_drives_variants_reset_and_copy(self):
         legacy_template = self._managed_template()

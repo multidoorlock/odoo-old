@@ -222,6 +222,34 @@ class TestProductGroupsAttributes(TransactionCase):
             "product.product_normal_form_view",
         )
 
+        archived_action = template.action_mdl_open_archived_variants()
+        self.assertIn(("active", "=", False), archived_action["domain"])
+        self.assertFalse(archived_action["context"]["active_test"])
+
+        blocked_action = template.action_mdl_open_blocked_rules()
+        self.assertEqual(
+            blocked_action["res_model"],
+            "product.template.attribute.exclusion",
+        )
+
+    def test_variant_list_name_omits_the_separate_internal_reference(self):
+        template = self._create_template()
+        product = template.product_variant_ids.filtered(
+            lambda variant: variant.default_code == "100180100"
+        )
+
+        self.assertEqual(
+            product.mdl_variant_list_name,
+            product.mdl_generated_name,
+        )
+        self.assertNotIn(product.default_code, product.mdl_variant_list_name)
+
+        ordinary = self.env["product.template"].create(
+            {"name": "מוצר Odoo רגיל"}
+        ).product_variant_id
+        ordinary.default_code = "ODOO-NATIVE-1"
+        self.assertEqual(ordinary.mdl_variant_list_name, "מוצר Odoo רגיל")
+
     def test_quotation_keeps_only_real_extra_description_below_product(self):
         template = self._create_template()
         product = template.product_variant_ids.filtered(
@@ -717,7 +745,7 @@ class TestProductGroupsAttributes(TransactionCase):
             )
         )
 
-    def test_category_change_does_not_change_group_names_or_skus(self):
+    def test_category_change_updates_group_names_and_skus(self):
         template = self._create_template()
         original_codes = set(template.product_variant_ids.mapped("default_code"))
         original_names = set(
@@ -728,15 +756,18 @@ class TestProductGroupsAttributes(TransactionCase):
         )
         template.categ_id = frame_category
         self.assertEqual(template.categ_id, frame_category)
-        self.assertEqual(template.mdl_group_default_name, "דלת")
-        self.assertEqual(
-            set(template.product_variant_ids.mapped("default_code")),
-            original_codes,
+        self.assertEqual(template.mdl_group_default_name, "משקוף")
+        self.assertEqual(template.mdl_group_default_sku, "11")
+        updated_codes = set(
+            template.product_variant_ids.mapped("default_code")
         )
-        self.assertEqual(
-            set(template.product_variant_ids.mapped("mdl_generated_name")),
-            original_names,
+        updated_names = set(
+            template.product_variant_ids.mapped("mdl_generated_name")
         )
+        self.assertNotEqual(updated_codes, original_codes)
+        self.assertNotEqual(updated_names, original_names)
+        self.assertTrue(all(code.startswith("1101") for code in updated_codes))
+        self.assertTrue(all(name.startswith("משקוף") for name in updated_names))
 
     def test_attribute_name_mode_recomputes_after_native_attribute_rename(self):
         template = self._create_template()
@@ -1452,6 +1483,13 @@ class TestProductGroupsAttributes(TransactionCase):
             }
         )
         product = template.product_variant_id
+        template_value = template.mdl_attribute_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == drawing
+        )
+        self.assertFalse(template_value.mdl_sku_component_value)
+        template_value.action_mdl_reset_sku_component()
+        self.assertFalse(template_value.mdl_sku_component_override)
+        self.assertFalse(template_value.mdl_sku_component_value)
         self.assertEqual(product.default_code, "TEST-NO-COMPONENT-3040")
         self.assertFalse(template._mdl_get_catalog_issues())
 

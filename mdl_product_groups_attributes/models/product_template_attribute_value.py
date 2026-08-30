@@ -66,14 +66,19 @@ class ProductTemplateAttributeValue(models.Model):
 
     @staticmethod
     def _resolved_component(source_value, override_value):
+        source_value = clean_text(source_value)
+        if source_value == "—":
+            source_value = ""
         override_value = clean_text(override_value)
         if override_value == "—":
             return ""
-        return override_value or clean_text(source_value)
+        return override_value or source_value
 
     @staticmethod
     def _override_from_effective_value(source_value, effective_value):
         source_value = clean_text(source_value)
+        if source_value == "—":
+            source_value = ""
         effective_value = clean_text(effective_value)
         if effective_value == source_value:
             return False
@@ -141,6 +146,8 @@ class ProductTemplateAttributeValue(models.Model):
 
     def _mdl_get_sku_component(self):
         self.ensure_one()
+        # Keep the em dash as an internal omission marker for the renderer.
+        # The effective field shown to users resolves it to an empty value.
         override = clean_text(self.mdl_sku_component_override)
         return override or clean_text(
             self.product_attribute_value_id.mdl_sku_component

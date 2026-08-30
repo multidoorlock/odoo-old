@@ -55,6 +55,20 @@ class ProductProduct(models.Model):
         store=True,
         index="trigram",
     )
+    mdl_variant_list_name = fields.Char(
+        string="שם פריט ברשימה (טכני)",
+        compute="_compute_mdl_variant_list_name",
+        help=(
+            "שם התצוגה של Odoo ללא המק״ט הפנימי, המשמש ברשימת "
+            "הווריאנטים שבה המק״ט כבר מופיע בעמודה נפרדת."
+        ),
+    )
+
+    def _compute_mdl_variant_list_name(self):
+        for product in self:
+            product.mdl_variant_list_name = product.with_context(
+                display_default_code=False
+            ).display_name
 
     @api.depends(
         "product_tmpl_id.mdl_catalog_managed",

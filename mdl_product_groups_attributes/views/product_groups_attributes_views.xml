@@ -133,88 +133,6 @@
                 <field name="mdl_native_name_override" invisible="1"/>
                 <field name="mdl_copy_requires_new_sku" invisible="1"/>
                 <field name="mdl_model_as_attribute" invisible="1"/>
-                <group string="קבוצת פריטים ומאפיינים">
-                    <group>
-                        <field name="mdl_catalog_managed"/>
-                    </group>
-                    <group>
-                        <div class="text-muted"
-                             invisible="mdl_catalog_managed">
-                            הפעל כדי לנהל כאן את טקסט השם, רכיבי המק״ט וכללי השילובים של ערכי המאפיינים.
-                        </div>
-                        <div class="text-muted"
-                             invisible="not mdl_catalog_managed">
-                            ניהול קבוצת הפריטים פעיל. כל הגדרות השם והמק״ט מופיעות בהמשך הטאב.
-                        </div>
-                    </group>
-                </group>
-                <group string="הגדרת קבוצת הפריטים"
-                       invisible="not mdl_catalog_managed">
-                    <group>
-                        <field name="mdl_group_default_name"/>
-                        <field name="mdl_group_default_sku"/>
-                        <field name="categ_id" string="קטגוריית מוצר"/>
-                    </group>
-                    <group>
-                        <label for="mdl_effective_base_name"/>
-                        <div class="o_row">
-                            <field name="mdl_effective_base_name" nolabel="1"/>
-                            <button name="action_mdl_reset_base_name"
-                                    type="object"
-                                    icon="fa-undo"
-                                    title="בטל את שינוי השם וחזור לשם המקור"
-                                    class="btn-link p-0"
-                                    invisible="not mdl_native_name_override and not mdl_group_name_override and (mdl_model_as_attribute or not mdl_model_name_override)"/>
-                        </div>
-                        <label for="mdl_sku_prefix"/>
-                        <div class="o_row">
-                            <field name="mdl_sku_prefix" nolabel="1"/>
-                            <button name="action_mdl_reset_base_sku"
-                                    type="object"
-                                    icon="fa-undo"
-                                    title="בטל את שינוי המק״ט וחזור למק״ט המקור"
-                                    class="btn-link p-0"
-                                    invisible="not mdl_group_sku_override and (mdl_model_as_attribute or not mdl_model_sku_override)"/>
-                        </div>
-                        <div class="alert alert-warning mb-0"
-                             role="alert"
-                             invisible="not mdl_copy_requires_new_sku">
-                            זו קבוצה מועתקת. יש להגדיר מק״ט קבוצה חדש לפני יצירת מק״טים לפריטים.
-                        </div>
-                        <button name="action_mdl_convert_model_to_attribute"
-                                type="object"
-                                string="העבר דגם למאפיין"
-                                icon="fa-exchange"
-                                class="btn-secondary"
-                                invisible="mdl_model_as_attribute or not mdl_catalog_managed"/>
-                    </group>
-                </group>
-                <group string="מצב הפריטים"
-                       invisible="not mdl_catalog_managed">
-                    <group>
-                        <field name="mdl_active_variant_count" readonly="1"/>
-                        <field name="mdl_archived_variant_count" readonly="1"/>
-                        <field name="mdl_blocked_variant_count" readonly="1"/>
-                    </group>
-                    <group>
-                        <field name="mdl_variant_preview" readonly="1" nolabel="1"/>
-                        <button name="action_mdl_preview_catalog"
-                                type="object"
-                                string="תצוגה מקדימה"
-                                icon="fa-eye"
-                                class="btn-secondary"/>
-                        <button name="action_mdl_check_and_rebuild"
-                                type="object"
-                                string="בדוק וצור פריטים חסרים"
-                                icon="fa-cogs"
-                                class="btn-primary"/>
-                        <button name="action_mdl_open_variants"
-                                type="object"
-                                string="פתח את פריטי הקבוצה"
-                                icon="fa-list"
-                                class="btn-secondary"/>
-                    </group>
-                </group>
             </xpath>
 
             <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']/list/field[@name='value_ids']"
@@ -236,6 +154,73 @@
 
             <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']"
                    position="after">
+                <group string="ניהול קבוצת הפריטים">
+                    <group>
+                        <field name="mdl_catalog_managed"/>
+                    </group>
+                    <group>
+                        <div class="text-muted"
+                             invisible="mdl_catalog_managed">
+                            הפעל כדי לבנות את שם הפריט והמק״ט מערכי המאפיינים של Odoo.
+                        </div>
+                        <div class="text-muted"
+                             invisible="not mdl_catalog_managed">
+                            השמות והמק״טים מתעדכנים אוטומטית לפי סדר המאפיינים והערכים בטבלה.
+                        </div>
+                    </group>
+                </group>
+
+                <group string="הגדרת קבוצת הפריטים"
+                       invisible="not mdl_catalog_managed">
+                    <group>
+                        <field name="categ_id" string="קטגוריית מוצר"/>
+                        <field name="mdl_group_default_name"
+                               string="שם קבוצת הפריטים"/>
+                        <field name="mdl_group_default_sku"
+                               string="מק״ט קבוצת הפריטים"/>
+                    </group>
+                    <group>
+                        <div class="text-muted">
+                            בחירת קטגוריה מעתיקה את שם הקטגוריה ואת רכיב המק״ט שלה לשדות הקבוצה. דגם מנוהל כערך מאפיין רגיל בטבלת המאפיינים.
+                        </div>
+                        <div class="alert alert-warning mb-0"
+                             role="alert"
+                             invisible="not mdl_copy_requires_new_sku">
+                            זו קבוצה מועתקת. יש להגדיר מק״ט קבוצה חדש לפני יצירת מק״טים לפריטים.
+                        </div>
+                    </group>
+                </group>
+
+                <group string="מצב הפריטים"
+                       invisible="not mdl_catalog_managed">
+                    <div class="d-flex flex-wrap gap-2" colspan="2">
+                        <button name="action_mdl_open_active_variants"
+                                type="object"
+                                icon="fa-check-circle"
+                                class="oe_stat_button">
+                            <field name="mdl_active_variant_count"
+                                   string="פריטים פעילים"
+                                   widget="statinfo"/>
+                        </button>
+                        <button name="action_mdl_open_archived_variants"
+                                type="object"
+                                icon="fa-archive"
+                                class="oe_stat_button">
+                            <field name="mdl_archived_variant_count"
+                                   string="פריטים בארכיון"
+                                   widget="statinfo"/>
+                        </button>
+                        <button name="action_mdl_open_blocked_rules"
+                                type="object"
+                                icon="fa-ban"
+                                class="oe_stat_button">
+                            <field name="mdl_blocked_variant_count"
+                                   string="שילובים חסומים"
+                                   widget="statinfo"/>
+                        </button>
+                    </div>
+                </group>
+
                 <separator string="ערכי מאפיינים בקבוצה"
                            invisible="not mdl_catalog_managed"/>
                 <field name="mdl_attribute_value_ids"
@@ -249,14 +234,8 @@
                         <field name="attribute_id" column_invisible="True"/>
                         <field name="attribute_line_id"
                                column_invisible="True"/>
-                        <field name="mdl_is_attribute_group_start"
-                               column_invisible="True"/>
-                        <field name="mdl_attribute_group_id"
-                               string="מאפיין"
-                               readonly="1"
-                               decoration-bf="mdl_is_attribute_group_start"/>
                         <field name="product_attribute_value_id"
-                               string="ערך"
+                               string="ערך המאפיין"
                                readonly="1"
                                context="{'form_view_ref': 'mdl_product_groups_attributes.mdl_product_attribute_value_form_view'}"
                                options="{'no_create': True, 'no_create_edit': True}"/>
@@ -320,20 +299,6 @@
                 <field name="mdl_model_value_summary"
                        string="דגמים"
                        optional="hide"/>
-                <field name="mdl_sku_prefix"
-                       string="מק״ט בסיס"
-                       optional="hide"/>
-            </field>
-        </field>
-    </record>
-
-    <record id="mdl_product_template_search_view" model="ir.ui.view">
-        <field name="name">product.template.search.mdl.catalog</field>
-        <field name="model">product.template</field>
-        <field name="inherit_id" ref="product.product_template_search_view"/>
-        <field name="arch" type="xml">
-            <field name="name" position="after">
-                <field name="mdl_sku_prefix" string="מק״ט בסיס"/>
             </field>
         </field>
     </record>
@@ -343,12 +308,10 @@
         <field name="model">product.product</field>
         <field name="inherit_id" ref="product.product_product_tree_view"/>
         <field name="arch" type="xml">
-            <field name="default_code" position="after">
-                <field name="display_name"
+            <field name="name" position="replace">
+                <field name="mdl_variant_list_name"
                        string="שם הפריט"
-                       context="{'display_default_code': False}"
-                       readonly="1"
-                       optional="hide"/>
+                       readonly="1"/>
             </field>
         </field>
     </record>
