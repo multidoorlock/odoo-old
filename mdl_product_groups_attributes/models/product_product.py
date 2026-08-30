@@ -56,7 +56,7 @@ class ProductProduct(models.Model):
         index="trigram",
     )
     mdl_variant_list_name = fields.Char(
-        string="שם הפריט",
+        string="שם פריט ברשימה (טכני)",
         compute="_compute_mdl_variant_list_name",
         help=(
             "שם התצוגה של Odoo ללא המק״ט הפנימי, המשמש ברשימת "
