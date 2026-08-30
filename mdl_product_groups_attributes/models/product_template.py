@@ -1858,11 +1858,18 @@ class ProductTemplate(models.Model):
 
     def action_mdl_open_blocked_rules(self):
         self.ensure_one()
+        list_view = self.env.ref(
+            "mdl_product_groups_attributes.mdl_catalog_combination_rule_list_view"
+        )
+        form_view = self.env.ref(
+            "mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view"
+        )
         return {
             "type": "ir.actions.act_window",
-            "name": "כללי שילובים חסומים",
+            "name": "כללי שילובים",
             "res_model": "product.template.attribute.exclusion",
             "view_mode": "list,form",
+            "views": [(list_view.id, "list"), (form_view.id, "form")],
             "domain": [
                 ("product_tmpl_id", "=", self.id),
                 ("mdl_is_catalog_condition", "=", True),
@@ -1871,6 +1878,10 @@ class ProductTemplate(models.Model):
                 "default_product_tmpl_id": self.id,
                 "default_mdl_is_catalog_condition": True,
                 "default_mdl_rule_type": "forbidden",
+                "form_view_ref": (
+                    "mdl_product_groups_attributes."
+                    "mdl_catalog_combination_rule_form_view"
+                ),
             },
         }
 

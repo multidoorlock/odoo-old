@@ -25,8 +25,8 @@ class ProductTemplateAttributeExclusion(models.Model):
     )
     mdl_rule_type = fields.Selection(
         selection=[
-            ("forbidden", "שילוב אסור"),
-            ("allowed", "שילוב מותר"),
+            ("forbidden", "חסום את השילוב"),
+            ("allowed", "אפשר רק את השילוב"),
         ],
         string="סוג כלל",
         default="forbidden",

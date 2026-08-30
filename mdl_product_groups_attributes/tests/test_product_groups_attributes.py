@@ -124,6 +124,26 @@ class TestProductGroupsAttributes(TransactionCase):
             template.id,
             dict(self.env["product.template"].name_search("100180100")),
         )
+        display_without_native_code = product.with_context(
+            display_default_code=False
+        ).display_name
+        self.assertEqual(
+            display_without_native_code
+            .replace("\u2066", "")
+            .replace("\u2069", ""),
+            "[100180100] דלת כנף 80/100 +ידית",
+        )
+        search_results = dict(
+            self.env["product.product"]
+            .with_context(display_default_code=False)
+            .name_search("100180100")
+        )
+        self.assertEqual(
+            search_results[product.id]
+            .replace("\u2066", "")
+            .replace("\u2069", ""),
+            "[100180100] דלת כנף 80/100 +ידית",
+        )
 
         self.env["ir.config_parameter"].sudo().set_param(
             "mdl_product_groups_attributes.variant_display_format",
@@ -230,6 +250,25 @@ class TestProductGroupsAttributes(TransactionCase):
         self.assertEqual(
             blocked_action["res_model"],
             "product.template.attribute.exclusion",
+        )
+        self.assertEqual(
+            blocked_action["views"],
+            [
+                (
+                    self.env.ref(
+                        "mdl_product_groups_attributes."
+                        "mdl_catalog_combination_rule_list_view"
+                    ).id,
+                    "list",
+                ),
+                (
+                    self.env.ref(
+                        "mdl_product_groups_attributes."
+                        "mdl_catalog_combination_rule_form_view"
+                    ).id,
+                    "form",
+                ),
+            ],
         )
 
     def test_variant_list_name_omits_the_separate_internal_reference(self):

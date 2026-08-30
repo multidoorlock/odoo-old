@@ -67,7 +67,8 @@ class ProductProduct(models.Model):
     def _compute_mdl_variant_list_name(self):
         for product in self:
             product.mdl_variant_list_name = product.with_context(
-                display_default_code=False
+                display_default_code=False,
+                mdl_hide_default_code=True,
             ).display_name
 
     @api.depends(
@@ -183,6 +184,7 @@ class ProductProduct(models.Model):
     )
     @api.depends_context(
         "display_default_code",
+        "mdl_hide_default_code",
         "seller_id",
         "company_id",
         "partner_id",
@@ -215,7 +217,16 @@ class ProductProduct(models.Model):
                 .search(supplier_domain)
                 .product_tmpl_id.ids
             )
-        display_default_code = self.env.context.get("display_default_code", True)
+        # Odoo intentionally hides the internal reference in several product
+        # selectors (notably sales lines).  For managed catalog products the
+        # reference is part of the user-facing final label and must remain
+        # visible while searching and selecting a product.  The dedicated
+        # variant list opts out explicitly because it already has a separate
+        # internal-reference column.
+        display_default_code = (
+            self.env.context.get("display_default_code", True)
+            or not self.env.context.get("mdl_hide_default_code")
+        )
         display_format = self.env["ir.config_parameter"].sudo().get_param(
             VARIANT_DISPLAY_FORMAT_PARAM,
             DEFAULT_VARIANT_DISPLAY_FORMAT,

@@ -119,6 +119,68 @@
         </field>
     </record>
 
+    <record id="mdl_catalog_combination_rule_list_view" model="ir.ui.view">
+        <field name="name">product.template.attribute.exclusion.list.mdl.catalog</field>
+        <field name="model">product.template.attribute.exclusion</field>
+        <field name="priority" eval="99"/>
+        <field name="arch" type="xml">
+            <list string="כללי שילובים">
+                <field name="product_tmpl_id" column_invisible="True"/>
+                <field name="mdl_is_catalog_condition" column_invisible="True"/>
+                <field name="mdl_rule_type" string="מה לעשות"/>
+                <field name="mdl_combination_value_ids"
+                       string="כאשר נבחרים הערכים"
+                       widget="many2many_tags"
+                       options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mdl_catalog_combination_rule_form_view" model="ir.ui.view">
+        <field name="name">product.template.attribute.exclusion.form.mdl.catalog</field>
+        <field name="model">product.template.attribute.exclusion</field>
+        <field name="priority" eval="99"/>
+        <field name="arch" type="xml">
+            <form string="כלל שילוב">
+                <sheet>
+                    <field name="mdl_is_catalog_condition" invisible="1"/>
+                    <group>
+                        <field name="product_tmpl_id"
+                               string="קבוצת פריטים"
+                               readonly="1"
+                               options="{'no_open': True}"/>
+                        <field name="mdl_rule_type"
+                               string="מה לעשות"
+                               widget="radio"
+                               options="{'horizontal': True}"/>
+                    </group>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="mdl_rule_type != 'forbidden'">
+                        כל פריט שמכיל יחד את כל הערכים שתבחר כאן ייחסם.
+                    </div>
+                    <div class="alert alert-info" role="alert"
+                         invisible="mdl_rule_type != 'allowed'">
+                        רק פריטים שמכילים יחד את כל הערכים שתבחר כאן יורשו.
+                        ברגע שקיים כלל מסוג זה, כל שילוב שאינו מתאים לפחות
+                        לכלל „אפשר רק” אחד ייחסם.
+                    </div>
+                    <group string="תנאי הכלל">
+                        <field name="mdl_combination_value_ids"
+                               string="כאשר נבחרים הערכים"
+                               widget="many2many_tags"
+                               required="1"
+                               domain="[('product_tmpl_id', '=', product_tmpl_id), ('ptav_active', '=', True)]"
+                               options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                    </group>
+                    <div class="text-muted">
+                        בחר ערך אחד לפחות משני מאפיינים שונים. לדוגמה:
+                        „דגם: חלון” יחד עם „צבע: כתום”.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="mdl_product_template_form_view" model="ir.ui.view">
         <field name="name">product.template.form.mdl.native.catalog</field>
         <field name="model">product.template</field>
@@ -266,24 +328,63 @@
 
                 <separator string="כללי שילובים"
                            invisible="not mdl_catalog_managed"/>
+                <div class="text-muted"
+                     invisible="not mdl_catalog_managed">
+                    „חסום את השילוב” מונע את הערכים שנבחרו יחד.
+                    „אפשר רק את השילוב” יוצר רשימת שילובים מורשים וחוסם
+                    את כל השאר.
+                </div>
                 <field name="mdl_exclusion_ids"
                        nolabel="1"
                        invisible="not mdl_catalog_managed"
                        domain="[('mdl_is_catalog_condition', '=', True)]"
-                       context="{'default_mdl_is_catalog_condition': True}">
+                       context="{
+                           'default_mdl_is_catalog_condition': True,
+                           'default_mdl_rule_type': 'forbidden',
+                           'form_view_ref': 'mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view'
+                       }">
                     <list editable="bottom">
                         <field name="product_tmpl_id"
                                column_invisible="True"/>
                         <field name="mdl_is_catalog_condition"
                                column_invisible="True"/>
-                        <field name="mdl_rule_type"/>
+                        <field name="mdl_rule_type" string="מה לעשות"/>
                         <field name="mdl_combination_value_ids"
-                               string="ערכי הכלל"
+                               string="כאשר נבחרים הערכים"
                                widget="many2many_tags"
                                required="1"
                                domain="[('product_tmpl_id', '=', product_tmpl_id), ('ptav_active', '=', True)]"
                                options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
                     </list>
+                    <form string="כלל שילוב">
+                        <sheet>
+                            <field name="mdl_is_catalog_condition" invisible="1"/>
+                            <field name="product_tmpl_id" invisible="1"/>
+                            <group>
+                                <field name="mdl_rule_type"
+                                       string="מה לעשות"
+                                       widget="radio"
+                                       options="{'horizontal': True}"/>
+                            </group>
+                            <div class="alert alert-warning" role="alert"
+                                 invisible="mdl_rule_type != 'forbidden'">
+                                כל פריט שמכיל יחד את כל הערכים שתבחר כאן ייחסם.
+                            </div>
+                            <div class="alert alert-info" role="alert"
+                                 invisible="mdl_rule_type != 'allowed'">
+                                רק פריטים שמכילים יחד את כל הערכים שתבחר כאן יורשו.
+                                כל שילוב אחר ייחסם אם אינו מתאים לכלל „אפשר רק” אחר.
+                            </div>
+                            <group string="תנאי הכלל">
+                                <field name="mdl_combination_value_ids"
+                                       string="כאשר נבחרים הערכים"
+                                       widget="many2many_tags"
+                                       required="1"
+                                       domain="[('product_tmpl_id', '=', product_tmpl_id), ('ptav_active', '=', True)]"
+                                       options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                            </group>
+                        </sheet>
+                    </form>
                 </field>
             </xpath>
 
