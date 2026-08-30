@@ -146,9 +146,11 @@ class ProductTemplateAttributeValue(models.Model):
 
     def _mdl_get_sku_component(self):
         self.ensure_one()
-        return self._resolved_component(
-            self.product_attribute_value_id.mdl_sku_component,
-            self.mdl_sku_component_override,
+        # Keep the em dash as an internal omission marker for the renderer.
+        # The effective field shown to users resolves it to an empty value.
+        override = clean_text(self.mdl_sku_component_override)
+        return override or clean_text(
+            self.product_attribute_value_id.mdl_sku_component
         )
 
     def _mdl_get_name_component(self):

@@ -727,7 +727,7 @@ class TestProductGroupsAttributes(TransactionCase):
             )
         )
 
-    def test_category_change_does_not_change_group_names_or_skus(self):
+    def test_category_change_updates_group_names_and_skus(self):
         template = self._create_template()
         original_codes = set(template.product_variant_ids.mapped("default_code"))
         original_names = set(
@@ -738,15 +738,18 @@ class TestProductGroupsAttributes(TransactionCase):
         )
         template.categ_id = frame_category
         self.assertEqual(template.categ_id, frame_category)
-        self.assertEqual(template.mdl_group_default_name, "דלת")
-        self.assertEqual(
-            set(template.product_variant_ids.mapped("default_code")),
-            original_codes,
+        self.assertEqual(template.mdl_group_default_name, "משקוף")
+        self.assertEqual(template.mdl_group_default_sku, "11")
+        updated_codes = set(
+            template.product_variant_ids.mapped("default_code")
         )
-        self.assertEqual(
-            set(template.product_variant_ids.mapped("mdl_generated_name")),
-            original_names,
+        updated_names = set(
+            template.product_variant_ids.mapped("mdl_generated_name")
         )
+        self.assertNotEqual(updated_codes, original_codes)
+        self.assertNotEqual(updated_names, original_names)
+        self.assertTrue(all(code.startswith("1101") for code in updated_codes))
+        self.assertTrue(all(name.startswith("משקוף") for name in updated_names))
 
     def test_attribute_name_mode_recomputes_after_native_attribute_rename(self):
         template = self._create_template()
