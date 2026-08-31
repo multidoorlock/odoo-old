@@ -89,6 +89,26 @@ class TestWorkEntryNormalization(TransactionCase):
         ):
             self.assertNotIn(field_name, version_fields)
 
+    def test_monthly_computed_rates_cannot_be_overwritten_by_stale_form_values(self):
+        self.version.write({
+            "wage": 10000.0,
+            "mdl_daily_wage": 0.0,
+            "hourly_wage": 0.0,
+            "mdl_hourly_wage_exact": 0.0,
+        })
+        average_monthly_hours = self.calendar.hours_per_week * 52 / 12
+        self.assertAlmostEqual(
+            self.version.mdl_daily_wage,
+            10000.0 * self.calendar.hours_per_day / average_monthly_hours,
+            places=2,
+        )
+        self.assertAlmostEqual(
+            self.version.hourly_wage,
+            10000.0 / average_monthly_hours,
+            places=2,
+        )
+        self.assertGreater(self.version.mdl_hourly_wage_exact, 0.0)
+
     def test_morning_shift_is_one_full_regular_day(self):
         self._attendance(datetime(2026, 1, 5, 6, 30), datetime(2026, 1, 5, 16, 0))
         values = self._values(date(2026, 1, 5), date(2026, 1, 6))

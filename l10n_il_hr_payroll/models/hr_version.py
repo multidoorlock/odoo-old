@@ -16,6 +16,11 @@ def _decimal(value):
 class HrVersion(models.Model):
     _inherit = 'hr.version'
 
+    _MDL_MONTHLY_COMPUTED_RATE_FIELDS = {
+        'mdl_daily_wage', 'mdl_hourly_wage',
+        'hourly_wage', 'mdl_hourly_wage_exact',
+    }
+
     # ------------------------------------------------------------------
     # שדות שכבת הממשק (סעיפים 4–5, 8 באפיון)
     # ------------------------------------------------------------------
@@ -145,6 +150,37 @@ class HrVersion(models.Model):
             )
             version.mdl_additional_day_hourly_wage = (
                 version.mdl_additional_day_wage / std_hours if std_hours else 0.0)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Never let stale client values override monthly computed rates."""
+        clean_vals_list = []
+        for incoming_vals in vals_list:
+            vals = dict(incoming_vals)
+            if vals.get('mdl_wage_type', 'mdl_monthly') == 'mdl_monthly':
+                for field_name in self._MDL_MONTHLY_COMPUTED_RATE_FIELDS:
+                    vals.pop(field_name, None)
+            clean_vals_list.append(vals)
+        return super().create(clean_vals_list)
+
+    def write(self, vals):
+        """Monthly rates are outputs; the daily wage stays editable for daily workers."""
+        if not self or not (self._MDL_MONTHLY_COMPUTED_RATE_FIELDS & vals.keys()):
+            return super().write(vals)
+
+        resulting_type = vals.get('mdl_wage_type')
+        monthly_versions = self.filtered(
+            lambda version: (resulting_type or version.mdl_wage_type) == 'mdl_monthly')
+        daily_versions = self - monthly_versions
+        result = True
+        if monthly_versions:
+            monthly_vals = dict(vals)
+            for field_name in self._MDL_MONTHLY_COMPUTED_RATE_FIELDS:
+                monthly_vals.pop(field_name, None)
+            result = super(HrVersion, monthly_versions).write(monthly_vals)
+        if daily_versions:
+            result = super(HrVersion, daily_versions).write(vals) and result
+        return result
 
     @api.model
     def _get_whitelist_fields_from_template(self):
