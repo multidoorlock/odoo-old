@@ -97,6 +97,23 @@ class TestPayrollPaymentSplits(TransactionCase):
                 il_split_line_ids=[Command.create({"sequence": 1, "amount": 900.0})],
             ))
 
+    def test_planned_distribution_validates_current_one2many_lines(self):
+        """A new payment must not depend on a pending stored recomputation."""
+        payment = self.env["account.payment"].create(self._payment_values(
+            amount=1000.01,
+            il_spread_type="planned",
+            il_split_line_ids=[
+                Command.create({"sequence": 1, "amount": 333.33}),
+                Command.create({"sequence": 2, "amount": 333.33}),
+                Command.create({"sequence": 3, "amount": 333.35}),
+            ],
+        ))
+        self.assertEqual(
+            payment.currency_id.compare_amounts(
+                sum(payment.il_split_line_ids.mapped("amount")), payment.amount),
+            0,
+        )
+
     def test_planned_edit_resequences_and_still_closes_payment(self):
         payment = self.env["account.payment"].create(self._payment_values(
             il_spread_type="planned",

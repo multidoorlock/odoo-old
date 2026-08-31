@@ -59,9 +59,28 @@ class HrVersion(models.Model):
             date_stop = tz.localize(
                 datetime.combine(fields.Date.to_date(date_stop), time.max)
             ).astimezone(pytz.utc).replace(tzinfo=None)
-        start_local = pytz.utc.localize(date_start).astimezone(tz)
-        stop_local = pytz.utc.localize(date_stop).astimezone(tz)
+        # Payroll generation normally passes naive UTC datetimes, while the
+        # Work Entries Gantt progress-bar path passes timezone-aware values.
+        # Accept both forms instead of localizing an already-aware datetime.
+        start_utc = (
+            pytz.utc.localize(date_start)
+            if date_start.tzinfo is None
+            else date_start.astimezone(pytz.utc)
+        )
+        stop_utc = (
+            pytz.utc.localize(date_stop)
+            if date_stop.tzinfo is None
+            else date_stop.astimezone(pytz.utc)
+        )
+        start_local = start_utc.astimezone(tz)
+        stop_local = stop_utc.astimezone(tz)
         first_day = start_local.date()
+        # Odoo uses the previous generated boundary (local time.max) as the
+        # beginning of the next incremental generation interval. Expanding
+        # that single boundary microsecond back to the whole same day creates
+        # a duplicate normalized work entry when a payslip is opened.
+        if start_local.time() == time.max:
+            first_day += timedelta(days=1)
         last_day = (stop_local - timedelta(microseconds=1)).date()
         return tz, first_day, last_day
 
@@ -362,8 +381,21 @@ class HrVersion(models.Model):
             )
             total_actual_hours = sum(
                 attendance.worked_hours for attendance in shift_attendances)
+
+            def presence_hours(attendance):
+                # mdl_attendances adds the explicit presence_hours field, but
+                # the payroll module is also valid without that optional UI
+                # layer.  In that case presence is the raw check-in/out span.
+                if 'presence_hours' in attendance._fields:
+                    return attendance.presence_hours
+                if not attendance.check_in or not attendance.check_out:
+                    return attendance.worked_hours
+                return (
+                    attendance.check_out - attendance.check_in
+                ).total_seconds() / 3600.0
+
             non_work_hours = sum(
-                max(attendance.presence_hours - attendance.worked_hours, 0.0)
+                max(presence_hours(attendance) - attendance.worked_hours, 0.0)
                 for attendance in shift_attendances
             )
             if frequency == 'daily_duration':

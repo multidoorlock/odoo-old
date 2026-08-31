@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from odoo import Command
@@ -113,6 +113,19 @@ class TestWagePrecision(TransactionCase):
             rules = structure.rule_ids.filtered(
                 lambda rule: rule.code == 'IL_WAGE_ROUNDING' and rule.active)
             self.assertEqual(len(rules), 1)
+
+    def test_israeli_payroll_version_gets_a_real_contract_start(self):
+        employee = self.env['hr.employee'].create({
+            'name': 'Missing Contract Start Employee',
+            'company_id': self.company.id,
+            'date_version': date(2026, 6, 1),
+            'resource_calendar_id': self.calendar.id,
+            'structure_type_id': self.env.ref(
+                'l10n_il_hr_payroll_account.hr_payroll_structure_type_il').id,
+        })
+        self.assertEqual(employee.version_id.date_start, date(2026, 6, 1))
+        self.assertEqual(
+            employee.version_id.contract_date_start, date(2026, 6, 1))
 
 
 @tagged('post_install', '-at_install', 'l10n_il_hr_payroll_account_net_wage')
@@ -372,6 +385,112 @@ class TestNetDailyWageGrossUp(TransactionCase):
             delta=payslip.currency_id.rounding,
         )
 
+    def test_friday_overtime_split_is_paid_as_one_fixed_additional_day(self):
+        monthly_type = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_type_il')
+        monthly_structure = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il')
+        fixed_calendar = self.env['resource.calendar'].create({
+            'name': 'Monday Only Additional Day Calendar',
+            'company_id': self.company.id,
+            'tz': 'UTC',
+            'mdl_schedule_type': 'attendance',
+            'mdl_schedule_frequency': 'fixed_intervals',
+            'attendance_ids': [Command.create({
+                'name': 'Monday',
+                'dayofweek': '0',
+                'day_period': 'morning',
+                'hour_from': 6.5,
+                'hour_to': 16.0,
+            })],
+        })
+        employee = self.env['hr.employee'].create({
+            'name': 'Fixed Additional Day Employee',
+            'company_id': self.company.id,
+            'date_version': date(2026, 1, 1),
+            'resource_calendar_id': fixed_calendar.id,
+            'structure_type_id': monthly_type.id,
+            'il_salary_structure_id': monthly_structure.id,
+            'mdl_wage_type': 'mdl_monthly',
+            'mdl_wage_rate_type': 'gross',
+            'wage': 10000.0,
+            'mdl_additional_day_wage': 400.0,
+        })
+        version = employee.version_id
+        version.write({
+            'work_entry_source': 'attendance',
+            'ruleset_id': self.env['hr.attendance.overtime.ruleset'].create({
+                'name': 'Friday 6 plus 3',
+                'company_id': self.company.id,
+            }).id,
+        })
+        attendance = self.env['hr.attendance'].create({
+            'employee_id': employee.id,
+            'check_in': datetime(2026, 1, 10, 6, 30),
+            'check_out': datetime(2026, 1, 10, 15, 30),
+        })
+        overtime_type = self.env.ref('hr_work_entry.work_entry_type_overtime')
+        for duration in (6.0, 3.0):
+            self.env['hr.attendance.overtime.line'].create({
+                'employee_id': employee.id,
+                'date': date(2026, 1, 10),
+                'status': 'approved',
+                'duration': duration,
+                'manual_duration': duration,
+                'time_start': attendance.check_in,
+                'time_stop': attendance.check_out,
+                'work_entry_type_overtime_id': overtime_type.id,
+            })
+        entries = version.generate_work_entries(
+            date(2026, 1, 10), date(2026, 1, 10), force=True)
+        self.assertEqual(
+            entries.mapped('work_entry_type_id.code'), ['ADDITIONAL_DAY'])
+        active_additional = self.env['hr.work.entry'].search([
+            ('version_id', '=', version.id),
+            ('date', '=', date(2026, 1, 10)),
+            ('work_entry_type_id.code', '=', 'ADDITIONAL_DAY'),
+        ])
+        self.assertEqual(
+            len(active_additional), 1,
+            msg='before payslip: %s' % [
+                (entry.id, entry.duration, entry.active)
+                for entry in active_additional
+            ],
+        )
+
+        payslip = self.env['hr.payslip'].create({
+            'name': 'Fixed Additional Day Payslip',
+            'employee_id': employee.id,
+            'company_id': self.company.id,
+            'date_from': date(2026, 1, 10),
+            'date_to': date(2026, 1, 10),
+            'version_id': version.id,
+            'struct_id': monthly_structure.id,
+        })
+        payslip.compute_sheet()
+        active_additional = self.env['hr.work.entry'].search([
+            ('version_id', '=', version.id),
+            ('date', '=', date(2026, 1, 10)),
+            ('work_entry_type_id.code', '=', 'ADDITIONAL_DAY'),
+        ])
+        self.assertEqual(
+            len(active_additional), 1,
+            msg='after payslip: %s' % [
+                (entry.id, entry.duration, entry.active)
+                for entry in active_additional
+            ],
+        )
+        worked_codes = payslip.worked_days_line_ids.mapped('code')
+        self.assertIn('ADDITIONAL_DAY', worked_codes)
+        self.assertNotIn('OVERTIME', worked_codes)
+        by_code = {line.code: line.total for line in payslip.line_ids}
+        self.assertAlmostEqual(
+            by_code['IL_ADDITIONAL_DAY_GROSS'], 400.0, places=2,
+            msg=str([
+                (line.code, line.number_of_days, line.number_of_hours, line.amount)
+                for line in payslip.worked_days_line_ids
+            ]),
+        )
     def test_overtime_is_paid_on_top_of_net_target(self):
         regular = self._create_payslip()
         regular._il_run_gross_up_engine()

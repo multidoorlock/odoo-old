@@ -123,9 +123,15 @@ class AccountPayment(models.Model):
 
     def _check_il_spread_complete(self):
         for payment in self.filtered(lambda p: p._il_employee()):
+            # Do not validate against the stored computed field here.  During
+            # account.payment creation Odoo creates the one2many commands as
+            # part of the parent create and the stored value may still be
+            # waiting in the recompute queue.  The lines are already present
+            # and are the authoritative value for this business constraint.
+            planned_amount = sum(payment.il_split_line_ids.mapped('amount'))
             if payment.il_spread_type in ('planned', 'none') and \
                     payment.currency_id.compare_amounts(
-                        payment.il_planned_amount, payment.amount):
+                        planned_amount, payment.amount):
                 raise ValidationError(
                     'בפריסה מתוכננת או בפריסה מיידית, סכום השורות חייב להיות שווה לסכום התשלום.')
             if payment.il_spread_type == 'none' and len(payment.il_split_line_ids) != 1:
