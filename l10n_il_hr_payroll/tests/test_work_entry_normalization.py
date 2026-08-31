@@ -12,8 +12,8 @@ class TestWorkEntryNormalization(TransactionCase):
         super().setUpClass()
         cls.company = cls.env["res.company"].create({
             "name": "Work Entry Normalization Company",
-            "mdl_shift_paid_hours": 9.5,
-            "mdl_shift_sleep_hours": 5.0,
+            "mdl_shift_morning_hours": 9.5,
+            "mdl_shift_evening_hours": 9.5,
             "mdl_shift_cutoff": 12.0,
         })
         cls.calendar = cls.env["resource.calendar"].with_company(cls.company).create({
@@ -41,6 +41,7 @@ class TestWorkEntryNormalization(TransactionCase):
         cls.version.write({
             "work_entry_source": "attendance",
             "mdl_wage_type": "mdl_monthly",
+            "ruleset_id": False,
         })
 
     def _attendance(self, start, stop):
@@ -70,6 +71,23 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertEqual(self.calendar._mdl_native_schedule_values("weekly_quota"), {
             "schedule_type": "flexible", "duration_based": False,
         })
+
+    def test_removed_company_and_employee_fields_are_not_registered(self):
+        company_fields = self.env["res.company"]._fields
+        version_fields = self.env["hr.version"]._fields
+        for field_name in (
+            "mdl_weekend_sunday", "mdl_weekend_friday", "mdl_weekend_saturday",
+            "mdl_shift_morning_start", "mdl_shift_morning_end",
+            "mdl_shift_evening_start", "mdl_shift_evening_end",
+            "mdl_shift_sleep_start", "mdl_shift_sleep_end",
+            "mdl_shift_paid_hours", "mdl_shift_sleep_hours",
+        ):
+            self.assertNotIn(field_name, company_fields)
+        for field_name in (
+            "mdl_weekend_wage", "mdl_weekend_rate_type",
+            "mdl_weekend_hourly_wage", "mdl_additional_day_rate_type",
+        ):
+            self.assertNotIn(field_name, version_fields)
 
     def test_morning_shift_is_one_full_regular_day(self):
         self._attendance(datetime(2026, 1, 5, 6, 30), datetime(2026, 1, 5, 16, 0))
@@ -130,6 +148,59 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertEqual(len(additional), 1)
         self.assertAlmostEqual(sum(value["duration"] for value in regular), 19.0)
         self.assertAlmostEqual(additional[0]["duration"], 9.5)
+
+    def test_calendar_weekday_is_not_a_separate_weekend_rate(self):
+        self._attendance(
+            datetime(2026, 1, 10, 6, 30), datetime(2026, 1, 10, 16, 0))
+        values = self._values(date(2026, 1, 10), date(2026, 1, 11))
+        self.assertFalse([value for code, value in values if code == "WEEKEND"])
+        self.assertEqual(
+            len([value for code, value in values if code == "ADDITIONAL_DAY"]), 1)
+
+    def test_odoo_overtime_rules_replace_regular_time_on_that_day(self):
+        ruleset = self.env["hr.attendance.overtime.ruleset"].create({
+            "name": "Weekend Through Odoo Overtime",
+            "company_id": self.company.id,
+        })
+        self.version.ruleset_id = ruleset
+        attendance = self._attendance(
+            datetime(2026, 1, 10, 6, 30), datetime(2026, 1, 10, 16, 0))
+        overtime_type = self.env.ref("hr_work_entry.work_entry_type_overtime")
+        self.env["hr.attendance.overtime.line"].create({
+            "employee_id": self.employee.id,
+            "date": date(2026, 1, 10),
+            "status": "approved",
+            "duration": 9.5,
+            "manual_duration": 9.5,
+            "time_start": attendance.check_in,
+            "time_stop": attendance.check_out,
+            "work_entry_type_overtime_id": overtime_type.id,
+        })
+        values = self._values(date(2026, 1, 10), date(2026, 1, 11))
+        overtime = [value for code, value in values if code == "OVERTIME"]
+        self.assertEqual(len(overtime), 1)
+        self.assertAlmostEqual(overtime[0]["duration"], 9.5)
+        self.assertFalse([value for code, value in values if code == "ADDITIONAL_DAY"])
+        self.assertEqual(overtime[0]["mdl_rounding_reason"], "odoo_overtime_rule")
+
+    def test_morning_shift_uses_its_own_company_duration(self):
+        self.company.mdl_shift_morning_hours = 8.0
+        shift_calendar = self.env["resource.calendar"].with_company(self.company).create({
+            "name": "Eight Hour Morning Shift Calendar",
+            "company_id": self.company.id,
+            "tz": "UTC",
+            "mdl_schedule_type": "shifts",
+            "mdl_schedule_frequency": "daily_duration",
+            "mdl_shift_day_monday": True,
+        })
+        self.version.resource_calendar_id = shift_calendar
+        self._attendance(
+            datetime(2026, 1, 5, 6, 30), datetime(2026, 1, 5, 14, 30))
+        values = self._values(date(2026, 1, 5), date(2026, 1, 6))
+        regular = [value for code, value in values if code == "WORK100"]
+        self.assertEqual(len(regular), 1)
+        self.assertAlmostEqual(regular[0]["duration"], 8.0)
+        self.assertFalse([value for code, value in values if code == "OVERTIME"])
 
     def test_segmented_night_shift_is_paid_9_5_hours_plus_5_sleep(self):
         if not self.env.registry.get("hr.attendance.segment.ruleset"):

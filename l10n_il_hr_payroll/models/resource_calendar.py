@@ -73,26 +73,31 @@ class ResourceCalendar(models.Model):
                 # מכסה יומית/שבועית — ערך ידני, אין לדרוס.
                 calendar.mdl_hours_per_day = calendar.mdl_hours_per_day
 
-    @api.depends('mdl_schedule_type', 'mdl_hours_per_day', 'company_id')
+    @api.depends(
+        'mdl_schedule_type', 'mdl_hours_per_day',
+        'company_id.mdl_shift_morning_hours')
     def _compute_hours_per_day(self):
         # "שעות ביחידת יום" הוא מקור האמת בכל לוחות הנוכחות; בלוחות משמרות —
         # שעות המשמרת בתשלום מהגדרות החברה.
         shift_calendars = self.filtered(lambda c: c.mdl_schedule_type == 'shifts')
         attendance_calendars = self.filtered(lambda c: c.mdl_schedule_type == 'attendance')
         for calendar in shift_calendars:
-            calendar.hours_per_day = calendar._mdl_company().mdl_shift_paid_hours
+            calendar.hours_per_day = calendar._mdl_company().mdl_shift_morning_hours
         for calendar in attendance_calendars:
             calendar.hours_per_day = calendar.mdl_hours_per_day
         super(ResourceCalendar, self - shift_calendars - attendance_calendars)._compute_hours_per_day()
 
-    @api.depends('mdl_schedule_type', 'mdl_schedule_frequency', 'mdl_shifts_per_week', 'company_id')
+    @api.depends(
+        'mdl_schedule_type', 'mdl_schedule_frequency', 'mdl_shifts_per_week',
+        'company_id.mdl_shift_morning_hours')
     def _compute_hours_per_week(self):
         shift_weekly = self.filtered(
             lambda c: c.mdl_schedule_type == 'shifts'
             and c.mdl_schedule_frequency == 'weekly_quota')
         for calendar in shift_weekly:
             calendar.hours_per_week = (
-                calendar.mdl_shifts_per_week * calendar._mdl_company().mdl_shift_paid_hours)
+                calendar.mdl_shifts_per_week
+                * calendar._mdl_company().mdl_shift_morning_hours)
         super(ResourceCalendar, self - shift_weekly)._compute_hours_per_week()
 
     def _mdl_sync_shift_attendance_lines(self):
@@ -101,7 +106,7 @@ class ResourceCalendar(models.Model):
         for calendar in self:
             if calendar.mdl_schedule_type != 'shifts' or calendar.mdl_schedule_frequency != 'daily_duration':
                 continue
-            paid_hours = calendar._mdl_company().mdl_shift_paid_hours
+            paid_hours = calendar._mdl_company().mdl_shift_morning_hours
             commands = [Command.clear()]
             for field_name, dayofweek, label in MDL_SHIFT_DAY_FIELDS:
                 if calendar[field_name]:

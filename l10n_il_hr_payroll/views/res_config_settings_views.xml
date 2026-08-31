@@ -8,51 +8,12 @@
         <field name="arch" type="xml">
             <xpath expr="//block[@id='hr_payroll_settings']" position="after">
                 <block title="שכר ישראלי" id="mdl_payroll_settings">
-                    <setting string="ימי סוף שבוע" id="mdl_weekend_days_setting"
-                             help="הימים המסווגים כסוף שבוע לצורך תעריף סוף שבוע">
-                        <div class="row mt8">
-                            <div class="col-6">
-                                <field name="mdl_weekend_sunday"/>
-                                <label for="mdl_weekend_sunday"/>
-                            </div>
-                            <div class="col-6">
-                                <field name="mdl_weekend_monday"/>
-                                <label for="mdl_weekend_monday"/>
-                            </div>
-                            <div class="col-6">
-                                <field name="mdl_weekend_tuesday"/>
-                                <label for="mdl_weekend_tuesday"/>
-                            </div>
-                            <div class="col-6">
-                                <field name="mdl_weekend_wednesday"/>
-                                <label for="mdl_weekend_wednesday"/>
-                            </div>
-                            <div class="col-6">
-                                <field name="mdl_weekend_thursday"/>
-                                <label for="mdl_weekend_thursday"/>
-                            </div>
-                            <div class="col-6">
-                                <field name="mdl_weekend_friday"/>
-                                <label for="mdl_weekend_friday"/>
-                            </div>
-                            <div class="col-6">
-                                <field name="mdl_weekend_saturday"/>
-                                <label for="mdl_weekend_saturday"/>
-                            </div>
-                        </div>
-                    </setting>
                     <setting string="הגדרות משמרות" id="mdl_shift_settings"
-                             help="שעות המשמרות, חלון השינה ושעת החיתוך לזיהוי משמרת — ברמת החברה">
+                             help="משך משמרת בוקר, משך משמרת ערב ושעת החיתוך לזיהוי סוג המשמרת — ברמת החברה">
                         <div class="content-group mt8">
                             <group>
-                                <field name="mdl_shift_morning_start" widget="float_time"/>
-                                <field name="mdl_shift_morning_end" widget="float_time"/>
-                                <field name="mdl_shift_evening_start" widget="float_time"/>
-                                <field name="mdl_shift_evening_end" widget="float_time"/>
-                                <field name="mdl_shift_sleep_start" widget="float_time"/>
-                                <field name="mdl_shift_sleep_end" widget="float_time"/>
-                                <field name="mdl_shift_paid_hours" widget="float_time"/>
-                                <field name="mdl_shift_sleep_hours" widget="float_time"/>
+                                <field name="mdl_shift_morning_hours" widget="float_time"/>
+                                <field name="mdl_shift_evening_hours" widget="float_time"/>
                                 <field name="mdl_shift_cutoff" widget="float_time"/>
                             </group>
                         </div>

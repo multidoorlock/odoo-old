@@ -15,7 +15,7 @@
                 <field name="il_is_israel_payroll" invisible="1"/>
             </field>
             <field name="schedule_pay" position="attributes">
-                <attribute name="readonly">il_is_israel_payroll</attribute>
+                <attribute name="readonly">1</attribute>
                 <attribute name="force_save">1</attribute>
             </field>
             <group name="payroll_group" position="after">

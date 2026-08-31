@@ -12,7 +12,6 @@ class HrWorkEntry(models.Model):
     mdl_rate_category = fields.Selection([
         ('regular', 'רגיל'),
         ('additional_day', 'יום נוסף'),
-        ('weekend', 'סוף שבוע'),
     ], string='קטגוריית תעריף', readonly=True)
     mdl_shift_type = fields.Selection([
         ('none', 'ללא משמרת'),
@@ -25,6 +24,7 @@ class HrWorkEntry(models.Model):
         ('shift', 'משמרת'),
         ('overtime_threshold', 'סף שעות נוספות'),
         ('sleep', 'שינה'),
+        ('odoo_overtime_rule', 'כלל שעות נוספות של Odoo'),
     ], string='סיבת עיגול', readonly=True)
     mdl_source_attendance_ids = fields.Many2many(
         'hr.attendance', 'mdl_work_entry_attendance_rel',

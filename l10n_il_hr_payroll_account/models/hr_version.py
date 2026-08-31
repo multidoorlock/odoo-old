@@ -63,28 +63,24 @@ class HrVersion(models.Model):
     def _onchange_il_salary_structure(self):
         for version in self:
             version.il_salary_structure_id = version.structure_type_id.default_struct_id
+            version.schedule_pay = 'monthly'
             if version.structure_type_id.country_id.code == 'IL':
-                version.schedule_pay = 'monthly'
                 version.mdl_wage_type = (
                     'mdl_monthly' if version.structure_type_id.wage_type == 'monthly'
                     else 'mdl_daily')
-                if version.mdl_wage_type == 'mdl_monthly':
-                    version.mdl_wage_rate_type = 'gross'
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            vals['schedule_pay'] = 'monthly'
             structure_type = self.env['hr.payroll.structure.type'].browse(
                 vals.get('structure_type_id'))
             if structure_type.country_id.code == 'IL':
-                vals['schedule_pay'] = 'monthly'
                 vals.setdefault('il_salary_structure_id', structure_type.default_struct_id.id)
                 vals.setdefault(
                     'mdl_wage_type',
                     'mdl_monthly' if structure_type.wage_type == 'monthly' else 'mdl_daily',
                 )
-                if structure_type.wage_type == 'monthly':
-                    vals['mdl_wage_rate_type'] = 'gross'
         return super().create(vals_list)
 
     def write(self, vals):
@@ -97,10 +93,7 @@ class HrVersion(models.Model):
                 'mdl_wage_type',
                 'mdl_monthly' if structure_type.wage_type == 'monthly' else 'mdl_daily',
             )
-            if structure_type.wage_type == 'monthly':
-                vals['mdl_wage_rate_type'] = 'gross'
-        elif 'schedule_pay' in vals and any(version.il_is_israel_payroll for version in self):
-            vals['schedule_pay'] = 'monthly'
+        vals['schedule_pay'] = 'monthly'
         return super().write(vals)
 
     @api.constrains('structure_type_id', 'il_salary_structure_id', 'schedule_pay')
@@ -113,8 +106,8 @@ class HrVersion(models.Model):
                     f'נבחרה הקטגוריה "{version.structure_type_id.display_name}", '
                     f'אך המבנה שייך לקטגוריה '
                     f'"{version.il_salary_structure_id.type_id.display_name}".')
-            if version.il_is_israel_payroll and version.schedule_pay != 'monthly':
-                raise ValidationError('מחזור התשלום בישראל חייב להיות חודשי.')
+            if version.schedule_pay != 'monthly':
+                raise ValidationError('מחזור התשלום לעובד חייב להיות חודשי.')
 
     @api.constrains('il_tax_coordination', 'il_tax_coordination_valid_from',
                     'il_tax_coordination_valid_until')

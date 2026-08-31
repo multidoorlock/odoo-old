@@ -30,7 +30,7 @@ class HrVersion(models.Model):
         ('net', 'נטו'),
     ], string='הזנת שכר לפי', required=True, default='gross',
         groups=PAYROLL_GROUP, tracking=True,
-        help='קובע אם השכר היומי ותעריף השעה המחושב הם ברוטו או יעד נטו לגילום בתלוש.')
+        help='קובע אם התעריפים המוזנים הם ברוטו או יעד נטו לגילום בתלוש.')
     mdl_monthly_wage = fields.Monetary(
         related='wage', readonly=False, string='שכר חודשי', groups=PAYROLL_GROUP)
     mdl_daily_wage = fields.Monetary(
@@ -53,22 +53,8 @@ class HrVersion(models.Model):
 
     mdl_additional_day_wage = fields.Monetary(
         string='תעריף יום נוסף מותאם', groups=PAYROLL_GROUP, tracking=True)
-    mdl_additional_day_rate_type = fields.Selection([
-        ('gross', 'ברוטו'),
-        ('net', 'נטו'),
-    ], string='סוג תעריף יום נוסף', groups=PAYROLL_GROUP)
-    mdl_weekend_wage = fields.Monetary(
-        string='תעריף סוף שבוע', groups=PAYROLL_GROUP, tracking=True)
-    mdl_weekend_rate_type = fields.Selection([
-        ('gross', 'ברוטו'),
-        ('net', 'נטו'),
-    ], string='סוג תעריף סוף שבוע', groups=PAYROLL_GROUP)
-
     mdl_additional_day_hourly_wage = fields.Monetary(
-        string='תעריף שעה ליום נוסף', compute='_compute_mdl_special_hourly_wages',
-        groups=PAYROLL_GROUP)
-    mdl_weekend_hourly_wage = fields.Monetary(
-        string='תעריף שעה לסוף שבוע', compute='_compute_mdl_special_hourly_wages',
+        string='תעריף שעה ליום נוסף', compute='_compute_mdl_additional_day_hourly_wage',
         groups=PAYROLL_GROUP)
 
     mdl_resource_calendar_type = fields.Selection(
@@ -99,12 +85,13 @@ class HrVersion(models.Model):
 
     @api.depends('mdl_wage_type', 'mdl_daily_wage', 'wage',
                  'resource_calendar_id.hours_per_day', 'resource_calendar_id.hours_per_week',
-                 'resource_calendar_id.mdl_schedule_type', 'company_id.mdl_shift_paid_hours')
+                 'resource_calendar_id.mdl_schedule_type',
+                 'company_id.mdl_shift_morning_hours')
     def _compute_mdl_hourly_wage(self):
         for version in self:
             if version.mdl_wage_type == 'mdl_daily':
                 std_hours = (
-                    version.company_id.mdl_shift_paid_hours
+                    version.company_id.mdl_shift_morning_hours
                     if version.resource_calendar_id.mdl_schedule_type == 'shifts'
                     else version.resource_calendar_id.hours_per_day
                 )
@@ -126,12 +113,6 @@ class HrVersion(models.Model):
             # NUMERIC field above through the localization helpers.
             version.hourly_wage = exact_rate
 
-    @api.onchange('mdl_wage_type')
-    def _onchange_mdl_wage_type_rate(self):
-        for version in self:
-            if version.mdl_wage_type != 'mdl_daily':
-                version.mdl_wage_rate_type = 'gross'
-
     @api.depends('resource_calendar_id.hours_per_week')
     def _compute_mdl_average_monthly_hours(self):
         for version in self:
@@ -151,22 +132,25 @@ class HrVersion(models.Model):
                 version.mdl_daily_wage = (
                     version.wage * std_hours / avg_hours if avg_hours else 0.0)
 
-    @api.depends('mdl_additional_day_wage', 'mdl_weekend_wage',
-                 'resource_calendar_id.hours_per_day')
-    def _compute_mdl_special_hourly_wages(self):
+    @api.depends(
+        'mdl_additional_day_wage', 'resource_calendar_id.hours_per_day',
+        'resource_calendar_id.mdl_schedule_type',
+        'company_id.mdl_shift_morning_hours')
+    def _compute_mdl_additional_day_hourly_wage(self):
         for version in self:
-            std_hours = version.resource_calendar_id.hours_per_day
+            std_hours = (
+                version.company_id.mdl_shift_morning_hours
+                if version.resource_calendar_id.mdl_schedule_type == 'shifts'
+                else version.resource_calendar_id.hours_per_day
+            )
             version.mdl_additional_day_hourly_wage = (
                 version.mdl_additional_day_wage / std_hours if std_hours else 0.0)
-            version.mdl_weekend_hourly_wage = (
-                version.mdl_weekend_wage / std_hours if std_hours else 0.0)
 
     @api.model
     def _get_whitelist_fields_from_template(self):
         return super()._get_whitelist_fields_from_template() + [
             'mdl_wage_type', 'mdl_wage_rate_type', 'mdl_daily_wage',
-            'mdl_additional_day_wage', 'mdl_additional_day_rate_type',
-            'mdl_weekend_wage', 'mdl_weekend_rate_type',
+            'mdl_additional_day_wage',
         ]
 
     # ------------------------------------------------------------------
@@ -178,8 +162,6 @@ class HrVersion(models.Model):
     def _check_mdl_daily_wage(self):
         for version in self:
             if version.mdl_wage_type != 'mdl_daily':
-                if version.mdl_wage_rate_type == 'net':
-                    raise ValidationError('הזנת שכר נטו זמינה לעובד יומי בלבד.')
                 continue
             if float_compare(version.mdl_daily_wage, 0.0, precision_digits=2) <= 0:
                 raise ValidationError('לעובד יומי חובה להזין שכר יומי גדול מאפס.')
@@ -187,13 +169,9 @@ class HrVersion(models.Model):
                 raise ValidationError(
                     'לעובד יומי חובה לוח עבודה עם שעות ביחידת יום גדולות מאפס.')
 
-    @api.constrains('mdl_weekend_wage', 'mdl_weekend_rate_type',
-                    'mdl_additional_day_wage', 'mdl_additional_day_rate_type')
-    def _check_mdl_rate_types(self):
+    @api.constrains('mdl_additional_day_wage')
+    def _check_mdl_additional_day_wage(self):
         for version in self:
-            if (float_compare(version.mdl_weekend_wage, 0.0, precision_digits=2) > 0
-                    and not version.mdl_weekend_rate_type):
-                raise ValidationError('הוגדר תעריף סוף שבוע — חובה לבחור סוג תעריף (ברוטו/נטו).')
-            if (float_compare(version.mdl_additional_day_wage, 0.0, precision_digits=2) > 0
-                    and not version.mdl_additional_day_rate_type):
-                raise ValidationError('הוגדר תעריף יום נוסף — חובה לבחור סוג תעריף (ברוטו/נטו).')
+            if float_compare(
+                    version.mdl_additional_day_wage, 0.0, precision_digits=2) < 0:
+                raise ValidationError('תעריף יום נוסף אינו יכול להיות שלילי.')

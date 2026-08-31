@@ -161,7 +161,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
         cls.version = cls.employee.version_id
         cls.version.date_version = date(2026, 1, 1)
 
-    def _create_payslip(self, overtime_hours=0.0, weekend_days=0.0, structure=None):
+    def _create_payslip(self, overtime_hours=0.0, structure=None):
         structure = structure or self.daily_structure
         if self.version.il_salary_structure_id != structure:
             self.version.il_salary_structure_id = structure
@@ -191,13 +191,6 @@ class TestNetDailyWageGrossUp(TransactionCase):
                 'number_of_hours': overtime_hours,
                 'number_of_days': 123.0,
             }))
-        if weekend_days:
-            commands.append(Command.create({
-                'work_entry_type_id': self.env.ref(
-                    'l10n_il_hr_payroll.work_entry_type_weekend').id,
-                'number_of_hours': weekend_days * 9.5,
-                'number_of_days': weekend_days,
-            }))
         payslip.write({
             'version_id': self.version.id,
             'struct_id': structure.id,
@@ -221,6 +214,17 @@ class TestNetDailyWageGrossUp(TransactionCase):
         self.assertEqual(self.version.hourly_wage, 26.32)
         self.assertNotIn('mdl_net_daily_wage', self.version._fields)
         self.assertNotIn('mdl_net_hourly_wage', self.version._fields)
+        self.version.mdl_additional_day_wage = 950.0
+        self.assertEqual(self.version.mdl_additional_day_hourly_wage, 100.0)
+
+    def test_monthly_pay_cycle_is_enforced_and_weekend_rule_is_retired(self):
+        self.version.write({'schedule_pay': 'weekly'})
+        self.assertEqual(self.version.schedule_pay, 'monthly')
+        self.assertFalse(self.env['hr.salary.rule'].with_context(
+            active_test=False).search([
+                ('code', '=', 'IL_WEEKEND_GROSS'),
+                ('active', '=', True),
+            ], limit=1))
 
     def test_rounding_recovers_when_stored_exact_rate_is_stale(self):
         self.version.mdl_hourly_wage_exact = 0.0
@@ -289,34 +293,6 @@ class TestNetDailyWageGrossUp(TransactionCase):
             delta=payslip.currency_id.rounding,
         )
 
-    def test_net_weekend_is_grossed_up_on_worked_days_without_salary_input(self):
-        self.version.write({
-            'mdl_weekend_wage': 250.0,
-            'mdl_weekend_rate_type': 'net',
-        })
-        baseline = self._create_payslip()
-        baseline_net = baseline._il_compute_net_total()
-
-        payslip = self._create_payslip(weekend_days=4.0)
-        weekend = payslip.worked_days_line_ids.filtered(
-            lambda worked: worked.code == 'WEEKEND')
-        weekend_gross = sum(weekend.mapped('amount'))
-        self.assertGreater(weekend_gross, 1000.0)
-        self.assertFalse(payslip.input_line_ids.filtered(
-            lambda line: line.code == 'IL_NET_WEEKEND'))
-
-        by_code = {
-            line['code']: line['total']
-            for line in payslip._get_payslip_lines()
-        }
-        self.assertAlmostEqual(
-            by_code['IL_WEEKEND_GROSS'], weekend_gross, places=2)
-        self.assertNotIn('IL_NET_WEEKEND_GROSSUP', by_code)
-        self.assertAlmostEqual(
-            by_code['NET'], baseline_net + 1000.0,
-            delta=payslip.currency_id.rounding,
-        )
-
     def test_net_additional_day_is_grossed_up_without_salary_input(self):
         monthly_type = self.env.ref(
             'l10n_il_hr_payroll_account.hr_payroll_structure_type_il')
@@ -333,11 +309,14 @@ class TestNetDailyWageGrossUp(TransactionCase):
             'mdl_wage_type': 'mdl_monthly',
             'wage': 10000.0,
             'mdl_additional_day_wage': 500.0,
-            'mdl_additional_day_rate_type': 'net',
+            'mdl_wage_rate_type': 'net',
             'il_tax_credit_points': 0.0,
         })
         version = employee.version_id
         version.date_version = date(2026, 1, 1)
+        self.assertEqual(version.mdl_wage_rate_type, 'net')
+        self.assertAlmostEqual(
+            version.mdl_additional_day_hourly_wage, 500.0 / 9.5, places=2)
         payslip = self.env['hr.payslip'].create({
             'name': 'Net Additional Day Payslip',
             'employee_id': employee.id,
@@ -513,13 +492,14 @@ class TestNetDailyWageGrossUp(TransactionCase):
                 if daily:
                     self.assertIn('IL_WAGE_ROUNDING', by_code)
 
-    def test_net_wage_validation(self):
+    def test_daily_wage_validation_and_shared_rate_type(self):
         with self.assertRaisesRegex(ValidationError, 'שכר יומי'):
             self.version.mdl_daily_wage = 0.0
         self.version.invalidate_recordset()
 
-        with self.assertRaisesRegex(ValidationError, 'לעובד יומי בלבד'):
-            self.version.write({
-                'mdl_wage_type': 'mdl_monthly',
-                'mdl_wage_rate_type': 'net',
-            })
+        self.version.write({
+            'mdl_wage_type': 'mdl_monthly',
+            'mdl_wage_rate_type': 'net',
+        })
+        self.assertEqual(self.version.mdl_wage_rate_type, 'net')
+        self.assertEqual(self.version.schedule_pay, 'monthly')

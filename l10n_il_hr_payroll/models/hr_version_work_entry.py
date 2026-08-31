@@ -93,7 +93,6 @@ class HrVersion(models.Model):
         schedule_type = calendar.mdl_schedule_type
         frequency = calendar.mdl_schedule_frequency
         weekly = frequency == 'weekly_quota'
-        weekend_weekdays = company._mdl_weekend_weekdays()
         monthly_worker = version.mdl_wage_type != 'mdl_daily'
         std_day_hours = calendar.hours_per_day or 0.0
         today_local = pytz.utc.localize(datetime.utcnow()).astimezone(tz).date()
@@ -120,6 +119,24 @@ class HrVersion(models.Model):
             local_day = pytz.utc.localize(attendance.check_in).astimezone(tz).date()
             attendances_by_day[local_day] += attendance
 
+        # Odoo's overtime rules remain the sole source of paid overtime when a
+        # ruleset is assigned. The normalization layer only replaces regular
+        # attendance rows; it must preserve the rule-selected work-entry type
+        # and duration instead of inventing a second weekend/overtime path.
+        overtime_by_day = defaultdict(
+            lambda: self.env['hr.attendance.overtime.line'].sudo())
+        if version.ruleset_id:
+            overtime_lines = self.env['hr.attendance.overtime.line'].sudo().search([
+                ('employee_id', '=', employee.id),
+                ('date', '>=', fetch_first_day),
+                ('date', '<=', last_day),
+                ('status', '=', 'approved'),
+                ('manual_duration', '>', 0),
+                ('work_entry_type_overtime_id', '!=', False),
+            ])
+            for overtime in overtime_lines:
+                overtime_by_day[overtime.date] += overtime
+
         # שעות מתוכננות ושעות חופשה מאושרת לכל יום (ללוחות קבועים/מכסה יומית).
         scheduled_by_day = defaultdict(float)
         leave_by_day = defaultdict(float)
@@ -140,13 +157,11 @@ class HrVersion(models.Model):
 
         type_regular = self.env.ref('hr_work_entry.work_entry_type_attendance')
         type_overtime = self.env.ref('hr_work_entry.work_entry_type_overtime')
-        type_weekend = self.env.ref('l10n_il_hr_payroll.work_entry_type_weekend')
         type_additional = self.env.ref('l10n_il_hr_payroll.work_entry_type_additional_day')
         type_sleep = self.env.ref('l10n_il_hr_payroll.work_entry_type_sleep')
         type_absence = self.env.ref('l10n_il_hr_payroll.work_entry_type_unpaid_absence')
         category_types = {
             'regular': type_regular,
-            'weekend': type_weekend,
             'additional_day': type_additional,
         }
 
@@ -193,23 +208,36 @@ class HrVersion(models.Model):
 
             emit = day >= first_day
             day_attendances = attendances_by_day.get(day)
-            is_weekend = day.weekday() in weekend_weekdays
+            day_overtimes = overtime_by_day[day]
+            native_overtime_hours = sum(day_overtimes.mapped('manual_duration'))
             day_vals = []
 
             if schedule_type == 'shifts':
                 consumed_shifts = self._mdl_process_shift_day(
-                    day_vals, make_vals, day, day_attendances, is_weekend,
+                    day_vals, make_vals, day, day_attendances,
                     frequency, monthly_worker, company, tz,
                     scheduled_by_day, leave_by_day, today_local,
                     quota_shifts, consumed_shifts, category_types, type_sleep,
-                    type_overtime, type_absence, rounded_overtime)
+                    type_overtime, type_absence, rounded_overtime,
+                    native_overtime_hours, bool(version.ruleset_id))
             else:
                 consumed_hours = self._mdl_process_regular_day(
-                    day_vals, make_vals, day, day_attendances, is_weekend,
+                    day_vals, make_vals, day, day_attendances,
                     frequency, monthly_worker, std_day_hours,
                     scheduled_by_day, leave_by_day, today_local,
                     quota_hours, consumed_hours, category_types,
-                    type_overtime, type_absence, rounded_overtime)
+                    type_overtime, type_absence, rounded_overtime,
+                    native_overtime_hours, bool(version.ruleset_id))
+
+            total_actual_hours = sum(
+                attendance.worked_hours for attendance in (day_attendances or []))
+            for overtime in day_overtimes:
+                overtime_vals = make_vals(
+                    day, overtime.work_entry_type_overtime_id,
+                    overtime.manual_duration, 'regular', 'none',
+                    'odoo_overtime_rule', day_attendances, total_actual_hours)
+                overtime_vals['overtime_id'] = overtime.id
+                day_vals.append(overtime_vals)
 
             if emit:
                 result += day_vals
@@ -217,21 +245,19 @@ class HrVersion(models.Model):
         return result
 
     def _mdl_process_regular_day(self, day_vals, make_vals, day, day_attendances,
-                                 is_weekend, frequency, monthly_worker, std_day_hours,
+                                 frequency, monthly_worker, std_day_hours,
                                  scheduled_by_day, leave_by_day, today_local,
                                  quota_hours, consumed_hours, category_types,
-                                 type_overtime, type_absence, rounded_overtime):
+                                 type_overtime, type_absence, rounded_overtime,
+                                 native_overtime_hours, uses_overtime_rules):
         # Segmentation is the canonical source of effective work.  Presence
         # may include sleep/break windows and must never feed quota/overtime.
-        actual_hours = sum(
+        total_actual_hours = sum(
             attendance.worked_hours for attendance in (day_attendances or []))
+        actual_hours = max(total_actual_hours - native_overtime_hours, 0.0)
         scheduled_hours = scheduled_by_day.get(day, 0.0)
 
-        # סיווג היום: סוף שבוע > יום נוסף > יום רגיל (סעיף 21 באפיון).
-        if is_weekend:
-            category = 'weekend'
-            h_date = scheduled_hours or std_day_hours
-        elif frequency in ('fixed_intervals', 'daily_duration'):
+        if frequency in ('fixed_intervals', 'daily_duration'):
             if scheduled_hours:
                 category = 'regular'
                 h_date = scheduled_hours
@@ -262,14 +288,17 @@ class HrVersion(models.Model):
                 'none', reason, day_attendances, actual_hours))
 
         # הפרדת שעות נוספות מעבר למכסה היומית (סעיפים 25–26 באפיון).
-        overtime_hours = rounded_overtime(actual_hours - h_date)
+        overtime_hours = (
+            0.0 if uses_overtime_rules
+            else rounded_overtime(actual_hours - h_date)
+        )
         if overtime_hours:
             day_vals.append(make_vals(
                 day, type_overtime, overtime_hours, category,
                 'none', 'overtime_threshold', day_attendances, actual_hours))
 
         weekly = frequency == 'weekly_quota'
-        if weekly and category == 'regular' and not is_weekend:
+        if weekly and category == 'regular':
             consumed_hours += normalized_hours
 
         # היעדרות ללא תשלום עבור זמן מתוכנן שלא בוצע — רק בלוחות קבועים/מכסה
@@ -286,14 +315,13 @@ class HrVersion(models.Model):
         return consumed_hours
 
     def _mdl_process_shift_day(self, day_vals, make_vals, day, day_attendances,
-                               is_weekend, frequency, monthly_worker, company, tz,
+                               frequency, monthly_worker, company, tz,
                                scheduled_by_day, leave_by_day, today_local,
                                quota_shifts, consumed_shifts, category_types,
                                type_sleep, type_overtime, type_absence,
-                               rounded_overtime):
+                               rounded_overtime, native_overtime_hours,
+                               uses_overtime_rules):
         cutoff = company.mdl_shift_cutoff
-        paid_hours = company.mdl_shift_paid_hours
-        sleep_hours = company.mdl_shift_sleep_hours
         scheduled_hours = scheduled_by_day.get(day, 0.0)
 
         buckets = []
@@ -310,14 +338,19 @@ class HrVersion(models.Model):
                 buckets.append(('evening', evening))
 
         for shift_type, shift_attendances in buckets:
-            actual_hours = sum(attendance.worked_hours for attendance in shift_attendances)
+            paid_hours = (
+                company.mdl_shift_morning_hours
+                if shift_type == 'morning'
+                else company.mdl_shift_evening_hours
+            )
+            total_actual_hours = sum(
+                attendance.worked_hours for attendance in shift_attendances)
+            actual_hours = max(total_actual_hours - native_overtime_hours, 0.0)
             non_work_hours = sum(
                 max(attendance.presence_hours - attendance.worked_hours, 0.0)
                 for attendance in shift_attendances
             )
-            if is_weekend:
-                category = 'weekend'
-            elif frequency == 'daily_duration':
+            if frequency == 'daily_duration':
                 category = ('regular' if scheduled_hours
                             else ('additional_day' if monthly_worker else 'regular'))
             else:  # מכסה שבועית של משמרות
@@ -325,22 +358,27 @@ class HrVersion(models.Model):
                     category = 'regular'
                 else:
                     category = 'additional_day' if monthly_worker else 'regular'
-            if frequency == 'weekly_quota' and category == 'regular' and not is_weekend:
+            if frequency == 'weekly_quota' and category == 'regular':
                 consumed_shifts += 1
 
             # כל כניסה למשמרת מתעגלת למשמרת מלאה בתשלום.
-            day_vals.append(make_vals(
-                day, category_types[category], paid_hours, category,
-                shift_type, 'shift', shift_attendances, actual_hours))
-            overtime_hours = rounded_overtime(actual_hours - paid_hours)
+            if actual_hours:
+                day_vals.append(make_vals(
+                    day, category_types[category], paid_hours, category,
+                    shift_type, 'shift', shift_attendances, total_actual_hours))
+            overtime_hours = (
+                0.0 if uses_overtime_rules
+                else rounded_overtime(actual_hours - paid_hours)
+            )
             if overtime_hours:
                 day_vals.append(make_vals(
                     day, type_overtime, overtime_hours, category,
-                    shift_type, 'overtime_threshold', shift_attendances, actual_hours))
-            if shift_type == 'evening' and sleep_hours > 0 and non_work_hours > 0:
+                    shift_type, 'overtime_threshold', shift_attendances,
+                    total_actual_hours))
+            if shift_type == 'evening' and non_work_hours > 0:
                 day_vals.append(make_vals(
-                    day, type_sleep, sleep_hours, category,
-                    'evening', 'sleep', shift_attendances, actual_hours))
+                    day, type_sleep, non_work_hours, category,
+                    'evening', 'sleep', shift_attendances, total_actual_hours))
 
         # משמרת מתוכננת שלא בוצעה — היעדרות ללא תשלום (במכסה יומית בלבד).
         if (frequency == 'daily_duration' and scheduled_hours
