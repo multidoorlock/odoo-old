@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'MDL Payroll — תלושים ותשלומים (חלק ב\')',
+    'name': 'Israel - Payroll With Accounting',
     'version': '1.2.5',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
