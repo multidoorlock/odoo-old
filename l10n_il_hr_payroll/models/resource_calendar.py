@@ -89,7 +89,8 @@ class ResourceCalendar(models.Model):
 
     @api.depends(
         'mdl_schedule_type', 'mdl_schedule_frequency', 'mdl_shifts_per_week',
-        'company_id.mdl_shift_morning_hours')
+        'mdl_hours_per_day', 'attendance_ids', 'attendance_ids.dayofweek',
+        'attendance_ids.duration_hours', 'company_id.mdl_shift_morning_hours')
     def _compute_hours_per_week(self):
         shift_weekly = self.filtered(
             lambda c: c.mdl_schedule_type == 'shifts'
@@ -98,7 +99,24 @@ class ResourceCalendar(models.Model):
             calendar.hours_per_week = (
                 calendar.mdl_shifts_per_week
                 * calendar._mdl_company().mdl_shift_morning_hours)
-        super(ResourceCalendar, self - shift_weekly)._compute_hours_per_week()
+        remaining = self - shift_weekly
+        super(ResourceCalendar, remaining)._compute_hours_per_week()
+
+        # Keep Odoo's native calculation as the primary source. A newly
+        # created duration-based calendar can have no attendance rows yet;
+        # native Odoo then returns zero and monthly wage conversion becomes
+        # impossible. In that one case use the configured daily quota over
+        # the selected weekdays, or the conventional/default five days until
+        # rows are added.
+        empty_daily = remaining.filtered(
+            lambda c: c.mdl_schedule_frequency == 'daily_duration'
+            and float_compare(c.hours_per_week, 0.0, precision_digits=10) <= 0)
+        for calendar in empty_daily:
+            working_days = len(set(calendar.attendance_ids.filtered(
+                lambda line: line.duration_hours > 0).mapped('dayofweek')))
+            if not working_days:
+                working_days = calendar.mdl_shifts_per_week or 5
+            calendar.hours_per_week = working_days * calendar.hours_per_day
 
     def _mdl_sync_shift_attendance_lines(self):
         """Rebuild the attendance lines of a 'shifts + daily quota' calendar

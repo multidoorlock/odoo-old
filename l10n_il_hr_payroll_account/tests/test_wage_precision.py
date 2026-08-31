@@ -257,19 +257,24 @@ class TestNetDailyWageGrossUp(TransactionCase):
             lambda worked: worked.code == 'WORK100')
         payslip._il_set_regular_attendance_amount(0.0)
         baseline = payslip.with_context(
-            il_solving_net_base_wage=True)._il_compute_net_total()
+            il_solving_net_base_wage=True,
+            il_skip_wage_rounding=True)._il_compute_net_total()
 
         payslip._il_run_gross_up_engine()
         gross_amount = sum(attendance.mapped('amount'))
         solved_net = payslip.with_context(
             il_solving_net_base_wage=True)._il_compute_net_total()
         target = payslip._il_net_attendance_target()
-        display_target = payslip._il_net_attendance_display_target()
         self.assertGreater(gross_amount, target)
         self.assertAlmostEqual(
             solved_net,
-            baseline + display_target,
-            delta=payslip.currency_id.rounding,
+            baseline + target,
+            delta=payslip.currency_id.rounding / 2,
+        )
+        self.assertEqual(
+            payslip._il_currency_round_decimal(Decimal(str(solved_net))),
+            payslip._il_currency_round_decimal(
+                Decimal(str(baseline + target))),
         )
 
         line_values = payslip._get_payslip_lines()
@@ -289,8 +294,8 @@ class TestNetDailyWageGrossUp(TransactionCase):
             stored_by_code['IL_WAGE_ROUNDING'], -0.80, places=2)
         self.assertAlmostEqual(
             stored_by_code['NET'],
-            baseline + display_target,
-            delta=payslip.currency_id.rounding,
+            baseline + target,
+            delta=payslip.currency_id.rounding / 2,
         )
 
     def test_net_additional_day_is_grossed_up_without_salary_input(self):
@@ -421,14 +426,15 @@ class TestNetDailyWageGrossUp(TransactionCase):
         self.assertEqual(payslip._il_worker_profile(), 'palestinian')
         payslip._il_set_regular_attendance_amount(0.0)
         baseline = payslip.with_context(
-            il_solving_net_base_wage=True)._il_compute_net_total()
+            il_solving_net_base_wage=True,
+            il_skip_wage_rounding=True)._il_compute_net_total()
         payslip._il_run_gross_up_engine()
         solved_net = payslip.with_context(
             il_solving_net_base_wage=True)._il_compute_net_total()
         self.assertAlmostEqual(
             solved_net,
-            baseline + payslip._il_net_attendance_display_target(),
-            delta=payslip.currency_id.rounding,
+            baseline + payslip._il_net_attendance_target(),
+            delta=payslip.currency_id.rounding / 2,
         )
 
     def test_all_four_israeli_structures_compute_complete_payslip(self):

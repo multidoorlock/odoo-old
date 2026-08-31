@@ -358,10 +358,10 @@ class HrPayslip(models.Model):
             return
         attendance_lines = self.worked_days_line_ids.filtered(
             lambda line: line.code == 'WORK100')
-        # The visible rounding rule already contributes exact - displayed.
-        # Gross up the displayed target so their combined net is the exact
-        # ten-decimal hourly target requested by the employee.
-        target_delta = self._il_net_attendance_display_target()
+        # The visible rounding rule contributes exact - displayed at gross
+        # level. Its tax/contribution effect is not necessarily identical to
+        # that gross amount, so solve for the exact requested net total.
+        target_delta = self._il_net_attendance_target()
         if not attendance_lines or not target_delta:
             return
 
@@ -370,7 +370,8 @@ class HrPayslip(models.Model):
         target_delta = abs(target_delta)
         evaluation_slip = self.with_context(il_solving_net_base_wage=True)
         self._il_set_regular_attendance_amount(0.0)
-        base_net = evaluation_slip._il_compute_net_total()
+        base_net = evaluation_slip.with_context(
+            il_skip_wage_rounding=True)._il_compute_net_total()
         target_net = base_net + sign * target_delta
 
         def net_at(gross):
@@ -399,7 +400,11 @@ class HrPayslip(models.Model):
             else:
                 high = mid
             best = mid
-        self._il_set_regular_attendance_amount(sign * best)
+        evaluation_slip._il_refine_gross_at_currency_precision(
+            lambda amount: self._il_set_regular_attendance_amount(sign * amount),
+            best,
+            target_net,
+        )
 
     def _il_gross_up_additional_day(self):
         """Gross up a net additional-day rate directly on its Worked Days row."""
@@ -451,7 +456,12 @@ class HrPayslip(models.Model):
             else:
                 high = mid
             best = mid
-        self._il_set_worked_days_amount('ADDITIONAL_DAY', sign * best)
+        self._il_refine_gross_at_currency_precision(
+            lambda amount: self._il_set_worked_days_amount(
+                'ADDITIONAL_DAY', sign * amount),
+            best,
+            target_net,
+        )
 
     def _il_run_gross_up_engine(self):
         for slip in self:
@@ -504,8 +514,11 @@ class HrPayslip(models.Model):
                     else:
                         high = mid
                     best = mid
-                line.amount = float(
-                    slip._il_currency_round_decimal(_decimal(best)))
+                slip._il_refine_gross_at_currency_precision(
+                    lambda amount: setattr(line, 'amount', amount),
+                    best,
+                    target_net,
+                )
                 base_net = slip._il_compute_net_total()
 
     def compute_sheet(self):
@@ -550,6 +563,49 @@ class HrPayslip(models.Model):
         self.ensure_one()
         currency = self.currency_id or self.company_id.currency_id or self.env.company.currency_id
         return (currency.rounding if currency else 0.01) or 0.01
+
+    def _il_refine_gross_at_currency_precision(self, set_amount, approximate, target_net):
+        """Choose the payable currency amount whose rounded NET is closest.
+
+        The binary gross-up search works with unrounded Python results.  A
+        result such as 6,000.005056 is inside its half-agora tolerance, but
+        Odoo then displays it as 6,000.01.  Gross amounts themselves can only
+        be paid at currency precision, so evaluate the neighbouring payable
+        amounts against the currency-rounded target and prefer an exact match.
+        """
+        self.ensure_one()
+        increment = _decimal(self._il_currency_rounding())
+        centre = self._il_currency_round_decimal(_decimal(approximate))
+        rounded_target = self._il_currency_round_decimal(_decimal(target_net))
+        best_amount = centre
+        best_score = None
+
+        # Search nearest amounts first.  The broad safety window also covers
+        # stepped tax/contribution rules where several gross cents can map to
+        # the same net cent.
+        offsets = [0]
+        for step in range(1, 501):
+            offsets.extend((-step, step))
+        for offset in offsets:
+            candidate = centre + increment * offset
+            if candidate < 0:
+                continue
+            set_amount(float(candidate))
+            raw_net = _decimal(self._il_compute_net_total())
+            rounded_net = self._il_currency_round_decimal(raw_net)
+            score = (
+                abs(rounded_net - rounded_target),
+                abs(raw_net - _decimal(target_net)),
+                abs(offset),
+            )
+            if best_score is None or score < best_score:
+                best_score = score
+                best_amount = candidate
+            if score[0] == 0:
+                break
+
+        set_amount(float(best_amount))
+        return float(best_amount)
 
     def _il_exact_hourly_rate(self):
         """Return the daily rate's exact hourly value from its source fields.
@@ -660,6 +716,8 @@ class HrPayslip(models.Model):
     def _il_has_wage_rounding(self):
         """Avoid a visible zero line when the difference rounds to no agorot."""
         self.ensure_one()
+        if self.env.context.get('il_skip_wage_rounding'):
+            return False
         amount = _decimal(self._il_wage_rounding_amount())
         return self._il_currency_round_decimal(amount) != Decimal('0')
 

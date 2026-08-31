@@ -107,6 +107,41 @@ class TestWorkEntryNormalization(TransactionCase):
             10000.0 / average_monthly_hours,
             places=2,
         )
+
+    def test_monthly_rates_have_a_weekly_basis_in_all_schedule_modes(self):
+        modes = (
+            ('attendance', 'fixed_intervals'),
+            ('attendance', 'daily_duration'),
+            ('attendance', 'weekly_quota'),
+            ('shifts', 'daily_duration'),
+            ('shifts', 'weekly_quota'),
+        )
+        for schedule_type, frequency in modes:
+            values = {
+                'name': '%s %s payroll basis' % (schedule_type, frequency),
+                'company_id': self.company.id,
+                'tz': 'Asia/Jerusalem',
+                'mdl_schedule_type': schedule_type,
+                'mdl_schedule_frequency': frequency,
+                'mdl_hours_per_day': 8.0,
+                'mdl_shifts_per_week': 5,
+            }
+            if frequency == 'weekly_quota':
+                values['hours_per_week'] = 40.0
+            calendar = self.env['resource.calendar'].create(values)
+            self.assertGreater(
+                calendar.hours_per_week,
+                0.0,
+                '%s/%s must expose payroll weekly hours' % (
+                    schedule_type, frequency),
+            )
+            self.version.write({
+                'resource_calendar_id': calendar.id,
+                'mdl_wage_type': 'mdl_monthly',
+                'wage': 10000.0,
+            })
+            self.assertGreater(self.version.mdl_daily_wage, 0.0)
+            self.assertGreater(self.version.hourly_wage, 0.0)
         self.assertGreater(self.version.mdl_hourly_wage_exact, 0.0)
 
     def test_morning_shift_is_one_full_regular_day(self):
