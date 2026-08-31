@@ -114,6 +114,40 @@ class TestPayrollPaymentSplits(TransactionCase):
             0,
         )
 
+    def test_edit_existing_planned_payment_to_five_times_1200(self):
+        payment = self.env["account.payment"].create(self._payment_values(
+            amount=5000.0,
+            il_spread_type="planned",
+            il_split_line_ids=[
+                Command.create({"sequence": sequence, "amount": 1000.0})
+                for sequence in range(1, 6)
+            ],
+        ))
+        payment.write({
+            "amount": 6000.0,
+            "il_split_line_ids": [
+                Command.update(line.id, {"amount": 1200.0})
+                for line in payment.il_split_line_ids
+            ],
+        })
+        self.assertEqual(payment.amount, 6000.0)
+        self.assertEqual(payment.il_split_line_ids.mapped("amount"), [1200.0] * 5)
+        payment._check_il_spread_complete()
+
+    def test_draft_line_edits_may_be_temporarily_unbalanced(self):
+        payment = self.env["account.payment"].create(self._payment_values(
+            amount=6000.0,
+            il_spread_type="planned",
+            il_split_line_ids=[
+                Command.create({"sequence": sequence, "amount": 1200.0})
+                for sequence in range(1, 6)
+            ],
+        ))
+        first, second = payment.il_split_line_ids[:2]
+        first.amount = 1100.0
+        second.amount = 1300.0
+        payment._check_il_spread_complete()
+
     def test_planned_edit_resequences_and_still_closes_payment(self):
         payment = self.env["account.payment"].create(self._payment_values(
             il_spread_type="planned",
@@ -134,6 +168,31 @@ class TestPayrollPaymentSplits(TransactionCase):
         self.assertEqual(payment.il_split_line_ids.mapped("sequence"), [1, 2])
         self.assertEqual(payment.il_split_line_ids.mapped("amount"), [200.0, 800.0])
         self.assertEqual(payment.il_planned_amount, 1000.0)
+
+    def test_installment_numbers_are_automatic_and_follow_order(self):
+        payment = self.env["account.payment"].create(self._payment_values(
+            il_spread_type="planned",
+            il_split_line_ids=[
+                Command.create({"sequence": 1, "amount": 200.0}),
+                Command.create({"sequence": 1, "amount": 300.0}),
+                Command.create({"sequence": 1, "amount": 500.0}),
+            ],
+        ))
+        self.assertEqual(payment.il_split_line_ids.mapped("sequence"), [1, 2, 3])
+
+        first = payment.il_split_line_ids[0]
+        first.sequence = 99
+        ordered_lines = self.env["account.payment.split.line"].search([
+            ("payment_id", "=", payment.id),
+        ])
+        self.assertEqual(ordered_lines.mapped("amount"), [300.0, 500.0, 200.0])
+        self.assertEqual(ordered_lines.mapped("sequence"), [1, 2, 3])
+
+        ordered_lines[1].unlink()
+        remaining_lines = self.env["account.payment.split.line"].search([
+            ("payment_id", "=", payment.id),
+        ])
+        self.assertEqual(remaining_lines.mapped("sequence"), [1, 2])
 
     def test_per_payslip_lines_are_system_created_and_capped(self):
         payment = self.env["account.payment"].create(self._payment_values(

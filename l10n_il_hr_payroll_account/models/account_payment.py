@@ -108,6 +108,8 @@ class AccountPayment(models.Model):
                 else:
                     Split.with_context(il_system_split_create=True).create({
                         'payment_id': payment.id, 'sequence': 1, 'amount': payment.amount})
+        if 'il_split_line_ids' in vals:
+            self._il_resequence_split_lines()
         if 'amount' in vals or 'il_split_line_ids' in vals:
             self._check_il_spread_complete()
         return result

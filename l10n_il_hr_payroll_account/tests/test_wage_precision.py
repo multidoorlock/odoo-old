@@ -426,14 +426,14 @@ class TestNetDailyWageGrossUp(TransactionCase):
         })
         attendance = self.env['hr.attendance'].create({
             'employee_id': employee.id,
-            'check_in': datetime(2026, 1, 10, 6, 30),
-            'check_out': datetime(2026, 1, 10, 15, 30),
+            'check_in': datetime(2026, 1, 9, 6, 30),
+            'check_out': datetime(2026, 1, 9, 15, 30),
         })
         overtime_type = self.env.ref('hr_work_entry.work_entry_type_overtime')
         for duration in (6.0, 3.0):
             self.env['hr.attendance.overtime.line'].create({
                 'employee_id': employee.id,
-                'date': date(2026, 1, 10),
+                'date': date(2026, 1, 9),
                 'status': 'approved',
                 'duration': duration,
                 'manual_duration': duration,
@@ -442,12 +442,12 @@ class TestNetDailyWageGrossUp(TransactionCase):
                 'work_entry_type_overtime_id': overtime_type.id,
             })
         entries = version.generate_work_entries(
-            date(2026, 1, 10), date(2026, 1, 10), force=True)
+            date(2026, 1, 9), date(2026, 1, 9), force=True)
         self.assertEqual(
             entries.mapped('work_entry_type_id.code'), ['ADDITIONAL_DAY'])
         active_additional = self.env['hr.work.entry'].search([
             ('version_id', '=', version.id),
-            ('date', '=', date(2026, 1, 10)),
+            ('date', '=', date(2026, 1, 9)),
             ('work_entry_type_id.code', '=', 'ADDITIONAL_DAY'),
         ])
         self.assertEqual(
@@ -462,15 +462,15 @@ class TestNetDailyWageGrossUp(TransactionCase):
             'name': 'Fixed Additional Day Payslip',
             'employee_id': employee.id,
             'company_id': self.company.id,
-            'date_from': date(2026, 1, 10),
-            'date_to': date(2026, 1, 10),
+            'date_from': date(2026, 1, 1),
+            'date_to': date(2026, 1, 31),
             'version_id': version.id,
             'struct_id': monthly_structure.id,
         })
         payslip.compute_sheet()
         active_additional = self.env['hr.work.entry'].search([
             ('version_id', '=', version.id),
-            ('date', '=', date(2026, 1, 10)),
+            ('date', '=', date(2026, 1, 9)),
             ('work_entry_type_id.code', '=', 'ADDITIONAL_DAY'),
         ])
         self.assertEqual(
@@ -484,6 +484,12 @@ class TestNetDailyWageGrossUp(TransactionCase):
         self.assertIn('ADDITIONAL_DAY', worked_codes)
         self.assertNotIn('OVERTIME', worked_codes)
         by_code = {line.code: line.total for line in payslip.line_ids}
+        additional_worked_day = payslip.worked_days_line_ids.filtered(
+            lambda item: item.code == 'ADDITIONAL_DAY')
+        self.assertTrue(additional_worked_day.work_entry_type_id.is_extra_hours)
+        self.assertAlmostEqual(
+            sum(additional_worked_day.mapped('amount')), 400.0, places=2)
+        self.assertAlmostEqual(by_code['BASIC'], 10000.0, places=2)
         self.assertAlmostEqual(
             by_code['IL_ADDITIONAL_DAY_GROSS'], 400.0, places=2,
             msg=str([
@@ -491,6 +497,64 @@ class TestNetDailyWageGrossUp(TransactionCase):
                 for line in payslip.worked_days_line_ids
             ]),
         )
+        self.assertAlmostEqual(by_code['GROSS'], 10400.0, places=2)
+
+    def test_daily_employee_keeps_normal_daily_wage_without_additional_day(self):
+        fixed_calendar = self.env['resource.calendar'].create({
+            'name': 'Daily Employee Monday Calendar',
+            'company_id': self.company.id,
+            'tz': 'UTC',
+            'mdl_schedule_type': 'attendance',
+            'mdl_schedule_frequency': 'fixed_intervals',
+            'attendance_ids': [Command.create({
+                'name': 'Monday',
+                'dayofweek': '0',
+                'day_period': 'morning',
+                'hour_from': 6.5,
+                'hour_to': 16.0,
+            })],
+        })
+        employee = self.env['hr.employee'].create({
+            'name': 'Gross Daily End To End Employee',
+            'company_id': self.company.id,
+            'contract_date_start': date(2026, 1, 1),
+            'date_version': date(2026, 1, 1),
+            'resource_calendar_id': fixed_calendar.id,
+            'structure_type_id': self.daily_type.id,
+            'il_salary_structure_id': self.daily_structure.id,
+            'mdl_wage_type': 'mdl_daily',
+            'mdl_wage_rate_type': 'gross',
+            'mdl_daily_wage': 400.0,
+        })
+        version = employee.version_id
+        version.work_entry_source = 'attendance'
+        self.env['hr.attendance'].create({
+            'employee_id': employee.id,
+            'check_in': datetime(2026, 1, 5, 6, 30),
+            'check_out': datetime(2026, 1, 5, 16, 0),
+        })
+        version.generate_work_entries(
+            date(2026, 1, 5), date(2026, 1, 5), force=True)
+        payslip = self.env['hr.payslip'].create({
+            'name': 'Gross Daily End To End Payslip',
+            'employee_id': employee.id,
+            'company_id': self.company.id,
+            'date_from': date(2026, 1, 5),
+            'date_to': date(2026, 1, 5),
+            'version_id': version.id,
+            'struct_id': self.daily_structure.id,
+        })
+        payslip.compute_sheet()
+        self.assertIn('WORK100', payslip.worked_days_line_ids.mapped('code'))
+        self.assertNotIn(
+            'ADDITIONAL_DAY', payslip.worked_days_line_ids.mapped('code'))
+        self.assertNotIn('OVERTIME', payslip.worked_days_line_ids.mapped('code'))
+        by_code = {line.code: line.total for line in payslip.line_ids}
+        self.assertAlmostEqual(by_code['BASIC'], 400.05, places=2)
+        self.assertAlmostEqual(by_code['IL_WAGE_ROUNDING'], -0.05, places=2)
+        self.assertAlmostEqual(by_code['GROSS'], 400.0, places=2)
+        self.assertAlmostEqual(
+            by_code.get('IL_ADDITIONAL_DAY_GROSS', 0.0), 0.0, places=2)
     def test_overtime_is_paid_on_top_of_net_target(self):
         regular = self._create_payslip()
         regular._il_run_gross_up_engine()

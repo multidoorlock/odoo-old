@@ -76,7 +76,8 @@
                     <field name="il_split_line_ids" widget="il_quick_split_lines"
                            invisible="il_spread_type != 'planned'">
                         <list editable="bottom">
-                            <field name="sequence"/>
+                            <field name="sequence" widget="handle"/>
+                            <field name="sequence" string="פעימה מס'" readonly="1"/>
                             <field name="amount" sum="סה״כ"/>
                             <field name="payslip_id"
                                    domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>

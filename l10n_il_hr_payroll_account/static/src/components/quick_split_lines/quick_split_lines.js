@@ -102,6 +102,21 @@ export class QuickSplitLinesField extends X2ManyField {
         });
     }
 
+    async onAdd(params = {}) {
+        const result = await super.onAdd(params);
+        await this.resequenceClientLines();
+        return result;
+    }
+
+    async resequenceClientLines() {
+        const records = this.props.record.data[this.props.name].records;
+        for (let index = 0; index < records.length; index++) {
+            if (Number(records[index].data.sequence) !== index + 1) {
+                await records[index].update({ sequence: index + 1 });
+            }
+        }
+    }
+
     async createQuickLines(quantity, amount) {
         const list = this.props.record.data[this.props.name];
         const existingSequences = list.records
@@ -115,6 +130,7 @@ export class QuickSplitLinesField extends X2ManyField {
             });
             await record.update({ sequence: sequence++, amount });
         }
+        await this.resequenceClientLines();
     }
 }
 
