@@ -1,5 +1,7 @@
 from datetime import date, datetime
 
+import pytz
+
 from odoo import Command
 from odoo.tests.common import TransactionCase, tagged
 
@@ -71,6 +73,12 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertEqual(self.calendar._mdl_native_schedule_values("weekly_quota"), {
             "schedule_type": "flexible", "duration_based": False,
         })
+
+    def test_work_entry_values_accept_timezone_aware_gantt_window(self):
+        date_from = pytz.utc.localize(datetime(2026, 1, 5, 0, 0))
+        date_to = pytz.utc.localize(datetime(2026, 1, 6, 0, 0))
+        values = self.version._get_work_entries_values(date_from, date_to)
+        self.assertIsInstance(values, list)
 
     def test_removed_company_and_employee_fields_are_not_registered(self):
         company_fields = self.env["res.company"]._fields
@@ -238,6 +246,67 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertEqual(len(additional), 1)
         self.assertAlmostEqual(additional[0]["duration"], 9.5)
         self.assertEqual(additional[0]["mdl_rounding_reason"], "full_day")
+
+    def test_additional_day_removes_native_overtime_rows_from_attendance(self):
+        self.version.ruleset_id = self.env[
+            "hr.attendance.overtime.ruleset"].create({
+                "name": "Off Schedule Overtime",
+                "company_id": self.company.id,
+            })
+        attendance = self._attendance(
+            datetime(2026, 1, 10, 6, 30), datetime(2026, 1, 10, 15, 30))
+        overtime_type = self.env.ref("hr_work_entry.work_entry_type_overtime")
+        lines = self.env["hr.attendance.overtime.line"].create([{
+            "employee_id": self.employee.id,
+            "date": date(2026, 1, 10),
+            "status": "approved",
+            "duration": duration,
+            "manual_duration": duration,
+            "time_start": attendance.check_in,
+            "time_stop": attendance.check_out,
+            "work_entry_type_overtime_id": overtime_type.id,
+        } for duration in (6.0, 3.0)])
+        self.assertTrue(lines.exists())
+
+        attendance._mdl_remove_additional_day_overtimes()
+
+        self.assertFalse(lines.exists())
+        self.assertFalse(attendance.linked_overtime_ids)
+
+    def test_real_generation_replaces_two_overtime_lines_with_one_additional_day(self):
+        ruleset = self.env["hr.attendance.overtime.ruleset"].create({
+            "name": "Friday Overtime Split",
+            "company_id": self.company.id,
+        })
+        self.version.ruleset_id = ruleset
+        self.version.mdl_additional_day_wage = 400.0
+        attendance = self._attendance(
+            datetime(2026, 1, 10, 6, 30), datetime(2026, 1, 10, 15, 30))
+        overtime_type = self.env.ref("hr_work_entry.work_entry_type_overtime")
+        for duration in (6.0, 3.0):
+            self.env["hr.attendance.overtime.line"].create({
+                "employee_id": self.employee.id,
+                "date": date(2026, 1, 10),
+                "status": "approved",
+                "duration": duration,
+                "manual_duration": duration,
+                "time_start": attendance.check_in,
+                "time_stop": attendance.check_out,
+                "work_entry_type_overtime_id": overtime_type.id,
+            })
+
+        entries = self.version.generate_work_entries(
+            date(2026, 1, 10), date(2026, 1, 10), force=True)
+        additional = entries.filtered(
+            lambda entry: entry.work_entry_type_id.code == "ADDITIONAL_DAY")
+        overtime = entries.filtered(
+            lambda entry: entry.work_entry_type_id.code == "OVERTIME")
+
+        self.assertEqual(len(additional), 1)
+        self.assertFalse(overtime)
+        self.assertAlmostEqual(additional.duration, 9.5)
+        self.assertAlmostEqual(additional.mdl_actual_hours, 9.0)
+        self.assertEqual(additional.mdl_rate_category, "additional_day")
 
     def test_morning_shift_uses_its_own_company_duration(self):
         self.company.mdl_shift_morning_hours = 8.0

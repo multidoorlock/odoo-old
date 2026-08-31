@@ -76,12 +76,20 @@ class HrVersion(models.Model):
             structure_type = self.env['hr.payroll.structure.type'].browse(
                 vals.get('structure_type_id'))
             if structure_type.country_id.code == 'IL':
+                # Odoo does not generate any work entries when this field is
+                # empty, even though date_start falls back to date_version in
+                # the UI. Israeli payroll versions must therefore have a real
+                # contract boundary from their first version date.
+                if not vals.get('contract_date_start') and vals.get('date_version'):
+                    vals['contract_date_start'] = vals['date_version']
                 vals.setdefault('il_salary_structure_id', structure_type.default_struct_id.id)
                 vals.setdefault(
                     'mdl_wage_type',
                     'mdl_monthly' if structure_type.wage_type == 'monthly' else 'mdl_daily',
                 )
-        return super().create(vals_list)
+        versions = super().create(vals_list)
+        versions._il_ensure_contract_start()
+        return versions
 
     def write(self, vals):
         structure_type = self.env['hr.payroll.structure.type'].browse(
@@ -94,7 +102,23 @@ class HrVersion(models.Model):
                 'mdl_monthly' if structure_type.wage_type == 'monthly' else 'mdl_daily',
             )
         vals['schedule_pay'] = 'monthly'
-        return super().write(vals)
+        result = super().write(vals)
+        if not self.env.context.get('il_ensuring_contract_start'):
+            self._il_ensure_contract_start()
+        return result
+
+    def _il_ensure_contract_start(self):
+        """Repair payroll versions that have a version date but no contract."""
+        if self.env.context.get('il_ensuring_contract_start'):
+            return
+        for version in self.sudo().filtered(
+                lambda item: not item.contract_date_start
+                and item.date_version
+                and item.structure_type_id.country_id.code == 'IL'):
+            version.with_context(
+                il_ensuring_contract_start=True,
+                sync_contract_dates=True,
+            ).write({'contract_date_start': version.date_version})
 
     @api.constrains('structure_type_id', 'il_salary_structure_id', 'schedule_pay')
     def _check_il_salary_structure(self):
