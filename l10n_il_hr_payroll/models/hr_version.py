@@ -30,34 +30,20 @@ class HrVersion(models.Model):
         ('net', 'נטו'),
     ], string='הזנת שכר לפי', required=True, default='gross',
         groups=PAYROLL_GROUP, tracking=True,
-        help='בשכר יומי ניתן להזין שכר ברוטו, או יעד שכר נטו שיגולם לברוטו בזמן חישוב התלוש.')
+        help='קובע אם השכר היומי ותעריף השעה המחושב הם ברוטו או יעד נטו לגילום בתלוש.')
     mdl_monthly_wage = fields.Monetary(
         related='wage', readonly=False, string='שכר חודשי', groups=PAYROLL_GROUP)
     mdl_daily_wage = fields.Monetary(
-        string='שכר יומי מותאם ברוטו', compute='_compute_mdl_daily_wage', store=True,
+        string='שכר יומי מותאם', compute='_compute_mdl_daily_wage', store=True,
         readonly=False, copy=True, groups=PAYROLL_GROUP, tracking=True)
     mdl_hourly_wage = fields.Monetary(
-        related='hourly_wage', string='תעריף שעה ברוטו', groups=PAYROLL_GROUP)
+        related='hourly_wage', string='תעריף שעה', groups=PAYROLL_GROUP)
     mdl_hourly_wage_exact = fields.Float(
         string='תעריף שעה מדויק', digits=(32, 10),
         compute='_compute_mdl_hourly_wage', store=True, readonly=True,
         groups=PAYROLL_GROUP,
         help='תעריף פנימי לחישובי שכר. נשמר כ-NUMERIC בדיוק של 10 ספרות; '
              'התעריף המוצג לעובד נשאר מעוגל לפי דיוק המטבע.')
-    mdl_net_daily_wage = fields.Monetary(
-        string='שכר יומי מותאם נטו', copy=True, groups=PAYROLL_GROUP,
-        tracking=True,
-        help='יעד הנטו ליחידת יום. בתלוש היעד מוכפל בשעות העבודה הרגילות בלבד ומגולם לברוטו.')
-    mdl_net_hourly_wage = fields.Monetary(
-        string='תעריף שעה נטו', compute='_compute_mdl_net_hourly_wage',
-        store=True, groups=PAYROLL_GROUP,
-        help='תעריף הנטו המוצג, מעוגל לפי דיוק המטבע. החישוב משתמש בתעריף המדויק.')
-    mdl_net_hourly_wage_exact = fields.Float(
-        string='תעריף שעה נטו מדויק', digits=(32, 10),
-        compute='_compute_mdl_net_hourly_wage', store=True, readonly=True,
-        groups=PAYROLL_GROUP,
-        help='תעריף נטו פנימי לחישוב יעד הגילום. נשמר כ-NUMERIC בדיוק של 10 ספרות.')
-
     mdl_average_monthly_hours = fields.Float(
         string='ממוצע שעות בחודש', compute='_compute_mdl_average_monthly_hours',
         groups=PAYROLL_GROUP)
@@ -111,18 +97,12 @@ class HrVersion(models.Model):
             # לעובד יומי wage נשאר אפס; לעובד חודשי הערך מוזן דרך "שכר חודשי".
             version.wage = 0.0 if version.mdl_wage_type == 'mdl_daily' else version.wage
 
-    @api.depends('mdl_wage_type', 'mdl_wage_rate_type', 'mdl_daily_wage', 'wage',
+    @api.depends('mdl_wage_type', 'mdl_daily_wage', 'wage',
                  'resource_calendar_id.hours_per_day', 'resource_calendar_id.hours_per_week',
                  'resource_calendar_id.mdl_schedule_type', 'company_id.mdl_shift_paid_hours')
     def _compute_mdl_hourly_wage(self):
         for version in self:
-            if (version.mdl_wage_type == 'mdl_daily'
-                    and version.mdl_wage_rate_type == 'net'):
-                # The gross equivalent of a net wage depends on the concrete
-                # payslip period and employee deductions.  It is solved on the
-                # payslip; never expose a stale gross rate from a previous mode.
-                exact_rate = Decimal('0')
-            elif version.mdl_wage_type == 'mdl_daily':
+            if version.mdl_wage_type == 'mdl_daily':
                 std_hours = (
                     version.company_id.mdl_shift_paid_hours
                     if version.resource_calendar_id.mdl_schedule_type == 'shifts'
@@ -145,29 +125,6 @@ class HrVersion(models.Model):
             # currency-rounded hourly rate. Payroll calculations use the exact
             # NUMERIC field above through the localization helpers.
             version.hourly_wage = exact_rate
-
-    @api.depends('mdl_wage_type', 'mdl_wage_rate_type', 'mdl_net_daily_wage',
-                 'resource_calendar_id.hours_per_day',
-                 'resource_calendar_id.mdl_schedule_type',
-                 'company_id.mdl_shift_paid_hours')
-    def _compute_mdl_net_hourly_wage(self):
-        for version in self:
-            if (version.mdl_wage_type != 'mdl_daily'
-                    or version.mdl_wage_rate_type != 'net'):
-                exact_rate = Decimal('0')
-            else:
-                std_hours = (
-                    version.company_id.mdl_shift_paid_hours
-                    if version.resource_calendar_id.mdl_schedule_type == 'shifts'
-                    else version.resource_calendar_id.hours_per_day
-                )
-                exact_rate = (
-                    _decimal(version.mdl_net_daily_wage) / _decimal(std_hours)
-                    if std_hours else Decimal('0')
-                )
-            exact_rate = exact_rate.quantize(HOURLY_RATE_QUANTUM, rounding=ROUND_HALF_UP)
-            version.mdl_net_hourly_wage_exact = exact_rate
-            version.mdl_net_hourly_wage = exact_rate
 
     @api.onchange('mdl_wage_type')
     def _onchange_mdl_wage_type_rate(self):
@@ -208,7 +165,6 @@ class HrVersion(models.Model):
     def _get_whitelist_fields_from_template(self):
         return super()._get_whitelist_fields_from_template() + [
             'mdl_wage_type', 'mdl_wage_rate_type', 'mdl_daily_wage',
-            'mdl_net_daily_wage',
             'mdl_additional_day_wage', 'mdl_additional_day_rate_type',
             'mdl_weekend_wage', 'mdl_weekend_rate_type',
         ]
@@ -218,22 +174,15 @@ class HrVersion(models.Model):
     # ------------------------------------------------------------------
 
     @api.constrains('mdl_wage_type', 'mdl_wage_rate_type', 'mdl_daily_wage',
-                    'mdl_net_daily_wage', 'resource_calendar_id')
+                    'resource_calendar_id')
     def _check_mdl_daily_wage(self):
         for version in self:
             if version.mdl_wage_type != 'mdl_daily':
                 if version.mdl_wage_rate_type == 'net':
                     raise ValidationError('הזנת שכר נטו זמינה לעובד יומי בלבד.')
                 continue
-            wage = (
-                version.mdl_net_daily_wage
-                if version.mdl_wage_rate_type == 'net'
-                else version.mdl_daily_wage
-            )
-            if float_compare(wage, 0.0, precision_digits=2) <= 0:
-                label = 'נטו' if version.mdl_wage_rate_type == 'net' else 'ברוטו'
-                raise ValidationError(
-                    f'לעובד יומי חובה להזין שכר יומי {label} גדול מאפס.')
+            if float_compare(version.mdl_daily_wage, 0.0, precision_digits=2) <= 0:
+                raise ValidationError('לעובד יומי חובה להזין שכר יומי גדול מאפס.')
             if float_compare(version.resource_calendar_id.hours_per_day, 0.0, precision_digits=2) <= 0:
                 raise ValidationError(
                     'לעובד יומי חובה לוח עבודה עם שעות ביחידת יום גדולות מאפס.')

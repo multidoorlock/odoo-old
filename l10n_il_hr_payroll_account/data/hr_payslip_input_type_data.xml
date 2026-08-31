@@ -151,15 +151,9 @@
         </record>
 
         <!-- ============================================================
-             רכיבי שכר בתעריף נטו (בסיס / סוף שבוע / יום נוסף) — נוצרים אוטומטית
+             רכיבי שכר בתעריף נטו (סוף שבוע / יום נוסף) — נוצרים אוטומטית
              על ידי המנוע ממדל l10n_il_hr_payroll (חלק א'), לא זמינים כהתאמת שכר.
              ============================================================ -->
-        <record id="input_type_il_net_base_wage" model="hr.payslip.input.type">
-            <field name="name">שכר שעות (יעד נטו)</field>
-            <field name="code">IL_NET_BASE_WAGE</field>
-            <field name="country_id" ref="base.il"/>
-            <field name="available_in_attachments">False</field>
-        </record>
         <record id="input_type_il_net_weekend" model="hr.payslip.input.type">
             <field name="name">גמול סוף שבוע (נטו)</field>
             <field name="code">IL_NET_WEEKEND</field>

@@ -150,7 +150,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
             'il_salary_structure_id': cls.daily_structure.id,
             'mdl_wage_type': 'mdl_daily',
             'mdl_wage_rate_type': 'net',
-            'mdl_net_daily_wage': 250.0,
+            'mdl_daily_wage': 250.0,
             'il_tax_credit_points': 0.0,
             'il_pension_enabled': True,
             'il_pension_start_date': date(2026, 1, 1),
@@ -203,84 +203,82 @@ class TestNetDailyWageGrossUp(TransactionCase):
         payslip._compute_input_line_ids()
         return payslip
 
-    def test_net_rate_is_exact_and_gross_fields_are_not_reused(self):
-        exact_field = self.env['hr.version']._fields['mdl_net_hourly_wage_exact']
+    def test_daily_and_hourly_fields_are_shared_by_gross_and_net(self):
+        exact_field = self.env['hr.version']._fields['mdl_hourly_wage_exact']
         self.assertEqual(exact_field.column_type[0], 'numeric')
         self.assertEqual(
-            Decimal(str(self.version.mdl_net_hourly_wage_exact)),
+            Decimal(str(self.version.mdl_hourly_wage_exact)),
             Decimal('26.3157894737'),
         )
-        self.assertEqual(self.version.mdl_net_hourly_wage, 26.32)
-        self.assertEqual(self.version.mdl_hourly_wage_exact, 0.0)
-        self.assertEqual(self.version.hourly_wage, 0.0)
+        self.assertEqual(self.version.mdl_daily_wage, 250.0)
+        self.assertEqual(self.version.hourly_wage, 26.32)
+        self.assertNotIn('mdl_net_daily_wage', self.version._fields)
+        self.assertNotIn('mdl_net_hourly_wage', self.version._fields)
 
     def test_target_uses_work100_hours_never_day_units(self):
         payslip = self._create_payslip()
-        line = payslip.input_line_ids.filtered(
-            lambda item: item.code == 'IL_NET_BASE_WAGE')
-        self.assertEqual(len(line), 1)
-        self.assertEqual(line.il_original_amount, 5000.0)
-
         attendance = payslip.worked_days_line_ids.filtered(
             lambda worked: worked.code == 'WORK100')
+        gross_amount = sum(attendance.mapped('amount'))
+        self.assertEqual(payslip._il_net_attendance_target(), 5000.0)
+        self.assertGreater(gross_amount, 5000.0)
+
         attendance.number_of_days = 1.0
-        payslip._compute_input_line_ids()
-        line = payslip.input_line_ids.filtered(
-            lambda item: item.code == 'IL_NET_BASE_WAGE')
-        self.assertEqual(line.il_original_amount, 5000.0)
+        payslip._il_run_gross_up_engine()
+        self.assertEqual(payslip._il_net_attendance_target(), 5000.0)
+        self.assertEqual(sum(attendance.mapped('amount')), gross_amount)
 
     def test_gross_up_reaches_requested_net_through_salary_rules(self):
         payslip = self._create_payslip()
-        target_line = payslip.input_line_ids.filtered(
-            lambda item: item.code == 'IL_NET_BASE_WAGE')
-        target_line.amount = 0.0
+        attendance = payslip.worked_days_line_ids.filtered(
+            lambda worked: worked.code == 'WORK100')
+        payslip._il_set_regular_attendance_amount(0.0)
         baseline = payslip.with_context(
             il_solving_net_base_wage=True)._il_compute_net_total()
 
         payslip._il_run_gross_up_engine()
-        gross_amount = target_line.amount
+        gross_amount = sum(attendance.mapped('amount'))
         solved_net = payslip.with_context(
             il_solving_net_base_wage=True)._il_compute_net_total()
-        self.assertGreater(gross_amount, target_line.il_original_amount)
+        target = payslip._il_net_attendance_target()
+        self.assertGreater(gross_amount, target)
         self.assertAlmostEqual(
             solved_net,
-            baseline + target_line.il_original_amount,
+            baseline + target,
             delta=payslip.currency_id.rounding,
         )
 
         line_values = payslip._get_payslip_lines()
         by_code = {line['code']: line['total'] for line in line_values}
-        self.assertNotIn('BASIC', by_code)
+        self.assertAlmostEqual(by_code['BASIC'], gross_amount, places=2)
+        self.assertNotIn('IL_NET_BASE_GROSSUP', by_code)
         self.assertNotIn('IL_WAGE_ROUNDING', by_code)
-        self.assertAlmostEqual(
-            by_code['IL_NET_BASE_GROSSUP'], gross_amount, places=2)
 
         payslip.compute_sheet()
         stored_by_code = {
             line.code: line.total
             for line in payslip.line_ids
         }
-        self.assertNotIn('BASIC', stored_by_code)
+        self.assertAlmostEqual(stored_by_code['BASIC'], gross_amount, places=2)
+        self.assertNotIn('IL_NET_BASE_GROSSUP', stored_by_code)
         self.assertNotIn('IL_WAGE_ROUNDING', stored_by_code)
         self.assertAlmostEqual(
-            stored_by_code['IL_NET_BASE_GROSSUP'], gross_amount, places=2)
-        self.assertAlmostEqual(
             stored_by_code['NET'],
-            baseline + target_line.il_original_amount,
+            baseline + target,
             delta=payslip.currency_id.rounding,
         )
 
     def test_overtime_is_paid_on_top_of_net_target(self):
         regular = self._create_payslip()
         regular._il_run_gross_up_engine()
-        regular_line = regular.input_line_ids.filtered(
-            lambda item: item.code == 'IL_NET_BASE_WAGE')
+        regular_amount = sum(regular.worked_days_line_ids.filtered(
+            lambda item: item.code == 'WORK100').mapped('amount'))
 
         overtime = self._create_payslip(overtime_hours=10.0)
         overtime._il_run_gross_up_engine()
-        overtime_line = overtime.input_line_ids.filtered(
-            lambda item: item.code == 'IL_NET_BASE_WAGE')
-        self.assertEqual(overtime_line.amount, regular_line.amount)
+        overtime_amount = sum(overtime.worked_days_line_ids.filtered(
+            lambda item: item.code == 'WORK100').mapped('amount'))
+        self.assertEqual(overtime_amount, regular_amount)
         overtime_worked_days = overtime.worked_days_line_ids.filtered(
             lambda item: item.code == 'OVERTIME')
         self.assertGreater(
@@ -291,7 +289,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
                 f'hours={overtime_worked_days.mapped("number_of_hours")}, '
                 f'paid={overtime_worked_days.mapped("is_paid")}, '
                 f'rates={overtime_worked_days.mapped("work_entry_type_id.amount_rate")}, '
-                f'gross base={overtime_line.amount}, '
+                f'gross base={overtime_amount}, '
                 f'gross hourly={overtime._il_net_base_gross_hourly_rate()}'
             ),
         )
@@ -322,9 +320,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
             'l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_daily')
         payslip = self._create_payslip(structure=palestinian_structure)
         self.assertEqual(payslip._il_worker_profile(), 'palestinian')
-        target_line = payslip.input_line_ids.filtered(
-            lambda item: item.code == 'IL_NET_BASE_WAGE')
-        target_line.amount = 0.0
+        payslip._il_set_regular_attendance_amount(0.0)
         baseline = payslip.with_context(
             il_solving_net_base_wage=True)._il_compute_net_total()
         payslip._il_run_gross_up_engine()
@@ -332,13 +328,13 @@ class TestNetDailyWageGrossUp(TransactionCase):
             il_solving_net_base_wage=True)._il_compute_net_total()
         self.assertAlmostEqual(
             solved_net,
-            baseline + target_line.il_original_amount,
+            baseline + payslip._il_net_attendance_target(),
             delta=payslip.currency_id.rounding,
         )
 
     def test_net_wage_validation(self):
-        with self.assertRaisesRegex(ValidationError, 'שכר יומי נטו'):
-            self.version.mdl_net_daily_wage = 0.0
+        with self.assertRaisesRegex(ValidationError, 'שכר יומי'):
+            self.version.mdl_daily_wage = 0.0
         self.version.invalidate_recordset()
 
         with self.assertRaisesRegex(ValidationError, 'לעובד יומי בלבד'):

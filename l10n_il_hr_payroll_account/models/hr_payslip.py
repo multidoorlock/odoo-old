@@ -7,11 +7,9 @@ from odoo.exceptions import UserError, ValidationError
 # מצבי Payment שבהם התשלום נחשב "בוצע" ומשתתף בחישוב הסכום ששולם.
 IL_EFFECTIVE_PAYMENT_STATES = ('in_process', 'paid')
 
-# קודי סוגי הקלט של רכיבי שכר בתעריף נטו (בסיס / סוף שבוע / יום נוסף) —
+# קודי סוגי הקלט של רכיבי שכר בתעריף נטו (סוף שבוע / יום נוסף) —
 # שורות קלט שנוצרות אוטומטית ועוברות גילום, ללא התאמת שכר מקושרת.
-IL_NET_COMPONENT_CODES = (
-    'IL_NET_BASE_WAGE', 'IL_NET_WEEKEND', 'IL_NET_ADDITIONAL_DAY',
-)
+IL_NET_COMPONENT_CODES = ('IL_NET_WEEKEND', 'IL_NET_ADDITIONAL_DAY')
 
 IL_INPUT_SNAPSHOT_FIELDS = [
     'il_adjustment_direction', 'il_net_adjustment_treatment',
@@ -230,8 +228,6 @@ class HrPayslip(models.Model):
         super()._compute_input_line_ids()
         adjustment_type_ids = self._il_adjustment_input_types().ids
         net_component_types = {
-            'IL_NET_BASE_WAGE': self.env.ref(
-                'l10n_il_hr_payroll_account.input_type_il_net_base_wage', raise_if_not_found=False),
             'IL_NET_WEEKEND': self.env.ref(
                 'l10n_il_hr_payroll_account.input_type_il_net_weekend', raise_if_not_found=False),
             'IL_NET_ADDITIONAL_DAY': self.env.ref(
@@ -269,25 +265,18 @@ class HrPayslip(models.Model):
                     commands.append(Command.create(vals))
                 commands += slip._il_net_component_input_commands(net_component_types)
             slip.update({'input_line_ids': commands})
+        if not self.env.context.get('il_skip_automatic_gross_up'):
+            self.filtered(lambda slip: slip.state == 'draft').with_context(
+                il_skip_automatic_gross_up=True)._il_run_gross_up_engine()
 
     def _il_net_component_input_commands(self, net_component_types):
-        """Automatic input lines for wage components configured as NET.
-
-        The base-wage target is hours-only: WORK100 hours multiplied by the
-        exact ten-decimal net hourly rate.  Worked-day units never participate
-        in this calculation.
-        """
+        """Automatic input lines for special wage components configured as NET."""
         self.ensure_one()
         commands = []
         version = self.version_id
         if not version:
             return commands
         components = []
-        if (version.mdl_wage_type == 'mdl_daily'
-                and version.mdl_wage_rate_type == 'net'):
-            target = self._il_net_base_wage_target()
-            if target:
-                components.append(('IL_NET_BASE_WAGE', target))
         if (version.mdl_weekend_wage and version.mdl_weekend_rate_type == 'net'):
             days = self._il_worked_days_units('WEEKEND')
             if days:
@@ -347,9 +336,8 @@ class HrPayslip(models.Model):
             lambda l: l.il_effect_type == 'net'
             and l.il_net_adjustment_treatment == 'gross_up')
         component_order = {
-            'IL_NET_BASE_WAGE': 0,
-            'IL_NET_WEEKEND': 1,
-            'IL_NET_ADDITIONAL_DAY': 2,
+            'IL_NET_WEEKEND': 0,
+            'IL_NET_ADDITIONAL_DAY': 1,
         }
         component_lines = lines.filtered(
             lambda l: not l.il_salary_attachment_id).sorted(
@@ -366,36 +354,102 @@ class HrPayslip(models.Model):
         line_vals = self._get_payslip_lines()
         return sum(vals['total'] for vals in line_vals if vals['code'] == 'NET')
 
+    def _il_set_regular_attendance_amount(self, gross_amount):
+        """Put a solved gross total on Odoo's WORK100 rows.
+
+        There is normally one aggregated attendance row.  If Odoo produces
+        more than one, distribute the total by hours and put the currency
+        rounding remainder on the last row so the sum stays exact.
+        """
+        self.ensure_one()
+        attendance_lines = self.worked_days_line_ids.filtered(
+            lambda line: line.code == 'WORK100')
+        if not attendance_lines:
+            return
+        gross_amount = float(self._il_currency_round_decimal(_decimal(gross_amount)))
+        total_hours = sum(abs(line.number_of_hours) for line in attendance_lines)
+        if not total_hours:
+            attendance_lines.amount = 0.0
+            return
+        remaining = gross_amount
+        for line in attendance_lines[:-1]:
+            share = gross_amount * abs(line.number_of_hours) / total_hours
+            share = float(self._il_currency_round_decimal(_decimal(share)))
+            line.amount = share
+            remaining -= share
+        attendance_lines[-1].amount = float(
+            self._il_currency_round_decimal(_decimal(remaining)))
+
+    def _il_gross_up_regular_attendance(self):
+        """Gross up the standard Odoo attendance amount for a net daily rate.
+
+        The employee keeps the same daily/hourly fields in both modes.  In net
+        mode their exact hourly value is the requested net value.  The solved
+        gross is stored directly on the WORK100 row and is therefore consumed
+        by the ordinary BASIC salary rule just like any Odoo worked-day amount.
+        """
+        self.ensure_one()
+        if self._il_uses_gross_base_wage():
+            return
+        attendance_lines = self.worked_days_line_ids.filtered(
+            lambda line: line.code == 'WORK100')
+        target_delta = self._il_net_attendance_target()
+        if not attendance_lines or not target_delta:
+            return
+
+        rounding = self._il_currency_rounding()
+        sign = -1.0 if target_delta < 0 else 1.0
+        target_delta = abs(target_delta)
+        evaluation_slip = self.with_context(il_solving_net_base_wage=True)
+        self._il_set_regular_attendance_amount(0.0)
+        base_net = evaluation_slip._il_compute_net_total()
+        target_net = base_net + sign * target_delta
+
+        def net_at(gross):
+            self._il_set_regular_attendance_amount(sign * gross)
+            return evaluation_slip._il_compute_net_total()
+
+        low, high = 0.0, max(target_delta, rounding)
+        iterations = 0
+        while sign * (net_at(high) - target_net) < 0 and iterations < 40:
+            high *= 2
+            iterations += 1
+        best = high
+        for _unused in range(100):
+            mid = (low + high) / 2
+            net = net_at(mid)
+            if abs(net - target_net) <= rounding / 2:
+                best = mid
+                break
+            if sign * (net - target_net) < 0:
+                low = mid
+            else:
+                high = mid
+            best = mid
+        self._il_set_regular_attendance_amount(sign * best)
+
     def _il_run_gross_up_engine(self):
         for slip in self:
             gross_up_lines = slip._il_gross_up_lines()
-            if not gross_up_lines:
-                continue
-            rounding = slip.currency_id.rounding or 0.01
-            # אתחול: כל שורות הגילום מאופסות כדי לקבל את הנטו הבסיסי.
+            rounding = slip._il_currency_rounding()
+            # Zero independent net components first.  The attendance target is
+            # solved before them so each later component is added on top.
             for line in gross_up_lines:
                 line.amount = 0.0
+            slip._il_gross_up_regular_attendance()
+            if not gross_up_lines:
+                continue
             base_net = slip._il_compute_net_total()
             for line in gross_up_lines:
                 target_delta = line.il_original_amount
                 if not target_delta:
                     continue
                 sign = -1 if line.il_adjustment_direction == 'negative' else 1
-                # The regular net wage establishes the gross hourly base.
-                # Overtime is paid on top of that base, so it must not be
-                # swallowed into the contractual net target while solving it.
-                solving_base_wage = line.code == 'IL_NET_BASE_WAGE'
-                evaluation_slip = slip.with_context(
-                    il_solving_net_base_wage=solving_base_wage)
-                line_base_net = (
-                    evaluation_slip._il_compute_net_total()
-                    if solving_base_wage else base_net
-                )
-                target_net = line_base_net + sign * target_delta
+                target_net = base_net + sign * target_delta
 
                 def net_at(gross):
                     line.amount = gross
-                    return evaluation_slip._il_compute_net_total()
+                    return slip._il_compute_net_total()
 
                 # הרחבת גבול עליון עד שהשפעת הנטו מכסה את היעד.
                 low, high = 0.0, max(target_delta, rounding)
@@ -416,7 +470,8 @@ class HrPayslip(models.Model):
                     else:
                         high = mid
                     best = mid
-                line.amount = slip.currency_id.round(best)
+                line.amount = float(
+                    slip._il_currency_round_decimal(_decimal(best)))
                 base_net = slip._il_compute_net_total()
 
     def compute_sheet(self):
@@ -457,6 +512,11 @@ class HrPayslip(models.Model):
             * increment
         )
 
+    def _il_currency_rounding(self):
+        self.ensure_one()
+        currency = self.currency_id or self.company_id.currency_id or self.env.company.currency_id
+        return (currency.rounding if currency else 0.01) or 0.01
+
     def _il_daily_hourly_amounts(self):
         """Return exact/display regular-hour totals for a daily employee.
 
@@ -474,15 +534,16 @@ class HrPayslip(models.Model):
         display_rate = self._il_currency_round_decimal(exact_rate)
         return hours * exact_rate, hours * display_rate
 
-    def _il_net_base_wage_target(self):
-        """Currency-rounded net target based exclusively on WORK100 hours."""
+    def _il_net_attendance_target(self):
+        """Net target based only on WORK100 hours and the shared hourly field."""
         self.ensure_one()
         version = self.version_id
         if (version.mdl_wage_type != 'mdl_daily'
                 or version.mdl_wage_rate_type != 'net'):
             return 0.0
         hours = _decimal(self._il_worked_days_hours('WORK100'))
-        exact_rate = _decimal(version.mdl_net_hourly_wage_exact)
+        exact_rate = _decimal(
+            version.mdl_hourly_wage_exact or version.hourly_wage)
         return float(self._il_currency_round_decimal(hours * exact_rate))
 
     def _il_uses_gross_base_wage(self):
@@ -506,7 +567,9 @@ class HrPayslip(models.Model):
         self.ensure_one()
         version = self.version_id
         if not self._il_uses_gross_base_wage():
-            return 0.0
+            attendance_lines = self.worked_days_line_ids.filtered(
+                lambda line: line.code == 'WORK100')
+            return sum(attendance_lines.mapped('amount'))
         if version.mdl_wage_type == 'mdl_daily':
             _exact_total, display_total = self._il_daily_hourly_amounts()
             return float(self._il_currency_round_decimal(display_total))
@@ -550,9 +613,9 @@ class HrPayslip(models.Model):
         regular_hours = self._il_worked_days_hours('WORK100')
         if not regular_hours:
             return 0.0
-        base_line = self.input_line_ids.filtered(
-            lambda line: line.code == 'IL_NET_BASE_WAGE')[:1]
-        return base_line.amount / regular_hours if base_line else 0.0
+        attendance_amount = sum(self.worked_days_line_ids.filtered(
+            lambda line: line.code == 'WORK100').mapped('amount'))
+        return attendance_amount / regular_hours
 
     def _il_overtime_amount(self):
         self.ensure_one()
