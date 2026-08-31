@@ -42,6 +42,21 @@ class AccountPaymentSplitLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # The installment number is structural data, not user input.  Assign
+        # the next number per payment even when a client sends its default
+        # value (the editable list used to send ``1`` for every new row).
+        next_sequences = {}
+        for vals in vals_list:
+            payment_id = vals.get('payment_id')
+            if not payment_id:
+                continue
+            if payment_id not in next_sequences:
+                last_line = self.search(
+                    [('payment_id', '=', payment_id)],
+                    order='sequence desc, id desc', limit=1)
+                next_sequences[payment_id] = (last_line.sequence or 0) + 1
+            vals['sequence'] = next_sequences[payment_id]
+            next_sequences[payment_id] += 1
         if not self.env.context.get('il_system_split_create'):
             payment_ids = {vals.get('payment_id') for vals in vals_list if vals.get('payment_id')}
             payments = self.env['account.payment'].browse(payment_ids)
@@ -49,18 +64,19 @@ class AccountPaymentSplitLine(models.Model):
                 raise ValidationError('יצירה ידנית של פעימות מותרת רק בפריסה מתוכננת.')
         lines = super().create(vals_list)
         lines._check_business_rules()
-        if not self.env.context.get('il_skip_spread_total_check'):
-            lines.mapped('payment_id')._check_il_spread_complete()
+        lines._check_complete_spread_outside_draft()
         return lines
 
     def write(self, vals):
+        payments = self.mapped('payment_id') if 'sequence' in vals else self.env['account.payment']
         result = super().write(vals)
+        if payments and not self.env.context.get('il_system_resequence'):
+            payments._il_resequence_split_lines()
         self._check_business_rules()
         if 'amount' in vals and not self.env.context.get('il_sync_from_payment'):
             for line in self.filtered(lambda item: item.payment_id.il_spread_type == 'none'):
                 line.payment_id.with_context(il_sync_from_line=True).amount = line.amount
-        if not self.env.context.get('il_skip_spread_total_check'):
-            self.mapped('payment_id')._check_il_spread_complete()
+        self._check_complete_spread_outside_draft()
         return result
 
     def unlink(self):
@@ -71,8 +87,24 @@ class AccountPaymentSplitLine(models.Model):
         result = super().unlink()
         payments._il_resequence_split_lines()
         if not self.env.context.get('il_system_split_unlink'):
-            payments._check_il_spread_complete()
+            payments.filtered(lambda payment: payment.state != 'draft') \
+                ._check_il_spread_complete()
         return result
+
+    def _check_complete_spread_outside_draft(self):
+        """Allow transient totals while editing several draft lines.
+
+        Editable one2many rows can reach the server one at a time.  Checking
+        the complete distribution after every row made a valid final edit
+        impossible whenever an intermediate row temporarily changed the sum.
+        Draft completeness is checked by account.payment create/write and by
+        action_post; non-draft payments remain protected immediately.
+        """
+        if self.env.context.get('il_skip_spread_total_check'):
+            return
+        self.mapped('payment_id').filtered(
+            lambda payment: payment.state != 'draft'
+        )._check_il_spread_complete()
 
     def _check_business_rules(self):
         for line in self:

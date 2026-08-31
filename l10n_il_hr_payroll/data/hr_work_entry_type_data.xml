@@ -16,6 +16,10 @@
             <field name="display_code">נסף</field>
             <field name="color">6</field>
             <field name="is_leave">False</field>
+            <!-- An additional day is paid on top of the monthly base.  Odoo
+                 must not include its hours in the denominator used to split
+                 the fixed monthly wage between Worked Days rows. -->
+            <field name="is_extra_hours">True</field>
             <field name="round_days">NO</field>
         </record>
 

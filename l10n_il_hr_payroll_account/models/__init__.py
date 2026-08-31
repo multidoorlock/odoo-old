@@ -3,6 +3,7 @@ from . import hr_payslip_input_type
 from . import hr_salary_attachment
 from . import hr_payslip_input
 from . import hr_payslip
+from . import hr_payslip_worked_days
 from . import hr_attendance_overtime_rule
 from . import account_payment
 from . import account_payment_split_line
