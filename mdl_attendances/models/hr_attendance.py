@@ -186,6 +186,12 @@ class HrAttendance(models.Model):
                         # example, checking out at 01:45 is not a night's sleep).
                         if overlap_hours <= rule.employer_tolerance:
                             continue
+                        # Employee tolerance keeps the first matching portion
+                        # as effective work. It is relevant only when a timing
+                        # rule would otherwise turn the interval into non-work.
+                        if not rule.is_work and rule.employee_tolerance:
+                            clipped_start += timedelta(hours=min(
+                                rule.employee_tolerance, overlap_hours))
                         intervals = attendance._apply_interval(
                             intervals, clipped_start, clipped_stop, rule)
                 else:

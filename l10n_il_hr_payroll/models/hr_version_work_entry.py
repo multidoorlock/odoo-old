@@ -231,13 +231,22 @@ class HrVersion(models.Model):
 
             total_actual_hours = sum(
                 attendance.worked_hours for attendance in (day_attendances or []))
-            for overtime in day_overtimes:
-                overtime_vals = make_vals(
-                    day, overtime.work_entry_type_overtime_id,
-                    overtime.manual_duration, 'regular', 'none',
-                    'odoo_overtime_rule', day_attendances, total_actual_hours)
-                overtime_vals['overtime_id'] = overtime.id
-                day_vals.append(overtime_vals)
+            # A monthly employee's day outside the schedule (or beyond a
+            # weekly quota) is one additional day. Odoo may still create
+            # overtime lines because its native expected duration is zero.
+            # They must not replace the additional day or be paid on top of it.
+            is_additional_day = any(
+                vals.get('work_entry_type_id') == type_additional.id
+                for vals in day_vals
+            )
+            if not is_additional_day:
+                for overtime in day_overtimes:
+                    overtime_vals = make_vals(
+                        day, overtime.work_entry_type_overtime_id,
+                        overtime.manual_duration, 'regular', 'none',
+                        'odoo_overtime_rule', day_attendances, total_actual_hours)
+                    overtime_vals['overtime_id'] = overtime.id
+                    day_vals.append(overtime_vals)
 
             if emit:
                 result += day_vals
@@ -254,7 +263,6 @@ class HrVersion(models.Model):
         # may include sleep/break windows and must never feed quota/overtime.
         total_actual_hours = sum(
             attendance.worked_hours for attendance in (day_attendances or []))
-        actual_hours = max(total_actual_hours - native_overtime_hours, 0.0)
         scheduled_hours = scheduled_by_day.get(day, 0.0)
 
         if frequency in ('fixed_intervals', 'daily_duration'):
@@ -264,6 +272,7 @@ class HrVersion(models.Model):
             else:
                 category = 'additional_day' if monthly_worker else 'regular'
                 h_date = std_day_hours
+
         else:  # מכסה שבועית
             remaining = quota_hours - consumed_hours
             if float_compare(remaining, 0.0, precision_digits=2) > 0:
@@ -272,6 +281,13 @@ class HrVersion(models.Model):
             else:
                 category = 'additional_day' if monthly_worker else 'regular'
                 h_date = std_day_hours
+
+        # All effective attendance on an additional day belongs to that day.
+        # Native overtime created from zero expected hours is ignored here.
+        applied_native_overtime = (
+            0.0 if category == 'additional_day' else native_overtime_hours
+        )
+        actual_hours = max(total_actual_hours - applied_native_overtime, 0.0)
 
         # עיגול לחצי יום / יום מלא (סעיף 24 באפיון).
         normalized_hours = 0.0
@@ -289,7 +305,7 @@ class HrVersion(models.Model):
 
         # הפרדת שעות נוספות מעבר למכסה היומית (סעיפים 25–26 באפיון).
         overtime_hours = (
-            0.0 if uses_overtime_rules
+            0.0 if (uses_overtime_rules or category == 'additional_day')
             else rounded_overtime(actual_hours - h_date)
         )
         if overtime_hours:
@@ -303,7 +319,8 @@ class HrVersion(models.Model):
 
         # היעדרות ללא תשלום עבור זמן מתוכנן שלא בוצע — רק בלוחות קבועים/מכסה
         # יומית, רק לימים שכבר חלפו, ובקיזוז חופשה מאושרת.
-        if (frequency in ('fixed_intervals', 'daily_duration')
+        if (not monthly_worker
+                and frequency in ('fixed_intervals', 'daily_duration')
                 and scheduled_hours and day < today_local):
             absence_hours = max(
                 scheduled_hours - normalized_hours - leave_by_day.get(day, 0.0), 0.0)
@@ -345,7 +362,6 @@ class HrVersion(models.Model):
             )
             total_actual_hours = sum(
                 attendance.worked_hours for attendance in shift_attendances)
-            actual_hours = max(total_actual_hours - native_overtime_hours, 0.0)
             non_work_hours = sum(
                 max(attendance.presence_hours - attendance.worked_hours, 0.0)
                 for attendance in shift_attendances
@@ -358,6 +374,11 @@ class HrVersion(models.Model):
                     category = 'regular'
                 else:
                     category = 'additional_day' if monthly_worker else 'regular'
+            applied_native_overtime = (
+                0.0 if category == 'additional_day' else native_overtime_hours
+            )
+            actual_hours = max(
+                total_actual_hours - applied_native_overtime, 0.0)
             if frequency == 'weekly_quota' and category == 'regular':
                 consumed_shifts += 1
 
@@ -367,7 +388,7 @@ class HrVersion(models.Model):
                     day, category_types[category], paid_hours, category,
                     shift_type, 'shift', shift_attendances, total_actual_hours))
             overtime_hours = (
-                0.0 if uses_overtime_rules
+                0.0 if (uses_overtime_rules or category == 'additional_day')
                 else rounded_overtime(actual_hours - paid_hours)
             )
             if overtime_hours:
@@ -381,7 +402,7 @@ class HrVersion(models.Model):
                     'evening', 'sleep', shift_attendances, total_actual_hours))
 
         # משמרת מתוכננת שלא בוצעה — היעדרות ללא תשלום (במכסה יומית בלבד).
-        if (frequency == 'daily_duration' and scheduled_hours
+        if (not monthly_worker and frequency == 'daily_duration' and scheduled_hours
                 and not day_attendances and day < today_local):
             absence_hours = max(scheduled_hours - leave_by_day.get(day, 0.0), 0.0)
             if float_compare(absence_hours, 0.0, precision_digits=2) > 0:

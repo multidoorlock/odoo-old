@@ -674,8 +674,8 @@ class HrPayslip(models.Model):
         return 'שכר שעות' if self.version_id.mdl_wage_type == 'mdl_daily' else 'שכר בסיס'
 
     def _il_basic_amount(self):
-        """BASIC: monthly worker — the monthly wage minus unpaid absence days;
-        daily worker — regular WORK100 hours at the displayed hourly rate.
+        """BASIC: monthly worker uses the fixed monthly wage;
+        daily worker uses regular WORK100 hours at the displayed hourly rate.
 
         The separate IL_WAGE_ROUNDING rule reconciles this displayed result to
         the exact ten-decimal hourly-rate result.
@@ -691,13 +691,10 @@ class HrPayslip(models.Model):
             return float(self._il_currency_round_decimal(display_total))
         if version.wage_type == 'hourly':
             return self._il_worked_days_hours('WORK100') * version.hourly_wage
-        wage = version.wage
-        absence_days = self._il_worked_days_units('UNPAID_ABSENCE')
-        if absence_days:
-            daily_value = version.mdl_daily_wage or (
-                version.hourly_wage * (version.mdl_standard_day_hours or 0))
-            wage -= absence_days * daily_value
-        return max(wage, 0.0)
+        # Missing an attendance is not, by itself, an unpaid leave. Explicit
+        # leave deductions remain Odoo's responsibility and must not be
+        # inferred from the attendance table for a monthly employee.
+        return max(version.wage, 0.0)
 
     def _il_wage_rounding_amount(self):
         """Rounded exact result minus the rounded displayed-rate result.
@@ -760,6 +757,16 @@ class HrPayslip(models.Model):
             ('manual_duration', '>', 0),
             ('mdl_fixed_hourly_amount', '>', 0),
         ])
+        represented_overtime_ids = self.env['hr.work.entry'].search([
+            ('employee_id', '=', self.employee_id.id),
+            ('version_id', '=', self.version_id.id),
+            ('date', '>=', self.date_from),
+            ('date', '<=', self.date_to),
+            ('state', '!=', 'cancelled'),
+            ('overtime_id', '!=', False),
+        ]).mapped('overtime_id').ids
+        fixed_overtime_lines = fixed_overtime_lines.filtered(
+            lambda overtime: overtime.id in represented_overtime_ids)
         if not fixed_overtime_lines:
             return normal_odoo_amount
 

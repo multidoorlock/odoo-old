@@ -67,6 +67,31 @@ class TestAttendanceSegments(TransactionCase):
         self.assertTrue(attendance.segment_ids.is_work)
         self.assertAlmostEqual(attendance.worked_hours, 9.5)
 
+    def test_timing_tolerance_keeps_six_oclock_entry_as_work(self):
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": datetime(2026, 1, 5, 6, 0),
+            "check_out": datetime(2026, 1, 5, 7, 0),
+        })
+        self.assertEqual(len(attendance.segment_ids), 1)
+        self.assertTrue(attendance.segment_ids.is_work)
+        self.assertAlmostEqual(attendance.worked_hours, 1.0)
+
+    def test_timing_employee_tolerance_keeps_initial_overlap_as_work(self):
+        self.ruleset.rule_ids.write({
+            "employer_tolerance": 0.0,
+            "employee_tolerance": 0.25,
+        })
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": datetime(2026, 1, 5, 16, 0),
+            "check_out": datetime(2026, 1, 6, 6, 30),
+        })
+        segments = attendance.segment_ids.sorted("time_start")
+        self.assertEqual(segments.mapped("is_work"), [True, False])
+        self.assertEqual(segments[0].time_stop, datetime(2026, 1, 6, 1, 45))
+        self.assertAlmostEqual(attendance.worked_hours, 9.75)
+
     def test_no_matching_rule_defaults_to_work(self):
         self.employee.segment_ruleset_id = False
         attendance = self.env["hr.attendance"].create({

@@ -56,7 +56,8 @@ class HrAttendanceSegmentRule(models.Model):
     # across all attendances in the week (never per attendance).
     quantity_period = fields.Selection([("day", "Day")], default="day")
     employee_tolerance = fields.Float(
-        help="For quantity rules, this many excess hours remain effective work time after the employer threshold is crossed.")
+        help="For quantity rules, this many excess hours remain effective work time after the employer threshold is crossed. "
+             "For non-work timing rules, this duration at the start of the matching interval remains effective work time.")
     employer_tolerance = fields.Float(
         help="For quantity rules, excess at or below this threshold is ignored. "
              "For timing rules, the rule is ignored when its overlap with the attendance "
