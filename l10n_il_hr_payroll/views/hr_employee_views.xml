@@ -37,10 +37,20 @@
                 <group name="mdl_wage" string="שכר">
                     <field name="mdl_resource_calendar_type" invisible="1"/>
                     <field name="mdl_wage_type" widget="radio" options="{'horizontal': true}"/>
+                    <field name="mdl_wage_rate_type" widget="radio"
+                           options="{'horizontal': true}"
+                           readonly="mdl_wage_type != 'mdl_daily'"/>
                     <field name="mdl_monthly_wage" invisible="mdl_wage_type != 'mdl_monthly'"/>
                     <field name="mdl_daily_wage"
-                           readonly="mdl_wage_type == 'mdl_monthly'" force_save="1"/>
-                    <field name="mdl_hourly_wage" readonly="1" force_save="1"/>
+                           readonly="mdl_wage_type == 'mdl_monthly'" force_save="1"
+                           invisible="mdl_wage_rate_type == 'net'"/>
+                    <field name="mdl_hourly_wage" readonly="1" force_save="1"
+                           invisible="mdl_wage_rate_type == 'net'"/>
+                    <field name="mdl_net_daily_wage"
+                           invisible="mdl_wage_type != 'mdl_daily' or mdl_wage_rate_type != 'net'"
+                           required="mdl_wage_type == 'mdl_daily' and mdl_wage_rate_type == 'net'"/>
+                    <field name="mdl_net_hourly_wage" readonly="1" force_save="1"
+                           invisible="mdl_wage_type != 'mdl_daily' or mdl_wage_rate_type != 'net'"/>
                     <field name="schedule_pay" string="מחזור תשלום"/>
                 </group>
             </xpath>

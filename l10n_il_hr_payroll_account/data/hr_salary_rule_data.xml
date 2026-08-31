@@ -12,10 +12,23 @@
             <field name="name">שכר בסיס</field>
             <field name="code">BASIC</field>
             <field name="sequence">1</field>
-            <field name="condition_select">none</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_uses_gross_base_wage()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_basic_amount()
 result_name = payslip._il_basic_line_name()</field>
+        </record>
+
+        <record id="hr_salary_rule_il_net_base_wage_grossup" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.BASIC"/>
+            <field name="name">שכר שעות (גילום מנטו)</field>
+            <field name="code">IL_NET_BASE_GROSSUP</field>
+            <field name="sequence">2</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = 'IL_NET_BASE_WAGE' in inputs</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = inputs['IL_NET_BASE_WAGE'].amount</field>
         </record>
 
         <record id="hr_salary_rule_il_wage_rounding" model="hr.salary.rule">
@@ -23,7 +36,7 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="category_id" ref="hr_payroll.BASIC"/>
             <field name="name">עיגול שכר</field>
             <field name="code">IL_WAGE_ROUNDING</field>
-            <field name="sequence">2</field>
+            <field name="sequence">3</field>
             <field name="condition_select">python</field>
             <field name="condition_python">result = payslip._il_has_wage_rounding()</field>
             <field name="amount_select">code</field>

@@ -68,6 +68,8 @@ class HrVersion(models.Model):
                 version.mdl_wage_type = (
                     'mdl_monthly' if version.structure_type_id.wage_type == 'monthly'
                     else 'mdl_daily')
+                if version.mdl_wage_type == 'mdl_monthly':
+                    version.mdl_wage_rate_type = 'gross'
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -77,6 +79,12 @@ class HrVersion(models.Model):
             if structure_type.country_id.code == 'IL':
                 vals['schedule_pay'] = 'monthly'
                 vals.setdefault('il_salary_structure_id', structure_type.default_struct_id.id)
+                vals.setdefault(
+                    'mdl_wage_type',
+                    'mdl_monthly' if structure_type.wage_type == 'monthly' else 'mdl_daily',
+                )
+                if structure_type.wage_type == 'monthly':
+                    vals['mdl_wage_rate_type'] = 'gross'
         return super().create(vals_list)
 
     def write(self, vals):
@@ -85,6 +93,12 @@ class HrVersion(models.Model):
         if structure_type and structure_type.country_id.code == 'IL':
             vals['schedule_pay'] = 'monthly'
             vals.setdefault('il_salary_structure_id', structure_type.default_struct_id.id)
+            vals.setdefault(
+                'mdl_wage_type',
+                'mdl_monthly' if structure_type.wage_type == 'monthly' else 'mdl_daily',
+            )
+            if structure_type.wage_type == 'monthly':
+                vals['mdl_wage_rate_type'] = 'gross'
         elif 'schedule_pay' in vals and any(version.il_is_israel_payroll for version in self):
             vals['schedule_pay'] = 'monthly'
         return super().write(vals)
@@ -92,9 +106,13 @@ class HrVersion(models.Model):
     @api.constrains('structure_type_id', 'il_salary_structure_id', 'schedule_pay')
     def _check_il_salary_structure(self):
         for version in self:
-            if version.il_salary_structure_id and \
+            if version.il_salary_structure_id and version.structure_type_id and \
                     version.il_salary_structure_id.type_id != version.structure_type_id:
-                raise ValidationError('מבנה השכר חייב להשתייך לקטגוריית השכר שנבחרה.')
+                raise ValidationError(
+                    'מבנה השכר חייב להשתייך לקטגוריית השכר שנבחרה. '
+                    f'נבחרה הקטגוריה "{version.structure_type_id.display_name}", '
+                    f'אך המבנה שייך לקטגוריה '
+                    f'"{version.il_salary_structure_id.type_id.display_name}".')
             if version.il_is_israel_payroll and version.schedule_pay != 'monthly':
                 raise ValidationError('מחזור התשלום בישראל חייב להיות חודשי.')
 
