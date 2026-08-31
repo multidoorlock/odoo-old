@@ -589,6 +589,28 @@ class HrPayslip(models.Model):
         currency = self.currency_id or self.company_id.currency_id or self.env.company.currency_id
         return (currency.rounding if currency else 0.01) or 0.01
 
+    def _il_exact_hourly_rate(self):
+        """Return the daily rate's exact hourly value from its source fields.
+
+        Recalculate instead of trusting only the stored helper field.  This
+        also repairs calculations created between the 1.0.6 SQL migration and
+        the follow-up recomputation of existing versions.
+        """
+        self.ensure_one()
+        version = self.version_id
+        if version.mdl_wage_type == 'mdl_daily' and version.mdl_daily_wage:
+            standard_hours = (
+                version.company_id.mdl_shift_paid_hours
+                if version.resource_calendar_id.mdl_schedule_type == 'shifts'
+                else version.resource_calendar_id.hours_per_day
+            )
+            if standard_hours:
+                return (
+                    _decimal(version.mdl_daily_wage) / _decimal(standard_hours)
+                ).quantize(Decimal('0.0000000001'), rounding=ROUND_HALF_UP)
+        return _decimal(
+            version.mdl_hourly_wage_exact or version.hourly_wage)
+
     def _il_daily_hourly_amounts(self):
         """Return exact/display regular-hour totals for a daily employee.
 
@@ -599,10 +621,7 @@ class HrPayslip(models.Model):
         if self.version_id.mdl_wage_type != 'mdl_daily':
             return Decimal('0'), Decimal('0')
         hours = _decimal(self._il_worked_days_hours('WORK100'))
-        exact_rate = _decimal(
-            self.version_id.mdl_hourly_wage_exact
-            or self.version_id.hourly_wage
-        )
+        exact_rate = self._il_exact_hourly_rate()
         display_rate = self._il_currency_round_decimal(exact_rate)
         return hours * exact_rate, hours * display_rate
 
@@ -614,8 +633,7 @@ class HrPayslip(models.Model):
                 or version.mdl_wage_rate_type != 'net'):
             return 0.0
         hours = _decimal(self._il_worked_days_hours('WORK100'))
-        exact_rate = _decimal(
-            version.mdl_hourly_wage_exact or version.hourly_wage)
+        exact_rate = self._il_exact_hourly_rate()
         return float(self._il_currency_round_decimal(hours * exact_rate))
 
     def _il_net_attendance_display_target(self):

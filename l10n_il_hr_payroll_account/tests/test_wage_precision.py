@@ -222,6 +222,18 @@ class TestNetDailyWageGrossUp(TransactionCase):
         self.assertNotIn('mdl_net_daily_wage', self.version._fields)
         self.assertNotIn('mdl_net_hourly_wage', self.version._fields)
 
+    def test_rounding_recovers_when_stored_exact_rate_is_stale(self):
+        self.version.mdl_hourly_wage_exact = 0.0
+        payslip = self._create_payslip()
+        self.assertEqual(payslip._il_exact_hourly_rate(), Decimal('26.3157894737'))
+        self.assertAlmostEqual(payslip._il_wage_rounding_amount(), -0.80, places=2)
+        self.assertTrue(payslip._il_has_wage_rounding())
+        by_code = {
+            line['code']: line['total']
+            for line in payslip._get_payslip_lines()
+        }
+        self.assertAlmostEqual(by_code['IL_WAGE_ROUNDING'], -0.80, places=2)
+
     def test_target_uses_work100_hours_never_day_units(self):
         payslip = self._create_payslip()
         attendance = payslip.worked_days_line_ids.filtered(
