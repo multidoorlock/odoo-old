@@ -151,23 +151,6 @@
         </record>
 
         <!-- ============================================================
-             רכיבי שכר בתעריף נטו (סוף שבוע / יום נוסף) — נוצרים אוטומטית
-             על ידי המנוע ממדל l10n_il_hr_payroll (חלק א'), לא זמינים כהתאמת שכר.
-             ============================================================ -->
-        <record id="input_type_il_net_weekend" model="hr.payslip.input.type">
-            <field name="name">גמול סוף שבוע (נטו)</field>
-            <field name="code">IL_NET_WEEKEND</field>
-            <field name="country_id" ref="base.il"/>
-            <field name="available_in_attachments">False</field>
-        </record>
-        <record id="input_type_il_net_additional_day" model="hr.payslip.input.type">
-            <field name="name">גמול יום נוסף (נטו)</field>
-            <field name="code">IL_NET_ADDITIONAL_DAY</field>
-            <field name="country_id" ref="base.il"/>
-            <field name="available_in_attachments">False</field>
-        </record>
-
-        <!-- ============================================================
              קלטים ידניים לעובד זר (סעיפים "×× ×××× ××××× ×¨×¤××× ×¤×¨×× "
              / "× ×××× ××××¨××" / "× ×××× ×××¦×××ª × ××××ª ×××××¨××") —
              מוזנים ידנית על התלוש מדי חודש; אינם התאמת שכר.

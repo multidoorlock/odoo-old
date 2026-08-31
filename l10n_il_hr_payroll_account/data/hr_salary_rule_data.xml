@@ -44,7 +44,7 @@ result_name = payslip._il_basic_line_name()</field>
         <record id="hr_salary_rule_il_weekend_gross" model="hr.salary.rule">
             <field name="struct_id" ref="hr_payroll_structure_il"/>
             <field name="category_id" ref="hr_payroll.ALW"/>
-            <field name="name">גמול סוף שבוע (ברוטו)</field>
+            <field name="name">גמול סוף שבוע</field>
             <field name="code">IL_WEEKEND_GROSS</field>
             <field name="sequence">6</field>
             <field name="condition_select">none</field>
@@ -55,36 +55,12 @@ result_name = payslip._il_basic_line_name()</field>
         <record id="hr_salary_rule_il_additional_day_gross" model="hr.salary.rule">
             <field name="struct_id" ref="hr_payroll_structure_il"/>
             <field name="category_id" ref="hr_payroll.ALW"/>
-            <field name="name">גמול יום נוסף (ברוטו)</field>
+            <field name="name">גמול יום נוסף</field>
             <field name="code">IL_ADDITIONAL_DAY_GROSS</field>
             <field name="sequence">7</field>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_additional_day_amount()</field>
-        </record>
-
-        <record id="hr_salary_rule_il_net_weekend_grossup" model="hr.salary.rule">
-            <field name="struct_id" ref="hr_payroll_structure_il"/>
-            <field name="category_id" ref="hr_payroll.ALW"/>
-            <field name="name">גמול סוף שבוע (גילום מנטו)</field>
-            <field name="code">IL_NET_WEEKEND_GROSSUP</field>
-            <field name="sequence">8</field>
-            <field name="condition_select">python</field>
-            <field name="condition_python">result = 'IL_NET_WEEKEND' in inputs</field>
-            <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = inputs['IL_NET_WEEKEND'].amount</field>
-        </record>
-
-        <record id="hr_salary_rule_il_net_additional_day_grossup" model="hr.salary.rule">
-            <field name="struct_id" ref="hr_payroll_structure_il"/>
-            <field name="category_id" ref="hr_payroll.ALW"/>
-            <field name="name">גמול יום נוסף (גילום מנטו)</field>
-            <field name="code">IL_NET_ADDITIONAL_DAY_GROSSUP</field>
-            <field name="sequence">9</field>
-            <field name="condition_select">python</field>
-            <field name="condition_python">result = 'IL_NET_ADDITIONAL_DAY' in inputs</field>
-            <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = inputs['IL_NET_ADDITIONAL_DAY'].amount</field>
         </record>
 
         <record id="hr_salary_rule_il_adjustment_gross" model="hr.salary.rule">

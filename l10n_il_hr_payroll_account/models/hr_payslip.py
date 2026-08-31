@@ -7,9 +7,7 @@ from odoo.exceptions import UserError, ValidationError
 # מצבי Payment שבהם התשלום נחשב "בוצע" ומשתתף בחישוב הסכום ששולם.
 IL_EFFECTIVE_PAYMENT_STATES = ('in_process', 'paid')
 
-# קודי סוגי הקלט של רכיבי שכר בתעריף נטו (סוף שבוע / יום נוסף) —
-# שורות קלט שנוצרות אוטומטית ועוברות גילום, ללא התאמת שכר מקושרת.
-IL_NET_COMPONENT_CODES = ('IL_NET_WEEKEND', 'IL_NET_ADDITIONAL_DAY')
+IL_LEGACY_NET_COMPONENT_CODES = ('IL_NET_WEEKEND', 'IL_NET_ADDITIONAL_DAY')
 
 IL_INPUT_SNAPSHOT_FIELDS = [
     'il_adjustment_direction', 'il_net_adjustment_treatment',
@@ -213,7 +211,7 @@ class HrPayslip(models.Model):
         }
 
     # ------------------------------------------------------------------
-    # שורת קלט נפרדת לכל התאמת שכר + רכיבי נטו של סוף שבוע / יום נוסף
+    # שורת קלט נפרדת לכל התאמת שכר. רכיבי שכר נטו נכתבים ב-Worked Days.
     # ------------------------------------------------------------------
     def _il_adjustment_input_types(self):
         return self.env['hr.payslip.input.type'].search([
@@ -227,19 +225,13 @@ class HrPayslip(models.Model):
     def _compute_input_line_ids(self):
         super()._compute_input_line_ids()
         adjustment_type_ids = self._il_adjustment_input_types().ids
-        net_component_types = {
-            'IL_NET_WEEKEND': self.env.ref(
-                'l10n_il_hr_payroll_account.input_type_il_net_weekend', raise_if_not_found=False),
-            'IL_NET_ADDITIONAL_DAY': self.env.ref(
-                'l10n_il_hr_payroll_account.input_type_il_net_additional_day', raise_if_not_found=False),
-        }
         for slip in self:
             commands = []
             # פירוק שורות הקלט המאוחדות שנוצרו על ידי המנגנון הסטנדרטי
             # לשורה נפרדת לכל התאמה (נדרש לגילום נטו פרטני ולתיעוד).
             aggregated = slip.input_line_ids.filtered(
                 lambda line: line.input_type_id.id in adjustment_type_ids
-                or line.code in IL_NET_COMPONENT_CODES)
+                or line.code in IL_LEGACY_NET_COMPONENT_CODES)
             commands += [Command.unlink(line.id) for line in aggregated]
             if slip.employee_id and slip.date_to and slip.struct_id:
                 valid_attachments = slip.employee_id.salary_attachment_ids.filtered(
@@ -263,51 +255,10 @@ class HrPayslip(models.Model):
                     for field_name in IL_INPUT_SNAPSHOT_FIELDS:
                         vals[field_name] = attachment[field_name]
                     commands.append(Command.create(vals))
-                commands += slip._il_net_component_input_commands(net_component_types)
             slip.update({'input_line_ids': commands})
         if not self.env.context.get('il_skip_automatic_gross_up'):
             self.filtered(lambda slip: slip.state == 'draft').with_context(
                 il_skip_automatic_gross_up=True)._il_run_gross_up_engine()
-
-    def _il_net_component_input_commands(self, net_component_types):
-        """Automatic input lines for special wage components configured as NET."""
-        self.ensure_one()
-        commands = []
-        version = self.version_id
-        if not version:
-            return commands
-        components = []
-        if (version.mdl_weekend_wage and version.mdl_weekend_rate_type == 'net'):
-            days = self._il_worked_days_units('WEEKEND')
-            if days:
-                components.append(('IL_NET_WEEKEND', days * version.mdl_weekend_wage))
-        if (version.mdl_additional_day_wage
-                and version.mdl_additional_day_rate_type == 'net'
-                and version.mdl_wage_type == 'mdl_monthly'):
-            days = self._il_worked_days_units('ADDITIONAL_DAY')
-            if days:
-                components.append(('IL_NET_ADDITIONAL_DAY', days * version.mdl_additional_day_wage))
-        for code, net_amount in components:
-            input_type = net_component_types.get(code)
-            if not input_type or not net_amount:
-                continue
-            commands.append(Command.create({
-                'name': input_type.name,
-                'input_type_id': input_type.id,
-                'amount': net_amount,
-                'il_original_amount': net_amount,
-                'il_effect_type': 'net',
-                'il_adjustment_direction': 'positive',
-                'il_net_adjustment_treatment': 'gross_up',
-                'il_income_taxable': True,
-                'il_national_insurance_applicable': True,
-                'il_pensionable': True,
-                'il_severance_applicable': True,
-                'il_study_fund_applicable': True,
-                'il_equalization_levy_applicable': True,
-                'il_ni_payment_treatment': 'regular',
-            }))
-        return commands
 
     # ------------------------------------------------------------------
     # רישום תשלומי התאמות: המנגנון הסטנדרטי מזהה שורות תלוש לפי קוד סוג
@@ -335,13 +286,9 @@ class HrPayslip(models.Model):
         lines = self.input_line_ids.filtered(
             lambda l: l.il_effect_type == 'net'
             and l.il_net_adjustment_treatment == 'gross_up')
-        component_order = {
-            'IL_NET_WEEKEND': 0,
-            'IL_NET_ADDITIONAL_DAY': 1,
-        }
         component_lines = lines.filtered(
             lambda l: not l.il_salary_attachment_id).sorted(
-                key=lambda l: (component_order.get(l.code, 99), l.id))
+                key=lambda l: l.id)
         adjustment_lines = (lines - component_lines).sorted(
             key=lambda l: (l.il_salary_attachment_id.date_start or fields.Date.today(),
                            l.il_salary_attachment_id.id))
@@ -354,31 +301,35 @@ class HrPayslip(models.Model):
         line_vals = self._get_payslip_lines()
         return sum(vals['total'] for vals in line_vals if vals['code'] == 'NET')
 
-    def _il_set_regular_attendance_amount(self, gross_amount):
-        """Put a solved gross total on Odoo's WORK100 rows.
+    def _il_set_worked_days_amount(self, code, gross_amount):
+        """Put a solved gross total on matching Odoo Worked Days rows.
 
-        There is normally one aggregated attendance row.  If Odoo produces
+        There is normally one aggregated row per type.  If Odoo produces
         more than one, distribute the total by hours and put the currency
         rounding remainder on the last row so the sum stays exact.
         """
         self.ensure_one()
-        attendance_lines = self.worked_days_line_ids.filtered(
-            lambda line: line.code == 'WORK100')
-        if not attendance_lines:
+        worked_day_lines = self.worked_days_line_ids.filtered(
+            lambda line: line.code == code)
+        if not worked_day_lines:
             return
         gross_amount = float(self._il_currency_round_decimal(_decimal(gross_amount)))
-        total_hours = sum(abs(line.number_of_hours) for line in attendance_lines)
+        total_hours = sum(abs(line.number_of_hours) for line in worked_day_lines)
         if not total_hours:
-            attendance_lines.amount = 0.0
+            worked_day_lines.amount = 0.0
             return
         remaining = gross_amount
-        for line in attendance_lines[:-1]:
+        for line in worked_day_lines[:-1]:
             share = gross_amount * abs(line.number_of_hours) / total_hours
             share = float(self._il_currency_round_decimal(_decimal(share)))
             line.amount = share
             remaining -= share
-        attendance_lines[-1].amount = float(
+        worked_day_lines[-1].amount = float(
             self._il_currency_round_decimal(_decimal(remaining)))
+
+    def _il_set_regular_attendance_amount(self, gross_amount):
+        self.ensure_one()
+        self._il_set_worked_days_amount('WORK100', gross_amount)
 
     def _il_gross_up_regular_attendance(self):
         """Gross up the standard Odoo attendance amount for a net daily rate.
@@ -393,7 +344,10 @@ class HrPayslip(models.Model):
             return
         attendance_lines = self.worked_days_line_ids.filtered(
             lambda line: line.code == 'WORK100')
-        target_delta = self._il_net_attendance_target()
+        # The visible rounding rule already contributes exact - displayed.
+        # Gross up the displayed target so their combined net is the exact
+        # ten-decimal hourly target requested by the employee.
+        target_delta = self._il_net_attendance_display_target()
         if not attendance_lines or not target_delta:
             return
 
@@ -414,6 +368,11 @@ class HrPayslip(models.Model):
         while sign * (net_at(high) - target_net) < 0 and iterations < 40:
             high *= 2
             iterations += 1
+        if sign * (net_at(high) - target_net) < 0:
+            self._il_set_regular_attendance_amount(0.0)
+            raise ValidationError(
+                'לא ניתן לגלם את שכר הנוכחות ליעד הנטו המבוקש. '
+                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
         best = high
         for _unused in range(100):
             mid = (low + high) / 2
@@ -428,6 +387,106 @@ class HrPayslip(models.Model):
             best = mid
         self._il_set_regular_attendance_amount(sign * best)
 
+    def _il_gross_up_weekend(self):
+        """Gross up a net weekend rate directly on Odoo's WEEKEND row."""
+        self.ensure_one()
+        version = self.version_id
+        weekend_lines = self.worked_days_line_ids.filtered(
+            lambda line: line.code == 'WEEKEND')
+        if (not weekend_lines or not version.mdl_weekend_wage
+                or version.mdl_weekend_rate_type != 'net'):
+            return
+        target_delta = self._il_worked_days_units('WEEKEND') * version.mdl_weekend_wage
+        if not target_delta:
+            return
+
+        rounding = self._il_currency_rounding()
+        sign = -1.0 if target_delta < 0 else 1.0
+        target_delta = abs(target_delta)
+        self._il_set_worked_days_amount('WEEKEND', 0.0)
+        base_net = self._il_compute_net_total()
+        target_net = base_net + sign * target_delta
+
+        def net_at(gross):
+            self._il_set_worked_days_amount('WEEKEND', sign * gross)
+            return self._il_compute_net_total()
+
+        low, high = 0.0, max(target_delta, rounding)
+        iterations = 0
+        while sign * (net_at(high) - target_net) < 0 and iterations < 40:
+            high *= 2
+            iterations += 1
+        if sign * (net_at(high) - target_net) < 0:
+            self._il_set_worked_days_amount('WEEKEND', 0.0)
+            raise ValidationError(
+                'לא ניתן לגלם את גמול סוף השבוע ליעד הנטו המבוקש. '
+                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
+        best = high
+        for _unused in range(100):
+            mid = (low + high) / 2
+            net = net_at(mid)
+            if abs(net - target_net) <= rounding / 2:
+                best = mid
+                break
+            if sign * (net - target_net) < 0:
+                low = mid
+            else:
+                high = mid
+            best = mid
+        self._il_set_worked_days_amount('WEEKEND', sign * best)
+
+    def _il_gross_up_additional_day(self):
+        """Gross up a net additional-day rate directly on its Worked Days row."""
+        self.ensure_one()
+        version = self.version_id
+        additional_lines = self.worked_days_line_ids.filtered(
+            lambda line: line.code == 'ADDITIONAL_DAY')
+        if (not additional_lines or not version.mdl_additional_day_wage
+                or version.mdl_additional_day_rate_type != 'net'
+                or version.mdl_wage_type != 'mdl_monthly'):
+            return
+        target_delta = (
+            self._il_worked_days_units('ADDITIONAL_DAY')
+            * version.mdl_additional_day_wage
+        )
+        if not target_delta:
+            return
+
+        rounding = self._il_currency_rounding()
+        sign = -1.0 if target_delta < 0 else 1.0
+        target_delta = abs(target_delta)
+        self._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
+        base_net = self._il_compute_net_total()
+        target_net = base_net + sign * target_delta
+
+        def net_at(gross):
+            self._il_set_worked_days_amount('ADDITIONAL_DAY', sign * gross)
+            return self._il_compute_net_total()
+
+        low, high = 0.0, max(target_delta, rounding)
+        iterations = 0
+        while sign * (net_at(high) - target_net) < 0 and iterations < 40:
+            high *= 2
+            iterations += 1
+        if sign * (net_at(high) - target_net) < 0:
+            self._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
+            raise ValidationError(
+                'לא ניתן לגלם את גמול היום הנוסף ליעד הנטו המבוקש. '
+                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
+        best = high
+        for _unused in range(100):
+            mid = (low + high) / 2
+            net = net_at(mid)
+            if abs(net - target_net) <= rounding / 2:
+                best = mid
+                break
+            if sign * (net - target_net) < 0:
+                low = mid
+            else:
+                high = mid
+            best = mid
+        self._il_set_worked_days_amount('ADDITIONAL_DAY', sign * best)
+
     def _il_run_gross_up_engine(self):
         for slip in self:
             gross_up_lines = slip._il_gross_up_lines()
@@ -436,7 +495,15 @@ class HrPayslip(models.Model):
             # solved before them so each later component is added on top.
             for line in gross_up_lines:
                 line.amount = 0.0
+            if (slip.version_id.mdl_weekend_rate_type == 'net'
+                    and slip.version_id.mdl_weekend_wage):
+                slip._il_set_worked_days_amount('WEEKEND', 0.0)
+            if (slip.version_id.mdl_additional_day_rate_type == 'net'
+                    and slip.version_id.mdl_additional_day_wage):
+                slip._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
             slip._il_gross_up_regular_attendance()
+            slip._il_gross_up_weekend()
+            slip._il_gross_up_additional_day()
             if not gross_up_lines:
                 continue
             base_net = slip._il_compute_net_total()
@@ -457,6 +524,11 @@ class HrPayslip(models.Model):
                 while sign * (net_at(high) - target_net) < 0 and iterations < 40:
                     high *= 2
                     iterations += 1
+                if sign * (net_at(high) - target_net) < 0:
+                    line.amount = 0.0
+                    raise ValidationError(
+                        'לא ניתן לגלם את רכיב השכר ליעד הנטו המבוקש. '
+                        'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
                 # חיפוש בינארי דטרמיניסטי עד דיוק עיגול המטבע.
                 best = high
                 for _unused in range(100):
@@ -546,6 +618,14 @@ class HrPayslip(models.Model):
             version.mdl_hourly_wage_exact or version.hourly_wage)
         return float(self._il_currency_round_decimal(hours * exact_rate))
 
+    def _il_net_attendance_display_target(self):
+        """Displayed-rate target used with the visible wage-rounding rule."""
+        self.ensure_one()
+        if self._il_uses_gross_base_wage():
+            return 0.0
+        _exact_total, display_total = self._il_daily_hourly_amounts()
+        return float(self._il_currency_round_decimal(display_total))
+
     def _il_uses_gross_base_wage(self):
         self.ensure_one()
         return not (
@@ -600,8 +680,6 @@ class HrPayslip(models.Model):
     def _il_has_wage_rounding(self):
         """Avoid a visible zero line when the difference rounds to no agorot."""
         self.ensure_one()
-        if not self._il_uses_gross_base_wage():
-            return False
         amount = _decimal(self._il_wage_rounding_amount())
         return self._il_currency_round_decimal(amount) != Decimal('0')
 
@@ -672,21 +750,25 @@ class HrPayslip(models.Model):
         return normal_odoo_amount + fixed_adjustment
 
     def _il_weekend_amount(self):
-        """Gross-rate weekend pay. NET-rate weekend is paid through the
-        gross-up input line and must not be counted here."""
+        """Weekend pay from the configured gross rate or solved WEEKEND rows."""
         self.ensure_one()
         version = self.version_id
-        if not version.mdl_weekend_wage or version.mdl_weekend_rate_type == 'net':
+        if not version.mdl_weekend_wage:
             return 0.0
+        if version.mdl_weekend_rate_type == 'net':
+            return sum(self.worked_days_line_ids.filtered(
+                lambda line: line.code == 'WEEKEND').mapped('amount'))
         return self._il_worked_days_units('WEEKEND') * version.mdl_weekend_wage
 
     def _il_additional_day_amount(self):
         self.ensure_one()
         version = self.version_id
         if (not version.mdl_additional_day_wage
-                or version.mdl_additional_day_rate_type == 'net'
                 or version.mdl_wage_type != 'mdl_monthly'):
             return 0.0
+        if version.mdl_additional_day_rate_type == 'net':
+            return sum(self.worked_days_line_ids.filtered(
+                lambda line: line.code == 'ADDITIONAL_DAY').mapped('amount'))
         return self._il_worked_days_units('ADDITIONAL_DAY') * version.mdl_additional_day_wage
 
     def _il_inputs_base(self, flag_field):

@@ -161,7 +161,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
         cls.version = cls.employee.version_id
         cls.version.date_version = date(2026, 1, 1)
 
-    def _create_payslip(self, overtime_hours=0.0, structure=None):
+    def _create_payslip(self, overtime_hours=0.0, weekend_days=0.0, structure=None):
         structure = structure or self.daily_structure
         if self.version.il_salary_structure_id != structure:
             self.version.il_salary_structure_id = structure
@@ -190,6 +190,13 @@ class TestNetDailyWageGrossUp(TransactionCase):
                     'hr_work_entry.work_entry_type_overtime').id,
                 'number_of_hours': overtime_hours,
                 'number_of_days': 123.0,
+            }))
+        if weekend_days:
+            commands.append(Command.create({
+                'work_entry_type_id': self.env.ref(
+                    'l10n_il_hr_payroll.work_entry_type_weekend').id,
+                'number_of_hours': weekend_days * 9.5,
+                'number_of_days': weekend_days,
             }))
         payslip.write({
             'version_id': self.version.id,
@@ -241,10 +248,11 @@ class TestNetDailyWageGrossUp(TransactionCase):
         solved_net = payslip.with_context(
             il_solving_net_base_wage=True)._il_compute_net_total()
         target = payslip._il_net_attendance_target()
+        display_target = payslip._il_net_attendance_display_target()
         self.assertGreater(gross_amount, target)
         self.assertAlmostEqual(
             solved_net,
-            baseline + target,
+            baseline + display_target,
             delta=payslip.currency_id.rounding,
         )
 
@@ -252,7 +260,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
         by_code = {line['code']: line['total'] for line in line_values}
         self.assertAlmostEqual(by_code['BASIC'], gross_amount, places=2)
         self.assertNotIn('IL_NET_BASE_GROSSUP', by_code)
-        self.assertNotIn('IL_WAGE_ROUNDING', by_code)
+        self.assertAlmostEqual(by_code['IL_WAGE_ROUNDING'], -0.80, places=2)
 
         payslip.compute_sheet()
         stored_by_code = {
@@ -261,10 +269,110 @@ class TestNetDailyWageGrossUp(TransactionCase):
         }
         self.assertAlmostEqual(stored_by_code['BASIC'], gross_amount, places=2)
         self.assertNotIn('IL_NET_BASE_GROSSUP', stored_by_code)
-        self.assertNotIn('IL_WAGE_ROUNDING', stored_by_code)
+        self.assertAlmostEqual(
+            stored_by_code['IL_WAGE_ROUNDING'], -0.80, places=2)
         self.assertAlmostEqual(
             stored_by_code['NET'],
-            baseline + target,
+            baseline + display_target,
+            delta=payslip.currency_id.rounding,
+        )
+
+    def test_net_weekend_is_grossed_up_on_worked_days_without_salary_input(self):
+        self.version.write({
+            'mdl_weekend_wage': 250.0,
+            'mdl_weekend_rate_type': 'net',
+        })
+        baseline = self._create_payslip()
+        baseline_net = baseline._il_compute_net_total()
+
+        payslip = self._create_payslip(weekend_days=4.0)
+        weekend = payslip.worked_days_line_ids.filtered(
+            lambda worked: worked.code == 'WEEKEND')
+        weekend_gross = sum(weekend.mapped('amount'))
+        self.assertGreater(weekend_gross, 1000.0)
+        self.assertFalse(payslip.input_line_ids.filtered(
+            lambda line: line.code == 'IL_NET_WEEKEND'))
+
+        by_code = {
+            line['code']: line['total']
+            for line in payslip._get_payslip_lines()
+        }
+        self.assertAlmostEqual(
+            by_code['IL_WEEKEND_GROSS'], weekend_gross, places=2)
+        self.assertNotIn('IL_NET_WEEKEND_GROSSUP', by_code)
+        self.assertAlmostEqual(
+            by_code['NET'], baseline_net + 1000.0,
+            delta=payslip.currency_id.rounding,
+        )
+
+    def test_net_additional_day_is_grossed_up_without_salary_input(self):
+        monthly_type = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_type_il')
+        monthly_structure = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il')
+        employee = self.env['hr.employee'].create({
+            'name': 'Net Additional Day Employee',
+            'company_id': self.company.id,
+            'contract_date_start': date(2026, 1, 1),
+            'date_version': date(2026, 1, 1),
+            'resource_calendar_id': self.calendar.id,
+            'structure_type_id': monthly_type.id,
+            'il_salary_structure_id': monthly_structure.id,
+            'mdl_wage_type': 'mdl_monthly',
+            'wage': 10000.0,
+            'mdl_additional_day_wage': 500.0,
+            'mdl_additional_day_rate_type': 'net',
+            'il_tax_credit_points': 0.0,
+        })
+        version = employee.version_id
+        version.date_version = date(2026, 1, 1)
+        payslip = self.env['hr.payslip'].create({
+            'name': 'Net Additional Day Payslip',
+            'employee_id': employee.id,
+            'company_id': self.company.id,
+            'date_from': date(2026, 1, 1),
+            'date_to': date(2026, 1, 31),
+            'version_id': version.id,
+            'struct_id': monthly_structure.id,
+            'edited': True,
+        })
+        payslip.write({
+            'version_id': version.id,
+            'struct_id': monthly_structure.id,
+            'worked_days_line_ids': [
+                Command.clear(),
+                Command.create({
+                    'work_entry_type_id': self.env.ref(
+                        'l10n_il_hr_payroll.work_entry_type_additional_day').id,
+                    'number_of_hours': 19.0,
+                    'number_of_days': 2.0,
+                }),
+            ],
+        })
+        payslip.worked_days_line_ids._compute_is_paid()
+        payslip._compute_input_line_ids()
+        additional = payslip.worked_days_line_ids.filtered(
+            lambda worked: worked.code == 'ADDITIONAL_DAY')
+        additional_gross = sum(additional.mapped('amount'))
+        self.assertGreater(additional_gross, 1000.0)
+        self.assertFalse(payslip.input_line_ids.filtered(
+            lambda line: line.code == 'IL_NET_ADDITIONAL_DAY'))
+
+        payslip._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
+        baseline_net = payslip._il_compute_net_total()
+        payslip._il_gross_up_additional_day()
+        by_code = {
+            line['code']: line['total']
+            for line in payslip._get_payslip_lines()
+        }
+        self.assertAlmostEqual(
+            by_code['IL_ADDITIONAL_DAY_GROSS'],
+            sum(additional.mapped('amount')),
+            places=2,
+        )
+        self.assertNotIn('IL_NET_ADDITIONAL_DAY_GROSSUP', by_code)
+        self.assertAlmostEqual(
+            by_code['NET'], baseline_net + 1000.0,
             delta=payslip.currency_id.rounding,
         )
 
@@ -328,7 +436,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
             il_solving_net_base_wage=True)._il_compute_net_total()
         self.assertAlmostEqual(
             solved_net,
-            baseline + payslip._il_net_attendance_target(),
+            baseline + payslip._il_net_attendance_display_target(),
             delta=payslip.currency_id.rounding,
         )
 
