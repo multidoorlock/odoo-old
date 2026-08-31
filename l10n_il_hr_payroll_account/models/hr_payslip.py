@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from decimal import Decimal, ROUND_HALF_UP
+
 from odoo import Command, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -16,6 +18,11 @@ IL_INPUT_SNAPSHOT_FIELDS = [
     'il_study_fund_applicable', 'il_equalization_levy_applicable',
     'il_ni_payment_treatment',
 ]
+
+
+def _decimal(value):
+    """Convert an Odoo numeric value without performing binary-float math."""
+    return Decimal(str(value or 0))
 
 
 class HrPayslip(models.Model):
@@ -405,13 +412,51 @@ class HrPayslip(models.Model):
             return 0.0
         return self._il_worked_days_hours(code) / hours_per_day
 
+    def _il_currency_round_decimal(self, amount):
+        """Round a Decimal using the payslip currency increment and HALF-UP."""
+        self.ensure_one()
+        currency = self.currency_id or self.company_id.currency_id or self.env.company.currency_id
+        increment = _decimal(currency.rounding if currency else 0.01)
+        if not increment:
+            increment = Decimal('0.01')
+        return (
+            (amount / increment).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+            * increment
+        )
+
+    def _il_daily_hourly_amounts(self):
+        """Return exact/display regular-hour totals for a daily employee.
+
+        The calculation intentionally uses WORK100 hours only.  Day units are
+        reporting data and never participate in the wage-rounding correction.
+        """
+        self.ensure_one()
+        if self.version_id.mdl_wage_type != 'mdl_daily':
+            return Decimal('0'), Decimal('0')
+        hours = _decimal(self._il_worked_days_hours('WORK100'))
+        exact_rate = _decimal(
+            self.version_id.mdl_hourly_wage_exact
+            or self.version_id.hourly_wage
+        )
+        display_rate = self._il_currency_round_decimal(exact_rate)
+        return hours * exact_rate, hours * display_rate
+
+    def _il_basic_line_name(self):
+        self.ensure_one()
+        return 'שכר שעות' if self.version_id.mdl_wage_type == 'mdl_daily' else 'שכר בסיס'
+
     def _il_basic_amount(self):
         """BASIC: monthly worker — the monthly wage minus unpaid absence days;
-        daily worker — regular worked hours at the hourly rate."""
+        daily worker — regular WORK100 hours at the displayed hourly rate.
+
+        The separate IL_WAGE_ROUNDING rule reconciles this displayed result to
+        the exact ten-decimal hourly-rate result.
+        """
         self.ensure_one()
         version = self.version_id
         if version.mdl_wage_type == 'mdl_daily':
-            return self._il_worked_days_units('WORK100') * version.mdl_daily_wage
+            _exact_total, display_total = self._il_daily_hourly_amounts()
+            return float(self._il_currency_round_decimal(display_total))
         if version.wage_type == 'hourly':
             return self._il_worked_days_hours('WORK100') * version.hourly_wage
         wage = version.wage
@@ -421,6 +466,26 @@ class HrPayslip(models.Model):
                 version.hourly_wage * (version.mdl_standard_day_hours or 0))
             wage -= absence_days * daily_value
         return max(wage, 0.0)
+
+    def _il_wage_rounding_amount(self):
+        """Rounded exact result minus the rounded displayed-rate result.
+
+        Both operands are final payslip amounts at currency precision.  Their
+        subtraction therefore always closes the two visible lines exactly and
+        cannot land on a binary-float half-cent boundary inside Odoo's salary
+        rule engine.
+        """
+        self.ensure_one()
+        exact_total, display_total = self._il_daily_hourly_amounts()
+        exact_total = self._il_currency_round_decimal(exact_total)
+        display_total = self._il_currency_round_decimal(display_total)
+        return float(exact_total - display_total)
+
+    def _il_has_wage_rounding(self):
+        """Avoid a visible zero line when the difference rounds to no agorot."""
+        self.ensure_one()
+        amount = _decimal(self._il_wage_rounding_amount())
+        return self._il_currency_round_decimal(amount) != Decimal('0')
 
     def _il_overtime_amount(self):
         self.ensure_one()

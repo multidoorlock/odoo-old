@@ -1,8 +1,16 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools import float_compare
 
 PAYROLL_GROUP = "hr_payroll.group_hr_payroll_user"
+HOURLY_RATE_QUANTUM = Decimal('0.0000000001')
+
+
+def _decimal(value):
+    """Build a Decimal from Odoo values without a binary-float calculation."""
+    return Decimal(str(value or 0))
 
 
 class HrVersion(models.Model):
@@ -24,6 +32,12 @@ class HrVersion(models.Model):
         readonly=False, copy=True, groups=PAYROLL_GROUP, tracking=True)
     mdl_hourly_wage = fields.Monetary(
         related='hourly_wage', string='תעריף שעה', groups=PAYROLL_GROUP)
+    mdl_hourly_wage_exact = fields.Float(
+        string='תעריף שעה מדויק', digits=(32, 10),
+        compute='_compute_mdl_hourly_wage', store=True, readonly=True,
+        groups=PAYROLL_GROUP,
+        help='תעריף פנימי לחישובי שכר. נשמר כ-NUMERIC בדיוק של 10 ספרות; '
+             'התעריף המוצג לעובד נשאר מעוגל לפי דיוק המטבע.')
 
     mdl_average_monthly_hours = fields.Float(
         string='ממוצע שעות בחודש', compute='_compute_mdl_average_monthly_hours',
@@ -89,10 +103,23 @@ class HrVersion(models.Model):
                     if version.resource_calendar_id.mdl_schedule_type == 'shifts'
                     else version.resource_calendar_id.hours_per_day
                 )
-                version.hourly_wage = version.mdl_daily_wage / std_hours if std_hours else 0.0
+                exact_rate = (
+                    _decimal(version.mdl_daily_wage) / _decimal(std_hours)
+                    if std_hours else Decimal('0')
+                )
             else:
-                avg_hours = version.mdl_average_monthly_hours
-                version.hourly_wage = version.wage / avg_hours if avg_hours else 0.0
+                weekly_hours = _decimal(version.resource_calendar_id.hours_per_week)
+                avg_hours = weekly_hours * Decimal(52) / Decimal(12) if weekly_hours else Decimal('0')
+                exact_rate = (
+                    _decimal(version.wage) / avg_hours
+                    if avg_hours else Decimal('0')
+                )
+            exact_rate = exact_rate.quantize(HOURLY_RATE_QUANTUM, rounding=ROUND_HALF_UP)
+            version.mdl_hourly_wage_exact = exact_rate
+            # Odoo's standard Monetary field remains the legally displayed,
+            # currency-rounded hourly rate. Payroll calculations use the exact
+            # NUMERIC field above through the localization helpers.
+            version.hourly_wage = exact_rate
 
     @api.depends('resource_calendar_id.hours_per_week')
     def _compute_mdl_average_monthly_hours(self):
