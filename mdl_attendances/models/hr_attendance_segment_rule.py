@@ -57,11 +57,12 @@ class HrAttendanceSegmentRule(models.Model):
     quantity_period = fields.Selection([("day", "Day")], default="day")
     employee_tolerance = fields.Float(
         help="For quantity rules, this many excess hours remain effective work time after the employer threshold is crossed. "
-             "For non-work timing rules, this duration at the start of the matching interval remains effective work time.")
+             "For non-work timing rules, an employee who checks in less than this duration before the end of the window "
+             "is treated as working from check-in.")
     employer_tolerance = fields.Float(
         help="For quantity rules, excess at or below this threshold is ignored. "
-             "For timing rules, the rule is ignored when its overlap with the attendance "
-             "is at or below this duration.")
+             "For non-work timing rules, a check-out up to this duration after the end of the window "
+             "extends non-work time through check-out; a later check-out leaves time after the window as work.")
     timing_type = fields.Selection([
         ("work_days", "On any working day"),
         ("non_work_days", "On any non-working day"),
@@ -142,7 +143,7 @@ class HrAttendanceSegmentRule(models.Model):
 
     def _local_window_utc(self, attendance, local_date):
         self.ensure_one()
-        tz = pytz.timezone(attendance.employee_id.sudo()._get_version(local_date)._get_tz())
+        tz = self._timing_timezone(attendance)
         start = datetime.combine(local_date, time.min) + timedelta(hours=self.timing_start)
         stop = datetime.combine(local_date, time.min) + timedelta(hours=self.timing_stop)
         if stop <= start:
@@ -151,6 +152,21 @@ class HrAttendanceSegmentRule(models.Model):
             tz.localize(start).astimezone(pytz.utc).replace(tzinfo=None),
             tz.localize(stop).astimezone(pytz.utc).replace(tzinfo=None),
         )
+
+    def _timing_timezone(self, attendance):
+        """Return the deterministic business timezone used by timing rules.
+
+        Segment rules belong to a company (and may explicitly select a
+        schedule), so their clock must not move when an employee happens to
+        have a calendar with a different timezone.  This also keeps the rule
+        clock aligned with the company attendance UI.
+        """
+        self.ensure_one()
+        calendar = self.resource_calendar_id or self.company_id.resource_calendar_id
+        tz_name = calendar.tz if calendar else False
+        if not tz_name:
+            tz_name = attendance.employee_id.sudo()._get_version(attendance.date)._get_tz()
+        return pytz.timezone(tz_name)
 
     def _expected_hours_for(self, attendance):
         self.ensure_one()

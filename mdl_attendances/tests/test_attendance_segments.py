@@ -23,7 +23,8 @@ class TestAttendanceSegments(TransactionCase):
                 "timing_type": "work_days",
                 "timing_start": 1.5,
                 "timing_stop": 6.5,
-                "employer_tolerance": 0.5,
+                "employer_tolerance": 40 / 60,
+                "employee_tolerance": 40 / 60,
                 "is_work": False,
             })],
         })
@@ -70,27 +71,88 @@ class TestAttendanceSegments(TransactionCase):
     def test_timing_tolerance_keeps_six_oclock_entry_as_work(self):
         attendance = self.env["hr.attendance"].create({
             "employee_id": self.employee.id,
-            "check_in": datetime(2026, 1, 5, 6, 0),
-            "check_out": datetime(2026, 1, 5, 7, 0),
+            "check_in": datetime(2026, 1, 6, 6, 0),
+            "check_out": datetime(2026, 1, 6, 7, 0),
         })
         self.assertEqual(len(attendance.segment_ids), 1)
         self.assertTrue(attendance.segment_ids.is_work)
         self.assertAlmostEqual(attendance.worked_hours, 1.0)
 
-    def test_timing_employee_tolerance_keeps_initial_overlap_as_work(self):
-        self.ruleset.rule_ids.write({
-            "employer_tolerance": 0.0,
-            "employee_tolerance": 0.25,
+    def test_employee_tolerance_keeps_0615_checkin_as_work(self):
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": datetime(2026, 1, 6, 6, 15),
+            "check_out": datetime(2026, 1, 6, 7, 0),
         })
+        self.assertEqual(len(attendance.segment_ids), 1)
+        self.assertTrue(attendance.segment_ids.is_work)
+        self.assertAlmostEqual(attendance.worked_hours, 0.75)
+
+    def test_employee_tolerance_applies_sleep_at_exactly_40_minutes(self):
+        self.ruleset.rule_ids.employer_tolerance = 0.0
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": datetime(2026, 1, 6, 5, 50),
+            "check_out": datetime(2026, 1, 6, 7, 0),
+        })
+        segments = attendance.segment_ids.sorted("time_start")
+        self.assertEqual(segments.mapped("is_work"), [False, True])
+        self.assertEqual(segments[0].time_stop, datetime(2026, 1, 6, 6, 30))
+        self.assertAlmostEqual(attendance.worked_hours, 0.5)
+
+    def test_employer_tolerance_extends_sleep_to_0700_checkout(self):
         attendance = self.env["hr.attendance"].create({
             "employee_id": self.employee.id,
             "check_in": datetime(2026, 1, 5, 16, 0),
-            "check_out": datetime(2026, 1, 6, 6, 30),
+            "check_out": datetime(2026, 1, 6, 7, 0),
         })
         segments = attendance.segment_ids.sorted("time_start")
         self.assertEqual(segments.mapped("is_work"), [True, False])
-        self.assertEqual(segments[0].time_stop, datetime(2026, 1, 6, 1, 45))
-        self.assertAlmostEqual(attendance.worked_hours, 9.75)
+        self.assertEqual(segments[-1].time_stop, attendance.check_out)
+        self.assertAlmostEqual(attendance.worked_hours, 9.5)
+
+    def test_employer_tolerance_stops_sleep_when_checkout_exceeds_40_minutes(self):
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": datetime(2026, 1, 5, 16, 0),
+            "check_out": datetime(2026, 1, 6, 7, 11),
+        })
+        segments = attendance.segment_ids.sorted("time_start")
+        self.assertEqual(segments.mapped("is_work"), [True, False, True])
+        self.assertEqual(segments[1].time_stop, datetime(2026, 1, 6, 6, 30))
+        self.assertAlmostEqual(attendance.worked_hours, 9.5 + 41 / 60)
+
+    def test_timing_uses_company_timezone_not_employee_calendar_timezone(self):
+        self.company.resource_calendar_id.tz = "Asia/Jerusalem"
+        employee_calendar = self.company.resource_calendar_id.copy({
+            "name": "Employee calendar in Brussels",
+            "tz": "Europe/Brussels",
+        })
+        self.employee.resource_calendar_id = employee_calendar
+
+        # 06:15-17:30 in Israel. In Brussels this starts at 05:15, which used
+        # to trigger a false non-work segment until 07:30 Israel time.
+        morning = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": datetime(2026, 8, 25, 3, 15),
+            "check_out": datetime(2026, 8, 25, 14, 30),
+        })
+        self.assertEqual(len(morning.segment_ids), 1)
+        self.assertTrue(morning.segment_ids.is_work)
+        self.assertAlmostEqual(morning.worked_hours, 11.25)
+
+        # 17:30 Friday through 07:00 Saturday in Israel. The timing window is
+        # anchored to the Friday shift and must be 01:30-07:00 Israel time.
+        overnight = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": datetime(2026, 8, 28, 14, 30),
+            "check_out": datetime(2026, 8, 29, 4, 0),
+        })
+        segments = overnight.segment_ids.sorted("time_start")
+        self.assertEqual(segments.mapped("is_work"), [True, False])
+        self.assertEqual(segments[0].time_stop, datetime(2026, 8, 28, 22, 30))
+        self.assertEqual(segments[1].time_stop, overnight.check_out)
+        self.assertAlmostEqual(overnight.worked_hours, 8.0)
 
     def test_no_matching_rule_defaults_to_work(self):
         self.employee.segment_ruleset_id = False
