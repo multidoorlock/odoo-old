@@ -1,654 +1,627 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <data noupdate="0">
 
-    <!-- ==== l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary ==== -->
-    <record id="rule_ilm_salary_adj_paid_ded" model="hr.salary.rule">
-        <field name="name">ניכוי התאמות שכר ששולמו (legacy - הוחלף בתשלום מקושר)</field>
-        <field name="code">IL_SALARY_ADJ_PAID_DED</field>
-        <field name="sequence">205</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_net_to_pay_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_salary_adj_paid_deduction"/>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = -inputs['IL_SALARY_ADJ_PAID_DED'].amount</field>
-        <field name="active" eval="False"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_salary_adj_gross_impact" model="hr.salary.rule">
-        <field name="name">התאמות שכר - השפעת ברוטו (legacy)</field>
-        <field name="code">IL_SALARY_ADJ_GROSS_IMPACT</field>
-        <field name="sequence">46</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_salary_adj_gross_impact"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_salary_adj_gross_impact"/>
-        <field name="active" eval="False"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_salary_adj_net_grossup" model="hr.salary.rule">
-        <field name="name">התאמות שכר - גילום מסוג נטו (legacy - הוחלף בגילום per-type)</field>
-        <field name="code">IL_SALARY_ADJ_NET_GROSSUP</field>
-        <field name="sequence">47</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_salary_adj_net_grossup"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_salary_adj_net_grossup"/>
-        <field name="active" eval="False"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_payment_adj" model="hr.salary.rule">
-        <field name="name">סך הכל תשלומי עובד</field>
-        <field name="code">IL_PAYMENT_ADJ</field>
-        <field name="sequence">206</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_net_to_pay_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_payment_adj"/>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">
-# תשלומים לעובד (account.payment עם השפעה על שכר) שנאספו לתלוש הבא: תשלום ששלחנו
-# לעובד (Send) מנוכה מהנטו לתשלום; תשלום שהתקבל ממנו (Receive) נוסף לנטו לתשלום.
-result = inputs['IL_PAYMENT_ADJ'].amount
-</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_overpayment_closure" model="hr.salary.rule">
-        <field name="name">סך הכל תשלומי יתר שנסגרו</field>
-        <field name="code">IL_OVERPAYMENT_CLOSURE</field>
-        <field name="sequence">207</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_net_to_pay_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_overpayment_closure"/>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">
-# סכום היתרות של תלושי תשלום-יתר אחרים שנבחרו להיסגר דרך התלוש הזה (ראו
-# l10n_il_overpayment_closure.py) - מנוכה מהנטו לתשלום של התלוש הזה, כי חלק
-# ממה שהיה משתלם כאן מכסה בפועל את החוב הישן במקום.
-result = -inputs['IL_OVERPAYMENT_CLOSURE'].amount
-</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
+        <!-- ================================================================
+             ברוטו: שכר בסיס, גמולים רגילים, התאמות שכר (סעיפים 1-11)
+             ================================================================ -->
 
-    <!-- ==== l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary: התאמות שכר per-type (ברוטו חיובי/שלילי + גילום נטו) ==== -->
-    <record id="rule_ilm_commission_gross_pos" model="hr.salary.rule">
-        <field name="name">עמלה</field>
-        <field name="code">IL_COMMISSION_ADJ_GROSS_POS</field>
-        <field name="sequence">60</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_COMMISSION_GROSS' in inputs and inputs['IL_COMMISSION_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_COMMISSION_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_travel_gross_pos" model="hr.salary.rule">
-        <field name="name">החזר נסיעות</field>
-        <field name="code">IL_TRAVEL_ADJ_GROSS_POS</field>
-        <field name="sequence">61</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_TRAVEL_GROSS' in inputs and inputs['IL_TRAVEL_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_TRAVEL_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_havraa_gross_pos" model="hr.salary.rule">
-        <field name="name">דמי הבראה</field>
-        <field name="code">IL_HAVRAA_ADJ_GROSS_POS</field>
-        <field name="sequence">62</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_HAVRAA_GROSS' in inputs and inputs['IL_HAVRAA_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_HAVRAA_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_other_add_gross_pos" model="hr.salary.rule">
-        <field name="name">תוספת אחרת</field>
-        <field name="code">IL_OTHER_ADD_ADJ_GROSS_POS</field>
-        <field name="sequence">63</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_OTHER_ADD_GROSS' in inputs and inputs['IL_OTHER_ADD_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_OTHER_ADD_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_loan_gross_pos" model="hr.salary.rule">
-        <field name="name">החזר הלוואה</field>
-        <field name="code">IL_LOAN_ADJ_GROSS_POS</field>
-        <field name="sequence">64</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_LOAN_GROSS' in inputs and inputs['IL_LOAN_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_LOAN_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_meals_gross_pos" model="hr.salary.rule">
-        <field name="name">ניכוי ארוחות</field>
-        <field name="code">IL_MEALS_ADJ_GROSS_POS</field>
-        <field name="sequence">65</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_MEALS_GROSS' in inputs and inputs['IL_MEALS_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_MEALS_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_other_ded_gross_pos" model="hr.salary.rule">
-        <field name="name">ניכוי אחר</field>
-        <field name="code">IL_OTHER_DED_ADJ_GROSS_POS</field>
-        <field name="sequence">66</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_OTHER_DED_GROSS' in inputs and inputs['IL_OTHER_DED_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_OTHER_DED_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_loan_given_gross" model="hr.salary.rule">
-        <field name="name">מתן הלוואה לעובד</field>
-        <field name="code">IL_LOAN_GIVEN_ADJ_GROSS</field>
-        <field name="sequence">67</field>
-        <!-- ללא פיצול חיובי/שלילי (בניגוד לשאר הסוגים) - מתן הלוואה חיובי
-             בלבד (נאכף ב-hr.salary.attachment) ופטור לגמרי ממס, ולכן תמיד
-             נכנס ישירות לניכויי-רשות (DED, לא ל-ALW/GROSS) - ראו
-             L10N_IL_UNTAXED_TYPES ב-l10n_il_salary_adjustment.py. -->
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_LOAN_GIVEN_GROSS' in inputs</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_LOAN_GIVEN_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_commission_gross_neg" model="hr.salary.rule">
-        <field name="name">עמלה</field>
-        <field name="code">IL_COMMISSION_ADJ_GROSS_NEG</field>
-        <field name="sequence">70</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_COMMISSION_GROSS' in inputs and inputs['IL_COMMISSION_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_COMMISSION_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_travel_gross_neg" model="hr.salary.rule">
-        <field name="name">החזר נסיעות</field>
-        <field name="code">IL_TRAVEL_ADJ_GROSS_NEG</field>
-        <field name="sequence">71</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_TRAVEL_GROSS' in inputs and inputs['IL_TRAVEL_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_TRAVEL_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_havraa_gross_neg" model="hr.salary.rule">
-        <field name="name">דמי הבראה</field>
-        <field name="code">IL_HAVRAA_ADJ_GROSS_NEG</field>
-        <field name="sequence">72</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_HAVRAA_GROSS' in inputs and inputs['IL_HAVRAA_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_HAVRAA_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_other_add_gross_neg" model="hr.salary.rule">
-        <field name="name">תוספת אחרת</field>
-        <field name="code">IL_OTHER_ADD_ADJ_GROSS_NEG</field>
-        <field name="sequence">73</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_OTHER_ADD_GROSS' in inputs and inputs['IL_OTHER_ADD_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_OTHER_ADD_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_loan_gross_neg" model="hr.salary.rule">
-        <field name="name">החזר הלוואה</field>
-        <field name="code">IL_LOAN_ADJ_GROSS_NEG</field>
-        <field name="sequence">74</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_LOAN_GROSS' in inputs and inputs['IL_LOAN_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_LOAN_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_meals_gross_neg" model="hr.salary.rule">
-        <field name="name">ניכוי ארוחות</field>
-        <field name="code">IL_MEALS_ADJ_GROSS_NEG</field>
-        <field name="sequence">75</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_MEALS_GROSS' in inputs and inputs['IL_MEALS_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_MEALS_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_other_ded_gross_neg" model="hr.salary.rule">
-        <field name="name">ניכוי אחר</field>
-        <field name="code">IL_OTHER_DED_ADJ_GROSS_NEG</field>
-        <field name="sequence">76</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_OTHER_DED_GROSS' in inputs and inputs['IL_OTHER_DED_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_OTHER_DED_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_commission_net" model="hr.salary.rule">
-        <field name="name">עמלה</field>
-        <field name="code">IL_COMMISSION_ADJ_NET</field>
-        <field name="sequence">80</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_commission_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_commission_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_travel_net" model="hr.salary.rule">
-        <field name="name">החזר נסיעות</field>
-        <field name="code">IL_TRAVEL_ADJ_NET</field>
-        <field name="sequence">81</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_travel_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_travel_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_havraa_net" model="hr.salary.rule">
-        <field name="name">דמי הבראה</field>
-        <field name="code">IL_HAVRAA_ADJ_NET</field>
-        <field name="sequence">82</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_havraa_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_havraa_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_other_add_net" model="hr.salary.rule">
-        <field name="name">תוספת אחרת</field>
-        <field name="code">IL_OTHER_ADD_ADJ_NET</field>
-        <field name="sequence">83</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_other_add_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_other_add_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_loan_given_net" model="hr.salary.rule">
-        <field name="name">מתן הלוואה לעובד</field>
-        <field name="code">IL_LOAN_GIVEN_ADJ_NET</field>
-        <field name="sequence">83</field>
-        <!-- other_ded (DED), לא ALW - פטור לגמרי ממס, אין בסיס-ברוטו-חייב
-             לחשב, הגילום כבר פתר יחס 1:1 (remaining_exemption=inf). -->
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_loan_given_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_loan_given_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_loan_net" model="hr.salary.rule">
-        <field name="name">החזר הלוואה</field>
-        <field name="code">IL_LOAN_ADJ_NET</field>
-        <field name="sequence">84</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_loan_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_loan_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_meals_net" model="hr.salary.rule">
-        <field name="name">ניכוי ארוחות</field>
-        <field name="code">IL_MEALS_ADJ_NET</field>
-        <field name="sequence">85</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_meals_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_meals_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
-    <record id="rule_ilm_other_ded_net" model="hr.salary.rule">
-        <field name="name">ניכוי אחר</field>
-        <field name="code">IL_OTHER_DED_ADJ_NET</field>
-        <field name="sequence">86</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_other_ded_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_other_ded_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_employee_salary"/>
-    </record>
+        <record id="hr_salary_rule_il_basic" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.BASIC"/>
+            <field name="name">שכר בסיס</field>
+            <field name="code">BASIC</field>
+            <field name="sequence">1</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_basic_amount()
+result_name = payslip._il_basic_line_name()</field>
+        </record>
 
-    <!-- ==== l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary ==== -->
-    <record id="rule_ilh_salary_adj_paid_ded" model="hr.salary.rule">
-        <field name="name">ניכוי התאמות שכר ששולמו (legacy - הוחלף בתשלום מקושר)</field>
-        <field name="code">IL_SALARY_ADJ_PAID_DED</field>
-        <field name="sequence">205</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_net_to_pay_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_salary_adj_paid_deduction"/>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = -inputs['IL_SALARY_ADJ_PAID_DED'].amount</field>
-        <field name="active" eval="False"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_salary_adj_gross_impact" model="hr.salary.rule">
-        <field name="name">התאמות שכר - השפעת ברוטו (legacy)</field>
-        <field name="code">IL_SALARY_ADJ_GROSS_IMPACT</field>
-        <field name="sequence">46</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_salary_adj_gross_impact"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_salary_adj_gross_impact"/>
-        <field name="active" eval="False"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_salary_adj_net_grossup" model="hr.salary.rule">
-        <field name="name">התאמות שכר - גילום מסוג נטו (legacy - הוחלף בגילום per-type)</field>
-        <field name="code">IL_SALARY_ADJ_NET_GROSSUP</field>
-        <field name="sequence">47</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_salary_adj_net_grossup"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_salary_adj_net_grossup"/>
-        <field name="active" eval="False"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_payment_adj" model="hr.salary.rule">
-        <field name="name">סך הכל תשלומי עובד</field>
-        <field name="code">IL_PAYMENT_ADJ</field>
-        <field name="sequence">206</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_net_to_pay_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_payment_adj"/>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">
-# תשלומים לעובד (account.payment עם השפעה על שכר) שנאספו לתלוש הבא: תשלום ששלחנו
-# לעובד (Send) מנוכה מהנטו לתשלום; תשלום שהתקבל ממנו (Receive) נוסף לנטו לתשלום.
-result = inputs['IL_PAYMENT_ADJ'].amount
-</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_overpayment_closure" model="hr.salary.rule">
-        <field name="name">סך הכל תשלומי יתר שנסגרו</field>
-        <field name="code">IL_OVERPAYMENT_CLOSURE</field>
-        <field name="sequence">207</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_net_to_pay_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_overpayment_closure"/>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">
-result = -inputs['IL_OVERPAYMENT_CLOSURE'].amount
-</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
+        <record id="hr_salary_rule_il_wage_rounding" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.BASIC"/>
+            <field name="name">עיגול שכר</field>
+            <field name="code">IL_WAGE_ROUNDING</field>
+            <field name="sequence">2</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_has_wage_rounding()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_wage_rounding_amount()</field>
+        </record>
 
-    <!-- ==== l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary: התאמות שכר per-type (ברוטו חיובי/שלילי + גילום נטו) ==== -->
-    <record id="rule_ilh_commission_gross_pos" model="hr.salary.rule">
-        <field name="name">עמלה</field>
-        <field name="code">IL_COMMISSION_ADJ_GROSS_POS</field>
-        <field name="sequence">60</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_COMMISSION_GROSS' in inputs and inputs['IL_COMMISSION_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_COMMISSION_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_travel_gross_pos" model="hr.salary.rule">
-        <field name="name">החזר נסיעות</field>
-        <field name="code">IL_TRAVEL_ADJ_GROSS_POS</field>
-        <field name="sequence">61</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_TRAVEL_GROSS' in inputs and inputs['IL_TRAVEL_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_TRAVEL_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_havraa_gross_pos" model="hr.salary.rule">
-        <field name="name">דמי הבראה</field>
-        <field name="code">IL_HAVRAA_ADJ_GROSS_POS</field>
-        <field name="sequence">62</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_HAVRAA_GROSS' in inputs and inputs['IL_HAVRAA_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_HAVRAA_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_other_add_gross_pos" model="hr.salary.rule">
-        <field name="name">תוספת אחרת</field>
-        <field name="code">IL_OTHER_ADD_ADJ_GROSS_POS</field>
-        <field name="sequence">63</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_OTHER_ADD_GROSS' in inputs and inputs['IL_OTHER_ADD_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_OTHER_ADD_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_loan_gross_pos" model="hr.salary.rule">
-        <field name="name">החזר הלוואה</field>
-        <field name="code">IL_LOAN_ADJ_GROSS_POS</field>
-        <field name="sequence">64</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_LOAN_GROSS' in inputs and inputs['IL_LOAN_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_LOAN_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_meals_gross_pos" model="hr.salary.rule">
-        <field name="name">ניכוי ארוחות</field>
-        <field name="code">IL_MEALS_ADJ_GROSS_POS</field>
-        <field name="sequence">65</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_MEALS_GROSS' in inputs and inputs['IL_MEALS_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_MEALS_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_other_ded_gross_pos" model="hr.salary.rule">
-        <field name="name">ניכוי אחר</field>
-        <field name="code">IL_OTHER_DED_ADJ_GROSS_POS</field>
-        <field name="sequence">66</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_OTHER_DED_GROSS' in inputs and inputs['IL_OTHER_DED_GROSS'].amount &gt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_OTHER_DED_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_loan_given_gross" model="hr.salary.rule">
-        <field name="name">מתן הלוואה לעובד</field>
-        <field name="code">IL_LOAN_GIVEN_ADJ_GROSS</field>
-        <field name="sequence">67</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_LOAN_GIVEN_GROSS' in inputs</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_LOAN_GIVEN_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_commission_gross_neg" model="hr.salary.rule">
-        <field name="name">עמלה</field>
-        <field name="code">IL_COMMISSION_ADJ_GROSS_NEG</field>
-        <field name="sequence">70</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_COMMISSION_GROSS' in inputs and inputs['IL_COMMISSION_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_COMMISSION_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_travel_gross_neg" model="hr.salary.rule">
-        <field name="name">החזר נסיעות</field>
-        <field name="code">IL_TRAVEL_ADJ_GROSS_NEG</field>
-        <field name="sequence">71</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_TRAVEL_GROSS' in inputs and inputs['IL_TRAVEL_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_TRAVEL_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_havraa_gross_neg" model="hr.salary.rule">
-        <field name="name">דמי הבראה</field>
-        <field name="code">IL_HAVRAA_ADJ_GROSS_NEG</field>
-        <field name="sequence">72</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_HAVRAA_GROSS' in inputs and inputs['IL_HAVRAA_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_HAVRAA_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_other_add_gross_neg" model="hr.salary.rule">
-        <field name="name">תוספת אחרת</field>
-        <field name="code">IL_OTHER_ADD_ADJ_GROSS_NEG</field>
-        <field name="sequence">73</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_OTHER_ADD_GROSS' in inputs and inputs['IL_OTHER_ADD_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_OTHER_ADD_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_loan_gross_neg" model="hr.salary.rule">
-        <field name="name">החזר הלוואה</field>
-        <field name="code">IL_LOAN_ADJ_GROSS_NEG</field>
-        <field name="sequence">74</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_LOAN_GROSS' in inputs and inputs['IL_LOAN_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_LOAN_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_meals_gross_neg" model="hr.salary.rule">
-        <field name="name">ניכוי ארוחות</field>
-        <field name="code">IL_MEALS_ADJ_GROSS_NEG</field>
-        <field name="sequence">75</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_MEALS_GROSS' in inputs and inputs['IL_MEALS_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_MEALS_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_other_ded_gross_neg" model="hr.salary.rule">
-        <field name="name">ניכוי אחר</field>
-        <field name="code">IL_OTHER_DED_ADJ_GROSS_NEG</field>
-        <field name="sequence">76</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">python</field>
-        <field name="condition_python">result = 'IL_OTHER_DED_GROSS' in inputs and inputs['IL_OTHER_DED_GROSS'].amount &lt; 0</field>
-        <field name="amount_select">code</field>
-        <field name="amount_python_compute">result = inputs['IL_OTHER_DED_GROSS'].amount</field>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_commission_net" model="hr.salary.rule">
-        <field name="name">עמלה</field>
-        <field name="code">IL_COMMISSION_ADJ_NET</field>
-        <field name="sequence">80</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_commission_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_commission_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_travel_net" model="hr.salary.rule">
-        <field name="name">החזר נסיעות</field>
-        <field name="code">IL_TRAVEL_ADJ_NET</field>
-        <field name="sequence">81</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_travel_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_travel_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_havraa_net" model="hr.salary.rule">
-        <field name="name">דמי הבראה</field>
-        <field name="code">IL_HAVRAA_ADJ_NET</field>
-        <field name="sequence">82</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_havraa_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_havraa_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_other_add_net" model="hr.salary.rule">
-        <field name="name">תוספת אחרת</field>
-        <field name="code">IL_OTHER_ADD_ADJ_NET</field>
-        <field name="sequence">83</field>
-        <field name="category_id" ref="hr_payroll.ALW"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_other_add_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_other_add_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_loan_given_net" model="hr.salary.rule">
-        <field name="name">מתן הלוואה לעובד</field>
-        <field name="code">IL_LOAN_GIVEN_ADJ_NET</field>
-        <field name="sequence">83</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_loan_given_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_loan_given_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_loan_net" model="hr.salary.rule">
-        <field name="name">החזר הלוואה</field>
-        <field name="code">IL_LOAN_ADJ_NET</field>
-        <field name="sequence">84</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_loan_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_loan_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_meals_net" model="hr.salary.rule">
-        <field name="name">ניכוי ארוחות</field>
-        <field name="code">IL_MEALS_ADJ_NET</field>
-        <field name="sequence">85</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_meals_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_meals_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
-    <record id="rule_ilh_other_ded_net" model="hr.salary.rule">
-        <field name="name">ניכוי אחר</field>
-        <field name="code">IL_OTHER_DED_ADJ_NET</field>
-        <field name="sequence">86</field>
-        <field name="category_id" ref="l10n_il_hr_payroll.rule_category_il_other_ded"/>
-        <field name="condition_select">input</field>
-        <field name="condition_other_input_id" ref="input_il_other_ded_net"/>
-        <field name="amount_select">input</field>
-        <field name="amount_other_input_id" ref="input_il_other_ded_net"/>
-        <field name="struct_id" ref="l10n_il_hr_payroll.hr_payroll_structure_il_worker_salary"/>
-    </record>
+        <record id="hr_salary_rule_il_overtime" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.ALW"/>
+            <field name="name">שעות נוספות</field>
+            <field name="code">IL_OVERTIME</field>
+            <field name="sequence">5</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_overtime_amount()</field>
+        </record>
+
+        <record id="hr_salary_rule_il_additional_day_gross" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.ALW"/>
+            <field name="name">גמול יום נוסף</field>
+            <field name="code">IL_ADDITIONAL_DAY_GROSS</field>
+            <field name="sequence">7</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_additional_day_amount()</field>
+        </record>
+
+        <record id="hr_salary_rule_il_adjustment_gross" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_salary_rule_category_il_adj"/>
+            <field name="name">התאמות שכר — ברוטו</field>
+            <field name="code">IL_ADJUSTMENT_GROSS</field>
+            <field name="sequence">10</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_adjustment_total('gross')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_adjustment_net_grossup" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_salary_rule_category_il_adj"/>
+            <field name="name">התאמות שכר — נטו מגולם</field>
+            <field name="code">IL_ADJUSTMENT_NET_GROSSUP</field>
+            <field name="sequence">11</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_adjustment_total('net', 'gross_up')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_gross" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.GROSS"/>
+            <field name="name">ברוטו</field>
+            <field name="code">GROSS</field>
+            <field name="sequence">100</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + categories['IL_ADJ']</field>
+        </record>
+
+        <!-- ================================================================
+             בסיסי חישוב (Rules אב — אינם מוצגים בתלוש)
+             ================================================================ -->
+
+        <record id="hr_salary_rule_il_tax_base" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_salary_rule_category_il_base"/>
+            <field name="name">בסיס מס הכנסה</field>
+            <field name="code">IL_TAX_BASE</field>
+            <field name="sequence">101</field>
+            <field name="appears_on_payslip">False</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + payslip._il_inputs_base('il_income_taxable')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_ni_base" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_salary_rule_category_il_base"/>
+            <field name="name">בסיס ביטוח לאומי</field>
+            <field name="code">IL_NI_BASE</field>
+            <field name="sequence">102</field>
+            <field name="appears_on_payslip">False</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + payslip._il_inputs_base('il_national_insurance_applicable')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pension_base" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_salary_rule_category_il_base"/>
+            <field name="name">בסיס פנסיה</field>
+            <field name="code">IL_PENSION_BASE</field>
+            <field name="sequence">103</field>
+            <field name="appears_on_payslip">False</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + payslip._il_inputs_base('il_pensionable')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_severance_base" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_salary_rule_category_il_base"/>
+            <field name="name">בסיס פיצויים</field>
+            <field name="code">IL_SEVERANCE_BASE</field>
+            <field name="sequence">104</field>
+            <field name="appears_on_payslip">False</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + payslip._il_inputs_base('il_severance_applicable')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_study_fund_base" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_salary_rule_category_il_base"/>
+            <field name="name">בסיס קרן השתלמות</field>
+            <field name="code">IL_STUDY_FUND_BASE</field>
+            <field name="sequence">105</field>
+            <field name="appears_on_payslip">False</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + payslip._il_inputs_base('il_study_fund_applicable')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_equalization_base" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_salary_rule_category_il_base"/>
+            <field name="name">בסיס היטל השוואה (פלסטיני)</field>
+            <field name="code">IL_PAL_EQUALIZATION_BASE</field>
+            <field name="sequence">106</field>
+            <field name="appears_on_payslip">False</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + payslip._il_inputs_base('il_equalization_levy_applicable')</field>
+        </record>
+
+        <!-- ================================================================
+             עובד ישראלי (סעיף "עובד ישראלי")
+             ================================================================ -->
+
+        <record id="hr_salary_rule_il_isr_income_tax" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">מס הכנסה</field>
+            <field name="code">IL_ISR_INCOME_TAX</field>
+            <field name="sequence">150</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_income_tax(IL_TAX_BASE, 'IL_ISR_INCOME_TAX')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_isr_ni_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">ביטוח לאומי — עובד</field>
+            <field name="code">IL_ISR_NI_EE</field>
+            <field name="sequence">151</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_ni_amount(IL_NI_BASE, 'ISR', 'IL_ISR_NI_EE_REDUCED_RATE', 'IL_ISR_NI_EE_FULL_RATE')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_isr_health_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">ביטוח בריאות — עובד</field>
+            <field name="code">IL_ISR_HEALTH_EE</field>
+            <field name="sequence">152</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_ni_amount(IL_NI_BASE, 'ISR', 'IL_ISR_HEALTH_REDUCED_RATE', 'IL_ISR_HEALTH_FULL_RATE')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_isr_pension_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">פנסיה — עובד</field>
+            <field name="code">IL_ISR_PENSION_EE</field>
+            <field name="sequence">160</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employee_pension_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_isr_study_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">קרן השתלמות — עובד</field>
+            <field name="code">IL_ISR_STUDY_EE</field>
+            <field name="sequence">161</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_study_fund_enabled</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employee_study_fund_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_isr_ni_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">ביטוח לאומי — מעסיק</field>
+            <field name="code">IL_ISR_NI_ER</field>
+            <field name="sequence">310</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_ni_amount(IL_NI_BASE, 'ISR', 'IL_ISR_NI_ER_REDUCED_RATE', 'IL_ISR_NI_ER_FULL_RATE')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_isr_pension_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">פנסיה — מעסיק</field>
+            <field name="code">IL_ISR_PENSION_ER</field>
+            <field name="sequence">320</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employer_pension_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_isr_severance_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">פיצויים — מעסיק</field>
+            <field name="code">IL_ISR_SEVERANCE_ER</field>
+            <field name="sequence">321</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = IL_SEVERANCE_BASE * version.il_severance_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_isr_study_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">קרן השתלמות — מעסיק</field>
+            <field name="code">IL_ISR_STUDY_ER</field>
+            <field name="sequence">330</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_study_fund_enabled</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employer_study_fund_rate / 100.0</field>
+        </record>
+
+        <!-- ================================================================
+             עובד פלסטיני (סעיף "עובד פלסטיני")
+             ================================================================ -->
+
+        <record id="hr_salary_rule_il_pal_income_tax" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">מס הכנסה</field>
+            <field name="code">IL_PAL_INCOME_TAX</field>
+            <field name="sequence">150</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_income_tax(IL_TAX_BASE, 'IL_PAL_INCOME_TAX')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_ni_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">ביטוח לאומי — עובד</field>
+            <field name="code">IL_PAL_NI_EE</field>
+            <field name="sequence">151</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_ni_amount(IL_NI_BASE, 'PAL', 'IL_PAL_NI_EE_REDUCED_RATE', 'IL_PAL_NI_EE_FULL_RATE')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_health_stamp" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">בול בריאות</field>
+            <field name="code">IL_PAL_HEALTH_STAMP</field>
+            <field name="sequence">152</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._rule_parameter('IL_PAL_HEALTH_STAMP_AMOUNT')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_organization_tax" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">מס ארגון</field>
+            <field name="code">IL_PAL_ORGANIZATION_TAX</field>
+            <field name="sequence">153</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pal_organization_tax</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_pal_organization_tax_amount(IL_TAX_BASE)</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_pension_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">פנסיה — עובד</field>
+            <field name="code">IL_PAL_PENSION_EE</field>
+            <field name="sequence">160</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employee_pension_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_study_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">קרן השתלמות — עובד</field>
+            <field name="code">IL_PAL_STUDY_EE</field>
+            <field name="sequence">161</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_study_fund_enabled</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employee_study_fund_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_ni_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">ביטוח לאומי — מעסיק</field>
+            <field name="code">IL_PAL_NI_ER</field>
+            <field name="sequence">310</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_ni_amount(IL_NI_BASE, 'PAL', 'IL_PAL_NI_ER_REDUCED_RATE', 'IL_PAL_NI_ER_FULL_RATE')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_equalization_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">היטל השוואה — מעסיק</field>
+            <field name="code">IL_PAL_EQUALIZATION_ER</field>
+            <field name="sequence">315</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = IL_PAL_EQUALIZATION_BASE * payslip._il_sector_parameter('IL_PAL_EQUALIZATION_%s_RATE', 'IL_PAL_EQUALIZATION_RATE') / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_pension_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">פנסיה — מעסיק</field>
+            <field name="code">IL_PAL_PENSION_ER</field>
+            <field name="sequence">320</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employer_pension_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_severance_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">פיצויים — מעסיק</field>
+            <field name="code">IL_PAL_SEVERANCE_ER</field>
+            <field name="sequence">321</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = IL_SEVERANCE_BASE * version.il_severance_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_pal_study_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">קרן השתלמות — מעסיק</field>
+            <field name="code">IL_PAL_STUDY_ER</field>
+            <field name="sequence">330</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_study_fund_enabled</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employer_study_fund_rate / 100.0</field>
+        </record>
+
+        <!-- ================================================================
+             עובד זר (סעיף "עובד זר")
+             ================================================================ -->
+
+        <record id="hr_salary_rule_il_for_income_tax" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">מס הכנסה</field>
+            <field name="code">IL_FOR_INCOME_TAX</field>
+            <field name="sequence">150</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_income_tax(IL_TAX_BASE, 'IL_FOR_INCOME_TAX')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_ni_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">ביטוח לאומי — עובד</field>
+            <field name="code">IL_FOR_NI_EE</field>
+            <field name="sequence">151</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_ni_amount(IL_NI_BASE, 'FOR', 'IL_FOR_NI_EE_REDUCED_RATE', 'IL_FOR_NI_EE_FULL_RATE')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_private_health_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">ביטוח רפואי פרטי</field>
+            <field name="code">IL_FOR_PRIVATE_HEALTH_EE</field>
+            <field name="sequence">152</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and 'IL_FOR_PRIVATE_HEALTH_COST' in inputs</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_capped_input_amount('IL_FOR_PRIVATE_HEALTH_COST', 'IL_FOR_PRIVATE_HEALTH_MAX_DEDUCTION')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_housing_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">ניכוי מגורים</field>
+            <field name="code">IL_FOR_HOUSING_EE</field>
+            <field name="sequence">153</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and 'IL_FOR_HOUSING_INPUT' in inputs</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_capped_input_amount('IL_FOR_HOUSING_INPUT', 'IL_FOR_HOUSING_MAX_DEDUCTION')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_housing_expenses_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">הוצאות נלוות למגורים</field>
+            <field name="code">IL_FOR_HOUSING_EXPENSES_EE</field>
+            <field name="sequence">154</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and 'IL_FOR_HOUSING_EXPENSES_INPUT' in inputs</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_capped_input_amount('IL_FOR_HOUSING_EXPENSES_INPUT', 'IL_FOR_HOUSING_EXPENSES_MAX_DEDUCTION')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_pension_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">פנסיה — עובד</field>
+            <field name="code">IL_FOR_PENSION_EE</field>
+            <field name="sequence">160</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_pension_enabled and payslip._il_pension_active() and not payslip._il_deposit_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employee_pension_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_study_ee" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.DED"/>
+            <field name="name">קרן השתלמות — עובד</field>
+            <field name="code">IL_FOR_STUDY_EE</field>
+            <field name="sequence">161</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_study_fund_enabled</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = -payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employee_study_fund_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_ni_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">ביטוח לאומי — מעסיק</field>
+            <field name="code">IL_FOR_NI_ER</field>
+            <field name="sequence">310</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign'</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_ni_amount(IL_NI_BASE, 'FOR', 'IL_FOR_NI_ER_REDUCED_RATE', 'IL_FOR_NI_ER_FULL_RATE')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_pension_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">פנסיה — מעסיק</field>
+            <field name="code">IL_FOR_PENSION_ER</field>
+            <field name="sequence">320</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_pension_enabled and payslip._il_pension_active() and not payslip._il_deposit_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employer_pension_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_severance_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">פיצויים — מעסיק</field>
+            <field name="code">IL_FOR_SEVERANCE_ER</field>
+            <field name="sequence">321</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_pension_enabled and payslip._il_pension_active() and not payslip._il_deposit_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = IL_SEVERANCE_BASE * version.il_severance_rate / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_deposit_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">פיקדון עובד זר</field>
+            <field name="code">IL_FOR_DEPOSIT_ER</field>
+            <field name="sequence">325</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and payslip._il_deposit_active()</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = IL_TAX_BASE * payslip._il_sector_parameter('IL_FOR_DEPOSIT_%s_RATE') / 100.0</field>
+        </record>
+
+        <record id="hr_salary_rule_il_for_study_er" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">קרן השתלמות — מעסיק</field>
+            <field name="code">IL_FOR_STUDY_ER</field>
+            <field name="sequence">330</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_study_fund_enabled</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employer_study_fund_rate / 100.0</field>
+        </record>
+
+        <!-- ================================================================
+             נטו — משותף לכל סוגי העובדים
+             ================================================================ -->
+
+        <record id="hr_salary_rule_il_net_before_direct" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.NET"/>
+            <field name="name">נטו לפני התאמות ישירות</field>
+            <field name="code">IL_NET_BEFORE_DIRECT_ADJUSTMENTS</field>
+            <field name="sequence">500</field>
+            <field name="appears_on_payslip">False</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + categories['IL_ADJ'] + categories['DED']</field>
+        </record>
+
+        <record id="hr_salary_rule_il_adjustment_net_direct" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.NET"/>
+            <field name="name">התאמות שכר — נטו ישיר</field>
+            <field name="code">IL_ADJUSTMENT_NET_DIRECT</field>
+            <field name="sequence">510</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._il_adjustment_total('net', 'direct_net')</field>
+        </record>
+
+        <record id="hr_salary_rule_il_net" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.NET"/>
+            <field name="name">נטו</field>
+            <field name="code">NET</field>
+            <field name="sequence">520</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = IL_NET_BEFORE_DIRECT_ADJUSTMENTS + IL_ADJUSTMENT_NET_DIRECT</field>
+        </record>
+
+        <record id="hr_salary_rule_il_net_to_pay" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.NET"/>
+            <field name="name">נטו לתשלום</field>
+            <field name="code">IL_NET_TO_PAY</field>
+            <field name="sequence">530</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = NET - payslip._il_applied_payment_amount()</field>
+        </record>
+
+        <!-- ================================================================
+             עלות מעסיק כוללת
+             ================================================================ -->
+
+        <record id="hr_salary_rule_il_employer_cost" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.COMP"/>
+            <field name="name">עלות מעסיק כוללת</field>
+            <field name="code">IL_EMPLOYER_COST</field>
+            <field name="sequence">900</field>
+            <field name="appears_on_employee_cost_dashboard">True</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + categories['IL_ADJ'] + categories['COMP']</field>
+        </record>
+
+    </data>
 </odoo>

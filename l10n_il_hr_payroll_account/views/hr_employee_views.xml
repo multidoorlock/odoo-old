@@ -1,28 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="hr_employee_view_form" model="ir.ui.view">
-        <field name="name">hr.employee.view.form.inherit.l10n.il.hr.payroll.account</field>
+    <!-- פרטים אישיים לצורכי שכר, הפרשות סוציאליות, ומחזורי תשלומים
+         (מפרעה/אוכל/הלוואה) בכרטיס העובד — סעיפים 1–3 ו-57–60 באפיון. -->
+    <record id="mdl_payroll_payments_hr_employee_view_form" model="ir.ui.view">
+        <field name="name">mdl.payroll.payments.hr.employee.view.form</field>
         <field name="model">hr.employee</field>
-        <field name="inherit_id" ref="l10n_il_hr_payroll.hr_employee_view_form"/>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
-            <!-- טאב נפרד, לא בתוך "שינויי שכר" - טבלה **קבועה** (3 שורות
-                 בדיוק, אוכל/מפרעה/הלוואה - נזרעות אוטומטית, ראו hr_employee.py) -
-                 לא ניתן להוסיף/למחוק שורות (create="false" delete="false"),
-                 רק לסמן "נכלל" ואז להזין סכום. זה מה שמחזור התשלומים
-                 (l10n.il.payment.batch.wizard) מסנן/מושך לפיו כשנבחרים סוג/י
-                 מחזור מסוימים. -->
-            <page name="salary_attachment" position="after">
-                <page name="l10n_il_payment_cycle_lines" string="סכומי מחזורי תשלום" groups="hr_payroll.group_hr_payroll_user">
-                    <field name="l10n_il_payment_cycle_line_ids" nolabel="1">
-                        <list editable="bottom" create="false" delete="false">
-                            <field name="cycle_type" readonly="1"/>
-                            <field name="included"/>
-                            <field name="amount" readonly="not included"/>
-                            <field name="currency_id" column_invisible="1"/>
-                        </list>
-                    </field>
-                </page>
-            </page>
+            <field name="structure_type_id" position="after">
+                <field name="il_salary_structure_id"
+                       domain="[('type_id', '=', structure_type_id)]"
+                       invisible="not il_is_israel_payroll"
+                       required="il_is_israel_payroll"/>
+                <field name="il_is_israel_payroll" invisible="1"/>
+            </field>
+            <field name="schedule_pay" position="attributes">
+                <attribute name="readonly">1</attribute>
+                <attribute name="force_save">1</attribute>
+            </field>
+            <group name="payroll_group" position="after">
+                <group invisible="not il_is_israel_payroll">
+                    <group string="פרטים אישיים לשכר" name="il_personal">
+                        <field name="il_tax_credit_points"/>
+                        <field name="il_primary_employer"/>
+                        <field name="il_tax_coordination"/>
+                        <field name="il_tax_coordination_valid_from"
+                               invisible="not il_tax_coordination"/>
+                        <field name="il_tax_coordination_valid_until"
+                               invisible="not il_tax_coordination"/>
+                        <field name="il_employment_sector"/>
+                        <field name="il_pal_organization_tax"/>
+                    </group>
+                    <group string="הפרשות סוציאליות" name="il_social">
+                        <field name="il_pension_enabled"/>
+                        <field name="il_pension_start_date" invisible="not il_pension_enabled"/>
+                        <field name="il_employee_pension_rate" invisible="not il_pension_enabled"/>
+                        <field name="il_employer_pension_rate" invisible="not il_pension_enabled"/>
+                        <field name="il_severance_rate" invisible="not il_pension_enabled"/>
+                        <field name="il_study_fund_enabled"/>
+                        <field name="il_employee_study_fund_rate" invisible="not il_study_fund_enabled"/>
+                        <field name="il_employer_study_fund_rate" invisible="not il_study_fund_enabled"/>
+                    </group>
+                </group>
+            </group>
         </field>
     </record>
 </odoo>

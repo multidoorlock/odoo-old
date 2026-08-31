@@ -1,27 +1,24 @@
-from odoo import fields, models
+from collections import defaultdict
+
+from odoo import models
 
 
 class HrAttendanceOvertimeRule(models.Model):
     _inherit = "hr.attendance.overtime.rule"
 
-    att_attendance_type = fields.Selection(
-        selection=[("any", "כל סוג"), ("morning", "משמרת בוקר"), ("afternoon", "משמרת ערב")],
-        string="חל על סוג משמרת", default="any", required=True,
-        help="מגביל את הכלל לרישומי נוכחות מסוג משמרת מסוים בלבד, כפי שסווגו על ידי "
-             "קבוצת כללי הסיווג של העובד. 'כל סוג' משמעו שהכלל חל ללא תלות בסוג המשמרת.",
-    )
-
-    def _generate_overtime_vals_v2(self, min_check_in, max_check_out, attendances, schedules_intervals_by_employee):
-        """מריץ את מנוע השעות הנוספות בנפרד לכל קבוצת סוג-משמרת, כך שכלל המוגבל
-        לסוג משמרת מסוים יחול רק על רישומי הנוכחות מאותו סוג."""
-        vals = []
-        for att_type, rules in self.grouped(lambda r: r.att_attendance_type or "any").items():
-            filtered_attendances = attendances
-            if att_type != "any":
-                filtered_attendances = attendances.filtered(
-                    lambda a: a._classify_check_in(a.employee_id, a.check_in) == att_type)
-            if not filtered_attendances:
-                continue
-            vals += super(HrAttendanceOvertimeRule, rules)._generate_overtime_vals_v2(
-                min_check_in, max_check_out, filtered_attendances, schedules_intervals_by_employee)
-        return vals
+    def _get_all_overtime_intervals_for_timing_rule(
+        self, min_check_in, max_check_out, attendances, schedules_intervals_by_employee
+    ):
+        result = super()._get_all_overtime_intervals_for_timing_rule(
+            min_check_in, max_check_out, attendances, schedules_intervals_by_employee)
+        filtered = defaultdict(lambda: defaultdict(list))
+        for employee, values_by_attendance in result.items():
+            for attendance, intervals in values_by_attendance.items():
+                work_intervals = attendance._effective_work_intervals()
+                for start, stop, rules in intervals:
+                    for work_start, work_stop, _attendance in work_intervals:
+                        overlap_start = max(start, work_start)
+                        overlap_stop = min(stop, work_stop)
+                        if overlap_start < overlap_stop:
+                            filtered[employee][attendance].append((overlap_start, overlap_stop, rules))
+        return filtered

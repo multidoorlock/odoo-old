@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_attendance_segment_rule_view_form" model="ir.ui.view">
+        <field name="name">hr.attendance.segment.rule.form</field>
+        <field name="model">hr.attendance.segment.rule</field>
+        <field name="arch" type="xml">
+            <form string="Segmentation Rule">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Rule Name"/>
+                        <h1><field name="name" placeholder="e.g. Night break"/></h1>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="ruleset_id" invisible="1"/>
+                            <field name="sequence" invisible="1"/>
+                        </group>
+                    </div>
+                    <notebook>
+                        <page string="Definition">
+                            <group string="Condition" style="grid-template-columns:max-content 1fr">
+                                <field name="base_off" widget="radio" string="The rule is based on"/>
+                                <span colspan="2" class="d-flex gap-1" invisible="base_off != 'quantity'">
+                                    <label for="quantity_period" string="If the worked hours on a"/>
+                                    <field style="width:10ch" nolabel="1" name="quantity_period"/>
+                                    <label for="expected_hours_from_contract" string="differs"/>
+                                    <field class="w-auto" name="expected_hours_from_contract" nolabel="1"
+                                           widget="boolean_radio" options="{
+                                               'yes_label_element_id': 'segment_expected_hours_contract_yes',
+                                               'no_label_element_id': 'segment_expected_hours_contract_no'
+                                           }"/>
+                                    <template id="segment_expected_hours_contract_yes">from the amount defined on the contract</template>
+                                    <template id="segment_expected_hours_contract_no">from a specific duration</template>
+                                </span>
+                                <label for="expected_hours" string="Duration to exceed:"
+                                       invisible="base_off != 'quantity' or expected_hours_from_contract"/>
+                                <span name="expected_hours" class="fw-bold"
+                                      invisible="base_off != 'quantity' or expected_hours_from_contract">
+                                    <field name="expected_hours" widget="float_time" style="width:10ch"/> hours
+                                </span>
+                                <field name="employer_tolerance" invisible="base_off != 'quantity'" widget="float_time"
+                                       string="With a tolerance in favor of the employer of"/>
+                                <field name="employee_tolerance" invisible="base_off == 'timing'"
+                                       widget="float_time" string="With a tolerance in favor of the employee of"/>
+                                <field name="timing_type" widget="radio" string="If the employee works"
+                                       invisible="base_off != 'timing'"/>
+                                <span class="fw-bold"
+                                      invisible="base_off != 'timing' or timing_type not in ['work_days', 'non_work_days']">Between</span>
+                                <span class="d-flex gap-1"
+                                      invisible="base_off != 'timing' or timing_type not in ['work_days', 'non_work_days']">
+                                    <field nolabel="1" name="timing_start" widget="float_time" style="width:10ch"/>
+                                    <label for="timing_stop" string="and"/>
+                                    <field nolabel="1" name="timing_stop" widget="float_time" style="width:10ch"/>
+                                </span>
+                                <field name="resource_calendar_id" string="Schedule"
+                                       invisible="base_off != 'timing' or timing_type != 'schedule'"
+                                       required="base_off == 'timing' and timing_type == 'schedule'"/>
+                            </group>
+                            <group name="action_section" string="Action"
+                                   style="grid-template-columns:max-content 1fr">
+                                <span colspan="2" class="mb-3 fw-bold">
+                                    Choose whether matching time is effective worked time.
+                                </span>
+                                <field name="is_work" string="Work"/>
+                            </group>
+                        </page>
+                        <page string="Description">
+                            <field name="description" placeholder="Description"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="hr_attendance_segment_ruleset_view_form" model="ir.ui.view">
+        <field name="name">hr.attendance.segment.ruleset.form</field>
+        <field name="model">hr.attendance.segment.ruleset</field>
+        <field name="arch" type="xml">
+            <form string="Attendance Segmentation Ruleset">
+                <header>
+                    <button name="action_regenerate_segments" type="object" string="Regenerate Segments" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><label for="name"/><h1><field name="name"/></h1></div>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="description" placeholder="Ruleset description..."/>
+                    <notebook colspan="4">
+                      <page name="segment_rules" string="Segmentation Rules">
+                       <field name="rule_ids" readonly="not id">
+                        <list>
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="base_off"/>
+                            <field name="timing_type" optional="show"/>
+                            <field name="timing_start" widget="float_time" optional="show"/>
+                            <field name="timing_stop" widget="float_time" optional="show"/>
+                            <field name="segment_type" widget="badge"
+                                   decoration-success="segment_type == 'work'"
+                                   decoration-danger="segment_type == 'non_work'"/>
+                        </list>
+                       </field>
+                      </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="hr_attendance_segment_ruleset_view_list" model="ir.ui.view">
+        <field name="name">hr.attendance.segment.ruleset.list</field>
+        <field name="model">hr.attendance.segment.ruleset</field>
+        <field name="arch" type="xml">
+            <list><field name="name"/><field name="company_id" groups="base.group_multi_company"/><field name="active"/></list>
+        </field>
+    </record>
+
+    <record id="hr_attendance_segment_ruleset_action" model="ir.actions.act_window">
+        <field name="name">Attendance Segmentation Rulesets</field>
+        <field name="res_model">hr.attendance.segment.ruleset</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_hr_attendance_segment_rulesets"
+              name="Attendance Segmentation Rulesets"
+              parent="hr_attendance.menu_hr_attendance_configuration"
+              action="hr_attendance_segment_ruleset_action"
+              sequence="290"
+              groups="hr_attendance.group_hr_attendance_manager"/>
+</odoo>

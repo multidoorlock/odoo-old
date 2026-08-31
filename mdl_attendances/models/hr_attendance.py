@@ -1,52 +1,308 @@
-import pytz
+from collections import defaultdict
+from datetime import datetime, time, timedelta
 
-from odoo import models
+import pytz
+from dateutil.rrule import rrule, DAILY
+
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
+from odoo.tools.intervals import Intervals
 
 
 class HrAttendance(models.Model):
     _inherit = "hr.attendance"
 
-    def _get_tz_for_employee(self, employee):
-        return pytz.timezone(employee._get_tz() or "UTC")
+    segment_ids = fields.One2many(
+        "hr.attendance.segment", "attendance_id", string="Attendance Segments", copy=False)
+    presence_hours = fields.Float(
+        string="Presence Hours", compute="_compute_presence_hours", store=True, readonly=True)
+    timeline_start_label = fields.Char(compute="_compute_timeline_labels")
+    timeline_stop_label = fields.Char(compute="_compute_timeline_labels")
 
-    def _local_hour(self, dt, employee):
-        if not dt:
-            return None
-        local = pytz.utc.localize(dt).astimezone(self._get_tz_for_employee(employee))
-        return local.hour + local.minute / 60.0 + local.second / 3600.0
+    @api.depends("check_in", "check_out")
+    def _compute_presence_hours(self):
+        for attendance in self:
+            attendance.presence_hours = (
+                (attendance.check_out - attendance.check_in).total_seconds() / 3600.0
+                if attendance.check_in and attendance.check_out else 0.0
+            )
 
-    def _classify_check_in(self, employee, check_in):
-        """מחזיר את סוג המשמרת (morning/afternoon) לפי שעת הכניסה - רק לעובד
-        שלוח הזמנים שלו (resource.calendar) מסוג 'משמרות'; אחרת False (נוכחות
-        רגילה). "מה נחשב" כל משמרת מוגדר על הלוח עצמו (attendance_ids עם
-        day_period=morning/afternoon), לא בטבלת-כללים נפרדת.
+    @api.depends("check_in", "check_out", "employee_id")
+    def _compute_timeline_labels(self):
+        for attendance in self:
+            if not attendance.check_in or not attendance.employee_id:
+                attendance.timeline_start_label = False
+                attendance.timeline_stop_label = False
+                continue
+            # Match the datetime widget in the attendance form: Odoo displays
+            # datetimes in the current user's timezone, not the employee calendar timezone.
+            local_start = fields.Datetime.context_timestamp(attendance, attendance.check_in)
+            attendance.timeline_start_label = local_start.strftime("%H:%M")
+            if attendance.check_out:
+                local_stop = fields.Datetime.context_timestamp(attendance, attendance.check_out)
+                attendance.timeline_stop_label = local_stop.strftime("%H:%M")
+            else:
+                attendance.timeline_stop_label = False
 
-        מחזיר במכוון רק morning/afternoon/False (לא כולל את שכבת יום שישי/שבת,
-        ראו _is_l10n_il_weekend_check_in למטה) - הכלל של השעות הנוספות
-        (hr_attendance_overtime_rule.att_attendance_type) משווה שוויון מדויק
-        מול 'morning'/'afternoon' בלבד, ושינוי הערך המוחזר כאן היה שובר את
-        הזיהוי של שעות נוספות בכל משמרת שישי/שבת בשקט.
+    @api.depends(
+        "check_in", "check_out", "employee_id",
+        "segment_ids.time_start", "segment_ids.time_stop", "segment_ids.is_work",
+    )
+    def _compute_worked_hours(self):
+        segmented = self.filtered(lambda attendance: attendance.check_out and attendance.segment_ids)
+        for attendance in segmented:
+            # Always derive the value from the canonical boundaries.  Do not sum
+            # the stored duration cache: adjacent boundary edits update multiple
+            # records in one transaction and an old cached duration must never be
+            # able to inflate Worked Hours.
+            attendance.worked_hours = sum(
+                (segment.time_stop - segment.time_start).total_seconds() / 3600.0
+                for segment in attendance.segment_ids.filtered("is_work")
+            )
+        super(HrAttendance, self - segmented)._compute_worked_hours()
 
-        מחושב תמיד על-הטופס (לא מאוחסן על רשומת הנוכחות עצמה - היא נשארת
-        רשומה סטנדרטית של Odoo לחלוטין, בלי שום שדה נוסף) - נקרא הן בהמרה
-        ל-work entry (hr_version._get_real_attendance_work_entry_vals) והן
-        במנוע השעות הנוספות (hr_attendance_overtime_rule).
-        """
-        version = employee.sudo()._get_version(check_in.date())
-        calendar = version.resource_calendar_id
-        if not calendar or calendar.l10n_il_schedule_type != "shifts":
-            return False
-        hour = self._local_hour(check_in, employee)
-        # כלל הסיווג של הלקוח בפועל (ShiftCutoffHour=12 בקובץ מערכת השכר):
-        # כניסה לפני 12:00 = בוקר, אחרי = ערב. עדיף על התאמת-בלוקים מדויקת מול
-        # הלוח, שנשברת על כניסות מוקדמות (למשל 06:20, לפני תחילת בלוק הבוקר
-        # 06:30 - נופלת בטעות לתוך "המשך הערב" של [00:00,06:30) ומסווגת ערב).
-        return "morning" if hour < 12.0 else "afternoon"
+    def _segment_ruleset(self):
+        self.ensure_one()
+        if not self.employee_id or not self.date:
+            return self.env["hr.attendance.segment.ruleset"]
+        return self.employee_id.sudo()._get_version(self.date).segment_ruleset_id
 
-    def _is_l10n_il_weekend_check_in(self, employee, check_in):
-        """True כאשר הכניסה חלה ביום שישי/שבת מקומי (סוף השבוע בישראל) -
-        שכבה נפרדת מסיווג הבוקר/ערב (_classify_check_in), נבדקת רק בעת בחירת
-        סוג רשומת העבודה הסופי (ראו hr_version._get_real_attendance_work_entry_vals),
-        לא במנוע השעות הנוספות."""
-        local_date = pytz.utc.localize(check_in).astimezone(self._get_tz_for_employee(employee)).date()
-        return local_date.weekday() in (4, 5)  # ישראל: שישי=4, שבת=5 (Python weekday, Monday=0)
+    def _effective_work_intervals(self, localized=False):
+        self.ensure_one()
+        values = []
+        for segment in self.segment_ids.filtered("is_work").sorted("time_start"):
+            start, stop = segment.time_start, segment.time_stop
+            if localized:
+                tz = pytz.timezone(self.employee_id.sudo()._get_version(self.date)._get_tz())
+                start = pytz.utc.localize(start).astimezone(tz).replace(tzinfo=None)
+                stop = pytz.utc.localize(stop).astimezone(tz).replace(tzinfo=None)
+            values.append((start, stop, self))
+        if not values and not self.segment_ids and self.check_in and self.check_out:
+            start, stop = self.check_in, self.check_out
+            if localized:
+                start, stop = self._get_localized_times()
+            values.append((start, stop, self))
+        return values
+
+    def _apply_interval(self, intervals, start, stop, rule):
+        if start >= stop:
+            return intervals
+        result = []
+        for item in intervals:
+            item_start, item_stop = item["start"], item["stop"]
+            if stop <= item_start or start >= item_stop:
+                result.append(item)
+                continue
+            if item_start < start:
+                result.append({**item, "stop": start})
+            result.append({
+                "start": max(item_start, start),
+                "stop": min(item_stop, stop),
+                "is_work": rule.is_work,
+                "rule_id": rule.id,
+                "name": rule.name,
+            })
+            if stop < item_stop:
+                result.append({**item, "start": stop})
+        return [item for item in result if item["start"] < item["stop"]]
+
+    def _timing_rule_windows(self, rule):
+        self.ensure_one()
+        local_start, local_stop = self._get_localized_times()
+        windows = []
+        company = rule.company_id or self.employee_id.company_id
+        unusual_days = company.resource_calendar_id._get_unusual_days(
+            self.check_in, self.check_out, company_id=company)
+        for day in rrule(DAILY, dtstart=local_start.date(), until=local_stop.date()):
+            local_date = day.date()
+            is_non_work_day = unusual_days.get(local_date.strftime("%Y-%m-%d"), False)
+            if rule.timing_type == "work_days" and is_non_work_day:
+                continue
+            if rule.timing_type == "non_work_days" and not is_non_work_day:
+                continue
+            if rule.timing_type in ("work_days", "non_work_days"):
+                windows.append(rule._local_window_utc(self, local_date))
+                continue
+            if rule.timing_type == "leave":
+                version = self.employee_id.sudo()._get_version(local_date)
+                tz = pytz.timezone(version._get_tz())
+                day_start = tz.localize(datetime.combine(local_date, time.min))
+                day_stop = tz.localize(datetime.combine(local_date, time.max))
+                leave_intervals = version.resource_calendar_id._leave_intervals_batch(
+                    day_start, day_stop, self.employee_id.resource_id, tz=tz
+                )[self.employee_id.resource_id.id]
+                windows.extend([
+                    (start.astimezone(pytz.utc).replace(tzinfo=None),
+                     stop.astimezone(pytz.utc).replace(tzinfo=None))
+                    for start, stop, _records in leave_intervals
+                ])
+                continue
+            calendar = rule.resource_calendar_id
+            resource = self.employee_id.resource_id
+            tz = pytz.timezone(calendar.tz)
+            day_start = tz.localize(datetime.combine(local_date, time.min))
+            day_stop = tz.localize(datetime.combine(local_date, time.max))
+            scheduled = calendar._attendance_intervals_batch(
+                day_start, day_stop, resource, tz=tz)[resource.id]
+            cursor = max(self.check_in, day_start.astimezone(pytz.utc).replace(tzinfo=None))
+            attendance_stop = min(self.check_out, day_stop.astimezone(pytz.utc).replace(tzinfo=None))
+            for scheduled_start, scheduled_stop, _records in scheduled:
+                scheduled_start = scheduled_start.astimezone(pytz.utc).replace(tzinfo=None)
+                scheduled_stop = scheduled_stop.astimezone(pytz.utc).replace(tzinfo=None)
+                if cursor < scheduled_start:
+                    windows.append((cursor, min(scheduled_start, attendance_stop)))
+                cursor = max(cursor, scheduled_stop)
+            if cursor < attendance_stop:
+                windows.append((cursor, attendance_stop))
+        return windows
+
+    def _generate_segments(self):
+        Segment = self.env["hr.attendance.segment"]
+        for attendance in self:
+            attendance.segment_ids.with_context(segment_boundary_sync=True).unlink()
+            if not attendance.check_in or not attendance.check_out:
+                continue
+            intervals = [{
+                "start": attendance.check_in,
+                "stop": attendance.check_out,
+                "is_work": True,
+                "rule_id": False,
+                "name": _("Work"),
+            }]
+            ruleset = attendance._segment_ruleset()
+            for rule in ruleset.rule_ids.sorted(lambda record: (record.sequence, record.id)):
+                if rule.base_off == "timing":
+                    for start, stop in attendance._timing_rule_windows(rule):
+                        clipped_start = max(start, attendance.check_in)
+                        clipped_stop = min(stop, attendance.check_out)
+                        overlap_hours = max(
+                            (clipped_stop - clipped_start).total_seconds() / 3600.0,
+                            0.0,
+                        )
+                        # As with Odoo's quantity rules, the employer tolerance is
+                        # a qualification threshold: a negligible intersection
+                        # with a timing window must not trigger the rule.  This is
+                        # especially important for night sleep windows (for
+                        # example, checking out at 01:45 is not a night's sleep).
+                        if overlap_hours <= rule.employer_tolerance:
+                            continue
+                        intervals = attendance._apply_interval(
+                            intervals, clipped_start, clipped_stop, rule)
+                else:
+                    work_intervals = [item for item in intervals if item["is_work"]]
+                    expected = rule.expected_hours
+                    if rule.expected_hours_from_contract:
+                        expected = rule._expected_hours_for(attendance)
+                    excess = sum((item["stop"] - item["start"]).total_seconds() / 3600 for item in work_intervals) - expected
+                    if excess <= rule.employer_tolerance:
+                        continue
+                    # Once the employer threshold is crossed, preserve the
+                    # employee-favour tolerance as effective work time.
+                    remaining = max(excess - rule.employee_tolerance, 0.0)
+                    for item in reversed(work_intervals):
+                        duration = (item["stop"] - item["start"]).total_seconds() / 3600
+                        cut_start = item["stop"] - timedelta(hours=min(duration, remaining))
+                        intervals = attendance._apply_interval(intervals, cut_start, item["stop"], rule)
+                        remaining -= min(duration, remaining)
+                        if remaining <= 0:
+                            break
+            Segment.create([{
+                "attendance_id": attendance.id,
+                "time_start": item["start"],
+                "time_stop": item["stop"],
+                "is_work": item["is_work"],
+                "rule_id": item["rule_id"],
+                "name": item["name"],
+            } for item in intervals])
+            attendance._validate_segment_coverage()
+
+    def _validate_segment_coverage(self):
+        for attendance in self.filtered(lambda record: record.check_out):
+            segments = attendance.segment_ids.sorted("time_start")
+            if not segments:
+                raise ValidationError(_("A closed attendance must have at least one segment."))
+            if segments[0].time_start != attendance.check_in or segments[-1].time_stop != attendance.check_out:
+                raise ValidationError(_("Segments must cover the attendance from Check In through Check Out."))
+            for previous, current in zip(segments, segments[1:]):
+                if previous.time_stop != current.time_start:
+                    raise ValidationError(_("Attendance segments cannot contain gaps or overlaps."))
+            covered_seconds = sum(
+                (segment.time_stop - segment.time_start).total_seconds()
+                for segment in segments
+            )
+            presence_seconds = (attendance.check_out - attendance.check_in).total_seconds()
+            if covered_seconds != presence_seconds:
+                raise ValidationError(_("Segment durations must equal the attendance presence time."))
+
+    def _normalize_segments(self):
+        """Merge equal neighbours and enforce a gap-free canonical partition."""
+        for attendance in self.filtered(lambda record: record.check_out):
+            attendance._validate_segment_coverage()
+            while True:
+                ordered = attendance.segment_ids.sorted("time_start")
+                pair = next((
+                    (left, right)
+                    for left, right in zip(ordered, ordered[1:])
+                    if left.is_work == right.is_work
+                ), None)
+                if not pair:
+                    break
+                left, right = pair
+                left.with_context(segment_boundary_sync=True).write({
+                    "time_stop": right.time_stop,
+                    "manual_override": left.manual_override or right.manual_override,
+                    "rule_id": left.rule_id.id if left.rule_id == right.rule_id else False,
+                    "name": left.name if left.name == right.name else (_("Work") if left.is_work else _("Non-Work")),
+                })
+                right.with_context(segment_normalization=True).unlink()
+            attendance._validate_segment_coverage()
+
+    def _segments_changed(self):
+        if self.env.context.get("segment_generation"):
+            return
+        self._validate_segment_coverage()
+        # Compute synchronously so the parent attendance cannot retain a stale
+        # value after closing the segment popup.
+        self._compute_worked_hours()
+        self.flush_recordset(["worked_hours"])
+        self.invalidate_recordset(["worked_hours"])
+        self._update_overtime()
+
+    def action_regenerate_segments(self):
+        self.with_context(segment_generation=True)._generate_segments()
+        self.env.add_to_compute(self._fields["worked_hours"], self)
+        self.flush_recordset(["worked_hours"])
+        self._update_overtime()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        attendances = super().create(vals_list)
+        attendances.filtered("check_out").with_context(segment_generation=True)._generate_segments()
+        attendances._segments_changed()
+        return attendances
+
+    def write(self, vals):
+        boundary_change = any(field_name in vals for field_name in ("check_in", "check_out", "employee_id"))
+        result = super().write(vals)
+        if boundary_change and not self.env.context.get("segment_generation"):
+            self.with_context(segment_generation=True)._generate_segments()
+            self._segments_changed()
+        return result
+
+    def _get_attendance_by_periods_by_employee(self):
+        by_day = defaultdict(lambda: defaultdict(lambda: Intervals([], keep_distinct=True)))
+        by_week = defaultdict(lambda: defaultdict(lambda: Intervals([], keep_distinct=True)))
+        for attendance in self.sorted("check_in"):
+            employee = attendance.employee_id
+            for start, stop, record in attendance._effective_work_intervals(localized=True):
+                for day in rrule(dtstart=start.date(), until=stop.date(), freq=DAILY):
+                    week_date = day.date() + timedelta(days=6 - day.weekday())
+                    day_interval = Intervals([(
+                        datetime.combine(day.date(), time.min), datetime.combine(day.date(), time.max), record)])
+                    week_interval = Intervals([(
+                        datetime.combine(day.date(), time.min), datetime.combine(week_date, time.max), record)])
+                    effective = Intervals([(start, stop, record)])
+                    by_day[employee][day] |= effective & day_interval
+                    by_week[employee][week_date] |= effective & week_interval
+        return {"day": by_day, "week": by_week}

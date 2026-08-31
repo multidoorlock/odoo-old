@@ -1,12 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_l10n_il_payment_batch_payroll_user,l10n.il.payment.batch.payroll.user,model_l10n_il_payment_batch,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_payment_batch_wizard,l10n.il.payment.batch.wizard.payroll.user,model_l10n_il_payment_batch_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_payment_batch_wizard_line,l10n.il.payment.batch.wizard.line.payroll.user,model_l10n_il_payment_batch_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_salary_adjustment_payment_wizard,l10n.il.salary.adjustment.payment.wizard.payroll.user,model_l10n_il_salary_adjustment_payment_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_employee_payment_cycle_line,l10n.il.employee.payment.cycle.line.payroll.user,model_l10n_il_employee_payment_cycle_line,hr_payroll.group_hr_payroll_user,1,1,0,0
-access_l10n_il_overpayment_closure_wizard,l10n.il.overpayment.closure.wizard.payroll.user,model_l10n_il_overpayment_closure_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_overpayment_closure_wizard_line,l10n.il.overpayment.closure.wizard.line.payroll.user,model_l10n_il_overpayment_closure_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_payment_payslip_allocation,l10n.il.payment.payslip.allocation.payroll.user,model_l10n_il_payment_payslip_allocation,hr_payroll.group_hr_payroll_user,1,0,1,0
-access_l10n_il_employee_balance_report,l10n.il.employee.balance.report.payroll.user,model_l10n_il_employee_balance_report,hr_payroll.group_hr_payroll_user,1,0,0,0
-access_l10n_il_payslip_run_payment_wizard,l10n.il.payslip.run.payment.wizard.payroll.user,model_l10n_il_payslip_run_payment_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_l10n_il_payslip_run_payment_wizard_line,l10n.il.payslip.run.payment.wizard.line.payroll.user,model_l10n_il_payslip_run_payment_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_account_payment_split_line_user,account.payment.split.line.user,model_account_payment_split_line,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_hr_payslip_payment_draw_wizard_user,hr.payslip.payment.draw.wizard.user,model_hr_payslip_payment_draw_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_hr_payslip_payment_draw_wizard_line_user,hr.payslip.payment.draw.wizard.line.user,model_hr_payslip_payment_draw_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1

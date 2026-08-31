@@ -1,49 +1,30 @@
+# Part of l10n_il_hr_payroll. Israeli payroll configuration layer on top of standard Odoo.
 {
-    "name": "Israel - Payroll",
-    "countries": ["il"],
-    "version": "19.0.9.0.1",
-    "category": "Human Resources/Payroll",
-    "summary":"",
-    "description": """
-לוקליזציית שכר לישראל
-=====================
+    'name': 'שכר ישראלי — הגדרות שכר, לוחות עבודה ונוכחות',
+    'version': '1.0.11',
+    'category': 'Human Resources/Payroll',
+    'author': 'MDL',
+    'summary': 'שכבת הגדרה נוחה מעל מנגנוני השכר, הנוכחות ורשומות העבודה הסטנדרטיים של Odoo',
+    'description': """
+שכבת התאמה ישראלית למערכת השכר (חלק א').
 
-    * מבני שכר לעובד חודשי ולעובד שעתי/יומי
-    * סוגי כניסות עבודה ללא תשלום: חל״ת והיעדרות בלתי מאושרת
-    * שדות עובד ישראליים: קטגוריית עובד, נקודות זיכוי, תושבות, תיאום מס, טופס 101
-    * פרמטרים מתוארכים לשנת המס: מדרגות מס, ביטוח לאומי, שכר מינימום, פנסיה
-    """,
-    "depends": [
-        "hr_payroll",
-        "hr_work_entry",
-        "hr_work_entry_holidays",
-        "hr_payroll_holidays",
+הגדרת סוג שכר (חודשי / יומי), תעריף יום נוסף ושעות נוספות על גרסת תנאי ההעסקה.
+חמישה סוגי לוחות עבודה: נוכחות (שעות קבועות / מכסה יומית / מכסה שבועית) ומשמרות (מכסה יומית / שבועית).
+עיבוד נוכחות ליצירת רשומות עבודה מנורמלות: עיגול חצי/יום מלא, הפרדת שעות נוספות בסף 40 דקות,
+סיווג יום נוסף, פיצול משמרת ערב לעבודה ושינה, והיעדרות ללא תשלום.
+""",
+    'depends': [
+        'hr_payroll',
+        'hr_work_entry_attendance',
     ],
-    "auto_install": ["hr_payroll"],
-    "data": [
-        "security/ir.model.access.csv",
-        "security/security.xml",
-        "data/resource_calendar_data.xml",
-        "data/hr_work_entry_type_data.xml",
-        "data/hr_salary_rule_category_data.xml",
-        "data/hr_payroll_structure_type_data.xml",
-        "data/hr_payroll_structure_data.xml",
-        "data/hr_payslip_input_type_data.xml",
-        "data/hr_leave_type_data.xml",
-        "data/hr_salary_rule_data.xml",
-        "data/hr_rule_parameters_data.xml",
-        "data/ir_cron_data.xml",
-        "report/l10n_il_form101_report.xml",
-        "views/l10n_il_form101_views.xml",
-        "views/l10n_il_payslip_report_views.xml",
-        "views/hr_payslip_views.xml",
-        "views/hr_employee_views.xml",
-        "views/hr_work_entry_type_views.xml",
-        "views/res_company_views.xml",
+    'data': [
+        'data/hr_work_entry_type_data.xml',
+        'views/hr_employee_views.xml',
+        'views/resource_calendar_views.xml',
+        'views/res_config_settings_views.xml',
+        'views/hr_work_entry_views.xml',
     ],
-    "installable": True,
-    "application": False,
-    "license": "LGPL-3",
-    "author": "Multi Doorlock LTD.",
-    "maintainer": "itay.y@mdl.co.il",
+    'license': 'OEEL-1',
+    'installable': True,
+    'application': False,
 }

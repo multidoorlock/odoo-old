@@ -1,152 +1,177 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <data noupdate="1">
+        <!-- ============================================================
+             סוגי התאמות שכר (Salary Adjustment Types) — סעיף "Salary
+             Adjustment Types שיש ליצור" + מיפוי הבסיסים המחייב.
+             ============================================================ -->
 
-    <!-- Legacy - שורת הניכוי הנגדית שנוצרה אוטומטית עבור התאמות שכר שסומנו
-         "שולם" (מנגנון שהוחלף לגמרי - ראו l10n_il_salary_adjustment.py). נשמר
-         רק כי תלושים היסטוריים מפנים אליו (FK) - active=False כדי שלא יופיע
-         בבחירה ידנית ב-"קלטי שכר". -->
-    <record id="input_il_salary_adj_paid_deduction" model="hr.payslip.input.type">
-        <field name="name">ניכוי התאמות שכר ששולמו (legacy)</field>
-        <field name="code">IL_SALARY_ADJ_PAID_DED</field>
-        <field name="country_id" ref="base.il"/>
-        <field name="active" eval="False"/>
-    </record>
+        <record id="input_type_il_adj_salary_addition" model="hr.payslip.input.type">
+            <field name="name">תוספת שכר</field>
+            <field name="code">IL_ADJ_SALARY_ADDITION</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">positive</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
+            <field name="il_income_taxable">True</field>
+            <field name="il_national_insurance_applicable">True</field>
+            <field name="il_pensionable">True</field>
+            <field name="il_severance_applicable">True</field>
+            <field name="il_study_fund_applicable">True</field>
+            <field name="il_equalization_levy_applicable">True</field>
+            <field name="il_ni_payment_treatment">regular</field>
+        </record>
 
-    <!-- Legacy - "השפעת ברוטו" מהגרסה הקודמת (מנגנון bucket כללי, הוחלף
-         בניתוב per-type - ראו l10n_il_salary_adjustment.py). נשמר רק כי
-         תלושים קיימים בהיסטוריה מפנים אליו (FK) - active=False. -->
-    <record id="input_il_salary_adj_gross_impact" model="hr.payslip.input.type">
-        <field name="name">התאמות שכר - השפעת ברוטו (legacy)</field>
-        <field name="code">IL_SALARY_ADJ_GROSS_IMPACT</field>
-        <field name="country_id" ref="base.il"/>
-        <field name="active" eval="False"/>
-    </record>
+        <record id="input_type_il_adj_bonus" model="hr.payslip.input.type">
+            <field name="name">בונוס</field>
+            <field name="code">IL_ADJ_BONUS</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">positive</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
+            <field name="il_income_taxable">True</field>
+            <field name="il_national_insurance_applicable">True</field>
+            <field name="il_pensionable">False</field>
+            <field name="il_severance_applicable">False</field>
+            <field name="il_study_fund_applicable">False</field>
+            <field name="il_equalization_levy_applicable">True</field>
+            <field name="il_ni_payment_treatment">additional_payment</field>
+        </record>
 
-    <!-- Legacy - מנגנון "גילום נטו" הכללי (bucket יחיד לכל הסוגים), הוחלף
-         בגילום per-type - ראו l10n_il_salary_adjustment.py. נשמר רק כי
-         תלושים קיימים בהיסטוריה מפנים אליו (FK) - active=False. -->
-    <record id="input_il_salary_adj_net_grossup" model="hr.payslip.input.type">
-        <field name="name">התאמות שכר - גילום מסוג נטו (legacy)</field>
-        <field name="code">IL_SALARY_ADJ_NET_GROSSUP</field>
-        <field name="country_id" ref="base.il"/>
-        <field name="active" eval="False"/>
-    </record>
+        <record id="input_type_il_adj_grant" model="hr.payslip.input.type">
+            <field name="name">מענק</field>
+            <field name="code">IL_ADJ_GRANT</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">positive</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
+            <field name="il_income_taxable">True</field>
+            <field name="il_national_insurance_applicable">True</field>
+            <field name="il_pensionable">False</field>
+            <field name="il_severance_applicable">False</field>
+            <field name="il_study_fund_applicable">False</field>
+            <field name="il_equalization_levy_applicable">True</field>
+            <field name="il_ni_payment_treatment">additional_payment</field>
+        </record>
 
-    <!-- סוג פנימי בלבד: תשלומי עובד מהחשבונאות שמשפיעים על השכר (ראו account_payment.py) -->
-    <record id="input_il_payment_adj" model="hr.payslip.input.type">
-        <field name="name">תשלומי עובד</field>
-        <field name="code">IL_PAYMENT_ADJ</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
+        <record id="input_type_il_adj_salary_reduction" model="hr.payslip.input.type">
+            <field name="name">הפחתת שכר</field>
+            <field name="code">IL_ADJ_SALARY_REDUCTION</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">negative</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
+            <field name="il_income_taxable">True</field>
+            <field name="il_national_insurance_applicable">True</field>
+            <field name="il_pensionable">True</field>
+            <field name="il_severance_applicable">True</field>
+            <field name="il_study_fund_applicable">True</field>
+            <field name="il_equalization_levy_applicable">True</field>
+            <field name="il_ni_payment_treatment">regular</field>
+        </record>
 
-    <!-- סוג פנימי בלבד: סגירת תשלומי יתר של תלושים אחרים (ראו l10n_il_overpayment_closure.py) -->
-    <record id="input_il_overpayment_closure" model="hr.payslip.input.type">
-        <field name="name">סגירת תשלומי יתר</field>
-        <field name="code">IL_OVERPAYMENT_CLOSURE</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
+        <record id="input_type_il_adj_advance" model="hr.payslip.input.type">
+            <field name="name">מקדמה על חשבון משכורת</field>
+            <field name="code">IL_ADJ_ADVANCE</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">negative</field>
+            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_ni_payment_treatment">none</field>
+        </record>
 
+        <record id="input_type_il_adj_food" model="hr.payslip.input.type">
+            <field name="name">ניכוי אוכל</field>
+            <field name="code">IL_ADJ_FOOD</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">negative</field>
+            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_ni_payment_treatment">none</field>
+        </record>
 
-    <!-- ==== התאמות שכר per-type: 2 inputs פנימיים לכל סוג (ברוטו/נטו), לא
-         נבחרים ידנית (אין available_in_attachments) - מוזנים אך ורק ע"י
-         _compute_input_line_ids/_l10n_il_apply_net_impact_gross_up
-         ב-l10n_il_salary_adjustment.py. הצד הרגיל/הידני (Salary Input ישיר,
-         לא דרך התאמת שכר) ממשיך להשתמש בסוג הפשוט המקורי (למשל "עמלה",
-         IL_COMMISSION, המוגדר ב-l10n_il_hr_payroll) - לא נוגעים בו. ==== -->
+        <record id="input_type_il_adj_loan" model="hr.payslip.input.type">
+            <field name="name">הלוואה לעובד</field>
+            <field name="code">IL_ADJ_LOAN</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">negative</field>
+            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_ni_payment_treatment">none</field>
+        </record>
 
-    <record id="input_il_commission_gross" model="hr.payslip.input.type">
-        <field name="name">עמלה - ברוטו</field>
-        <field name="code">IL_COMMISSION_GROSS</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
+        <record id="input_type_il_adj_employee_debt" model="hr.payslip.input.type">
+            <field name="name">חוב עובד</field>
+            <field name="code">IL_ADJ_EMPLOYEE_DEBT</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">negative</field>
+            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_ni_payment_treatment">none</field>
+        </record>
 
-    <record id="input_il_commission_net" model="hr.payslip.input.type">
-        <field name="name">עמלה - נטו</field>
-        <field name="code">IL_COMMISSION_NET</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
+        <record id="input_type_il_adj_garnishment" model="hr.payslip.input.type">
+            <field name="name">עיקול שכר</field>
+            <field name="code">IL_ADJ_GARNISHMENT</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">negative</field>
+            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_ni_payment_treatment">none</field>
+        </record>
 
-    <record id="input_il_travel_gross" model="hr.payslip.input.type">
-        <field name="name">החזר נסיעות - ברוטו</field>
-        <field name="code">IL_TRAVEL_GROSS</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
+        <record id="input_type_il_adj_alimony" model="hr.payslip.input.type">
+            <field name="name">מזונות</field>
+            <field name="code">IL_ADJ_ALIMONY</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">negative</field>
+            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_ni_payment_treatment">none</field>
+        </record>
 
-    <record id="input_il_travel_net" model="hr.payslip.input.type">
-        <field name="name">החזר נסיעות - נטו</field>
-        <field name="code">IL_TRAVEL_NET</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
+        <record id="input_type_il_adj_voluntary" model="hr.payslip.input.type">
+            <field name="name">ניכוי מרצון</field>
+            <field name="code">IL_ADJ_VOLUNTARY</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">negative</field>
+            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_ni_payment_treatment">none</field>
+        </record>
 
-    <record id="input_il_havraa_gross" model="hr.payslip.input.type">
-        <field name="name">דמי הבראה - ברוטו</field>
-        <field name="code">IL_HAVRAA_GROSS</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
+        <record id="input_type_il_adj_union_dues" model="hr.payslip.input.type">
+            <field name="name">דמי חבר ארגון עובדים</field>
+            <field name="code">IL_ADJ_UNION_DUES</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">True</field>
+            <field name="il_adjustment_direction">negative</field>
+            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_ni_payment_treatment">none</field>
+        </record>
 
-    <record id="input_il_havraa_net" model="hr.payslip.input.type">
-        <field name="name">דמי הבראה - נטו</field>
-        <field name="code">IL_HAVRAA_NET</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_other_add_gross" model="hr.payslip.input.type">
-        <field name="name">תוספת אחרת - ברוטו</field>
-        <field name="code">IL_OTHER_ADD_GROSS</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_other_add_net" model="hr.payslip.input.type">
-        <field name="name">תוספת אחרת - נטו</field>
-        <field name="code">IL_OTHER_ADD_NET</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_loan_given_gross" model="hr.payslip.input.type">
-        <field name="name">מתן הלוואה לעובד - ברוטו</field>
-        <field name="code">IL_LOAN_GIVEN_GROSS</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_loan_given_net" model="hr.payslip.input.type">
-        <field name="name">מתן הלוואה לעובד - נטו</field>
-        <field name="code">IL_LOAN_GIVEN_NET</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_loan_gross" model="hr.payslip.input.type">
-        <field name="name">החזר הלוואה - ברוטו</field>
-        <field name="code">IL_LOAN_GROSS</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_loan_net" model="hr.payslip.input.type">
-        <field name="name">החזר הלוואה - נטו</field>
-        <field name="code">IL_LOAN_NET</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_meals_gross" model="hr.payslip.input.type">
-        <field name="name">ניכוי ארוחות - ברוטו</field>
-        <field name="code">IL_MEALS_GROSS</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_meals_net" model="hr.payslip.input.type">
-        <field name="name">ניכוי ארוחות - נטו</field>
-        <field name="code">IL_MEALS_NET</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_other_ded_gross" model="hr.payslip.input.type">
-        <field name="name">ניכוי אחר - ברוטו</field>
-        <field name="code">IL_OTHER_DED_GROSS</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
-
-    <record id="input_il_other_ded_net" model="hr.payslip.input.type">
-        <field name="name">ניכוי אחר - נטו</field>
-        <field name="code">IL_OTHER_DED_NET</field>
-        <field name="country_id" ref="base.il"/>
-    </record>
+        <!-- ============================================================
+             קלטים ידניים לעובד זר (סעיפים "×× ×××× ××××× ×¨×¤××× ×¤×¨×× "
+             / "× ×××× ××××¨××" / "× ×××× ×××¦×××ª × ××××ª ×××××¨××") —
+             מוזנים ידנית על התלוש מדי חודש; אינם התאמת שכר.
+             ============================================================ -->
+        <record id="input_type_il_for_private_health_cost" model="hr.payslip.input.type">
+            <field name="name">עלות ביטוח רפואי פרטי (עובד זר)</field>
+            <field name="code">IL_FOR_PRIVATE_HEALTH_COST</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">False</field>
+        </record>
+        <record id="input_type_il_for_housing_input" model="hr.payslip.input.type">
+            <field name="name">ניכוי מגורים (עובד זר)</field>
+            <field name="code">IL_FOR_HOUSING_INPUT</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">False</field>
+        </record>
+        <record id="input_type_il_for_housing_expenses_input" model="hr.payslip.input.type">
+            <field name="name">הוצאות נלוות למגורים (עובד זר)</field>
+            <field name="code">IL_FOR_HOUSING_EXPENSES_INPUT</field>
+            <field name="country_id" ref="base.il"/>
+            <field name="available_in_attachments">False</field>
+        </record>
+    </data>
 </odoo>

@@ -1,156 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="hr_employee_view_form" model="ir.ui.view">
-        <field name="name">hr.employee.view.form.inherit.l10n.il.hr.payroll</field>
+    <!-- לשונית השכר בכרטיס העובד: הסתרת שדות השכר הסטנדרטיים והצגת שכבת
+         ההגדרה העסקית (סעיפים 4–6, 8 באפיון). הנתונים נשמרים על גרסת
+         תנאי ההעסקה הפעילה (hr.version) באמצעות מנגנון הדלגציה הסטנדרטי. -->
+    <record id="mdl_payroll_hr_employee_view_form" model="ir.ui.view">
+        <field name="name">mdl.payroll.hr.employee.view.form</field>
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr_payroll.payroll_hr_employee_view_form"/>
         <field name="arch" type="xml">
-            <group name="payroll_group" position="inside">
-                <group name="l10n_il_employment" string="ישראל: העסקה" invisible="country_code != 'IL'">
-                    <field name="l10n_il_employee_category"/>
-                </group>
-                <group name="l10n_il_tax" string="ישראל: מס הכנסה" invisible="country_code != 'IL'">
-                    <field name="l10n_il_tax_residency"/>
-                    <field name="l10n_il_credit_points"/>
-                    <field name="l10n_il_main_employer"/>
-                    <field name="l10n_il_settlement_code"/>
-                </group>
-                <group name="l10n_il_form101" string="ישראל: טופס 101 ותיאום מס" invisible="country_code != 'IL'">
-                    <field name="l10n_il_form101_state"/>
-                    <field name="l10n_il_tax_coordination"/>
-                    <field name="l10n_il_tax_coordination_rate" invisible="not l10n_il_tax_coordination"/>
-                    <field name="l10n_il_tax_coordination_expiry" invisible="not l10n_il_tax_coordination" required="l10n_il_tax_coordination"/>
-                </group>
-                <group name="l10n_il_pension" string="ישראל: פנסיה ופיצויים" invisible="country_code != 'IL'">
-                    <field name="l10n_il_pension_fund_id"/>
-                    <field name="l10n_il_pension_member_no"/>
-                    <field name="l10n_il_pension_employee_rate"/>
-                    <field name="l10n_il_pension_employer_rate"/>
-                    <field name="l10n_il_severance_rate"/>
-                    <field name="l10n_il_section14"/>
-                </group>
-                <group name="l10n_il_hishtalmut" string="ישראל: קרן השתלמות" invisible="country_code != 'IL'">
-                    <field name="l10n_il_hishtalmut"/>
-                    <field name="l10n_il_hishtalmut_fund_id" invisible="not l10n_il_hishtalmut"/>
-                    <field name="l10n_il_hishtalmut_employee_rate" invisible="not l10n_il_hishtalmut"/>
-                    <field name="l10n_il_hishtalmut_employer_rate" invisible="not l10n_il_hishtalmut"/>
-                </group>
-            </group>
-        </field>
-    </record>
-
-    <!-- ==== שכר ישראלי - בנוי מחדש כקבוצה אחת עצמאית ומסודרת (לא מפוזר בין
-         שורת ה-wage הילידית לקבוצה נפרדת - זה בדיוק מה שגרם למראה המבולגן
-         בגרסה הקודמת). כל שדות השכר של Odoo (wage_type, wage, schedule_pay,
-         hourly_wage) מוסתרים לגמרי ל-IL ומוחלפים בקבוצה אחת "ישראל: שכר"
-         שמכילה את כל 4 השורות (חודשי/שבועי/יומי/שעתי) תמיד, בדיוק באותו
-         סדר, בשני מצבי סוג השכר - רק איזה שדה עריך משתנה:
-
-           - סוג השכר (wage_type): אותו שדה קיים בדיוק, רק שתי אפשרויות
-             גלויות (חודשי/יומי) - ראו selection_add + string ב-hr_version.py.
-           - שכר חודשי: חודשי -> wage (עריך, מקור); יומי -> l10n_il_computed_monthly_wage (קריאה-בלבד).
-           - שכר שבועי: תמיד l10n_il_computed_weekly_wage, קריאה-בלבד בשני המצבים.
-           - שכר יומי: חודשי -> l10n_il_computed_daily_wage (קריאה-בלבד); יומי -> l10n_il_daily_wage (עריך, מקור).
-           - שכר שעתי: תמיד hourly_wage, קריאה-בלבד תמיד - לעולם לא ניתן להזנה ידנית.
-           - תעריף יום נוסף: עריך, חודשי בלבד (מוסתר ביומי).
-           - תעריף שישי/שבת: עריך, בשני המצבים.
-
-         <newline/> אחרי כל group מבטיח שכל קבוצה תופסת שורה מלאה משלה (לא
-         שתי עמודות צמודות וצפופות - זה מה שגרם ל"dropdowns קטנים"). ==== -->
-    <record id="hr_employee_view_form_wage_l10n_il" model="ir.ui.view">
-        <field name="name">hr.employee.view.form.inherit.l10n.il.wage</field>
-        <field name="model">hr.employee</field>
-        <field name="inherit_id" ref="hr_payroll.payroll_hr_employee_view_form"/>
-        <field name="arch" type="xml">
-            <field name="wage_type" position="attributes">
-                <attribute name="invisible">country_code == 'IL'</attribute>
-            </field>
-            <div name="hourly_wage" position="attributes">
-                <attribute name="invisible">wage_type != 'hourly' or country_code == 'IL'</attribute>
-            </div>
-            <label for="hourly_wage" position="attributes">
-                <attribute name="invisible">wage_type != 'hourly' or country_code == 'IL'</attribute>
-            </label>
-            <label for="wage" position="attributes">
-                <attribute name="invisible">country_code == 'IL'</attribute>
-            </label>
-            <field name="wage" position="attributes">
-                <attribute name="invisible">country_code == 'IL'</attribute>
-            </field>
-            <field name="schedule_pay" position="attributes">
-                <attribute name="invisible">country_code == 'IL'</attribute>
-            </field>
-            <!-- ה"/" בין wage ל-schedule_pay (הוסף ע"י hr_payroll, span בלי name)
-                 נשאר גלוי כתו יתום כשמסתירים את שני השדות משני צדדיו ל-IL -
-                 מוסתר גם הוא כאן, כדי שלא יישאר "/" בודד על המסך. -->
-            <xpath expr="//field[@name='wage']/following-sibling::span[hasclass('mx-2')][1]" position="attributes">
-                <attribute name="invisible">country_code == 'IL'</attribute>
+            <!-- הסתרת השדות הסטנדרטיים (לא נמחקים — ממשיכים לשמש את Odoo).
+                 הסתרת שורת השכר כולה מסלקת גם את מפריד ה־"/" של מחזור התשלום. -->
+            <xpath expr="//field[@name='wage_type']" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
-            <group name="contract" position="inside">
-                <newline/>
-                <group name="l10n_il_wage_type" string="ישראל: סוג שכר" col="2" invisible="country_code != 'IL'">
-                    <field name="wage_type"/>
-                    <field name="l10n_il_hourly_kind" invisible="wage_type != 'hourly'" required="wage_type == 'hourly'"/>
-                    <field name="schedule_pay"/>
-                </group>
-                <newline/>
-                <group name="l10n_il_wage" string="ישראל: שכר" col="2" invisible="country_code != 'IL'">
-                    <field name="wage" string="שכר חודשי" invisible="wage_type != 'monthly'"/>
-                    <field name="l10n_il_computed_monthly_wage" string="שכר חודשי" invisible="wage_type != 'hourly'"/>
-                    <field name="l10n_il_computed_weekly_wage" string="שכר שבועי"/>
-                    <field name="l10n_il_computed_daily_wage" string="שכר יומי" invisible="wage_type != 'monthly'"/>
-                    <field name="l10n_il_daily_wage" string="שכר יומי" invisible="wage_type != 'hourly' or l10n_il_hourly_kind == 'true_hourly'"/>
-                    <field name="l10n_il_true_hourly_rate" string="שכר לשעה" invisible="wage_type != 'hourly' or l10n_il_hourly_kind != 'true_hourly'"/>
-                    <field name="hourly_wage" string="שכר שעתי (מחושב)" invisible="wage_type == 'hourly' and l10n_il_hourly_kind == 'true_hourly'"/>
-                    <field name="l10n_il_extra_day_rate" invisible="wage_type != 'monthly'"/>
-                    <field name="l10n_il_weekend_daily_wage"/>
-                </group>
-                <newline/>
-                <group name="l10n_il_overtime" string="ישראל: שעות נוספות" col="2" invisible="country_code != 'IL'">
-                    <field name="l10n_il_overtime_payment_type" class="w-100"/>
-                    <field name="l10n_il_overtime_percentage" invisible="l10n_il_overtime_payment_type != 'percentage'"/>
-                    <field name="l10n_il_overtime_fixed_rate" invisible="l10n_il_overtime_payment_type != 'fixed'"/>
-                    <field name="l10n_il_computed_overtime_hour_rate"/>
-                </group>
-                <newline/>
-            </group>
-        </field>
-    </record>
+            <xpath expr="//label[@for='hourly_wage']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//div[@name='hourly_wage']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//label[@for='wage']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//div[@name='wage']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
 
-    <!-- שדות אישיים-משפחתיים: מוצגים תחת הטאב "מידע אישי" הרגיל, לצד השדות המקבילים
-         שאודו כבר מציג שם (מצב משפחתי, פרטי בן/בת זוג, אזרחות) — ולא כקבוצה נפרדת. -->
-    <record id="hr_employee_view_form_personal_l10n_il" model="ir.ui.view">
-        <field name="name">hr.employee.view.form.inherit.l10n.il.personal</field>
-        <field name="model">hr.employee</field>
-        <field name="inherit_id" ref="hr.view_employee_form"/>
-        <field name="arch" type="xml">
-            <group name="citizenship" position="inside">
-                <field name="l10n_il_citizenship_code" invisible="1"/>
-                <field name="l10n_il_aliyah_date" invisible="l10n_il_citizenship_code == 'IL'"/>
-            </group>
-            <field name="spouse_birthdate" position="after">
-                <field name="l10n_il_spouse_id" invisible="marital not in ('married', 'cohabitant')"/>
-            </field>
-            <group name="hr_education_group" position="before">
-                <group string="ישראל: בריאות" name="l10n_il_health_group" invisible="country_code != 'IL'">
-                    <field name="l10n_il_kupat_holim"/>
-                </group>
-            </group>
-        </field>
-    </record>
+            <!-- תוויות בעברית לשדות הסטנדרטיים שנשארים -->
+            <xpath expr="//field[@name='structure_type_id']" position="attributes">
+                <attribute name="string">קטגוריית שכר</attribute>
+                <attribute name="placeholder">ללא קטגוריה — לא ייכלל בחישובי שכר</attribute>
+            </xpath>
 
-    <record id="hr_employee_view_form_button" model="ir.ui.view">
-        <field name="name">hr.employee.view.form.inherit.l10n.il.form101.button</field>
-        <field name="model">hr.employee</field>
-        <field name="inherit_id" ref="hr.view_employee_form"/>
-        <field name="arch" type="xml">
-            <div name="button_box" position="inside">
-                <button name="%(action_l10n_il_form101)d" type="action" class="oe_stat_button" icon="fa-file-text-o"
-                    context="{'search_default_employee_id': id, 'default_employee_id': id}"
-                    groups="hr_payroll.group_hr_payroll_user">
-                    <field name="l10n_il_form101_count" widget="statinfo" string="טופסי 101"/>
-                </button>
-            </div>
+            <!-- עמודת "שכר" לצד עמודת החוזה -->
+            <xpath expr="//group[@name='contract']" position="after">
+                <group name="mdl_wage" string="שכר">
+                    <field name="mdl_resource_calendar_type" invisible="1"/>
+                    <field name="mdl_wage_type" widget="radio" options="{'horizontal': true}"/>
+                    <field name="mdl_wage_rate_type" widget="radio"
+                           options="{'horizontal': true}"/>
+                    <field name="mdl_monthly_wage" invisible="mdl_wage_type != 'mdl_monthly'"/>
+                    <field name="mdl_daily_wage" string="שכר יומי מותאם"
+                           readonly="mdl_wage_type == 'mdl_monthly'"/>
+                    <field name="mdl_hourly_wage" string="תעריף שעה" readonly="1"/>
+                    <field name="mdl_additional_day_wage" string="תעריף יום נוסף"/>
+                    <field name="mdl_additional_day_hourly_wage" readonly="1"/>
+                    <field name="schedule_pay" string="מחזור תשלום" readonly="1" force_save="1"/>
+                </group>
+            </xpath>
         </field>
     </record>
 </odoo>

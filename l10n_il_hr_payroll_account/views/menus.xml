@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- הזזת "Reporting" צעד אחד קדימה כדי לפנות מקום בדיוק בין "תלושי
+         שכר" ל"דוחות" לטאב "תשלומים" (שני הטאבים הסטנדרטיים משותפים
+         באותו sequence=70, ולכן ממוקמים לפי סדר טעינה — שינוי מספרי
+         מבטיח מיקום ודאי). -->
+    <record id="hr_payroll.menu_hr_payroll_report" model="ir.ui.menu">
+        <field name="sequence">75</field>
+    </record>
+
+    <!-- טאב עליון "תשלומים" בתוך אפליקציית השכר, בין תלושי שכר לדוחות
+         (סעיף 2 באפיון) — בדיוק 3 פריטים תחתיו. -->
+    <menuitem id="menu_il_payments_root"
+              name="תשלומים"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_root"
+              sequence="71"
+              groups="hr_payroll.group_hr_payroll_user"/>
+
+    <menuitem id="menu_il_employee_payments"
+              name="תשלומים"
+              parent="menu_il_payments_root"
+              action="il_action_employee_payments"
+              sequence="10"/>
+
+    <menuitem id="menu_il_salary_adjustments"
+              name="התאמות שכר"
+              parent="menu_il_payments_root"
+              action="action_il_salary_adjustment"
+              sequence="20"/>
+
+    <!-- Keep the former XML id only to deactivate it on upgraded databases. -->
+    <record id="menu_il_cycles_list" model="ir.ui.menu">
+        <field name="name">מחזורים והוראות</field>
+        <field name="active" eval="False"/>
+    </record>
+
+</odoo>

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- טופס לוח עבודה: הסתרת שדות הליבה (schedule_type / duration_based)
+         והצגת שכבת ההגדרה — סוג לוח ושיטת שיבוץ (סעיפים 10–16 באפיון). -->
+    <record id="mdl_payroll_resource_calendar_view_form" model="ir.ui.view">
+        <field name="name">mdl.payroll.resource.calendar.view.form</field>
+        <field name="model">resource.calendar</field>
+        <field name="inherit_id" ref="resource.resource_calendar_form"/>
+        <field name="arch" type="xml">
+            <!-- הסתרת שדות הליבה ושורות מידע סטנדרטיות שמעמיסות על הטופס -->
+            <xpath expr="//field[@name='schedule_type']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//label[@for='switch_based_on_duration']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//button[@name='switch_based_on_duration'])[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//button[@name='switch_based_on_duration'])[2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//label[@for='full_time_required_hours'])[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//label[@for='full_time_required_hours'])[2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='full_time_required_hours']/parent::div" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//label[@for='work_time_rate']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='work_time_rate']/parent::div" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//group[@name='flex_details']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- שכבת ההגדרה -->
+            <xpath expr="//field[@name='schedule_type']" position="before">
+                <field name="mdl_schedule_type" widget="radio" options="{'horizontal': true}"/>
+                <field name="mdl_schedule_frequency" widget="radio" options="{'horizontal': true}"/>
+                <label for="mdl_hours_per_day"
+                       invisible="mdl_schedule_type == 'shifts' or mdl_schedule_frequency == 'fixed_intervals'"/>
+                <div class="d-flex"
+                     invisible="mdl_schedule_type == 'shifts' or mdl_schedule_frequency == 'fixed_intervals'">
+                    <field name="mdl_hours_per_day" widget="float_time" class="o_hr_narrow_field"/>
+                    <span class="ms-2">שעות</span>
+                </div>
+                <label for="hours_per_week" string="שעות בשבוע"
+                       invisible="mdl_schedule_type == 'shifts' or mdl_schedule_frequency != 'weekly_quota'"/>
+                <div class="d-flex"
+                     invisible="mdl_schedule_type == 'shifts' or mdl_schedule_frequency != 'weekly_quota'">
+                    <field name="hours_per_week" widget="float_time" class="o_hr_narrow_field"/>
+                    <span class="ms-2">שעות</span>
+                </div>
+                <field name="mdl_shifts_per_week"
+                       invisible="mdl_schedule_type != 'shifts' or mdl_schedule_frequency != 'weekly_quota'"/>
+                <!-- בחירת ימי משמרת ללוח משמרות במכסה יומית (סעיף 15 באפיון) -->
+                <label for="mdl_shift_day_sunday" string="ימי משמרת"
+                       invisible="mdl_schedule_type != 'shifts' or mdl_schedule_frequency != 'daily_duration'"/>
+                <div class="d-flex flex-wrap column-gap-3"
+                     invisible="mdl_schedule_type != 'shifts' or mdl_schedule_frequency != 'daily_duration'">
+                    <span class="text-nowrap"><field name="mdl_shift_day_sunday" nolabel="1"/> ראשון</span>
+                    <span class="text-nowrap"><field name="mdl_shift_day_monday" nolabel="1"/> שני</span>
+                    <span class="text-nowrap"><field name="mdl_shift_day_tuesday" nolabel="1"/> שלישי</span>
+                    <span class="text-nowrap"><field name="mdl_shift_day_wednesday" nolabel="1"/> רביעי</span>
+                    <span class="text-nowrap"><field name="mdl_shift_day_thursday" nolabel="1"/> חמישי</span>
+                    <span class="text-nowrap"><field name="mdl_shift_day_friday" nolabel="1"/> שישי</span>
+                    <span class="text-nowrap"><field name="mdl_shift_day_saturday" nolabel="1"/> שבת</span>
+                </div>
+            </xpath>
+
+            <!-- בלוח משמרות שורות הלוח מנוהלות אוטומטית — אין להציגן.
+                 בלוח מכסה שבועית הטבלה אינה מוצגת (סעיף 14 באפיון). -->
+            <xpath expr="(//page[@name='working_hours'])[1]" position="attributes">
+                <attribute name="invisible">flexible_hours or two_weeks_calendar or mdl_schedule_type == 'shifts'</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- שורות לוח עבודה: הזנה לפי יחידות יום או לפי שעות (סעיף 13 באפיון) -->
+    <record id="mdl_payroll_resource_calendar_attendance_view_list" model="ir.ui.view">
+        <field name="name">mdl.payroll.resource.calendar.attendance.view.list</field>
+        <field name="model">resource.calendar.attendance</field>
+        <field name="inherit_id" ref="resource.view_resource_calendar_attendance_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='duration_hours']" position="before">
+                <field name="mdl_day_input_method"
+                       column_invisible="parent.mdl_schedule_frequency != 'daily_duration'"/>
+                <field name="mdl_daily_units"
+                       column_invisible="parent.mdl_schedule_frequency != 'daily_duration'"
+                       invisible="mdl_day_input_method != 'daily_units'"/>
+            </xpath>
+            <xpath expr="//field[@name='duration_hours']" position="attributes">
+                <attribute name="column_invisible">parent.mdl_schedule_frequency != 'daily_duration'</attribute>
+                <attribute name="readonly">mdl_day_input_method == 'daily_units'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='hour_from']" position="attributes">
+                <attribute name="column_invisible">parent.mdl_schedule_frequency != 'fixed_intervals'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='hour_to']" position="attributes">
+                <attribute name="column_invisible">parent.mdl_schedule_frequency != 'fixed_intervals'</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
