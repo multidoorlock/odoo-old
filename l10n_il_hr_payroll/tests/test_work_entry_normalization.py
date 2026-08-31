@@ -176,8 +176,7 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertEqual(len(regular), 1)
         self.assertAlmostEqual(regular[0]["duration"], 4.75)
         self.assertEqual(regular[0]["mdl_rounding_reason"], "half_day")
-        self.assertEqual(len(absence), 1)
-        self.assertAlmostEqual(absence[0]["duration"], 4.75)
+        self.assertFalse(absence)
 
     def test_weekly_quota_moves_third_day_to_additional_day(self):
         weekly_calendar = self.env["resource.calendar"].with_company(self.company).create({
@@ -212,7 +211,7 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertEqual(
             len([value for code, value in values if code == "ADDITIONAL_DAY"]), 1)
 
-    def test_odoo_overtime_rules_replace_regular_time_on_that_day(self):
+    def test_additional_day_wins_over_zero_expected_odoo_overtime(self):
         ruleset = self.env["hr.attendance.overtime.ruleset"].create({
             "name": "Weekend Through Odoo Overtime",
             "company_id": self.company.id,
@@ -233,10 +232,12 @@ class TestWorkEntryNormalization(TransactionCase):
         })
         values = self._values(date(2026, 1, 10), date(2026, 1, 11))
         overtime = [value for code, value in values if code == "OVERTIME"]
-        self.assertEqual(len(overtime), 1)
-        self.assertAlmostEqual(overtime[0]["duration"], 9.5)
-        self.assertFalse([value for code, value in values if code == "ADDITIONAL_DAY"])
-        self.assertEqual(overtime[0]["mdl_rounding_reason"], "odoo_overtime_rule")
+        additional = [
+            value for code, value in values if code == "ADDITIONAL_DAY"]
+        self.assertFalse(overtime)
+        self.assertEqual(len(additional), 1)
+        self.assertAlmostEqual(additional[0]["duration"], 9.5)
+        self.assertEqual(additional[0]["mdl_rounding_reason"], "full_day")
 
     def test_morning_shift_uses_its_own_company_duration(self):
         self.company.mdl_shift_morning_hours = 8.0

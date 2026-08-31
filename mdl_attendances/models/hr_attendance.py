@@ -108,18 +108,31 @@ class HrAttendance(models.Model):
 
     def _timing_rule_windows(self, rule):
         self.ensure_one()
-        local_start, local_stop = self._get_localized_times()
+        rule_tz = rule._timing_timezone(self)
+        local_start = pytz.utc.localize(self.check_in).astimezone(rule_tz).replace(tzinfo=None)
+        local_stop = pytz.utc.localize(self.check_out).astimezone(rule_tz).replace(tzinfo=None)
         windows = []
         company = rule.company_id or self.employee_id.company_id
-        unusual_days = company.resource_calendar_id._get_unusual_days(
-            self.check_in, self.check_out, company_id=company)
+        calendar = rule.resource_calendar_id or company.resource_calendar_id
+
+        # One attendance represents one business shift.  For an overnight
+        # attendance the early-morning window therefore inherits the work-day
+        # condition of the date on which the attendance started.
+        if rule.timing_type in ("work_days", "non_work_days"):
+            business_date = local_start.date()
+            day_start = rule_tz.localize(datetime.combine(business_date, time.min))
+            day_stop = rule_tz.localize(datetime.combine(business_date, time.max))
+            unusual_days = calendar._get_unusual_days(
+                day_start, day_stop, company_id=company)
+            is_non_work_day = unusual_days.get(
+                business_date.strftime("%Y-%m-%d"), False)
+            if rule.timing_type == "work_days" and is_non_work_day:
+                return windows
+            if rule.timing_type == "non_work_days" and not is_non_work_day:
+                return windows
+
         for day in rrule(DAILY, dtstart=local_start.date(), until=local_stop.date()):
             local_date = day.date()
-            is_non_work_day = unusual_days.get(local_date.strftime("%Y-%m-%d"), False)
-            if rule.timing_type == "work_days" and is_non_work_day:
-                continue
-            if rule.timing_type == "non_work_days" and not is_non_work_day:
-                continue
             if rule.timing_type in ("work_days", "non_work_days"):
                 windows.append(rule._local_window_utc(self, local_date))
                 continue
@@ -179,12 +192,38 @@ class HrAttendance(models.Model):
                             (clipped_stop - clipped_start).total_seconds() / 3600.0,
                             0.0,
                         )
-                        # As with Odoo's quantity rules, the employer tolerance is
-                        # a qualification threshold: a negligible intersection
-                        # with a timing window must not trigger the rule.  This is
-                        # especially important for night sleep windows (for
-                        # example, checking out at 01:45 is not a night's sleep).
-                        if overlap_hours <= rule.employer_tolerance:
+                        if not overlap_hours:
+                            continue
+                        if not rule.is_work:
+                            # Employee tolerance is measured backwards from the
+                            # end of the timing window. A late check-in inside
+                            # that grace period remains work; reaching the full
+                            # tolerance still activates the non-work window.
+                            if (rule.employee_tolerance
+                                    and start <= attendance.check_in < stop):
+                                seconds_to_stop = (
+                                    stop - attendance.check_in).total_seconds()
+                                if seconds_to_stop < round(
+                                        rule.employee_tolerance * 3600):
+                                    continue
+
+                            if attendance.check_out > stop:
+                                # Employer tolerance extends non-work through a
+                                # near check-out. Once the grace period is
+                                # exceeded, the original timing stop is kept.
+                                seconds_after_stop = (
+                                    attendance.check_out - stop).total_seconds()
+                                if (rule.employer_tolerance
+                                        and seconds_after_stop <= round(
+                                            rule.employer_tolerance * 3600)):
+                                    clipped_stop = attendance.check_out
+                            elif (rule.employer_tolerance
+                                  and overlap_hours <= rule.employer_tolerance):
+                                # A very short attendance ending inside the
+                                # window (for example at 01:45) did not reach a
+                                # meaningful non-work period.
+                                continue
+                        elif overlap_hours <= rule.employer_tolerance:
                             continue
                         intervals = attendance._apply_interval(
                             intervals, clipped_start, clipped_stop, rule)

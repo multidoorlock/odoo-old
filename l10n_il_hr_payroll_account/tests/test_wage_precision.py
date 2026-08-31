@@ -405,7 +405,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
     def test_fixed_overtime_is_paid_on_top_of_net_target(self):
         overtime_type = self.env.ref(
             'hr_work_entry.work_entry_type_overtime')
-        self.env['hr.attendance.overtime.line'].create({
+        overtime_line = self.env['hr.attendance.overtime.line'].create({
             'employee_id': self.employee.id,
             'date': date(2026, 1, 15),
             'status': 'approved',
@@ -415,9 +415,70 @@ class TestNetDailyWageGrossUp(TransactionCase):
             'mdl_fixed_hourly_amount': 50.0,
             'work_entry_type_overtime_id': overtime_type.id,
         })
+        self.env['hr.work.entry'].create({
+            'name': 'Represented fixed overtime',
+            'employee_id': self.employee.id,
+            'version_id': self.version.id,
+            'company_id': self.company.id,
+            'date': date(2026, 1, 15),
+            'duration': 10.0,
+            'work_entry_type_id': overtime_type.id,
+            'overtime_id': overtime_line.id,
+        })
         overtime = self._create_payslip(overtime_hours=10.0)
         overtime._il_run_gross_up_engine()
         self.assertAlmostEqual(overtime._il_overtime_amount(), 500.0, places=2)
+
+    def test_unrepresented_fixed_overtime_is_not_paid(self):
+        overtime_type = self.env.ref(
+            'hr_work_entry.work_entry_type_overtime')
+        self.env['hr.attendance.overtime.line'].create({
+            'employee_id': self.employee.id,
+            'date': date(2026, 1, 16),
+            'status': 'approved',
+            'duration': 9.0,
+            'manual_duration': 9.0,
+            'amount_rate': 0.0,
+            'mdl_fixed_hourly_amount': 50.0,
+            'work_entry_type_overtime_id': overtime_type.id,
+        })
+        payslip = self._create_payslip()
+        self.assertEqual(payslip._il_overtime_amount(), 0.0)
+
+    def test_monthly_basic_is_not_reduced_by_missing_attendance(self):
+        monthly_type = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_type_il')
+        monthly_structure = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il')
+        employee = self.env['hr.employee'].create({
+            'name': 'Monthly Missing Attendance Employee',
+            'company_id': self.company.id,
+            'contract_date_start': date(2026, 1, 1),
+            'date_version': date(2026, 1, 1),
+            'resource_calendar_id': self.calendar.id,
+            'structure_type_id': monthly_type.id,
+            'il_salary_structure_id': monthly_structure.id,
+            'mdl_wage_type': 'mdl_monthly',
+            'wage': 10000.0,
+        })
+        version = employee.version_id
+        payslip = self.env['hr.payslip'].create({
+            'name': 'Monthly Missing Attendance Payslip',
+            'employee_id': employee.id,
+            'company_id': self.company.id,
+            'date_from': date(2026, 1, 1),
+            'date_to': date(2026, 1, 31),
+            'version_id': version.id,
+            'struct_id': monthly_structure.id,
+            'edited': True,
+            'worked_days_line_ids': [Command.create({
+                'work_entry_type_id': self.env.ref(
+                    'l10n_il_hr_payroll.work_entry_type_unpaid_absence').id,
+                'number_of_hours': 9.5,
+                'number_of_days': 1.0,
+            })],
+        })
+        self.assertEqual(payslip._il_basic_amount(), 10000.0)
 
     def test_palestinian_daily_structure_uses_same_net_target_contract(self):
         palestinian_structure = self.env.ref(
