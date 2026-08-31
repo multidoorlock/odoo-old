@@ -96,7 +96,20 @@ class AccountPayment(models.Model):
                 if payment.il_split_line_ids.filtered('payslip_id'):
                     raise ValidationError(
                         'לא ניתן לשנות את אופן הפריסה לאחר שקוזז סכום בתלוש.')
-                payment.il_split_line_ids.with_context(il_system_split_unlink=True).unlink()
+                # When an existing immediate payment is changed to planned,
+                # the editable one2many commands have already produced the
+                # desired rows in ``super().write``.  Deleting every line here
+                # used to remove those new rows as well, so the final check saw
+                # zero rows (e.g. 0 against 1,200).  Preserve the submitted
+                # planned rows; only reset rows when no replacement was sent,
+                # or when switching to a system-managed spread type.
+                keep_submitted_planned_lines = (
+                    payment.il_spread_type == 'planned'
+                    and 'il_split_line_ids' in vals
+                )
+                if not keep_submitted_planned_lines:
+                    payment.il_split_line_ids.with_context(
+                        il_system_split_unlink=True).unlink()
                 if payment.il_spread_type == 'none':
                     Split.with_context(il_system_split_create=True).create({
                         'payment_id': payment.id, 'sequence': 1, 'amount': payment.amount})
