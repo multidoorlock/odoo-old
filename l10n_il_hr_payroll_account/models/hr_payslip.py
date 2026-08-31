@@ -61,6 +61,20 @@ class HrPayslip(models.Model):
     il_split_line_ids = fields.One2many(
         'account.payment.split.line', 'payslip_id', string='שורות תשלום')
 
+    def unlink(self):
+        """Release payment instalments through the ORM before deleting slips.
+
+        The split-to-payslip foreign key uses ``ON DELETE SET NULL``. A raw
+        database cascade does not notify Odoo's stored computed fields, which
+        used to leave ``is_applied`` and payment remaining amounts stale after
+        a payslip was deleted. Clearing the relation explicitly makes the
+        normal dependency graph run before the payslip disappears.
+        """
+        split_lines = self.il_split_line_ids
+        if split_lines:
+            split_lines.write({'payslip_id': False})
+        return super().unlink()
+
     # ------------------------------------------------------------------
     # Applied amount is exactly the sum of split lines linked to this payslip.
     # ------------------------------------------------------------------

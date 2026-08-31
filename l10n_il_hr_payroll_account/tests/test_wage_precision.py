@@ -452,6 +452,67 @@ class TestNetDailyWageGrossUp(TransactionCase):
             delta=payslip.currency_id.rounding,
         )
 
+    def test_all_four_israeli_structures_compute_complete_payslip(self):
+        structure_xmlids = (
+            'hr_payroll_structure_il',
+            'hr_payroll_structure_il_pal_monthly',
+            'hr_payroll_structure_il_isr_daily',
+            'hr_payroll_structure_il_pal_daily',
+        )
+        attendance_type = self.env.ref('hr_work_entry.work_entry_type_attendance')
+        for xmlid in structure_xmlids:
+            structure = self.env.ref(f'l10n_il_hr_payroll_account.{xmlid}')
+            daily = structure.type_id.wage_type == 'hourly'
+            expected_profile = (
+                'palestinian' if structure.code.startswith('IL_PAL_') else 'israeli')
+            with self.subTest(structure=structure.code):
+                employee_values = {
+                    'name': f'Structure Matrix {structure.code}',
+                    'company_id': self.company.id,
+                    'contract_date_start': date(2026, 1, 1),
+                    'date_version': date(2026, 1, 1),
+                    'resource_calendar_id': self.calendar.id,
+                    'structure_type_id': structure.type_id.id,
+                    'il_salary_structure_id': structure.id,
+                    'mdl_wage_type': 'mdl_daily' if daily else 'mdl_monthly',
+                    'il_tax_credit_points': 0.0,
+                }
+                if daily:
+                    employee_values.update({
+                        'mdl_daily_wage': 250.0,
+                        'mdl_wage_rate_type': 'gross',
+                    })
+                else:
+                    employee_values['wage'] = 10000.0
+                employee = self.env['hr.employee'].create(employee_values)
+                payslip = self.env['hr.payslip'].create({
+                    'name': f'Structure Matrix {structure.code}',
+                    'employee_id': employee.id,
+                    'company_id': self.company.id,
+                    'date_from': date(2026, 1, 1),
+                    'date_to': date(2026, 1, 31),
+                    'version_id': employee.version_id.id,
+                    'struct_id': structure.id,
+                    'edited': True,
+                    'worked_days_line_ids': [Command.create({
+                        'work_entry_type_id': attendance_type.id,
+                        'number_of_hours': 19.0,
+                        'number_of_days': 2.0,
+                    })],
+                })
+                payslip.worked_days_line_ids._compute_is_paid()
+                payslip._compute_input_line_ids()
+                by_code = {
+                    line['code']: line['total']
+                    for line in payslip._get_payslip_lines()
+                }
+                self.assertEqual(payslip._il_worker_profile(), expected_profile)
+                self.assertIn('GROSS', by_code)
+                self.assertIn('NET', by_code)
+                self.assertIn('IL_NET_TO_PAY', by_code)
+                if daily:
+                    self.assertIn('IL_WAGE_ROUNDING', by_code)
+
     def test_net_wage_validation(self):
         with self.assertRaisesRegex(ValidationError, 'שכר יומי'):
             self.version.mdl_daily_wage = 0.0

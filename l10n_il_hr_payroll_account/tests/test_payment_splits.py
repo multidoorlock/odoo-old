@@ -97,6 +97,27 @@ class TestPayrollPaymentSplits(TransactionCase):
                 il_split_line_ids=[Command.create({"sequence": 1, "amount": 900.0})],
             ))
 
+    def test_planned_edit_resequences_and_still_closes_payment(self):
+        payment = self.env["account.payment"].create(self._payment_values(
+            il_spread_type="planned",
+            il_split_line_ids=[
+                Command.create({"sequence": 1, "amount": 200.0}),
+                Command.create({"sequence": 2, "amount": 300.0}),
+                Command.create({"sequence": 3, "amount": 500.0}),
+            ],
+        ))
+        middle = payment.il_split_line_ids.filtered(lambda line: line.sequence == 2)
+        last = payment.il_split_line_ids.filtered(lambda line: line.sequence == 3)
+        payment.write({
+            "il_split_line_ids": [
+                Command.delete(middle.id),
+                Command.update(last.id, {"amount": 800.0}),
+            ],
+        })
+        self.assertEqual(payment.il_split_line_ids.mapped("sequence"), [1, 2])
+        self.assertEqual(payment.il_split_line_ids.mapped("amount"), [200.0, 800.0])
+        self.assertEqual(payment.il_planned_amount, 1000.0)
+
     def test_per_payslip_lines_are_system_created_and_capped(self):
         payment = self.env["account.payment"].create(self._payment_values(
             il_spread_type="per_payslip"))
@@ -136,3 +157,19 @@ class TestPayrollPaymentSplits(TransactionCase):
                     "amount": 100.0,
                     "payslip_id": self._payslip(self.other_employee).id,
                 })
+
+    def test_deleting_payslip_reopens_linked_payment(self):
+        slip = self._payslip()
+        payment = self.env["account.payment"].create(self._payment_values())
+        line = payment.il_split_line_ids
+        line.payslip_id = slip
+        self.assertTrue(line.is_applied)
+        self.assertEqual(payment.il_applied_amount, 1000.0)
+        self.assertEqual(payment.il_remaining_amount, 0.0)
+
+        slip.unlink()
+
+        self.assertFalse(line.payslip_id)
+        self.assertFalse(line.is_applied)
+        self.assertEqual(payment.il_applied_amount, 0.0)
+        self.assertEqual(payment.il_remaining_amount, 1000.0)
