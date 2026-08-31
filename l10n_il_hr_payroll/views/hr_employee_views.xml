@@ -41,9 +41,9 @@
                            options="{'horizontal': true}"
                            readonly="mdl_wage_type != 'mdl_daily'"/>
                     <field name="mdl_monthly_wage" invisible="mdl_wage_type != 'mdl_monthly'"/>
-                    <field name="mdl_daily_wage"
+                    <field name="mdl_daily_wage" string="שכר יומי מותאם"
                            readonly="mdl_wage_type == 'mdl_monthly'" force_save="1"/>
-                    <field name="mdl_hourly_wage" readonly="1" force_save="1"/>
+                    <field name="mdl_hourly_wage" string="תעריף שעה" readonly="1" force_save="1"/>
                     <field name="schedule_pay" string="מחזור תשלום"/>
                 </group>
             </xpath>
