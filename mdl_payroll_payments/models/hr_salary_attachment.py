@@ -28,8 +28,6 @@ class HrSalaryAttachment(models.Model):
 
     # "Salary Adjustment זה נוצר במחזור X" — קישור תיעודי בלבד, ללא קשר
     # ל-Payment כלשהו (איסור Pair Relationship).
-    payroll_cycle_id = fields.Many2one(
-        'hr.payroll.cycle', string='נוצר במחזור', index=True, copy=False, readonly=True)
 
     # ------------------------------------------------------------------
     # Snapshot מהגדרות סוג ההתאמה — מתעדכן בהחלפת סוג כל עוד ההתאמה לא

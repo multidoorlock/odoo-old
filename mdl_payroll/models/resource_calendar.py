@@ -46,30 +46,15 @@ class ResourceCalendar(models.Model):
     mdl_shift_day_friday = fields.Boolean(string='שישי')
     mdl_shift_day_saturday = fields.Boolean(string='שבת')
 
-    # ------------------------------------------------------------------
-    # מיפוי שכבת ההגדרה לשדות הליבה של Odoo (סעיפים 10–16 באפיון)
-    # ------------------------------------------------------------------
+    # schedule_type and duration_based intentionally remain Odoo's native
+    # fields. The MDL selections are a UI layer which writes native values.
 
-    # default=None — ביטול ברירת המחדל הסטנדרטית כדי שהחישוב משכבת ההגדרה
-    # יקבע את הערך גם ביצירה.
-    schedule_type = fields.Selection(
-        compute='_compute_mdl_core_schedule_type', store=True, readonly=False,
-        precompute=True, default=None)
-    duration_based = fields.Boolean(
-        compute='_compute_mdl_core_duration_based', store=True, readonly=False)
-
-    @api.depends('mdl_schedule_type', 'mdl_schedule_frequency')
-    def _compute_mdl_core_schedule_type(self):
-        for calendar in self:
-            calendar.schedule_type = (
-                'flexible' if calendar.mdl_schedule_frequency == 'weekly_quota'
-                else 'fully_fixed'
-            )
-
-    @api.depends('mdl_schedule_type', 'mdl_schedule_frequency')
-    def _compute_mdl_core_duration_based(self):
-        for calendar in self:
-            calendar.duration_based = calendar.mdl_schedule_frequency == 'daily_duration'
+    @api.model
+    def _mdl_native_schedule_values(self, frequency):
+        return {
+            'schedule_type': 'flexible' if frequency == 'weekly_quota' else 'fully_fixed',
+            'duration_based': frequency == 'daily_duration',
+        }
 
     def _mdl_company(self):
         self.ensure_one()
@@ -136,6 +121,23 @@ class ResourceCalendar(models.Model):
             # הסטנדרטיות (הכוללות הפסקת צהריים שאסורה בלוח מבוסס־משך).
             schedule_type = vals.get('mdl_schedule_type', 'attendance')
             frequency = vals.get('mdl_schedule_frequency', 'fixed_intervals')
+            vals.update(self._mdl_native_schedule_values(frequency))
+            if frequency == 'daily_duration' and vals.get('attendance_ids'):
+                # Odoo forbids break lines on a duration-based calendar. Keep
+                # all real work rows supplied by the form/copy and discard only
+                # CREATE commands representing a lunch break. Rows copied from
+                # a fixed calendar keep their actual duration instead of being
+                # reinterpreted as a whole daily unit by the MDL input helper.
+                attendance_commands = []
+                for command in vals['attendance_ids']:
+                    if command[0] == Command.CREATE:
+                        line_values = dict(command[2])
+                        if line_values.get('day_period') == 'lunch':
+                            continue
+                        line_values['mdl_day_input_method'] = 'hours'
+                        command = Command.create(line_values)
+                    attendance_commands.append(command)
+                vals['attendance_ids'] = attendance_commands
             if (schedule_type == 'shifts' or frequency == 'daily_duration') \
                     and 'attendance_ids' not in vals:
                 vals['attendance_ids'] = []
@@ -144,7 +146,37 @@ class ResourceCalendar(models.Model):
         return calendars
 
     def write(self, vals):
+        vals = dict(vals)
+        old_duration_based = {
+            calendar.id: calendar.duration_based for calendar in self
+        }
+        if 'mdl_schedule_frequency' in vals:
+            vals.update(self._mdl_native_schedule_values(
+                vals['mdl_schedule_frequency']
+            ))
         res = super().write(vals)
+        if 'mdl_schedule_frequency' in vals:
+            frequency = vals['mdl_schedule_frequency']
+            if frequency == 'daily_duration':
+                self.filtered(
+                    lambda calendar: not old_duration_based.get(calendar.id)
+                    and calendar.duration_based
+                ).attendance_ids.filtered(
+                    lambda line: line.day_period == 'lunch'
+                ).unlink()
+            elif frequency == 'fixed_intervals':
+                for calendar in self.filtered(
+                        lambda item: old_duration_based.get(item.id)
+                        and not item.duration_based
+                        and item.mdl_schedule_type == 'attendance'):
+                    # This is the same conversion used by Odoo's native
+                    # switch_based_on_duration() when returning to fixed hours.
+                    calendar.attendance_ids.unlink()
+                    calendar.attendance_ids = calendar._get_default_attendance_ids(
+                        calendar.company_id
+                    )
+                    if calendar.two_weeks_calendar:
+                        calendar.attendance_ids = calendar._get_two_weeks_attendance()
         if (MDL_SCHEDULE_TRIGGER_FIELDS & vals.keys()
                 and not self.env.context.get('mdl_skip_shift_line_sync')):
             # במעבר למכסה יומית יש להסיר שורות הפסקה — כמו במנגנון הסטנדרטי
@@ -155,11 +187,16 @@ class ResourceCalendar(models.Model):
             self._mdl_sync_shift_attendance_lines()
         return res
 
-    @api.onchange('mdl_schedule_type')
+    @api.onchange('mdl_schedule_type', 'mdl_schedule_frequency')
     def _onchange_mdl_schedule_type(self):
         # משמרות + שעות קבועות אינו שילוב חוקי (סעיף 11 באפיון).
         if self.mdl_schedule_type == 'shifts' and self.mdl_schedule_frequency == 'fixed_intervals':
             self.mdl_schedule_frequency = 'daily_duration'
+        # Update the real Odoo fields in the unsaved form as well. The list
+        # view modifiers use parent.duration_based and react immediately.
+        self.update(self._mdl_native_schedule_values(
+            self.mdl_schedule_frequency
+        ))
 
     @api.constrains('mdl_schedule_type', 'mdl_schedule_frequency',
                     'hours_per_week', 'hours_per_day')

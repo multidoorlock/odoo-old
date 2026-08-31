@@ -43,8 +43,10 @@
             <xpath expr="//field[@name='schedule_type']" position="before">
                 <field name="mdl_schedule_type" widget="radio" options="{'horizontal': true}"/>
                 <field name="mdl_schedule_frequency" widget="radio" options="{'horizontal': true}"/>
-                <label for="mdl_hours_per_day" invisible="mdl_schedule_type == 'shifts'"/>
-                <div class="d-flex" invisible="mdl_schedule_type == 'shifts'">
+                <label for="mdl_hours_per_day"
+                       invisible="mdl_schedule_type == 'shifts' or mdl_schedule_frequency == 'fixed_intervals'"/>
+                <div class="d-flex"
+                     invisible="mdl_schedule_type == 'shifts' or mdl_schedule_frequency == 'fixed_intervals'">
                     <field name="mdl_hours_per_day" widget="float_time" class="o_hr_narrow_field"/>
                     <span class="ms-2">שעות</span>
                 </div>
@@ -87,12 +89,21 @@
         <field name="inherit_id" ref="resource.view_resource_calendar_attendance_tree"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='duration_hours']" position="before">
-                <field name="mdl_day_input_method" column_invisible="not parent.duration_based"/>
-                <field name="mdl_daily_units" column_invisible="not parent.duration_based"
+                <field name="mdl_day_input_method"
+                       column_invisible="parent.mdl_schedule_frequency != 'daily_duration'"/>
+                <field name="mdl_daily_units"
+                       column_invisible="parent.mdl_schedule_frequency != 'daily_duration'"
                        invisible="mdl_day_input_method != 'daily_units'"/>
             </xpath>
             <xpath expr="//field[@name='duration_hours']" position="attributes">
+                <attribute name="column_invisible">parent.mdl_schedule_frequency != 'daily_duration'</attribute>
                 <attribute name="readonly">mdl_day_input_method == 'daily_units'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='hour_from']" position="attributes">
+                <attribute name="column_invisible">parent.mdl_schedule_frequency != 'fixed_intervals'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='hour_to']" position="attributes">
+                <attribute name="column_invisible">parent.mdl_schedule_frequency != 'fixed_intervals'</attribute>
             </xpath>
         </field>
     </record>

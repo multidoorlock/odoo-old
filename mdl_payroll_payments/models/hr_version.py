@@ -21,11 +21,10 @@ class HrVersion(models.Model):
     # ------------------------------------------------------------------
     # פרטים אישיים (סעיף "פרטים אישיים" באפיון חלק ב')
     # ------------------------------------------------------------------
-    il_employee_type = fields.Selection([
-        ('israeli', 'ישראלי'),
-        ('palestinian', 'פלסטיני'),
-        ('foreign', 'עובד זר'),
-    ], string='סוג עובד בישראל', default='israeli', tracking=True)
+    il_salary_structure_id = fields.Many2one(
+        'hr.payroll.structure', string='מבנה שכר', tracking=True,
+        domain="[('type_id', '=', structure_type_id)]")
+    il_is_israel_payroll = fields.Boolean(compute='_compute_il_is_israel_payroll')
     il_tax_credit_points = fields.Float(string='נקודות זיכוי במס', digits=(6, 2))
     il_primary_employer = fields.Boolean(string='מעסיק עיקרי לתשלומי שכר', default=True)
     il_tax_coordination = fields.Boolean(string='יש תיאום מס')
@@ -53,6 +52,51 @@ class HrVersion(models.Model):
     # פיקדון עובד זר — פעיל מתאריך תחילת ההסדר; כשהוא פעיל הוא מחליף את
     # הפרשות הפנסיה/פיצויים של המעסיק (ראו חוקי השכר).
     il_for_deposit_start_date = fields.Date(string='תאריך תחילת הסדר פיקדון')
+
+    @api.depends('structure_type_id')
+    def _compute_il_is_israel_payroll(self):
+        types = self.env['hr.payroll.structure.type'].search([('country_id.code', '=', 'IL')])
+        for version in self:
+            version.il_is_israel_payroll = version.structure_type_id in types
+
+    @api.onchange('structure_type_id')
+    def _onchange_il_salary_structure(self):
+        for version in self:
+            version.il_salary_structure_id = version.structure_type_id.default_struct_id
+            if version.structure_type_id.country_id.code == 'IL':
+                version.schedule_pay = 'monthly'
+                version.mdl_wage_type = (
+                    'mdl_monthly' if version.structure_type_id.wage_type == 'monthly'
+                    else 'mdl_daily')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            structure_type = self.env['hr.payroll.structure.type'].browse(
+                vals.get('structure_type_id'))
+            if structure_type.country_id.code == 'IL':
+                vals['schedule_pay'] = 'monthly'
+                vals.setdefault('il_salary_structure_id', structure_type.default_struct_id.id)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        structure_type = self.env['hr.payroll.structure.type'].browse(
+            vals.get('structure_type_id')) if vals.get('structure_type_id') else False
+        if structure_type and structure_type.country_id.code == 'IL':
+            vals['schedule_pay'] = 'monthly'
+            vals.setdefault('il_salary_structure_id', structure_type.default_struct_id.id)
+        elif 'schedule_pay' in vals and any(version.il_is_israel_payroll for version in self):
+            vals['schedule_pay'] = 'monthly'
+        return super().write(vals)
+
+    @api.constrains('structure_type_id', 'il_salary_structure_id', 'schedule_pay')
+    def _check_il_salary_structure(self):
+        for version in self:
+            if version.il_salary_structure_id and \
+                    version.il_salary_structure_id.type_id != version.structure_type_id:
+                raise ValidationError('מבנה השכר חייב להשתייך לקטגוריית השכר שנבחרה.')
+            if version.il_is_israel_payroll and version.schedule_pay != 'monthly':
+                raise ValidationError('מחזור התשלום בישראל חייב להיות חודשי.')
 
     @api.constrains('il_tax_coordination', 'il_tax_coordination_valid_from',
                     'il_tax_coordination_valid_until')
@@ -91,7 +135,7 @@ class HrVersion(models.Model):
     @api.model
     def _get_whitelist_fields_from_template(self):
         return super()._get_whitelist_fields_from_template() + [
-            'il_employee_type', 'il_tax_credit_points', 'il_primary_employer',
+            'il_salary_structure_id', 'il_tax_credit_points', 'il_primary_employer',
             'il_tax_coordination', 'il_tax_coordination_valid_from',
             'il_tax_coordination_valid_until',
             'il_pension_enabled', 'il_pension_start_date',

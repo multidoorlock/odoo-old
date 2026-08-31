@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_payslip_payment_draw_wizard_form" model="ir.ui.view">
+        <field name="name">hr.payslip.payment.draw.wizard.form</field>
+        <field name="model">hr.payslip.payment.draw.wizard</field>
+        <field name="arch" type="xml">
+            <form string="משיכת תשלומים פתוחים">
+                <field name="payslip_id"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="line_ids" nolabel="1">
+                    <list editable="bottom" create="0" delete="0">
+                        <field name="payment_id"/>
+                        <field name="payment_amount" sum="סה״כ"/>
+                        <field name="applied_amount" sum="קוזז"/>
+                        <field name="remaining_amount" sum="נותר"/>
+                        <field name="amount_to_draw" sum="למשיכה"/>
+                        <field name="currency_id" column_invisible="1"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_apply" type="object" string="משוך וחשב תלוש" class="btn-primary"/>
+                    <button string="ביטול" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

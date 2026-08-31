@@ -201,7 +201,8 @@ class HrVersion(models.Model):
                     day_vals, make_vals, day, day_attendances, is_weekend,
                     frequency, monthly_worker, company, tz,
                     scheduled_by_day, leave_by_day, today_local,
-                    quota_shifts, consumed_shifts, category_types, type_sleep, type_absence)
+                    quota_shifts, consumed_shifts, category_types, type_sleep,
+                    type_overtime, type_absence, rounded_overtime)
             else:
                 consumed_hours = self._mdl_process_regular_day(
                     day_vals, make_vals, day, day_attendances, is_weekend,
@@ -220,10 +221,10 @@ class HrVersion(models.Model):
                                  scheduled_by_day, leave_by_day, today_local,
                                  quota_hours, consumed_hours, category_types,
                                  type_overtime, type_absence, rounded_overtime):
+        # Segmentation is the canonical source of effective work.  Presence
+        # may include sleep/break windows and must never feed quota/overtime.
         actual_hours = sum(
-            (attendance.check_out - attendance.check_in).total_seconds()
-            for attendance in (day_attendances or [])
-        ) / 3600
+            attendance.worked_hours for attendance in (day_attendances or []))
         scheduled_hours = scheduled_by_day.get(day, 0.0)
 
         # סיווג היום: סוף שבוע > יום נוסף > יום רגיל (סעיף 21 באפיון).
@@ -288,7 +289,8 @@ class HrVersion(models.Model):
                                is_weekend, frequency, monthly_worker, company, tz,
                                scheduled_by_day, leave_by_day, today_local,
                                quota_shifts, consumed_shifts, category_types,
-                               type_sleep, type_absence):
+                               type_sleep, type_overtime, type_absence,
+                               rounded_overtime):
         cutoff = company.mdl_shift_cutoff
         paid_hours = company.mdl_shift_paid_hours
         sleep_hours = company.mdl_shift_sleep_hours
@@ -308,10 +310,11 @@ class HrVersion(models.Model):
                 buckets.append(('evening', evening))
 
         for shift_type, shift_attendances in buckets:
-            actual_hours = sum(
-                (attendance.check_out - attendance.check_in).total_seconds()
+            actual_hours = sum(attendance.worked_hours for attendance in shift_attendances)
+            non_work_hours = sum(
+                max(attendance.presence_hours - attendance.worked_hours, 0.0)
                 for attendance in shift_attendances
-            ) / 3600
+            )
             if is_weekend:
                 category = 'weekend'
             elif frequency == 'daily_duration':
@@ -329,7 +332,12 @@ class HrVersion(models.Model):
             day_vals.append(make_vals(
                 day, category_types[category], paid_hours, category,
                 shift_type, 'shift', shift_attendances, actual_hours))
-            if shift_type == 'evening' and sleep_hours > 0:
+            overtime_hours = rounded_overtime(actual_hours - paid_hours)
+            if overtime_hours:
+                day_vals.append(make_vals(
+                    day, type_overtime, overtime_hours, category,
+                    shift_type, 'overtime_threshold', shift_attendances, actual_hours))
+            if shift_type == 'evening' and sleep_hours > 0 and non_work_hours > 0:
                 day_vals.append(make_vals(
                     day, type_sleep, sleep_hours, category,
                     'evening', 'sleep', shift_attendances, actual_hours))

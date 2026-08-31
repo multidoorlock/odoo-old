@@ -28,9 +28,10 @@
               action="action_il_salary_adjustment"
               sequence="20"/>
 
-    <menuitem id="menu_il_cycles_list"
-              name="מחזורים והוראות"
-              parent="menu_il_payments_root"
-              action="action_hr_payroll_cycle"
-              sequence="30"/>
+    <!-- Keep the former XML id only to deactivate it on upgraded databases. -->
+    <record id="menu_il_cycles_list" model="ir.ui.menu">
+        <field name="name">מחזורים והוראות</field>
+        <field name="active" eval="False"/>
+    </record>
+
 </odoo>

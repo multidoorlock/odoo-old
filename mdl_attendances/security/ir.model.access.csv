@@ -1,2 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_mdl_attendance_shift_weekday_hr_user,mdl.attendance.shift.weekday.hr.user,model_mdl_attendance_shift_weekday,hr.group_hr_user,1,1,1,1
+access_segment_ruleset_manager,attendance.segment.ruleset.manager,model_hr_attendance_segment_ruleset,hr_attendance.group_hr_attendance_manager,1,1,1,1
+access_segment_rule_manager,attendance.segment.rule.manager,model_hr_attendance_segment_rule,hr_attendance.group_hr_attendance_manager,1,1,1,1
+access_attendance_segment_user,attendance.segment.user,model_hr_attendance_segment,hr_attendance.group_hr_attendance_user,1,1,1,0
+access_attendance_segment_manager,attendance.segment.manager,model_hr_attendance_segment,hr_attendance.group_hr_attendance_manager,1,1,1,1

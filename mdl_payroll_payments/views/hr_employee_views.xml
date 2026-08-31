@@ -7,10 +7,20 @@
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
+            <field name="structure_type_id" position="after">
+                <field name="il_salary_structure_id"
+                       domain="[('type_id', '=', structure_type_id)]"
+                       invisible="not il_is_israel_payroll"
+                       required="il_is_israel_payroll"/>
+                <field name="il_is_israel_payroll" invisible="1"/>
+            </field>
+            <field name="schedule_pay" position="attributes">
+                <attribute name="readonly">il_is_israel_payroll</attribute>
+                <attribute name="force_save">1</attribute>
+            </field>
             <group name="payroll_group" position="after">
-                <group>
+                <group invisible="not il_is_israel_payroll">
                     <group string="פרטים אישיים לשכר" name="il_personal">
-                        <field name="il_employee_type"/>
                         <field name="il_tax_credit_points"/>
                         <field name="il_primary_employer"/>
                         <field name="il_tax_coordination"/>
@@ -18,12 +28,8 @@
                                invisible="not il_tax_coordination"/>
                         <field name="il_tax_coordination_valid_until"
                                invisible="not il_tax_coordination"/>
-                        <field name="il_employment_sector"
-                               invisible="il_employee_type == 'israeli'"/>
-                        <field name="il_pal_organization_tax"
-                               invisible="il_employee_type != 'palestinian'"/>
-                        <field name="il_for_deposit_start_date"
-                               invisible="il_employee_type != 'foreign'"/>
+                        <field name="il_employment_sector"/>
+                        <field name="il_pal_organization_tax"/>
                     </group>
                     <group string="הפרשות סוציאליות" name="il_social">
                         <field name="il_pension_enabled"/>
@@ -37,17 +43,6 @@
                     </group>
                 </group>
             </group>
-            <page name="payroll_information" position="after">
-                <page name="il_payment_cycles" string="מחזורי תשלומים" groups="hr_payroll.group_hr_payroll_user">
-                    <field name="il_payment_cycle_setting_ids">
-                        <list editable="bottom" create="false" delete="false">
-                            <field name="cycle_type" readonly="1"/>
-                            <field name="enabled"/>
-                            <field name="amount" readonly="not enabled"/>
-                        </list>
-                    </field>
-                </page>
-            </page>
         </field>
     </record>
 </odoo>

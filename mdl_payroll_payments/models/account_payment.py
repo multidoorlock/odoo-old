@@ -6,30 +6,38 @@ from odoo.exceptions import ValidationError
 class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
-    # התלוש הראשי שאליו קושר התשלום (סעיפים 11–13 באפיון).
-    payslip_id = fields.Many2one(
-        'hr.payslip', string='תלוש שכר', index=True, copy=False, tracking=True)
-    # "Payment זה נוצר במחזור X" — תיעוד בלבד, ללא קשר להתאמת שכר.
-    payroll_cycle_id = fields.Many2one(
-        'hr.payroll.cycle', string='נוצר במחזור', index=True, copy=False, readonly=True)
-    payslip_allocation_ids = fields.One2many(
-        'account.payment.payslip.allocation', 'payment_id', string='הקצאות לתלושים')
-    # לתצוגה בלבד — אזהרת תשלום-ביתר בזמן טיוטה (לפני שהתשלום הזה עצמו
-    # נכלל בחישוב הנטו-לתשלום של התלוש המקושר).
-    il_payslip_net_to_pay = fields.Monetary(
-        related='payslip_id.il_net_amount_to_pay', string='נטו לתשלום בתלוש')
-    # store=True: נדרש כדי לשמש ב-Domain של פעולת התפריט "תשלומי עובדים"
-    # (שדה compute לא מאוחסן אינו ניתן לשימוש בחיפוש/Domain ב-SQL).
+    il_spread_type = fields.Selection([
+        ('planned', 'פריסה מתוכננת'),
+        ('per_payslip', 'פריסה לפי תלוש'),
+        ('none', 'פריסה מיידית'),
+    ], string='אופן פריסת התשלום', default='none', required=True, tracking=True)
+    il_split_line_ids = fields.One2many(
+        'account.payment.split.line', 'payment_id', string='פריסת תשלום', copy=True)
+    il_applied_amount = fields.Monetary(
+        string='סכום שקוזז', compute='_compute_il_spread_amounts', store=True)
+    il_remaining_amount = fields.Monetary(
+        string='יתר למשיכה', compute='_compute_il_spread_amounts', store=True)
+    il_planned_amount = fields.Monetary(
+        string='סכום מתוכנן', compute='_compute_il_spread_amounts', store=True)
     il_is_employee_payment = fields.Boolean(
         string='תשלום לעובד', compute='_compute_il_is_employee_payment', store=True)
+    il_currency_rounding = fields.Float(
+        related='currency_id.rounding', readonly=True)
 
     @api.depends('partner_id', 'company_id')
     def _compute_il_is_employee_payment(self):
         for payment in self:
-            payment.il_is_employee_payment = payment._il_is_employee_payment()
+            payment.il_is_employee_payment = bool(payment._il_employee())
+
+    @api.depends('amount', 'il_split_line_ids.amount', 'il_split_line_ids.payslip_id')
+    def _compute_il_spread_amounts(self):
+        for payment in self:
+            payment.il_planned_amount = sum(payment.il_split_line_ids.mapped('amount'))
+            payment.il_applied_amount = sum(
+                payment.il_split_line_ids.filtered('payslip_id').mapped('amount'))
+            payment.il_remaining_amount = payment.amount - payment.il_applied_amount
 
     def _il_employee(self):
-        """The employee behind this payment's partner (same company), or empty."""
         self.ensure_one()
         if not self.partner_id:
             return self.env['hr.employee']
@@ -38,55 +46,108 @@ class AccountPayment(models.Model):
             ('company_id', '=', self.company_id.id),
         ], limit=1)
 
-    def _il_is_employee_payment(self):
-        self.ensure_one()
-        return bool(self._il_employee())
-
     def _il_is_open_employee_payment(self):
-        """Open Employee Payment — ההגדרה המדויקת מסעיף 14 באפיון."""
         self.ensure_one()
-        return (
-            self._il_is_employee_payment()
-            and not self.payslip_id
+        return bool(
+            self._il_employee()
             and self.payment_type == 'outbound'
-            and self.state in ('in_process', 'paid'))
+            and self.state not in ('draft', 'canceled')
+            and self.currency_id.compare_amounts(self.il_remaining_amount, 0.0) > 0
+        )
 
-    # ------------------------------------------------------------------
-    # אכיפות Server Side (סעיפים 4, 12, 78 באפיון)
-    # ------------------------------------------------------------------
-    @api.constrains('payslip_id', 'partner_id', 'company_id', 'payment_type')
-    def _check_il_payslip_link(self):
-        for payment in self:
-            if not payment.payslip_id:
-                continue
-            employee = payment._il_employee()
-            if not employee:
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('il_spread_type', 'none') == 'per_payslip' and \
+                    vals.get('il_split_line_ids'):
                 raise ValidationError(
-                    'רק תשלום של עובד (Partner המקושר לעובד) יכול להיות מקושר לתלוש שכר.')
-            if payment.payment_type != 'outbound':
-                raise ValidationError('רק תשלום יוצא יכול להיות מקושר לתלוש שכר.')
-            slip = payment.payslip_id
-            if slip.employee_id.work_contact_id != payment.partner_id:
-                raise ValidationError(
-                    'אסור לקשר תשלום של עובד אחד לתלוש של עובד אחר.')
-            if slip.company_id != payment.company_id:
-                raise ValidationError('התלוש והתשלום חייבים להיות באותה חברה.')
+                    'בפריסה לפי תלוש רק התלוש רשאי ליצור שורות משיכה.')
+        payments = super(AccountPayment, self.with_context(
+            il_skip_spread_total_check=True,
+            il_system_split_create=True)).create(vals_list)
+        Split = self.env['account.payment.split.line']
+        for payment in payments.filtered(
+                lambda p: p._il_employee() and p.il_spread_type == 'none'
+                and not p.il_split_line_ids):
+            payslip_id = self.env.context.get('il_origin_payslip_id')
+            Split.with_context(il_system_split_create=True).create({
+                'payment_id': payment.id,
+                'sequence': 1,
+                'amount': payment.amount,
+                'payslip_id': payslip_id,
+            })
+        for payment in payments.filtered(
+                lambda p: p._il_employee() and p.il_spread_type == 'none'
+                and p.il_split_line_ids):
+            payment.il_split_line_ids[:1].with_context(
+                il_sync_from_payment=True,
+                il_skip_spread_total_check=True).amount = payment.amount
+        payments._check_il_spread_complete()
+        return payments
 
-    @api.constrains('payroll_cycle_id', 'partner_id', 'company_id')
-    def _check_il_cycle_link(self):
-        for payment in self:
-            if not payment.payroll_cycle_id:
-                continue
-            if not payment._il_is_employee_payment():
-                raise ValidationError(
-                    'רק תשלום של עובד יכול להיות מקושר למחזור תשלומים.')
-            if payment.payroll_cycle_id.company_id != payment.company_id:
-                raise ValidationError('המחזור והתשלום חייבים להיות באותה חברה.')
+    def write(self, vals):
+        old_types = {payment.id: payment.il_spread_type for payment in self}
+        target = self.with_context(il_skip_spread_total_check=True) \
+            if 'il_split_line_ids' in vals else self
+        result = super(AccountPayment, target).write(vals)
+        Split = self.env['account.payment.split.line']
+        for payment in self.filtered(lambda p: p._il_employee()):
+            if 'il_spread_type' in vals and old_types[payment.id] != payment.il_spread_type:
+                if payment.il_split_line_ids.filtered('payslip_id'):
+                    raise ValidationError(
+                        'לא ניתן לשנות את אופן הפריסה לאחר שקוזז סכום בתלוש.')
+                payment.il_split_line_ids.with_context(il_system_split_unlink=True).unlink()
+                if payment.il_spread_type == 'none':
+                    Split.with_context(il_system_split_create=True).create({
+                        'payment_id': payment.id, 'sequence': 1, 'amount': payment.amount})
+            elif ('amount' in vals and payment.il_spread_type == 'none'
+                    and not self.env.context.get('il_sync_from_line')):
+                line = payment.il_split_line_ids[:1]
+                if line:
+                    line.with_context(il_sync_from_payment=True).amount = payment.amount
+                else:
+                    Split.with_context(il_system_split_create=True).create({
+                        'payment_id': payment.id, 'sequence': 1, 'amount': payment.amount})
+        if 'amount' in vals or 'il_split_line_ids' in vals:
+            self._check_il_spread_complete()
+        return result
 
-    @api.constrains('amount', 'payslip_allocation_ids')
-    def _check_il_allocation_total(self):
+    @api.constrains('amount', 'il_applied_amount', 'il_remaining_amount')
+    def _check_il_remaining_amount(self):
         for payment in self:
-            allocated = sum(payment.payslip_allocation_ids.mapped('amount'))
-            if payment.currency_id.compare_amounts(allocated, payment.amount) > 0:
+            if payment.currency_id.compare_amounts(payment.il_remaining_amount, 0.0) < 0:
+                raise ValidationError('אסור למשוך מתשלום סכום הגבוה מסכום התשלום.')
+            if payment.currency_id.compare_amounts(
+                    payment.il_remaining_amount, payment.amount) > 0:
+                raise ValidationError('יתרת המשיכה אינה יכולה להיות גבוהה מסכום התשלום.')
+
+    def _check_il_spread_complete(self):
+        for payment in self.filtered(lambda p: p._il_employee()):
+            if payment.il_spread_type in ('planned', 'none') and \
+                    payment.currency_id.compare_amounts(
+                        payment.il_planned_amount, payment.amount):
                 raise ValidationError(
-                    'סך ההקצאות לתלושים אינו יכול לעלות על סכום התשלום.')
+                    'בפריסה מתוכננת או בפריסה מיידית, סכום השורות חייב להיות שווה לסכום התשלום.')
+            if payment.il_spread_type == 'none' and len(payment.il_split_line_ids) != 1:
+                raise ValidationError('במצב פריסה מיידית חייבת להיות שורת פריסה אחת בדיוק.')
+            if payment.il_spread_type == 'planned':
+                sequences = sorted(payment.il_split_line_ids.mapped('sequence'))
+                if sequences != list(range(1, len(sequences) + 1)):
+                    raise ValidationError('מספרי הפעימות חייבים להיות רציפים ולהתחיל ב־1.')
+
+    def action_post(self):
+        self._check_il_spread_complete()
+        return super().action_post()
+
+    def _il_resequence_split_lines(self):
+        for payment in self:
+            ordered = payment.il_split_line_ids.sorted(lambda line: (line.sequence, line.id))
+            # Temporary values avoid unique(payment, sequence) collisions.
+            for offset, line in enumerate(ordered, 1):
+                line.with_context(
+                    il_system_resequence=True,
+                    il_skip_spread_total_check=True).sequence = 1000000 + offset
+            for sequence, line in enumerate(ordered, 1):
+                line.with_context(
+                    il_system_resequence=True,
+                    il_skip_spread_total_check=True).sequence = sequence

@@ -21,6 +21,26 @@ IL_INPUT_SNAPSHOT_FIELDS = [
 class HrPayslip(models.Model):
     _inherit = 'hr.payslip'
 
+    state_display = fields.Selection(
+        selection_add=[('overpayment', 'תשלום יתר')],
+        ondelete={'overpayment': 'set null'},
+    )
+
+    @api.depends('version_id', 'version_id.il_salary_structure_id')
+    def _compute_struct_id(self):
+        super()._compute_struct_id()
+        for slip in self.filtered(lambda item: item.version_id.il_salary_structure_id):
+            slip.struct_id = slip.version_id.il_salary_structure_id
+
+    def _il_worker_profile(self):
+        self.ensure_one()
+        code = self.struct_id.code or ''
+        if code.startswith('IL_PAL_'):
+            return 'palestinian'
+        if code.startswith('IL_ISR_'):
+            return 'israeli'
+        return False
+
     # ------------------------------------------------------------------
     # שדות תשלום (סעיף 20 באפיון). הקידומת il_ נדרשת כי paid_amount הוא
     # property קיים של hr.payslip (סכום ימי העבודה) — התנגשות שמות.
@@ -29,103 +49,97 @@ class HrPayslip(models.Model):
         string='סכום ששולם', compute='_compute_il_payment_amounts')
     il_net_amount_to_pay = fields.Monetary(
         string='יתרת נטו לתשלום', compute='_compute_il_payment_amounts')
-    il_overpayment_balance = fields.Monetary(
-        string='יתרת תשלום יתר', compute='_compute_il_payment_amounts')
     il_payment_count = fields.Integer(
         string='מספר תשלומים', compute='_compute_il_payment_amounts')
 
-    # שדות היפוך (reverse One2many) — נחוצים כדי ש-@api.depends יוכל לעקוב
-    # אחר שינויים ב-account.payment / בהקצאות ולבטל את תוקף החישוב, שכן
-    # Odoo אינו יכול לעקוב אחר Search-ים חופשיים בתוך פונקציית compute.
-    il_main_payment_ids = fields.One2many(
-        'account.payment', 'payslip_id', string='תשלומים ראשיים')
-    il_incoming_allocation_ids = fields.One2many(
-        'account.payment.payslip.allocation', 'payslip_id', string='הקצאות נכנסות')
+    # Reverse relation to the unified split table, used by computed totals.
+    il_split_line_ids = fields.One2many(
+        'account.payment.split.line', 'payslip_id', string='שורות תשלום')
 
     # ------------------------------------------------------------------
-    # חישוב הסכום ששולם:
-    #   paid = (סכומי Payments שהתלוש הוא הראשי שלהם, בניכוי ההקצאות
-    #           היוצאות מהם) + הקצאות נכנסות. רק תשלומים במצב מבוצע.
+    # Applied amount is exactly the sum of split lines linked to this payslip.
     # ------------------------------------------------------------------
-    @api.depends('net_wage',
-                 'il_main_payment_ids.amount', 'il_main_payment_ids.state',
-                 'il_main_payment_ids.payslip_allocation_ids.amount',
-                 'il_incoming_allocation_ids.amount',
-                 'il_incoming_allocation_ids.payment_id.state')
+    @api.depends('net_wage', 'line_ids.total', 'line_ids.code',
+                 'il_split_line_ids.amount', 'il_split_line_ids.payment_id')
     def _compute_il_payment_amounts(self):
         for slip in self:
-            paid = 0.0
-            payments = self.env['account.payment']
-            for payment in slip.il_main_payment_ids:
-                if payment.state not in IL_EFFECTIVE_PAYMENT_STATES:
-                    continue
-                paid += payment.amount - sum(payment.payslip_allocation_ids.mapped('amount'))
-                payments |= payment
-            for allocation in slip.il_incoming_allocation_ids:
-                if allocation.payment_id.state not in IL_EFFECTIVE_PAYMENT_STATES:
-                    continue
-                paid += allocation.amount
-                payments |= allocation.payment_id
-            net = slip.net_wage
+            paid = sum(slip.il_split_line_ids.mapped('amount'))
+            payments = slip.il_split_line_ids.mapped('payment_id')
             slip.il_paid_amount = paid
-            slip.il_net_amount_to_pay = max(net - paid, 0.0)
-            slip.il_overpayment_balance = max(paid - net, 0.0)
+            net_to_pay_lines = slip.line_ids.filtered(lambda line: line.code == 'IL_NET_TO_PAY')
+            calculated = sum(net_to_pay_lines.mapped('total')) if net_to_pay_lines \
+                else slip.net_wage - paid
+            slip.il_net_amount_to_pay = calculated
             slip.il_payment_count = len(payments)
 
-    def _il_affecting_payments(self):
-        """All payments affecting this payslip (main or through allocation),
-        each counted once, regardless of state (history included)."""
-        self.ensure_one()
-        main = self.env['account.payment'].search([('payslip_id', '=', self.id)])
-        allocated = self.env['account.payment.payslip.allocation'].search(
-            [('payslip_id', '=', self.id)]).payment_id
-        return main | allocated
+    @api.depends('error_count', 'warning_count', 'state', 'il_net_amount_to_pay', 'currency_id')
+    def _compute_state_display(self):
+        super()._compute_state_display()
+        for slip in self:
+            # On a new payslip the web client may request state_display before
+            # employee/company onchange has populated currency_id.
+            currency = (
+                slip.currency_id
+                or slip.company_id.currency_id
+                or self.env.company.currency_id
+            )
+            is_negative = (
+                currency.compare_amounts(slip.il_net_amount_to_pay, 0.0) < 0
+                if currency else slip.il_net_amount_to_pay < 0.0
+            )
+            if is_negative:
+                slip.state_display = 'overpayment'
 
-    # ------------------------------------------------------------------
-    # קישור תשלומים פתוחים בעת אישור התלוש (סעיפים 14–17 באפיון)
-    # ------------------------------------------------------------------
-    def _link_open_employee_payments(self):
+    def _il_affecting_payments(self):
+        """Direct payments linked to this payslip, including their history."""
+        self.ensure_one()
+        return self.il_split_line_ids.mapped('payment_id')
+
+    def _il_applied_payment_amount(self):
+        self.ensure_one()
+        return sum(self.il_split_line_ids.mapped('amount'))
+
+    def _il_attach_automatic_split_lines(self):
+        """Link existing planned/no-spread instalments before Compute Sheet."""
+        Split = self.env['account.payment.split.line']
         for slip in self:
             partner = slip.employee_id.work_contact_id
             if not partner:
                 continue
-            open_payments = self.env['account.payment'].search([
+            available = max(
+                slip._il_compute_net_total() - slip._il_applied_payment_amount(), 0.0)
+            payments = self.env['account.payment'].search([
                 ('partner_id', '=', partner.id),
-                ('payslip_id', '=', False),
-                ('payment_type', '=', 'outbound'),
-                ('state', 'in', IL_EFFECTIVE_PAYMENT_STATES),
                 ('company_id', '=', slip.company_id.id),
-            ])
-            # אין עוצרים לפי סכום — כל התשלומים הפתוחים נקשרים (סעיף 17).
-            open_payments.write({'payslip_id': slip.id})
-
-    def action_payslip_done(self):
-        res = super().action_payslip_done()
-        self._link_open_employee_payments()
-        # פתיחת אשף סגירת תשלום יתר — רק באישור תלוש בודד, כשיש יתרה
-        # לתשלום ותלושים אחרים של אותו עובד עם תשלום יתר (סעיף 37).
-        if len(self) == 1 and self.il_net_amount_to_pay > 0:
-            candidates = self.env['hr.payslip'].search([
-                ('employee_id', '=', self.employee_id.id),
-                ('company_id', '=', self.company_id.id),
-                ('id', '!=', self.id),
-                ('state', 'in', ('validated', 'paid')),
-            ]).filtered(lambda s: s.il_overpayment_balance > 0)
-            if candidates:
-                wizard = self.env['hr.payslip.overpayment.close.wizard'].create({
-                    'target_payslip_id': self.id,
-                })
-                wizard._populate_lines()
-                if wizard.line_ids:
-                    return {
-                        'type': 'ir.actions.act_window',
-                        'name': 'סגירת תשלום יתר',
-                        'res_model': 'hr.payslip.overpayment.close.wizard',
-                        'res_id': wizard.id,
-                        'view_mode': 'form',
-                        'target': 'new',
-                    }
-        return res
+                ('payment_type', '=', 'outbound'),
+                ('state', 'not in', ('draft', 'canceled')),
+                ('date', '<=', slip.date_to),
+                ('il_spread_type', 'in', ('planned', 'none')),
+                ('il_remaining_amount', '>', 0),
+            ], order='date, id')
+            for payment in payments:
+                if payment.il_split_line_ids.filtered(
+                        lambda existing: existing.payslip_id == slip):
+                    continue
+                line = Split.search([
+                    ('payment_id', '=', payment.id),
+                    ('payslip_id', '=', False),
+                ], order='sequence, id', limit=1)
+                if not line:
+                    continue
+                currency = (
+                    slip.currency_id
+                    or slip.company_id.currency_id
+                    or self.env.company.currency_id
+                )
+                exceeds_available = (
+                    currency.compare_amounts(line.amount, available) > 0
+                    if currency else line.amount > available
+                )
+                if exceeds_available:
+                    continue
+                line.payslip_id = slip
+                available -= line.amount
 
     # ------------------------------------------------------------------
     # כפתור "שלם" (סעיפים 18–19 באפיון)
@@ -143,11 +157,13 @@ class HrPayslip(models.Model):
             'target': 'current',
             'context': {
                 'default_partner_id': partner.id,
-                'default_payslip_id': self.id,
                 'default_payment_type': 'outbound',
                 'default_partner_type': 'supplier',
                 'default_amount': self.il_net_amount_to_pay,
+                'default_il_spread_type': 'none',
                 'il_employee_payment': True,
+                'il_origin_payslip_id': self.id,
+                'il_lock_immediate_spread': True,
             },
         }
 
@@ -161,6 +177,32 @@ class HrPayslip(models.Model):
             'view_mode': 'list,form',
             'domain': [('id', 'in', payments.ids)],
             'context': {'il_employee_payment': True},
+        }
+
+    def action_il_draw_open_payments(self):
+        self.ensure_one()
+        payments = self.env['account.payment'].search([
+            ('partner_id', '=', self.employee_id.work_contact_id.id),
+            ('company_id', '=', self.company_id.id),
+            ('payment_type', '=', 'outbound'),
+            ('state', 'not in', ('draft', 'canceled')),
+            ('il_spread_type', '=', 'per_payslip'),
+            ('il_remaining_amount', '>', 0),
+        ], order='date, id')
+        payments = payments.filtered(
+            lambda payment: not payment.il_split_line_ids.filtered(
+                lambda line: line.payslip_id == self))
+        wizard = self.env['hr.payslip.payment.draw.wizard'].create({
+            'payslip_id': self.id,
+            'line_ids': [Command.create({'payment_id': payment.id}) for payment in payments],
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'משיכת תשלומים פתוחים',
+            'res_model': 'hr.payslip.payment.draw.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
         }
 
     # ------------------------------------------------------------------
@@ -340,6 +382,7 @@ class HrPayslip(models.Model):
     def compute_sheet(self):
         draft_slips = self.filtered(lambda s: s.state == 'draft')
         draft_slips._il_run_gross_up_engine()
+        draft_slips._il_attach_automatic_split_lines()
         return super().compute_sheet()
 
     # ==================================================================
@@ -353,7 +396,11 @@ class HrPayslip(models.Model):
     def _il_worked_days_units(self, code):
         """Day units of a worked-days code (hours / unit-day hours)."""
         self.ensure_one()
-        hours_per_day = self.version_id.mdl_standard_day_hours
+        hours_per_day = (
+            self.company_id.mdl_shift_paid_hours
+            if self.version_id.resource_calendar_id.mdl_schedule_type == 'shifts'
+            else self.version_id.mdl_standard_day_hours
+        )
         if not hours_per_day:
             return 0.0
         return self._il_worked_days_hours(code) / hours_per_day
@@ -363,7 +410,9 @@ class HrPayslip(models.Model):
         daily worker — regular worked hours at the hourly rate."""
         self.ensure_one()
         version = self.version_id
-        if version.mdl_wage_type == 'mdl_daily' or version.wage_type == 'hourly':
+        if version.mdl_wage_type == 'mdl_daily':
+            return self._il_worked_days_units('WORK100') * version.mdl_daily_wage
+        if version.wage_type == 'hourly':
             return self._il_worked_days_hours('WORK100') * version.hourly_wage
         wage = version.wage
         absence_days = self._il_worked_days_units('UNPAID_ABSENCE')
@@ -375,14 +424,42 @@ class HrPayslip(models.Model):
 
     def _il_overtime_amount(self):
         self.ensure_one()
+        overtime_worked_days = self.worked_days_line_ids.filtered(
+            lambda worked_day: worked_day.code == 'OVERTIME')
+        normal_odoo_amount = sum(overtime_worked_days.mapped('amount'))
+
+        fixed_overtime_lines = self.env['hr.attendance.overtime.line'].search([
+            ('employee_id', '=', self.employee_id.id),
+            ('date', '>=', self.date_from),
+            ('date', '<=', self.date_to),
+            ('status', '=', 'approved'),
+            ('manual_duration', '>', 0),
+            ('mdl_fixed_hourly_amount', '>', 0),
+        ])
+        if not fixed_overtime_lines:
+            return normal_odoo_amount
+
         version = self.version_id
-        hours = self._il_worked_days_hours('OVERTIME')
-        if not hours:
-            return 0.0
-        if version.mdl_overtime_wage_type == 'fixed':
-            return hours * version.mdl_overtime_fixed_wage
-        percentage = version.mdl_overtime_percentage or 100.0
-        return hours * version.hourly_wage * percentage / 100.0
+        if self.wage_type == 'hourly':
+            hourly_rate = version.hourly_wage
+        else:
+            attendance_hours = sum(
+                worked_day.number_of_hours
+                for worked_day in self.worked_days_line_ids
+                if not worked_day.work_entry_type_id.is_extra_hours
+            ) or 1.0
+            hourly_rate = version.contract_wage / attendance_hours
+
+        fixed_adjustment = 0.0
+        for overtime in fixed_overtime_lines:
+            native_rate = overtime.work_entry_type_overtime_id.amount_rate
+            native_amount = overtime.manual_duration * hourly_rate * native_rate
+            rule_amount = overtime.manual_duration * (
+                overtime.mdl_fixed_hourly_amount
+                + hourly_rate * overtime.amount_rate
+            )
+            fixed_adjustment += rule_amount - native_amount
+        return normal_odoo_amount + fixed_adjustment
 
     def _il_weekend_amount(self):
         """Gross-rate weekend pay. NET-rate weekend is paid through the
@@ -485,7 +562,8 @@ class HrPayslip(models.Model):
             (self._rule_parameter('IL_TAX_BRACKET_3_LIMIT'), self._rule_parameter('IL_TAX_BRACKET_3_RATE')),
             (self._rule_parameter('IL_TAX_BRACKET_4_LIMIT'), self._rule_parameter('IL_TAX_BRACKET_4_RATE')),
             (self._rule_parameter('IL_TAX_BRACKET_5_LIMIT'), self._rule_parameter('IL_TAX_BRACKET_5_RATE')),
-            (None, self._rule_parameter('IL_TAX_BRACKET_6_RATE')),
+            (self._rule_parameter('IL_TAX_BRACKET_6_LIMIT'), self._rule_parameter('IL_TAX_BRACKET_6_RATE')),
+            (None, self._rule_parameter('IL_TAX_BRACKET_7_RATE')),
         ]
         tax = 0.0
         previous_limit = 0.0
@@ -554,12 +632,7 @@ class HrPayslip(models.Model):
         """פיקדון עובד זר פעיל — מתאריך תחילת ההסדר, כאשר לא מופרשת פנסיה."""
         self.ensure_one()
         version = self.version_id
-        return bool(
-            version.il_employee_type == 'foreign'
-            and version.il_for_deposit_start_date
-            and version.il_for_deposit_start_date <= self.date_to
-            and version.il_employment_sector
-            and not version.il_pension_enabled)
+        return False
 
     def _il_sector_parameter(self, template, fallback_code=None):
         """Parameter resolved by employment sector, e.g. template

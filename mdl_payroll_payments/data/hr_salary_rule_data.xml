@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="0">
 
@@ -179,7 +179,7 @@
             <field name="sequence">106</field>
             <field name="appears_on_payslip">False</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + payslip._il_inputs_base('il_equalization_levy_applicable')</field>
         </record>
@@ -195,7 +195,7 @@
             <field name="code">IL_ISR_INCOME_TAX</field>
             <field name="sequence">150</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'israeli'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_income_tax(IL_TAX_BASE, 'IL_ISR_INCOME_TAX')</field>
         </record>
@@ -207,7 +207,7 @@
             <field name="code">IL_ISR_NI_EE</field>
             <field name="sequence">151</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'israeli'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_ni_amount(IL_NI_BASE, 'ISR', 'IL_ISR_NI_EE_REDUCED_RATE', 'IL_ISR_NI_EE_FULL_RATE')</field>
         </record>
@@ -219,7 +219,7 @@
             <field name="code">IL_ISR_HEALTH_EE</field>
             <field name="sequence">152</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'israeli'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_ni_amount(IL_NI_BASE, 'ISR', 'IL_ISR_HEALTH_REDUCED_RATE', 'IL_ISR_HEALTH_FULL_RATE')</field>
         </record>
@@ -231,7 +231,7 @@
             <field name="code">IL_ISR_PENSION_EE</field>
             <field name="sequence">160</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employee_pension_rate / 100.0</field>
         </record>
@@ -243,7 +243,7 @@
             <field name="code">IL_ISR_STUDY_EE</field>
             <field name="sequence">161</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'israeli' and version.il_study_fund_enabled</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_study_fund_enabled</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employee_study_fund_rate / 100.0</field>
         </record>
@@ -255,7 +255,7 @@
             <field name="code">IL_ISR_NI_ER</field>
             <field name="sequence">310</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'israeli'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_ni_amount(IL_NI_BASE, 'ISR', 'IL_ISR_NI_ER_REDUCED_RATE', 'IL_ISR_NI_ER_FULL_RATE')</field>
         </record>
@@ -267,7 +267,7 @@
             <field name="code">IL_ISR_PENSION_ER</field>
             <field name="sequence">320</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employer_pension_rate / 100.0</field>
         </record>
@@ -279,7 +279,7 @@
             <field name="code">IL_ISR_SEVERANCE_ER</field>
             <field name="sequence">321</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = IL_SEVERANCE_BASE * version.il_severance_rate / 100.0</field>
         </record>
@@ -291,7 +291,7 @@
             <field name="code">IL_ISR_STUDY_ER</field>
             <field name="sequence">330</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'israeli' and version.il_study_fund_enabled</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_study_fund_enabled</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employer_study_fund_rate / 100.0</field>
         </record>
@@ -307,7 +307,7 @@
             <field name="code">IL_PAL_INCOME_TAX</field>
             <field name="sequence">150</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_income_tax(IL_TAX_BASE, 'IL_PAL_INCOME_TAX')</field>
         </record>
@@ -319,7 +319,7 @@
             <field name="code">IL_PAL_NI_EE</field>
             <field name="sequence">151</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_ni_amount(IL_NI_BASE, 'PAL', 'IL_PAL_NI_EE_REDUCED_RATE', 'IL_PAL_NI_EE_FULL_RATE')</field>
         </record>
@@ -331,7 +331,7 @@
             <field name="code">IL_PAL_HEALTH_STAMP</field>
             <field name="sequence">152</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._rule_parameter('IL_PAL_HEALTH_STAMP_AMOUNT')</field>
         </record>
@@ -343,7 +343,7 @@
             <field name="code">IL_PAL_ORGANIZATION_TAX</field>
             <field name="sequence">153</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian' and version.il_pal_organization_tax</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pal_organization_tax</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_pal_organization_tax_amount(IL_TAX_BASE)</field>
         </record>
@@ -355,7 +355,7 @@
             <field name="code">IL_PAL_PENSION_EE</field>
             <field name="sequence">160</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employee_pension_rate / 100.0</field>
         </record>
@@ -367,7 +367,7 @@
             <field name="code">IL_PAL_STUDY_EE</field>
             <field name="sequence">161</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian' and version.il_study_fund_enabled</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_study_fund_enabled</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employee_study_fund_rate / 100.0</field>
         </record>
@@ -379,7 +379,7 @@
             <field name="code">IL_PAL_NI_ER</field>
             <field name="sequence">310</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_ni_amount(IL_NI_BASE, 'PAL', 'IL_PAL_NI_ER_REDUCED_RATE', 'IL_PAL_NI_ER_FULL_RATE')</field>
         </record>
@@ -391,7 +391,7 @@
             <field name="code">IL_PAL_EQUALIZATION_ER</field>
             <field name="sequence">315</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = IL_PAL_EQUALIZATION_BASE * payslip._il_sector_parameter('IL_PAL_EQUALIZATION_%s_RATE', 'IL_PAL_EQUALIZATION_RATE') / 100.0</field>
         </record>
@@ -403,7 +403,7 @@
             <field name="code">IL_PAL_PENSION_ER</field>
             <field name="sequence">320</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employer_pension_rate / 100.0</field>
         </record>
@@ -415,7 +415,7 @@
             <field name="code">IL_PAL_SEVERANCE_ER</field>
             <field name="sequence">321</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = IL_SEVERANCE_BASE * version.il_severance_rate / 100.0</field>
         </record>
@@ -427,7 +427,7 @@
             <field name="code">IL_PAL_STUDY_ER</field>
             <field name="sequence">330</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'palestinian' and version.il_study_fund_enabled</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_study_fund_enabled</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employer_study_fund_rate / 100.0</field>
         </record>
@@ -443,7 +443,7 @@
             <field name="code">IL_FOR_INCOME_TAX</field>
             <field name="sequence">150</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_income_tax(IL_TAX_BASE, 'IL_FOR_INCOME_TAX')</field>
         </record>
@@ -455,7 +455,7 @@
             <field name="code">IL_FOR_NI_EE</field>
             <field name="sequence">151</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_ni_amount(IL_NI_BASE, 'FOR', 'IL_FOR_NI_EE_REDUCED_RATE', 'IL_FOR_NI_EE_FULL_RATE')</field>
         </record>
@@ -467,7 +467,7 @@
             <field name="code">IL_FOR_PRIVATE_HEALTH_EE</field>
             <field name="sequence">152</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign' and 'IL_FOR_PRIVATE_HEALTH_COST' in inputs</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and 'IL_FOR_PRIVATE_HEALTH_COST' in inputs</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_capped_input_amount('IL_FOR_PRIVATE_HEALTH_COST', 'IL_FOR_PRIVATE_HEALTH_MAX_DEDUCTION')</field>
         </record>
@@ -479,7 +479,7 @@
             <field name="code">IL_FOR_HOUSING_EE</field>
             <field name="sequence">153</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign' and 'IL_FOR_HOUSING_INPUT' in inputs</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and 'IL_FOR_HOUSING_INPUT' in inputs</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_capped_input_amount('IL_FOR_HOUSING_INPUT', 'IL_FOR_HOUSING_MAX_DEDUCTION')</field>
         </record>
@@ -491,7 +491,7 @@
             <field name="code">IL_FOR_HOUSING_EXPENSES_EE</field>
             <field name="sequence">154</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign' and 'IL_FOR_HOUSING_EXPENSES_INPUT' in inputs</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and 'IL_FOR_HOUSING_EXPENSES_INPUT' in inputs</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_capped_input_amount('IL_FOR_HOUSING_EXPENSES_INPUT', 'IL_FOR_HOUSING_EXPENSES_MAX_DEDUCTION')</field>
         </record>
@@ -503,7 +503,7 @@
             <field name="code">IL_FOR_PENSION_EE</field>
             <field name="sequence">160</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign' and version.il_pension_enabled and payslip._il_pension_active() and not payslip._il_deposit_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_pension_enabled and payslip._il_pension_active() and not payslip._il_deposit_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employee_pension_rate / 100.0</field>
         </record>
@@ -515,7 +515,7 @@
             <field name="code">IL_FOR_STUDY_EE</field>
             <field name="sequence">161</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign' and version.il_study_fund_enabled</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_study_fund_enabled</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = -payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employee_study_fund_rate / 100.0</field>
         </record>
@@ -527,7 +527,7 @@
             <field name="code">IL_FOR_NI_ER</field>
             <field name="sequence">310</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign'</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign'</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_ni_amount(IL_NI_BASE, 'FOR', 'IL_FOR_NI_ER_REDUCED_RATE', 'IL_FOR_NI_ER_FULL_RATE')</field>
         </record>
@@ -539,7 +539,7 @@
             <field name="code">IL_FOR_PENSION_ER</field>
             <field name="sequence">320</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign' and version.il_pension_enabled and payslip._il_pension_active() and not payslip._il_deposit_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_pension_enabled and payslip._il_pension_active() and not payslip._il_deposit_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employer_pension_rate / 100.0</field>
         </record>
@@ -551,7 +551,7 @@
             <field name="code">IL_FOR_SEVERANCE_ER</field>
             <field name="sequence">321</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign' and version.il_pension_enabled and payslip._il_pension_active() and not payslip._il_deposit_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_pension_enabled and payslip._il_pension_active() and not payslip._il_deposit_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = IL_SEVERANCE_BASE * version.il_severance_rate / 100.0</field>
         </record>
@@ -563,7 +563,7 @@
             <field name="code">IL_FOR_DEPOSIT_ER</field>
             <field name="sequence">325</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign' and payslip._il_deposit_active()</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and payslip._il_deposit_active()</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = IL_TAX_BASE * payslip._il_sector_parameter('IL_FOR_DEPOSIT_%s_RATE') / 100.0</field>
         </record>
@@ -575,7 +575,7 @@
             <field name="code">IL_FOR_STUDY_ER</field>
             <field name="sequence">330</field>
             <field name="condition_select">python</field>
-            <field name="condition_python">result = employee.il_employee_type == 'foreign' and version.il_study_fund_enabled</field>
+            <field name="condition_python">result = payslip._il_worker_profile() == 'foreign' and version.il_study_fund_enabled</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._il_capped_base(IL_STUDY_FUND_BASE, 'IL_STUDY_FUND_TAX_CEILING') * version.il_employer_study_fund_rate / 100.0</field>
         </record>
@@ -616,6 +616,17 @@
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = IL_NET_BEFORE_DIRECT_ADJUSTMENTS + IL_ADJUSTMENT_NET_DIRECT</field>
+        </record>
+
+        <record id="hr_salary_rule_il_net_to_pay" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_il"/>
+            <field name="category_id" ref="hr_payroll.NET"/>
+            <field name="name">נטו לתשלום</field>
+            <field name="code">IL_NET_TO_PAY</field>
+            <field name="sequence">530</field>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = NET - payslip._il_applied_payment_amount()</field>
         </record>
 
         <!-- ================================================================

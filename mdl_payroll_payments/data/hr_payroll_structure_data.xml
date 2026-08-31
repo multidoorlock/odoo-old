@@ -1,58 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <data noupdate="0">
-        <!-- קטגוריית שכר נוספת עבור התאמות שכר (בסיסי מס גם קשורים אליה
-             באופן סלקטיבי, בשונה מ-ALW הכללית — סעיף "GROSS Adjustment"
-             באפיון). -->
-        <record id="hr_salary_rule_category_il_adj" model="hr.salary.rule.category">
-            <field name="name">התאמות שכר</field>
-            <field name="code">IL_ADJ</field>
-            <field name="country_id" ref="base.il"/>
-        </record>
-
-        <!-- קטגוריה טכנית לחוקי בסיס-חישוב מוסתרים (IL_TAX_BASE וכו') —
-             מבודדת כדי שסכומיהם לא יזלגו לתוך GROSS/COMP המוצגים. -->
-        <record id="hr_salary_rule_category_il_base" model="hr.salary.rule.category">
-            <field name="name">בסיסי חישוב (טכני)</field>
-            <field name="code">IL_BASE</field>
-            <field name="country_id" ref="base.il"/>
-        </record>
-
-        <record id="hr_payroll_structure_type_il" model="hr.payroll.structure.type">
-            <field name="name">עובד ישראלי</field>
-            <field name="country_id" ref="base.il"/>
-            <field name="default_schedule_pay">monthly</field>
-            <field name="wage_type">monthly</field>
-        </record>
-
-        <record id="hr_payroll_structure_il" model="hr.payroll.structure">
-            <field name="name">משכורת ישראלית</field>
-            <field name="type_id" ref="hr_payroll_structure_type_il"/>
-            <field name="country_id" ref="base.il"/>
-            <field name="rule_ids" eval="[]"/>
-            <field name="input_line_type_ids" eval="[(6, 0, [
-                ref('input_type_il_adj_salary_addition'),
-                ref('input_type_il_adj_bonus'),
-                ref('input_type_il_adj_grant'),
-                ref('input_type_il_adj_salary_reduction'),
-                ref('input_type_il_adj_advance'),
-                ref('input_type_il_adj_food'),
-                ref('input_type_il_adj_loan'),
-                ref('input_type_il_adj_employee_debt'),
-                ref('input_type_il_adj_garnishment'),
-                ref('input_type_il_adj_alimony'),
-                ref('input_type_il_adj_voluntary'),
-                ref('input_type_il_adj_union_dues'),
-                ref('input_type_il_net_weekend'),
-                ref('input_type_il_net_additional_day'),
-                ref('input_type_il_for_private_health_cost'),
-                ref('input_type_il_for_housing_input'),
-                ref('input_type_il_for_housing_expenses_input'),
-            ])]"/>
-        </record>
-
-        <record id="hr_payroll_structure_type_il" model="hr.payroll.structure.type">
-            <field name="default_struct_id" ref="hr_payroll_structure_il"/>
-        </record>
-    </data>
-</odoo>
+<odoo><data noupdate="0">
+    <record id="hr_salary_rule_category_il_adj" model="hr.salary.rule.category"><field name="name">התאמות שכר</field><field name="code">IL_ADJ</field><field name="country_id" ref="base.il"/></record>
+    <record id="hr_salary_rule_category_il_base" model="hr.salary.rule.category"><field name="name">בסיסי חישוב (טכני)</field><field name="code">IL_BASE</field><field name="country_id" ref="base.il"/></record>
+    <record id="hr_payroll_structure_type_il" model="hr.payroll.structure.type"><field name="name">חודשי מדינת ישראל</field><field name="country_id" ref="base.il"/><field name="default_schedule_pay">monthly</field><field name="wage_type">monthly</field></record>
+    <record id="hr_payroll_structure_type_il_daily" model="hr.payroll.structure.type"><field name="name">יומי מדינת ישראל</field><field name="country_id" ref="base.il"/><field name="default_schedule_pay">monthly</field><field name="wage_type">hourly</field></record>
+    <record id="hr_payroll_structure_il" model="hr.payroll.structure"><field name="name">שכר ישראלי חודשי</field><field name="code">IL_ISR_MONTHLY</field><field name="type_id" ref="hr_payroll_structure_type_il"/><field name="country_id" ref="base.il"/></record>
+    <record id="hr_payroll_structure_il_pal_monthly" model="hr.payroll.structure"><field name="name">שכר פלשתיני חודשי</field><field name="code">IL_PAL_MONTHLY</field><field name="type_id" ref="hr_payroll_structure_type_il"/><field name="country_id" ref="base.il"/></record>
+    <record id="hr_payroll_structure_il_isr_daily" model="hr.payroll.structure"><field name="name">שכר ישראלי יומי</field><field name="code">IL_ISR_DAILY</field><field name="type_id" ref="hr_payroll_structure_type_il_daily"/><field name="country_id" ref="base.il"/></record>
+    <record id="hr_payroll_structure_il_pal_daily" model="hr.payroll.structure"><field name="name">שכר פלשתיני יומי</field><field name="code">IL_PAL_DAILY</field><field name="type_id" ref="hr_payroll_structure_type_il_daily"/><field name="country_id" ref="base.il"/></record>
+    <record id="hr_payroll_structure_type_il" model="hr.payroll.structure.type"><field name="default_struct_id" ref="hr_payroll_structure_il"/></record>
+    <record id="hr_payroll_structure_type_il_daily" model="hr.payroll.structure.type"><field name="default_struct_id" ref="hr_payroll_structure_il_isr_daily"/></record>
+</data></odoo>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_attendance_view_form_segments" model="ir.ui.view">
+        <field name="name">hr.attendance.form.segments</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
+        <field name="arch" type="xml">
+            <field name="worked_hours" position="before">
+                <field name="presence_hours" string="Presence Time" widget="float_time"/>
+            </field>
+            <xpath expr="//notebook" position="after">
+                <notebook invisible="not check_out">
+                <page string="Attendance Segments" name="attendance_segments">
+                    <button name="action_regenerate_segments" type="object" string="Regenerate Segments"
+                            class="btn-primary mb-3" groups="hr_attendance.group_hr_attendance_manager"/>
+                    <div class="o_mdl_timeline_axis">
+                        <span class="o_mdl_timeline_edge o_mdl_timeline_start">
+                            <field name="timeline_start_label" nolabel="1"/>
+                        </span>
+                        <span class="o_mdl_timeline_line"/>
+                        <span class="o_mdl_timeline_edge o_mdl_timeline_stop">
+                            <field name="timeline_stop_label" nolabel="1"/>
+                        </span>
+                    </div>
+                    <field name="segment_ids" class="o_mdl_segment_timeline" mode="kanban" nolabel="1">
+                        <kanban create="false" delete="false" records_draggable="false" class="o_mdl_segment_kanban">
+                            <field name="name"/>
+                            <field name="time_start"/>
+                            <field name="time_stop"/>
+                            <field name="duration"/>
+                            <field name="is_work"/>
+                            <field name="segment_type"/>
+                            <field name="hover_label"/>
+                            <field name="width_percent"/>
+                            <templates>
+                                <t t-name="card">
+                                    <article t-attf-class="o_mdl_segment_block {{ record.is_work.raw_value ? 'o_mdl_segment_work' : 'o_mdl_segment_nonwork' }}"
+                                             t-attf-style="flex-basis: {{ record.width_percent.raw_value }}%;"
+                                             t-att-title="record.hover_label.value"
+                                             t-att-aria-label="record.hover_label.value"
+                                             t-att-data-segment-id="record.id.raw_value">
+                                        <span class="visually-hidden"><field name="hover_label"/></span>
+                                    </article>
+                                </t>
+                            </templates>
+                        </kanban>
+                        <form string="Attendance Segment" create="false" edit="false" delete="false">
+                            <sheet>
+                                <group>
+                                    <field name="attendance_id" readonly="1"/>
+                                    <field name="time_start" readonly="1"/>
+                                    <field name="time_stop" readonly="1"/>
+                                    <field name="segment_type" widget="radio" options="{'horizontal': true}" readonly="1"/>
+                                    <field name="name" readonly="1"/>
+                                    <field name="duration" widget="float_time" readonly="1"/>
+                                    <field name="rule_id" readonly="1"/>
+                                    <field name="manual_override" invisible="1"/>
+                                    <field name="is_first" invisible="1"/>
+                                    <field name="is_last" invisible="1"/>
+                                </group>
+                            </sheet>
+                        </form>
+                    </field>
+                </page>
+                </notebook>
+            </xpath>
+        </field>
+    </record>
+</odoo>

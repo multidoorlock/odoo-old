@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mdl_payroll_attendance_overtime_rule_view_form" model="ir.ui.view">
+        <field name="name">mdl.payroll.attendance.overtime.rule.form</field>
+        <field name="model">hr.attendance.overtime.rule</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_overtime_rule_view_form"/>
+        <field name="arch" type="xml">
+            <span name="paid" position="replace">
+                <span name="paid" class="d-flex flex-column align-items-start gap-2">
+                    <!-- Row 1: enable overtime payment. -->
+                    <field name="paid" nolabel="1"/>
+
+                    <!-- Row 2: choose how this rule is priced. -->
+                    <field name="mdl_pay_method" nolabel="1" widget="radio"
+                           options="{'horizontal': true}" invisible="not paid"/>
+
+                    <!-- Row 3: percentage rate or fixed hourly amount. -->
+                    <span class="d-flex align-items-center gap-2"
+                          invisible="not paid or mdl_pay_method != 'percentage'">
+                        <label for="amount_rate" string="Percentage"/>
+                        <field name="amount_rate" nolabel="1" widget="percentage" style="width:10ch"/>
+                    </span>
+                    <span class="d-flex align-items-center gap-2"
+                          invisible="not paid or mdl_pay_method != 'fixed'">
+                        <label for="mdl_fixed_hourly_amount" string="Fixed amount"/>
+                        <field name="mdl_fixed_hourly_amount" nolabel="1" style="width:14ch"
+                               required="paid and mdl_pay_method == 'fixed'"/>
+                    </span>
+                </span>
+            </span>
+        </field>
+    </record>
+</odoo>

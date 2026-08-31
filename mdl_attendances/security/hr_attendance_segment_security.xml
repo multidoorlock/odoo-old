@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="segment_ruleset_company_rule" model="ir.rule">
+        <field name="name">Segment rulesets by company</field>
+        <field name="model_id" ref="model_hr_attendance_segment_ruleset"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="segment_rule_company_rule" model="ir.rule">
+        <field name="name">Segment rules by company</field>
+        <field name="model_id" ref="model_hr_attendance_segment_rule"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="attendance_segment_company_rule" model="ir.rule">
+        <field name="name">Attendance segments by company</field>
+        <field name="model_id" ref="model_hr_attendance_segment"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

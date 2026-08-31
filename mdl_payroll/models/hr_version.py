@@ -52,15 +52,6 @@ class HrVersion(models.Model):
         string='תעריף שעה לסוף שבוע', compute='_compute_mdl_special_hourly_wages',
         groups=PAYROLL_GROUP)
 
-    mdl_overtime_wage_type = fields.Selection([
-        ('fixed', 'סכום קבוע'),
-        ('percentage', 'אחוז מתעריף שעה'),
-    ], string='אופן חישוב שעות נוספות', groups=PAYROLL_GROUP, tracking=True)
-    mdl_overtime_fixed_wage = fields.Monetary(
-        string='תשלום לשעה נוספת', groups=PAYROLL_GROUP)
-    mdl_overtime_percentage = fields.Float(
-        string='אחוז מתעריף שעה', groups=PAYROLL_GROUP)
-
     mdl_resource_calendar_type = fields.Selection(
         related='resource_calendar_id.mdl_schedule_type', string='סוג לוח עבודה')
 
@@ -88,11 +79,16 @@ class HrVersion(models.Model):
             version.wage = 0.0 if version.mdl_wage_type == 'mdl_daily' else version.wage
 
     @api.depends('mdl_wage_type', 'mdl_daily_wage', 'wage',
-                 'resource_calendar_id.hours_per_day', 'resource_calendar_id.hours_per_week')
+                 'resource_calendar_id.hours_per_day', 'resource_calendar_id.hours_per_week',
+                 'resource_calendar_id.mdl_schedule_type', 'company_id.mdl_shift_paid_hours')
     def _compute_mdl_hourly_wage(self):
         for version in self:
             if version.mdl_wage_type == 'mdl_daily':
-                std_hours = version.resource_calendar_id.hours_per_day
+                std_hours = (
+                    version.company_id.mdl_shift_paid_hours
+                    if version.resource_calendar_id.mdl_schedule_type == 'shifts'
+                    else version.resource_calendar_id.hours_per_day
+                )
                 version.hourly_wage = version.mdl_daily_wage / std_hours if std_hours else 0.0
             else:
                 avg_hours = version.mdl_average_monthly_hours
@@ -133,7 +129,6 @@ class HrVersion(models.Model):
             'mdl_wage_type', 'mdl_daily_wage',
             'mdl_additional_day_wage', 'mdl_additional_day_rate_type',
             'mdl_weekend_wage', 'mdl_weekend_rate_type',
-            'mdl_overtime_wage_type', 'mdl_overtime_fixed_wage', 'mdl_overtime_percentage',
         ]
 
     # ------------------------------------------------------------------
@@ -161,13 +156,3 @@ class HrVersion(models.Model):
             if (float_compare(version.mdl_additional_day_wage, 0.0, precision_digits=2) > 0
                     and not version.mdl_additional_day_rate_type):
                 raise ValidationError('הוגדר תעריף יום נוסף — חובה לבחור סוג תעריף (ברוטו/נטו).')
-
-    @api.constrains('mdl_overtime_wage_type', 'mdl_overtime_fixed_wage', 'mdl_overtime_percentage')
-    def _check_mdl_overtime(self):
-        for version in self:
-            if (version.mdl_overtime_wage_type == 'fixed'
-                    and float_compare(version.mdl_overtime_fixed_wage, 0.0, precision_digits=2) <= 0):
-                raise ValidationError('בחישוב שעות נוספות בסכום קבוע חובה להזין תשלום לשעה נוספת.')
-            if (version.mdl_overtime_wage_type == 'percentage'
-                    and float_compare(version.mdl_overtime_percentage, 0.0, precision_digits=2) <= 0):
-                raise ValidationError('בחישוב שעות נוספות באחוזים חובה להזין אחוז גדול מאפס.')

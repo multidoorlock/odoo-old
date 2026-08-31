@@ -61,18 +61,6 @@
                                invisible="mdl_wage_type != 'mdl_monthly' or not mdl_additional_day_wage"
                                required="mdl_wage_type == 'mdl_monthly' and mdl_additional_day_wage &gt; 0"/>
                     </group>
-                    <!-- שעות נוספות — לא מוצג לעובדי משמרות (סעיף 8 באפיון) -->
-                    <group name="mdl_overtime" string="שעות נוספות"
-                           invisible="mdl_resource_calendar_type == 'shifts'">
-                        <field name="mdl_overtime_wage_type" widget="radio"
-                               options="{'horizontal': true}"/>
-                        <field name="mdl_overtime_fixed_wage"
-                               invisible="mdl_overtime_wage_type != 'fixed'"
-                               required="mdl_resource_calendar_type != 'shifts' and mdl_overtime_wage_type == 'fixed'"/>
-                        <field name="mdl_overtime_percentage"
-                               invisible="mdl_overtime_wage_type != 'percentage'"
-                               required="mdl_resource_calendar_type != 'shifts' and mdl_overtime_wage_type == 'percentage'"/>
-                    </group>
                 </group>
             </xpath>
         </field>
