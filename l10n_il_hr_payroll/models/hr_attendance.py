@@ -32,7 +32,7 @@ class HrAttendance(models.Model):
             version = attendance.employee_id.sudo()._get_version(attendance.date)
             if (not version
                     or version.mdl_wage_type != 'mdl_monthly'
-                    or version.work_entry_source != 'attendance'):
+                    or version.work_entry_source not in ('attendance', 'calendar')):
                 continue
             tz = pytz.timezone(version._get_tz() or 'UTC')
             day_start = tz.localize(
@@ -71,9 +71,22 @@ class HrAttendance(models.Model):
         if self.env.context.get('install_demo'):
             return
 
-        mdl_attendances = self.filtered(
-            lambda attendance: attendance.employee_id.sudo().version_id.work_entry_source == 'attendance'
-            and attendance.employee_id.sudo().version_id.resource_calendar_id)
+        def uses_mdl_work_entries(attendance):
+            version = attendance.employee_id.sudo()._get_version(
+                attendance.date)
+            return bool(
+                version
+                and version.resource_calendar_id
+                and (
+                    version.work_entry_source == 'attendance'
+                    or (
+                        version.work_entry_source == 'calendar'
+                        and version.mdl_wage_type == 'mdl_monthly'
+                    )
+                )
+            )
+
+        mdl_attendances = self.filtered(uses_mdl_work_entries)
         standard_attendances = self - mdl_attendances
         if standard_attendances:
             super(HrAttendance, standard_attendances)._create_work_entries()
@@ -88,7 +101,12 @@ class HrAttendance(models.Model):
             versions = attendance.employee_id.sudo()._get_versions_with_contract_overlap_with_period(
                 attendance.check_in.date(), attendance.check_out.date())
             for version in versions:
-                if version.work_entry_source != 'attendance':
+                if not (
+                        version.work_entry_source == 'attendance'
+                        or (
+                            version.work_entry_source == 'calendar'
+                            and version.mdl_wage_type == 'mdl_monthly'
+                        )):
                     continue
                 # יצירה ישירה רק בתוך תקופה שכבר חוללה — כמו במנגנון הסטנדרטי,
                 # אך ברמת יום עסקי שלם: אם חלק כלשהו מהיום נמצא בטווח שנוצר,

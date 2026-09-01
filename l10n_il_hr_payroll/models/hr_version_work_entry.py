@@ -20,20 +20,29 @@ class HrVersion(models.Model):
             return super()._get_work_entries_values(date_start, date_stop)
 
         vals_list = super()._get_work_entries_values(date_start, date_stop)
-        mdl_versions = self.sudo().filtered(
+        attendance_versions = self.sudo().filtered(
             lambda v: v.work_entry_source == 'attendance' and v.resource_calendar_id)
-        if not mdl_versions:
+        # Calendar-based versions keep Odoo's planned WORK100 entries.  For a
+        # monthly employee we additionally inspect real clockings and append
+        # only off-schedule/quota-excess ADDITIONAL_DAY entries.  This is a
+        # hybrid layer: the calendar remains the source of regular work and
+        # attendance is solely the evidence for an actually worked extra day.
+        calendar_additional_versions = self.sudo().filtered(
+            lambda v: v.work_entry_source == 'calendar'
+            and v.resource_calendar_id
+            and v.mdl_wage_type == 'mdl_monthly')
+        if not attendance_versions and not calendar_additional_versions:
             return vals_list
         # הסרת רשומות הנוכחות הגולמיות שהמנגנון הסטנדרטי יצר עבור עובדי
         # השכבה שלנו (רשומות חופשה ולוח נשארות כפי שהן), והחלפתן ברשומות
         # מנורמלות ברמת יום עבודה.
-        mdl_version_ids = set(mdl_versions.ids)
+        mdl_version_ids = set(attendance_versions.ids)
         vals_list = [
             vals for vals in vals_list
             if not ((vals.get('attendance_id') or vals.get('overtime_id'))
                     and vals.get('version_id') in mdl_version_ids)
         ]
-        for version in mdl_versions:
+        for version in attendance_versions:
             vals_list += version._mdl_get_normalized_work_entry_vals(date_start, date_stop)
             # המנוע מחולל תמיד ימים שלמים — יש להצמיד את גבולות התקופה שנוצרה
             # לגבולות יום שלם, אחרת החתמה נוספת מאוחר יותר באותו יום תיפול
@@ -45,6 +54,59 @@ class HrVersion(models.Model):
                     version.date_generated_from = generated_from
                 if version.date_generated_to < generated_to:
                     version.date_generated_to = generated_to
+
+        type_additional = self.env.ref(
+            'l10n_il_hr_payroll.work_entry_type_additional_day')
+        for version in calendar_additional_versions:
+            # Remember the complete requested period even when the calendar
+            # has no planned row and no extra attendance on a particular day
+            # yet.  A clocking entered later inside that period must trigger
+            # the ordinary regeneration wizard and materialize the extra day.
+            window = version._mdl_window_bounds(date_start, date_stop)
+            if window:
+                generated_from, generated_to = window
+                if version.date_generated_from > generated_from:
+                    version.date_generated_from = generated_from
+                if version.date_generated_to < generated_to:
+                    version.date_generated_to = generated_to
+
+            additional_vals = [
+                vals
+                for vals in version._mdl_get_normalized_work_entry_vals(
+                    date_start, date_stop)
+                if vals.get('work_entry_type_id') == type_additional.id
+            ]
+            if not additional_vals:
+                continue
+            additional_dates = {
+                vals['date'] for vals in additional_vals
+            }
+
+            # A calendar-source employee with an Odoo overtime ruleset can
+            # receive native overtime entries sourced from the same clocking.
+            # On an additional day those entries must be replaced by the one
+            # fixed-rate day, otherwise the employee is paid twice.
+            overtime_ids = [
+                vals['overtime_id'] for vals in vals_list
+                if vals.get('version_id') == version.id
+                and vals.get('overtime_id')
+            ]
+            overtime_dates = {
+                overtime.id: overtime.date
+                for overtime in self.env[
+                    'hr.attendance.overtime.line'].sudo().browse(
+                        overtime_ids).exists()
+            }
+            vals_list = [
+                vals for vals in vals_list
+                if not (
+                    vals.get('version_id') == version.id
+                    and vals.get('overtime_id')
+                    and overtime_dates.get(vals['overtime_id'])
+                    in additional_dates
+                )
+            ]
+            vals_list += additional_vals
         return vals_list
 
     def _mdl_localized_window(self, date_start, date_stop):

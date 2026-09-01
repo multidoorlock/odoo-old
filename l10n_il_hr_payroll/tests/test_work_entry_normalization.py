@@ -308,6 +308,38 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertAlmostEqual(additional.mdl_actual_hours, 9.0)
         self.assertEqual(additional.mdl_rate_category, "additional_day")
 
+    def test_calendar_source_clocking_regenerates_an_already_generated_extra_day(self):
+        """A late clocking must update a static calendar payroll period.
+
+        Odoo keeps generating the planned WORK100 rows from the calendar.  If
+        an attendance is entered afterwards on an off-schedule day, our hybrid
+        layer regenerates that day and adds one separate ADDITIONAL_DAY row.
+        """
+        self.version.write({
+            "work_entry_source": "calendar",
+            "mdl_wage_type": "mdl_monthly",
+            "mdl_additional_day_wage": 400.0,
+        })
+        self.version.generate_work_entries(
+            date(2026, 1, 5), date(2026, 1, 10), force=True)
+        attendance = self._attendance(
+            datetime(2026, 1, 10, 6, 30),
+            datetime(2026, 1, 10, 16, 0),
+        )
+
+        active_entries = self.env["hr.work.entry"].search([
+            ("version_id", "=", self.version.id),
+            ("date", "=", date(2026, 1, 10)),
+            ("state", "!=", "cancelled"),
+        ])
+        additional = active_entries.filtered(
+            lambda entry: entry.work_entry_type_id.code == "ADDITIONAL_DAY")
+        overtime = active_entries.filtered(
+            lambda entry: entry.work_entry_type_id.code == "OVERTIME")
+        self.assertEqual(len(additional), 1)
+        self.assertEqual(additional.attendance_id, attendance)
+        self.assertFalse(overtime)
+
     def test_morning_shift_uses_its_own_company_duration(self):
         self.company.mdl_shift_morning_hours = 8.0
         shift_calendar = self.env["resource.calendar"].with_company(self.company).create({
