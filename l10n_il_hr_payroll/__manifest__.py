@@ -1,7 +1,7 @@
 # Part of l10n_il_hr_payroll. Israeli payroll configuration layer on top of standard Odoo.
 {
     'name': 'Israel - Payroll',
-    'version': '1.0.14',
+    'version': '1.0.15',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
     'summary': 'שכבת הגדרה נוחה מעל מנגנוני השכר, הנוכחות ורשומות העבודה הסטנדרטיים של Odoo',

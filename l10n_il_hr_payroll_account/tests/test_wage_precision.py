@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from odoo import Command
@@ -498,6 +498,127 @@ class TestNetDailyWageGrossUp(TransactionCase):
             ]),
         )
         self.assertAlmostEqual(by_code['GROSS'], 10400.0, places=2)
+
+    def test_monthly_additional_day_is_paid_in_every_schedule_mode(self):
+        """The UI schedule variants must all reach the same payroll result.
+
+        Fixed/daily calendars classify a day with no planned hours as an
+        additional day.  Weekly calendars classify the first day beyond the
+        configured weekly quota.  In every case a monthly gross employee keeps
+        the full monthly wage and receives the fixed additional-day amount on
+        top of it.
+        """
+        monthly_type = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_type_il')
+        monthly_structure = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il')
+        modes = (
+            ('attendance', 'fixed_intervals'),
+            ('attendance', 'daily_duration'),
+            ('attendance', 'weekly_quota'),
+            ('shifts', 'daily_duration'),
+            ('shifts', 'weekly_quota'),
+        )
+        scenarios = [
+            (source, schedule_type, frequency)
+            for source in ('attendance', 'calendar')
+            for schedule_type, frequency in modes
+        ]
+        for index, (source, schedule_type, frequency) in enumerate(scenarios):
+            with self.subTest(source=source,
+                              schedule_type=schedule_type,
+                              frequency=frequency):
+                calendar_values = {
+                    'name': 'Additional day %s %s' % (
+                        schedule_type, frequency),
+                    'company_id': self.company.id,
+                    'tz': 'UTC',
+                    'mdl_schedule_type': schedule_type,
+                    'mdl_schedule_frequency': frequency,
+                    'mdl_hours_per_day': 9.5,
+                    'mdl_shifts_per_week': 1,
+                }
+                if frequency == 'weekly_quota':
+                    calendar_values['hours_per_week'] = 9.5
+                elif schedule_type == 'shifts':
+                    calendar_values['mdl_shift_day_monday'] = True
+                else:
+                    calendar_values['attendance_ids'] = [Command.create({
+                        'name': 'Monday',
+                        'dayofweek': '0',
+                        'day_period': (
+                            'full_day' if frequency == 'daily_duration'
+                            else 'morning'),
+                        'hour_from': 6.5,
+                        'hour_to': 16.0,
+                        'duration_hours': 9.5,
+                        'mdl_day_input_method': 'hours',
+                    })]
+                calendar = self.env['resource.calendar'].create(
+                    calendar_values)
+                employee = self.env['hr.employee'].create({
+                    'name': 'Monthly Additional Day %s' % index,
+                    'company_id': self.company.id,
+                    'contract_date_start': date(2026, 2, 1),
+                    'date_version': date(2026, 2, 1),
+                    'resource_calendar_id': calendar.id,
+                    'structure_type_id': monthly_type.id,
+                    'il_salary_structure_id': monthly_structure.id,
+                    'mdl_wage_type': 'mdl_monthly',
+                    'mdl_wage_rate_type': 'gross',
+                    'wage': 10000.0,
+                    'mdl_additional_day_wage': 400.0,
+                })
+                version = employee.version_id
+                version.work_entry_source = source
+
+                first_day = date(2026, 2, 2) + timedelta(days=index * 7)
+                attendance_days = (
+                    (first_day, first_day + timedelta(days=1))
+                    if frequency == 'weekly_quota'
+                    else (first_day + timedelta(days=5),)
+                )
+                for attendance_day in attendance_days:
+                    self.env['hr.attendance'].create({
+                        'employee_id': employee.id,
+                        'check_in': datetime.combine(
+                            attendance_day, datetime.min.time()
+                        ) + timedelta(hours=6, minutes=30),
+                        'check_out': datetime.combine(
+                            attendance_day, datetime.min.time()
+                        ) + timedelta(hours=16),
+                    })
+                version.generate_work_entries(
+                    attendance_days[0], attendance_days[-1], force=True)
+
+                active_entries = self.env['hr.work.entry'].search([
+                    ('version_id', '=', version.id),
+                    ('date', '>=', attendance_days[0]),
+                    ('date', '<=', attendance_days[-1]),
+                    ('state', '!=', 'cancelled'),
+                ])
+                additional_entries = active_entries.filtered(
+                    lambda entry:
+                    entry.work_entry_type_id.code == 'ADDITIONAL_DAY')
+                self.assertEqual(len(additional_entries), 1)
+
+                payslip = self.env['hr.payslip'].create({
+                    'name': 'Monthly Additional Day Payslip %s' % index,
+                    'employee_id': employee.id,
+                    'company_id': self.company.id,
+                    'date_from': attendance_days[0],
+                    'date_to': attendance_days[-1],
+                    'version_id': version.id,
+                    'struct_id': monthly_structure.id,
+                })
+                payslip.compute_sheet()
+                by_code = {
+                    line.code: line.total for line in payslip.line_ids
+                }
+                self.assertAlmostEqual(by_code['BASIC'], 10000.0, places=2)
+                self.assertAlmostEqual(
+                    by_code['IL_ADDITIONAL_DAY_GROSS'], 400.0, places=2)
+                self.assertAlmostEqual(by_code['GROSS'], 10400.0, places=2)
 
     def test_daily_employee_keeps_normal_daily_wage_without_additional_day(self):
         fixed_calendar = self.env['resource.calendar'].create({
