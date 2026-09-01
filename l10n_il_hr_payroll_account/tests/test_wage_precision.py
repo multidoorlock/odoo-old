@@ -663,6 +663,74 @@ class TestNetDailyWageGrossUp(TransactionCase):
         })
         self.assertEqual(payslip._il_basic_amount(), 10000.0)
 
+    def test_monthly_net_wage_is_grossed_up_for_both_structures(self):
+        monthly_structures = (
+            self.env.ref(
+                'l10n_il_hr_payroll_account.hr_payroll_structure_il'),
+            self.env.ref(
+                'l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_monthly'),
+        )
+        attendance_type = self.env.ref(
+            'hr_work_entry.work_entry_type_attendance')
+
+        for structure in monthly_structures:
+            with self.subTest(structure=structure.code):
+                employee = self.env['hr.employee'].create({
+                    'name': f'Monthly Net Gross-Up {structure.code}',
+                    'company_id': self.company.id,
+                    'contract_date_start': date(2026, 1, 1),
+                    'date_version': date(2026, 1, 1),
+                    'resource_calendar_id': self.calendar.id,
+                    'structure_type_id': structure.type_id.id,
+                    'il_salary_structure_id': structure.id,
+                    'mdl_wage_type': 'mdl_monthly',
+                    'mdl_wage_rate_type': 'net',
+                    'wage': 10000.0,
+                    'il_tax_credit_points': 0.0,
+                })
+                payslip = self.env['hr.payslip'].create({
+                    'name': f'Monthly Net Gross-Up {structure.code}',
+                    'employee_id': employee.id,
+                    'company_id': self.company.id,
+                    'date_from': date(2026, 1, 1),
+                    'date_to': date(2026, 1, 31),
+                    'version_id': employee.version_id.id,
+                    'struct_id': structure.id,
+                    'edited': True,
+                    'worked_days_line_ids': [Command.create({
+                        'work_entry_type_id': attendance_type.id,
+                        'number_of_hours': 190.0,
+                        'number_of_days': 20.0,
+                    })],
+                })
+                payslip.worked_days_line_ids._compute_is_paid()
+                payslip._compute_input_line_ids()
+                payslip._il_set_regular_attendance_amount(0.0)
+                baseline = payslip.with_context(
+                    il_solving_net_base_wage=True,
+                    il_skip_wage_rounding=True)._il_compute_net_total()
+
+                payslip._il_run_gross_up_engine()
+                gross_amount = sum(payslip.worked_days_line_ids.filtered(
+                    lambda line: line.code == 'WORK100').mapped('amount'))
+                solved_net = payslip.with_context(
+                    il_solving_net_base_wage=True)._il_compute_net_total()
+
+                self.assertEqual(payslip._il_net_attendance_target(), 10000.0)
+                self.assertGreater(gross_amount, 10000.0)
+                self.assertAlmostEqual(
+                    solved_net,
+                    baseline + 10000.0,
+                    delta=payslip.currency_id.rounding / 2,
+                )
+                by_code = {
+                    line['code']: line['total']
+                    for line in payslip._get_payslip_lines()
+                }
+                self.assertAlmostEqual(
+                    by_code['BASIC'], gross_amount, places=2)
+                self.assertNotIn('IL_WAGE_ROUNDING', by_code)
+
     def test_palestinian_daily_structure_uses_same_net_target_contract(self):
         palestinian_structure = self.env.ref(
             'l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_daily')
