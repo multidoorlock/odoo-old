@@ -134,6 +134,57 @@ class TestPayrollPaymentSplits(TransactionCase):
         self.assertEqual(payment.il_split_line_ids.mapped("amount"), [1200.0] * 5)
         payment._check_il_spread_complete()
 
+    def test_edit_replaces_existing_rows_with_five_times_1200(self):
+        payment = self.env["account.payment"].create(self._payment_values(
+            amount=6000.0,
+            il_spread_type="planned",
+            il_split_line_ids=[
+                Command.create({"amount": 3000.0}),
+                Command.create({"amount": 3000.0}),
+            ],
+        ))
+        old_lines = payment.il_split_line_ids
+        # Prime the one2many cache, matching an existing payment opened in the
+        # form before its rows are replaced by the editable list.
+        self.assertEqual(old_lines.mapped("amount"), [3000.0, 3000.0])
+
+        payment.write({
+            "il_split_line_ids": [
+                *(Command.delete(line.id) for line in old_lines),
+                *(Command.create({"amount": 1200.0}) for _index in range(5)),
+            ],
+        })
+
+        current_lines = self.env["account.payment.split.line"].search([
+            ("payment_id", "=", payment.id),
+        ])
+        self.assertEqual(current_lines.mapped("sequence"), [1, 2, 3, 4, 5])
+        self.assertEqual(current_lines.mapped("amount"), [1200.0] * 5)
+        payment._check_il_spread_complete()
+
+    def test_edit_immediate_payment_to_planned_preserves_submitted_rows(self):
+        payment = self.env["account.payment"].create(self._payment_values(
+            amount=1200.0,
+            il_spread_type="none",
+        ))
+        immediate_line = payment.il_split_line_ids
+
+        payment.write({
+            "il_spread_type": "planned",
+            "il_split_line_ids": [
+                Command.update(immediate_line.id, {"amount": 600.0}),
+                Command.create({"amount": 600.0}),
+            ],
+        })
+
+        current_lines = self.env["account.payment.split.line"].search([
+            ("payment_id", "=", payment.id),
+        ])
+        self.assertEqual(payment.il_spread_type, "planned")
+        self.assertEqual(current_lines.mapped("sequence"), [1, 2])
+        self.assertEqual(current_lines.mapped("amount"), [600.0, 600.0])
+        payment._check_il_spread_complete()
+
     def test_draft_line_edits_may_be_temporarily_unbalanced(self):
         payment = self.env["account.payment"].create(self._payment_values(
             amount=6000.0,

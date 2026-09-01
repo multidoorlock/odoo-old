@@ -96,7 +96,20 @@ class AccountPayment(models.Model):
                 if payment.il_split_line_ids.filtered('payslip_id'):
                     raise ValidationError(
                         'לא ניתן לשנות את אופן הפריסה לאחר שקוזז סכום בתלוש.')
-                payment.il_split_line_ids.with_context(il_system_split_unlink=True).unlink()
+                # When an existing immediate payment is changed to planned,
+                # the editable one2many commands have already produced the
+                # desired rows in ``super().write``.  Deleting every line here
+                # used to remove those new rows as well, so the final check saw
+                # zero rows (e.g. 0 against 1,200).  Preserve the submitted
+                # planned rows; only reset rows when no replacement was sent,
+                # or when switching to a system-managed spread type.
+                keep_submitted_planned_lines = (
+                    payment.il_spread_type == 'planned'
+                    and 'il_split_line_ids' in vals
+                )
+                if not keep_submitted_planned_lines:
+                    payment.il_split_line_ids.with_context(
+                        il_system_split_unlink=True).unlink()
                 if payment.il_spread_type == 'none':
                     Split.with_context(il_system_split_create=True).create({
                         'payment_id': payment.id, 'sequence': 1, 'amount': payment.amount})
@@ -124,22 +137,30 @@ class AccountPayment(models.Model):
                 raise ValidationError('יתרת המשיכה אינה יכולה להיות גבוהה מסכום התשלום.')
 
     def _check_il_spread_complete(self):
+        SplitLine = self.env['account.payment.split.line']
         for payment in self.filtered(lambda p: p._il_employee()):
-            # Do not validate against the stored computed field here.  During
-            # account.payment creation Odoo creates the one2many commands as
-            # part of the parent create and the stored value may still be
-            # waiting in the recompute queue.  The lines are already present
-            # and are the authoritative value for this business constraint.
-            planned_amount = sum(payment.il_split_line_ids.mapped('amount'))
+            # Read the authoritative rows with a fresh search.  During an
+            # editable one2many write, ``account.payment.write`` is executed on
+            # a context-wrapped recordset and the original payment record may
+            # still cache the pre-edit one2many value.  Validating that stale
+            # cache made a visible 5 x 1,200 distribution fail against 6,000.
+            lines = SplitLine.search(
+                [('payment_id', '=', payment.id)], order='sequence, id')
+            lines.invalidate_recordset(['amount', 'sequence', 'payment_id'])
+            planned_amount = sum(lines.mapped('amount'))
             if payment.il_spread_type in ('planned', 'none') and \
                     payment.currency_id.compare_amounts(
                         planned_amount, payment.amount):
+                digits = payment.currency_id.decimal_places
                 raise ValidationError(
-                    'בפריסה מתוכננת או בפריסה מיידית, סכום השורות חייב להיות שווה לסכום התשלום.')
-            if payment.il_spread_type == 'none' and len(payment.il_split_line_ids) != 1:
+                    'בפריסה מתוכננת או בפריסה מיידית, סכום השורות חייב להיות '
+                    'שווה לסכום התשלום. השרת קרא סכום תשלום של '
+                    f'{payment.amount:.{digits}f} וסכום שורות של '
+                    f'{planned_amount:.{digits}f} ({len(lines)} שורות).')
+            if payment.il_spread_type == 'none' and len(lines) != 1:
                 raise ValidationError('במצב פריסה מיידית חייבת להיות שורת פריסה אחת בדיוק.')
             if payment.il_spread_type == 'planned':
-                sequences = sorted(payment.il_split_line_ids.mapped('sequence'))
+                sequences = lines.mapped('sequence')
                 if sequences != list(range(1, len(sequences) + 1)):
                     raise ValidationError('מספרי הפעימות חייבים להיות רציפים ולהתחיל ב־1.')
 
@@ -148,8 +169,12 @@ class AccountPayment(models.Model):
         return super().action_post()
 
     def _il_resequence_split_lines(self):
+        SplitLine = self.env['account.payment.split.line']
         for payment in self:
-            ordered = payment.il_split_line_ids.sorted(lambda line: (line.sequence, line.id))
+            # Do not use payment.il_split_line_ids here: immediately after an
+            # x2many edit it may still contain the pre-edit cached recordset.
+            ordered = SplitLine.search(
+                [('payment_id', '=', payment.id)], order='sequence, id')
             # Temporary values avoid unique(payment, sequence) collisions.
             for offset, line in enumerate(ordered, 1):
                 line.with_context(
