@@ -644,12 +644,20 @@ class HrPayslip(models.Model):
         return hours * exact_rate, hours * display_rate
 
     def _il_net_attendance_target(self):
-        """Net target based only on WORK100 hours and the shared hourly field."""
+        """Requested net base wage for the employee's wage mode.
+
+        A daily employee targets WORK100 hours multiplied by the exact hourly
+        rate.  A monthly employee targets the fixed monthly wage; attendance
+        reporting must not reduce that target merely because a clocking is
+        missing.
+        """
         self.ensure_one()
         version = self.version_id
-        if (version.mdl_wage_type != 'mdl_daily'
-                or version.mdl_wage_rate_type != 'net'):
+        if version.mdl_wage_rate_type != 'net':
             return 0.0
+        if version.mdl_wage_type == 'mdl_monthly':
+            return float(self._il_currency_round_decimal(
+                _decimal(version.wage)))
         hours = _decimal(self._il_worked_days_hours('WORK100'))
         exact_rate = self._il_exact_hourly_rate()
         return float(self._il_currency_round_decimal(hours * exact_rate))
@@ -664,21 +672,22 @@ class HrPayslip(models.Model):
 
     def _il_uses_gross_base_wage(self):
         self.ensure_one()
-        return not (
-            self.version_id.mdl_wage_type == 'mdl_daily'
-            and self.version_id.mdl_wage_rate_type == 'net'
-        )
+        return self.version_id.mdl_wage_rate_type != 'net'
 
     def _il_basic_line_name(self):
         self.ensure_one()
         return 'שכר שעות' if self.version_id.mdl_wage_type == 'mdl_daily' else 'שכר בסיס'
 
     def _il_basic_amount(self):
-        """BASIC: monthly worker uses the fixed monthly wage;
-        daily worker uses regular WORK100 hours at the displayed hourly rate.
+        """BASIC uses the fixed gross wage or a gross-up solved WORK100 amount.
+
+        A gross monthly worker uses the fixed monthly wage.  A net monthly
+        worker, like a net daily worker, consumes the gross amount solved on
+        WORK100 so all ordinary salary rules continue to operate on gross.
+        A gross daily worker uses regular hours at the displayed hourly rate.
 
         The separate IL_WAGE_ROUNDING rule reconciles this displayed result to
-        the exact ten-decimal hourly-rate result.
+        the exact ten-decimal hourly-rate result for daily wages only.
         """
         self.ensure_one()
         version = self.version_id
@@ -719,7 +728,7 @@ class HrPayslip(models.Model):
         return self._il_currency_round_decimal(amount) != Decimal('0')
 
     def _il_net_base_gross_hourly_rate(self):
-        """Gross hourly rate solved on this payslip for a net daily wage."""
+        """Gross hourly rate solved on this payslip for a net base wage."""
         self.ensure_one()
         if self._il_uses_gross_base_wage():
             return 0.0
@@ -734,10 +743,10 @@ class HrPayslip(models.Model):
         self.ensure_one()
         overtime_worked_days = self.worked_days_line_ids.filtered(
             lambda worked_day: worked_day.code == 'OVERTIME')
-        net_daily_wage = not self._il_uses_gross_base_wage()
-        if net_daily_wage and self.env.context.get('il_solving_net_base_wage'):
+        net_base_wage = not self._il_uses_gross_base_wage()
+        if net_base_wage and self.env.context.get('il_solving_net_base_wage'):
             return 0.0
-        if net_daily_wage:
+        if net_base_wage:
             hourly_rate = self._il_net_base_gross_hourly_rate()
             normal_odoo_amount = sum(
                 worked_day.number_of_hours
@@ -771,7 +780,7 @@ class HrPayslip(models.Model):
             return normal_odoo_amount
 
         version = self.version_id
-        if net_daily_wage:
+        if net_base_wage:
             hourly_rate = self._il_net_base_gross_hourly_rate()
         elif self.wage_type == 'hourly':
             hourly_rate = version.hourly_wage
