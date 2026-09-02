@@ -141,6 +141,66 @@ class TestAttendanceDevices(TransactionCase):
         })
         self.assertEqual(card.device_name, self.employee.name)
 
+    def test_manual_identity_sync_between_card_and_employee(self):
+        employee_photo = (
+            b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+            b"+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        self.employee.image_1920 = employee_photo
+        self.card.with_context(skip_card_sync=True).write({
+            "device_name": "Old card name",
+            "profile_photo": False,
+        })
+
+        self.card.action_pull_from_employee()
+        self.assertEqual(
+            self.card.device_name,
+            self.employee._attendance_device_name(self.device),
+        )
+        self.assertEqual(self.card.profile_photo, self.employee.image_1920)
+
+        self.card.with_context(skip_card_sync=True).write({
+            "device_name": "Name received from clock",
+            "profile_photo": employee_photo,
+        })
+        self.card.action_push_to_employee()
+        self.assertEqual(self.employee.image_1920, self.card.profile_photo)
+        language = self.env["res.lang"]._lang_get(self.device.device_language)
+        language_code = language.code if language else (self.env.lang or "en_US")
+        self.assertEqual(
+            self.employee.with_context(lang=language_code).name,
+            "Name received from clock",
+        )
+
+    def test_clock_profile_photo_becomes_missing_biometric_photo(self):
+        photo = (
+            b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+            b"+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        self.card.with_context(
+            skip_card_sync=True,
+            skip_biometric_verification_constraint=True,
+        ).write({"profile_photo": False, "biometric_photo": False, "has_face": False})
+
+        self.device._adapter().process_payload(
+            self._log(), "USERPIC", b"",
+            f"USERPIC PIN=74\tContent={photo.decode()}",
+        )
+        self.card.invalidate_recordset(["profile_photo", "biometric_photo", "has_face"])
+        self.assertEqual(self.card.profile_photo, self.card.biometric_photo)
+        self.assertTrue(self.card.has_face)
+
+        existing_biometric = photo
+        self.card.with_context(
+            skip_card_sync=True,
+            skip_biometric_verification_constraint=True,
+        ).write({"biometric_photo": existing_biometric})
+        self.device._adapter().process_payload(
+            self._log(), "USERPIC", b"",
+            f"USERPIC PIN=74\tContent={photo.decode()}",
+        )
+        self.assertEqual(self.card.biometric_photo, existing_biometric)
+
     def test_verification_mode_requires_enrolled_biometrics(self):
         card = self.card
         card.write({
@@ -1650,9 +1710,38 @@ class TestAttendanceDevices(TransactionCase):
             "update_device_cooldown",
             "reload_device_options",
             "create_user",
-            "update_profile_photo",
-            "update_biometric_photo",
         }.issubset(set(commands.mapped("command_type"))))
+        self.assertFalse(commands.filtered(
+            lambda command: command.command_type in (
+                "update_profile_photo", "update_biometric_photo",
+            )
+        ))
+
+    def test_empty_card_fields_are_never_queued_for_push(self):
+        Command = self.env["mdl.attendance.device.command"]
+        Command.search([("device_employee_id", "=", self.card.id)]).unlink()
+        self.card.with_context(skip_card_sync=True).write({
+            "device_name": False,
+            "profile_photo": False,
+            "biometric_photo": False,
+        })
+
+        self.card.write({
+            "device_name": False,
+            "profile_photo": False,
+            "biometric_photo": False,
+        })
+        self.card._queue_command("update_name")
+        self.card._queue_command("update_profile_photo")
+        self.card._queue_command("update_biometric_photo")
+        commands = Command.search([("device_employee_id", "=", self.card.id)])
+        self.assertFalse(commands.filtered(
+            lambda command: command.command_type in (
+                "update_name", "update_profile_photo", "update_biometric_photo",
+            )
+        ))
+        create_command = self.device._adapter().build_command("create_user", self.card)
+        self.assertNotIn("\tName=", create_command)
 
     def test_hourly_fallback_queues_all_clock_reconciliation_requests(self):
         commands = self.device._queue_automatic_sync(force=True)

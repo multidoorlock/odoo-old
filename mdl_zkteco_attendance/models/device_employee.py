@@ -288,6 +288,28 @@ class AttendanceDeviceEmployee(models.Model):
                 })
         return True
 
+    def action_pull_from_employee(self):
+        """Copy the linked employee identity to this terminal card."""
+        for card in self.filtered("employee_id"):
+            card.write({
+                "device_name": card.employee_id._attendance_device_name(card.device_id),
+                "profile_photo": card.employee_id.image_1920,
+            })
+        return True
+
+    def action_push_to_employee(self):
+        """Copy this terminal card identity to the linked employee."""
+        for card in self.filtered("employee_id"):
+            employee = card.employee_id
+            employee.write({"image_1920": card.profile_photo})
+            if card.device_name:
+                language = self.env["res.lang"]._lang_get(card.device_id.device_language)
+                language_code = language.code if language else (self.env.lang or "en_US")
+                employee.update_field_translations(
+                    "name", {language_code: card.device_name}, source_lang=language_code,
+                )
+        return True
+
     def write(self, vals):
         employee_changed = "employee_id" in vals
         identity_changed = employee_changed or "device_id" in vals
@@ -320,9 +342,14 @@ class AttendanceDeviceEmployee(models.Model):
         return super().unlink()
 
     def _queue_command(self, command_type):
+        commands = self.env["mdl.attendance.device.command"].browse()
         for card in self:
             raw = card.device_id._adapter().build_command(command_type, card)
-            self.env["mdl.attendance.device.command"].sudo().queue_command(card, command_type, raw)
+            if raw:
+                commands |= self.env["mdl.attendance.device.command"].sudo().queue_command(
+                    card, command_type, raw,
+                )
+        return commands
 
     def _queue_initial_sync(self):
         for card in self:
