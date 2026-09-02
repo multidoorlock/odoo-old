@@ -318,6 +318,9 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             prepared = self._photo(photo_content)
             if prepared:
                 update_values["profile_photo"] = prepared[1]
+                if card.employee_id and not card.biometric_photo:
+                    update_values["biometric_photo"] = prepared[1]
+                    update_values["has_face"] = True
         update_values.update({
             "sync_state": "synced",
             "last_sync_at": log.received_at,
@@ -374,6 +377,14 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             }
             for field, command_type in fields_to_update:
                 update_values[field] = display_image
+                if (
+                    field == "profile_photo"
+                    and display_image
+                    and card.employee_id
+                    and not card.biometric_photo
+                ):
+                    update_values["biometric_photo"] = display_image
+                    update_values["has_face"] = True
                 if field == "biometric_photo":
                     update_values["has_face"] = bool(display_image)
                 self._complete_pull_command(card, command_type, log, body_text)
