@@ -1710,9 +1710,38 @@ class TestAttendanceDevices(TransactionCase):
             "update_device_cooldown",
             "reload_device_options",
             "create_user",
-            "update_profile_photo",
-            "update_biometric_photo",
         }.issubset(set(commands.mapped("command_type"))))
+        self.assertFalse(commands.filtered(
+            lambda command: command.command_type in (
+                "update_profile_photo", "update_biometric_photo",
+            )
+        ))
+
+    def test_empty_card_fields_are_never_queued_for_push(self):
+        Command = self.env["mdl.attendance.device.command"]
+        Command.search([("device_employee_id", "=", self.card.id)]).unlink()
+        self.card.with_context(skip_card_sync=True).write({
+            "device_name": False,
+            "profile_photo": False,
+            "biometric_photo": False,
+        })
+
+        self.card.write({
+            "device_name": False,
+            "profile_photo": False,
+            "biometric_photo": False,
+        })
+        self.card._queue_command("update_name")
+        self.card._queue_command("update_profile_photo")
+        self.card._queue_command("update_biometric_photo")
+        commands = Command.search([("device_employee_id", "=", self.card.id)])
+        self.assertFalse(commands.filtered(
+            lambda command: command.command_type in (
+                "update_name", "update_profile_photo", "update_biometric_photo",
+            )
+        ))
+        create_command = self.device._adapter().build_command("create_user", self.card)
+        self.assertNotIn("\tName=", create_command)
 
     def test_hourly_fallback_queues_all_clock_reconciliation_requests(self):
         commands = self.device._queue_automatic_sync(force=True)

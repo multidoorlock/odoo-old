@@ -60,6 +60,8 @@ class AttendanceDeviceCommand(models.Model):
 
     @api.model
     def queue_command(self, card, command_type, raw_command):
+        if not raw_command:
+            return self.browse()
         existing = self.search([
             ("device_id", "=", card.device_id.id),
             ("device_employee_id", "=", card.id),
@@ -167,6 +169,8 @@ class AttendanceDeviceCommand(models.Model):
     @api.model
     def queue_device_command(self, device, command_type, raw_command):
         """Queue a device-level setting/query without creating duplicates."""
+        if not raw_command:
+            return self.browse()
         existing = self.search([
             ("device_id", "=", device.id),
             ("device_employee_id", "=", False),
@@ -189,6 +193,8 @@ class AttendanceDeviceCommand(models.Model):
         self, card, fingerprint_index, command_type, raw_command
     ):
         """Queue one command per finger without overwriting another finger."""
+        if not raw_command:
+            return self.browse()
         opposite_type = {
             "update_fingerprint": "delete_fingerprint",
             "delete_fingerprint": "update_fingerprint",

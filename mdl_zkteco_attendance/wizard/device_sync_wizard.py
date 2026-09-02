@@ -29,8 +29,7 @@ class AttendanceDeviceSyncWizard(models.TransientModel):
             device._queue_current_device_settings()
             for card in cards:
                 # USERINFO contains name, privilege and verification mode.
-                # Empty photos deliberately queue DELETE so the clock becomes
-                # an exact mirror of Odoo.
+                # Empty values are never sent to the terminal.
                 card._queue_command("create_user")
                 card._queue_command("update_profile_photo")
                 card._queue_command("update_biometric_photo")

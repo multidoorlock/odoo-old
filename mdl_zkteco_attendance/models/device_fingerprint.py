@@ -249,6 +249,8 @@ class AttendanceDeviceFingerprint(models.Model):
         for fingerprint in self:
             card = fingerprint.device_employee_id
             payload = fingerprint._template_payload()
+            if not payload:
+                continue
             raw_command = (
                 f"DATA UPDATE BIODATA Pin={card.device_user_id}"
                 f"\tNo={fingerprint.finger_index}"

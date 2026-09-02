@@ -342,9 +342,14 @@ class AttendanceDeviceEmployee(models.Model):
         return super().unlink()
 
     def _queue_command(self, command_type):
+        commands = self.env["mdl.attendance.device.command"].browse()
         for card in self:
             raw = card.device_id._adapter().build_command(command_type, card)
-            self.env["mdl.attendance.device.command"].sudo().queue_command(card, command_type, raw)
+            if raw:
+                commands |= self.env["mdl.attendance.device.command"].sudo().queue_command(
+                    card, command_type, raw,
+                )
+        return commands
 
     def _queue_initial_sync(self):
         for card in self:

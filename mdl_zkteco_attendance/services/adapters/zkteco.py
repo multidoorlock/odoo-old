@@ -38,18 +38,30 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
     def build_command(self, command_type, card):
         pin = card.device_user_id
         if command_type in ("create_user", "update_name", "update_privilege", "update_verification_mode"):
-            return (f"DATA UPDATE USERINFO PIN={pin}\tName={self._clean(card.device_name)}"
-                    f"\tPri={card.device_privilege}\tVerify={card.verification_mode}")
+            name = self._clean(card.device_name)
+            if command_type == "update_name" and not name:
+                return False
+            values = [f"DATA UPDATE USERINFO PIN={pin}"]
+            if name:
+                values.append(f"Name={name}")
+            if card.device_privilege:
+                values.append(f"Pri={card.device_privilege}")
+            if card.verification_mode:
+                values.append(f"Verify={card.verification_mode}")
+            return "\t".join(values)
         if command_type == "update_profile_photo":
             prepared = self._photo(card.profile_photo)
             if not prepared:
-                return f"DATA DELETE USERPIC PIN={pin}"
+                return False
             raw, encoded = prepared
             return f"DATA UPDATE USERPIC PIN={pin}\tSize={len(raw)}\tContent={encoded}"
         if command_type == "update_biometric_photo":
             if not card.biometric_photo:
-                return f"DATA DELETE BIOPHOTO PIN={pin}\tType=9"
-            raw, encoded = self._photo(card.biometric_photo)
+                return False
+            prepared = self._photo(card.biometric_photo)
+            if not prepared:
+                return False
+            raw, encoded = prepared
             # ZAM70/MB560-VL advertises face-photo support in slot 9.
             # The terminal converts this comparison photo into ZKFace data.
             return f"DATA UPDATE BIOPHOTO PIN={pin}\tType=9\tSize={len(raw)}\tContent={encoded}"
