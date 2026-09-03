@@ -1,5 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="view_account_payment_form_payroll_common" model="ir.ui.view">
+        <field name="name">mdl.payroll.account.payment.view.form.common</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            <field name="company_id" position="after">
+                <field name="il_is_employee_payment" invisible="1"/>
+            </field>
+            <notebook position="inside">
+                <page string="מעקב שכר" name="il_payroll" invisible="not il_is_employee_payment">
+                    <group>
+                        <field name="il_currency_rounding" invisible="1"/>
+                        <field name="il_spread_type" readonly="context.get('il_lock_immediate_spread')"/>
+                        <field name="il_planned_amount" widget="monetary" readonly="1"/>
+                        <field name="il_applied_amount" widget="monetary" readonly="1"/>
+                        <field name="il_remaining_amount" widget="monetary" readonly="1"/>
+                    </group>
+                    <field name="il_split_line_ids" widget="il_quick_split_lines" invisible="il_spread_type != 'planned'">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="sequence" string="פעימה מס'" readonly="1"/>
+                            <field name="amount" sum="סה״כ"/>
+                            <field name="payslip_id" domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
+                            <field name="is_applied" readonly="1"/>
+                            <field name="employee_id" column_invisible="1"/>
+                            <field name="company_id" column_invisible="1"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                    <field name="il_split_line_ids" invisible="il_spread_type == 'planned'">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="sequence" readonly="1"/>
+                            <field name="amount" sum="סה״כ"/>
+                            <field name="payslip_id" domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
+                            <field name="is_applied" readonly="1"/>
+                            <field name="employee_id" column_invisible="1"/>
+                            <field name="company_id" column_invisible="1"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
     <!-- ============================================================
          מסך ייעודי לתשלומי עובדים — mode="primary" יוצר View עצמאי
          לגמרי מה-View הסטנדרטי; אינו משפיע על מסכי התשלומים הרגילים
@@ -21,6 +66,9 @@
             <field name="payment_type" position="attributes">
                 <attribute name="invisible">1</attribute>
             </field>
+            <field name="payment_type" position="after">
+                <field name="il_payment_type_display" string="סוג תשלום" readonly="1"/>
+            </field>
 
             <!-- שדה הלקוח כלל לא רלוונטי לתשלום עובד. -->
             <xpath expr="(//field[@name='partner_id'])[1]" position="attributes">
@@ -35,10 +83,6 @@
             </xpath>
 
             <!-- כפתור האישור הראשי למעלה מוחלף בכפתורי footer מפורשים למטה. -->
-            <button name="action_post" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </button>
-
             <xpath expr="(//field[@name='partner_bank_id'])[1]" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -101,13 +145,6 @@
                     </field>
                 </page>
             </notebook>
-            <xpath expr="//form" position="inside">
-                <footer>
-                    <button name="action_post" type="object" string="שמור" class="btn-primary"
-                            invisible="state != 'draft'"/>
-                    <button string="שמור כטיוטה" special="save"/>
-                </footer>
-            </xpath>
         </field>
     </record>
 

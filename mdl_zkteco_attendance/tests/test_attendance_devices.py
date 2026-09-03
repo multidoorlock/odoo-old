@@ -51,6 +51,64 @@ class TestAttendanceDevices(TransactionCase):
             [self.employee.id],
         )
 
+    def test_employee_archive_only_restores_cards_archived_by_employee(self):
+        manual_card = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": self.device.id,
+            "device_user_id": "archive-manual",
+            "employee_id": self.employee.id,
+        })
+        manual_card.active = False
+
+        self.employee.active = False
+        self.card.invalidate_recordset(["active", "archived_by_employee"])
+        self.assertFalse(self.card.active)
+        self.assertTrue(self.card.archived_by_employee)
+
+        with self.assertRaises(ValidationError):
+            self.card.active = True
+
+        self.employee.active = True
+        self.card.invalidate_recordset(["active", "archived_by_employee"])
+        manual_card.invalidate_recordset(["active", "archived_by_employee"])
+        self.assertTrue(self.card.active)
+        self.assertFalse(self.card.archived_by_employee)
+        self.assertFalse(manual_card.active)
+        self.assertFalse(manual_card.archived_by_employee)
+
+    def test_manual_attendance_creates_and_keeps_endpoint_events_in_sync(self):
+        check_in = fields.Datetime.now() - timedelta(hours=8)
+        check_out = check_in + timedelta(hours=7)
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": check_in,
+            "check_out": check_out,
+        })
+        events = self.env["mdl.attendance.device.event"].search([
+            ("attendance_id", "=", attendance.id),
+        ]).sorted("event_datetime")
+        self.assertEqual(len(events), 2)
+        self.assertTrue(all(events.mapped("odoo_generated")))
+        self.assertEqual(events.mapped("punch_state"), ["in", "out"])
+
+        new_check_out = check_out + timedelta(minutes=30)
+        attendance.check_out = new_check_out
+        events.invalidate_recordset(["event_datetime"])
+        self.assertEqual(events[-1].event_datetime, new_check_out)
+
+    def test_manual_attendance_reuses_matching_raw_event(self):
+        check_in = fields.Datetime.now() - timedelta(hours=2)
+        raw_event = self._pending_event(check_in, "in", "reuse-manual")
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": check_in,
+        })
+        raw_event.invalidate_recordset(["attendance_id", "processing_state"])
+        self.assertEqual(raw_event.attendance_id, attendance)
+        self.assertEqual(raw_event.processing_state, "processed")
+        self.assertFalse(raw_event.odoo_generated)
+
     def test_new_card_copies_employee_name_and_profile_photo(self):
         self.employee.image_1920 = (
             b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"

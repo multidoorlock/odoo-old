@@ -165,6 +165,20 @@ class TestAttendanceSegments(TransactionCase):
         self.assertTrue(attendance.segment_ids.is_work)
         self.assertAlmostEqual(attendance.worked_hours, 8.0)
 
+    def test_overtime_segment_is_work_with_distinct_type(self):
+        rule = self.ruleset.rule_ids
+        rule.segment_type = "overtime"
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": datetime(2026, 1, 5, 16, 0),
+            "check_out": datetime(2026, 1, 6, 6, 30),
+        })
+        overtime = attendance.segment_ids.filtered("is_overtime")
+        self.assertEqual(len(overtime), 1)
+        self.assertEqual(overtime.segment_type, "overtime")
+        self.assertTrue(overtime.is_work)
+        self.assertAlmostEqual(attendance.worked_hours, 14.5)
+
     def test_overlapping_timing_rules_are_rejected(self):
         with self.assertRaises(ValidationError):
             self.env["hr.attendance.segment.rule"].create({

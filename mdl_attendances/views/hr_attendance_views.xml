@@ -11,8 +11,6 @@
             <xpath expr="//notebook" position="after">
                 <notebook invisible="not check_out">
                 <page string="Attendance Segments" name="attendance_segments">
-                    <button name="action_regenerate_segments" type="object" string="Regenerate Segments"
-                            class="btn-primary mb-3" groups="hr_attendance.group_hr_attendance_manager"/>
                     <div class="o_mdl_timeline_axis">
                         <span class="o_mdl_timeline_edge o_mdl_timeline_start">
                             <field name="timeline_start_label" nolabel="1"/>
@@ -29,12 +27,13 @@
                             <field name="time_stop"/>
                             <field name="duration"/>
                             <field name="is_work"/>
+                            <field name="is_overtime"/>
                             <field name="segment_type"/>
                             <field name="hover_label"/>
                             <field name="width_percent"/>
                             <templates>
                                 <t t-name="card">
-                                    <article t-attf-class="o_mdl_segment_block {{ record.is_work.raw_value ? 'o_mdl_segment_work' : 'o_mdl_segment_nonwork' }}"
+                                    <article t-attf-class="o_mdl_segment_block {{ record.is_overtime.raw_value ? 'o_mdl_segment_overtime' : (record.is_work.raw_value ? 'o_mdl_segment_work' : 'o_mdl_segment_nonwork') }}"
                                              t-attf-style="flex-basis: {{ record.width_percent.raw_value }}%;"
                                              t-att-title="record.hover_label.value"
                                              t-att-aria-label="record.hover_label.value"

@@ -76,7 +76,21 @@ class HrEmployee(models.Model):
 
     def write(self, vals):
         name_changed = "name" in vals
+        activating = vals.get("active") is True
+        archiving = "active" in vals and not vals.get("active")
         result = super().write(vals)
+        if archiving:
+            self.attendance_device_card_ids.filtered("active").with_context(
+                archive_card_from_employee=True,
+            ).write({"active": False})
+        elif activating:
+            self.env["mdl.attendance.device.employee"].with_context(
+                active_test=False,
+            ).search([
+                ("employee_id", "in", self.ids),
+                ("active", "=", False),
+                ("archived_by_employee", "=", True),
+            ]).with_context(archive_card_from_employee=True).write({"active": True})
         if name_changed:
             self._sync_attendance_resource_names()
             self._sync_attendance_device_card_names()

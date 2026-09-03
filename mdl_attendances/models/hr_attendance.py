@@ -99,6 +99,7 @@ class HrAttendance(models.Model):
                 "start": max(item_start, start),
                 "stop": min(item_stop, stop),
                 "is_work": rule.is_work,
+                "is_overtime": rule.is_overtime,
                 "rule_id": rule.id,
                 "name": rule.name,
             })
@@ -179,6 +180,7 @@ class HrAttendance(models.Model):
                 "start": attendance.check_in,
                 "stop": attendance.check_out,
                 "is_work": True,
+                "is_overtime": False,
                 "rule_id": False,
                 "name": _("Work"),
             }]
@@ -250,6 +252,7 @@ class HrAttendance(models.Model):
                 "time_start": item["start"],
                 "time_stop": item["stop"],
                 "is_work": item["is_work"],
+                "is_overtime": item.get("is_overtime", False),
                 "rule_id": item["rule_id"],
                 "name": item["name"],
             } for item in intervals])
@@ -282,7 +285,7 @@ class HrAttendance(models.Model):
                 pair = next((
                     (left, right)
                     for left, right in zip(ordered, ordered[1:])
-                    if left.is_work == right.is_work
+                    if (left.is_work, left.is_overtime) == (right.is_work, right.is_overtime)
                 ), None)
                 if not pair:
                     break

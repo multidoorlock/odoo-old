@@ -9,3 +9,4 @@ from . import device_command
 from . import device_log
 from . import device_event
 from . import conflict_timeline
+from . import hr_attendance

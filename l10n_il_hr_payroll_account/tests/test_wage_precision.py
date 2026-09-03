@@ -81,7 +81,7 @@ class TestWagePrecision(TransactionCase):
 
     def test_hour_only_display_and_rounding_adjustment(self):
         self.assertEqual(self.payslip.version_id.mdl_wage_type, 'mdl_daily')
-        self.assertEqual(self.payslip._il_basic_line_name(), 'שכר שעות')
+        self.assertEqual(self.payslip._il_basic_line_name(), 'שכר בסיס')
         self.assertAlmostEqual(self.payslip._il_basic_amount(), 5000.80, places=2)
         self.assertEqual(
             self.payslip._il_currency_round_decimal(
@@ -113,6 +113,47 @@ class TestWagePrecision(TransactionCase):
             rules = structure.rule_ids.filtered(
                 lambda rule: rule.code == 'IL_WAGE_ROUNDING' and rule.active)
             self.assertEqual(len(rules), 1)
+            final_rounding_rules = structure.rule_ids.filtered(
+                lambda rule: rule.code == 'IL_PAYSLIP_ROUNDING' and rule.active)
+            self.assertEqual(len(final_rounding_rules), 1)
+            self.assertEqual(len(structure.rule_ids.filtered(
+                lambda rule: rule.code == 'IL_PAYMENTS' and rule.active)), 1)
+            self.assertFalse(structure.rule_ids.filtered(
+                lambda rule: rule.code == 'IL_ADJUSTMENT_NET_DIRECT' and rule.active))
+
+    def test_redundant_base_is_hidden_only_when_equal_to_gross(self):
+        gross = self.payslip.gross_wage
+        rule = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_salary_rule_il_tax_base')
+        line = self.env['hr.payslip.line'].create({
+            'slip_id': self.payslip.id,
+            'name': 'בסיס מס הכנסה',
+            'code': 'IL_TAX_BASE',
+            'salary_rule_id': rule.id,
+            'category_id': rule.category_id.id,
+            'amount': gross,
+            'total': gross,
+            'quantity': 1.0,
+            'rate': 100.0,
+        })
+        self.assertTrue(line.il_hide_redundant_base)
+        line.write({'amount': gross + 100.0, 'total': gross + 100.0})
+        line.flush_recordset(['amount', 'total', 'il_hide_redundant_base'])
+        line.invalidate_recordset(['total', 'il_hide_redundant_base'])
+        self.assertFalse(line.il_hide_redundant_base)
+
+    def test_final_payslip_net_is_rounded_to_a_whole_shekel(self):
+        self.assertEqual(self.payslip._il_payslip_rounding_amount(1000.01), -0.01)
+        self.assertEqual(self.payslip._il_payslip_rounding_amount(1000.50), 0.50)
+        self.assertFalse(self.payslip._il_has_payslip_rounding(1000.00))
+        self.assertTrue(self.payslip._il_has_payslip_rounding(1000.01))
+
+        by_code = {
+            line['code']: line['total']
+            for line in self.payslip._get_payslip_lines()
+        }
+        net = Decimal(str(by_code['NET']))
+        self.assertEqual(net, net.quantize(Decimal('1')))
 
     def test_israeli_payroll_version_gets_a_real_contract_start(self):
         employee = self.env['hr.employee'].create({

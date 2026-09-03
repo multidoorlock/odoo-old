@@ -57,7 +57,7 @@ export class AttendanceTooltip extends Component {
 export class AttendanceEventTile extends Component {
     static template = "mdl_zkteco_attendance.AttendanceEventTile";
     static components = { AttendanceTooltip };
-    static props = ["item", "style", "onOpen", "onContextMenu"];
+    static props = ["item", "style", "selected", "onOpen", "onSelect", "onPointerDown", "onContextMenu"];
 
     setup() {
         this.state = useState({ hovered: false });
@@ -69,7 +69,21 @@ export class AttendanceEventTile extends Component {
 
     onClick(ev) {
         ev.stopPropagation();
+        if (ev.ctrlKey || ev.metaKey) {
+            this.props.onSelect(this.props.item, true);
+            return;
+        }
+        if (this.props.item.dragged) {
+            this.props.item.dragged = false;
+            return;
+        }
         this.props.onOpen(this.props.item);
+    }
+
+    onPointerDown(ev) {
+        if (ev.button === 0) {
+            this.props.onPointerDown(ev, this.props.item);
+        }
     }
 
     onContextMenu(ev) {
@@ -263,9 +277,13 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
     setup() {
         super.setup();
         this.contextMenuState = useState({ menu: null });
+        this.interactionState = useState({ selectedIds: [], drag: null, box: null });
         useExternalListener(window, "click", () => {
             this.contextMenuState.menu = null;
         });
+        useExternalListener(window, "pointermove", (ev) => this.onTimelinePointerMove(ev));
+        useExternalListener(window, "pointerup", (ev) => this.onTimelinePointerUp(ev));
+        useExternalListener(window, "keydown", (ev) => this.onTimelineKeydown(ev));
     }
 
     computeDerivedParams() {
@@ -628,6 +646,182 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         return this._timelineRowsByEmployee?.get(Number(row.resId)) || null;
     }
 
+    getTimelineRowHitboxStyle(row) {
+        const [rowStart, rowStop] = row.grid.row;
+        return this.getGridPosition({
+            column: [1, this.columnCount * this.model.metaData.scale.cellPart + 1],
+            row: [rowStart, rowStop],
+        });
+    }
+
+    _datetimeFromPointer(ev, element) {
+        const rect = element.getBoundingClientRect();
+        const horizontalRatio = Math.max(
+            0, Math.min(1, (ev.clientX - rect.left) / rect.width)
+        );
+        const ratio = localization.direction === "rtl"
+            ? 1 - horizontalRatio
+            : horizontalRatio;
+        const { globalStart, globalStop } = this.model.metaData;
+        const milliseconds = globalStop.toMillis() - globalStart.toMillis();
+        const raw = globalStart.plus({ milliseconds: milliseconds * ratio });
+        const minute = Math.round(raw.minute / 15) * 15;
+        return raw.startOf("hour").plus({ minutes: minute });
+    }
+
+    onEmptyTimelineContextMenu(ev, row) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const datetime = this._datetimeFromPointer(ev, ev.currentTarget);
+        this.contextMenuState.menu = {
+            actions: [{
+                key: "create_event",
+                label: _t("יצירת אירוע נוכחות"),
+                employee_id: Number(row.resId),
+                event_datetime: serializeDateTime(datetime),
+            }],
+            x: Math.min(ev.clientX, window.innerWidth - 230),
+            y: Math.min(ev.clientY, window.innerHeight - 100),
+        };
+    }
+
+    onEmptyTimelinePointerDown(ev) {
+        if (ev.button !== 0 || ev.ctrlKey || ev.metaKey) {
+            return;
+        }
+        ev.preventDefault();
+        this.interactionState.box = {
+            startX: ev.clientX, startY: ev.clientY,
+            x: ev.clientX, y: ev.clientY,
+        };
+        this.interactionState.selectedIds = [];
+    }
+
+    startTimelineDrag(ev, item) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        this.interactionState.drag = {
+            item, startX: ev.clientX, startY: ev.clientY,
+            x: ev.clientX, y: ev.clientY, moved: false,
+            employeeId: item.employeeId,
+            datetime: item.datetime,
+            label: item.tooltipDate,
+        };
+    }
+
+    onTimelinePointerMove(ev) {
+        const drag = this.interactionState.drag;
+        if (drag) {
+            drag.x = ev.clientX;
+            drag.y = ev.clientY;
+            drag.moved = drag.moved || Math.hypot(
+                ev.clientX - drag.startX, ev.clientY - drag.startY
+            ) > 3;
+            const hitbox = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(
+                ".o_mdl_timeline_row_hitbox"
+            );
+            if (hitbox) {
+                drag.employeeId = Number(hitbox.dataset.employeeId);
+                drag.datetime = this._datetimeFromPointer(ev, hitbox);
+                drag.label = drag.datetime.toFormat("dd/LL/yyyy HH:mm");
+            }
+        }
+        const box = this.interactionState.box;
+        if (box) {
+            box.x = ev.clientX;
+            box.y = ev.clientY;
+        }
+    }
+
+    async onTimelinePointerUp() {
+        const drag = this.interactionState.drag;
+        if (drag) {
+            this.interactionState.drag = null;
+            if (drag.moved && drag.item.event_id) {
+                drag.item.dragged = true;
+                await this.orm.call(
+                    "mdl.attendance.device.event", "timeline_move_event",
+                    [drag.item.event_id, drag.employeeId, serializeDateTime(drag.datetime)]
+                );
+                await this.model.fetchData();
+            }
+            return;
+        }
+        const box = this.interactionState.box;
+        if (!box) {
+            return;
+        }
+        this.interactionState.box = null;
+        const selection = {
+            left: Math.min(box.startX, box.x), right: Math.max(box.startX, box.x),
+            top: Math.min(box.startY, box.y), bottom: Math.max(box.startY, box.y),
+        };
+        const ids = [];
+        for (const element of document.querySelectorAll("[data-mdl-timeline-item-id]")) {
+            const rect = element.getBoundingClientRect();
+            if (rect.right >= selection.left && rect.left <= selection.right
+                    && rect.bottom >= selection.top && rect.top <= selection.bottom) {
+                ids.push(element.dataset.mdlTimelineItemId);
+            }
+        }
+        this.interactionState.selectedIds = ids;
+    }
+
+    toggleTimelineSelection(item, additive = false) {
+        const selected = new Set(additive ? this.interactionState.selectedIds : []);
+        if (selected.has(item.id)) {
+            selected.delete(item.id);
+        } else {
+            selected.add(item.id);
+        }
+        this.interactionState.selectedIds = [...selected];
+    }
+
+    isTimelineSelected(item) {
+        return this.interactionState.selectedIds.includes(item.id);
+    }
+
+    get selectionBoxStyle() {
+        const box = this.interactionState.box;
+        if (!box) {
+            return "";
+        }
+        return `left:${Math.min(box.startX, box.x)}px;top:${Math.min(box.startY, box.y)}px;`
+            + `width:${Math.abs(box.x - box.startX)}px;height:${Math.abs(box.y - box.startY)}px`;
+    }
+
+    async deleteSelectedTimelineItems() {
+        const items = this.interactionState.selectedIds
+            .map((id) => this._timelineItemsById.get(id)).filter(Boolean);
+        const eventIds = [...new Set(items.filter((item) => item.source === "event")
+            .map((item) => item.source_id))];
+        const attendanceIds = [...new Set(items.filter((item) => item.source === "attendance")
+            .map((item) => item.source_id))];
+        if (!eventIds.length && !attendanceIds.length) {
+            return;
+        }
+        this.dialogService.add(ConfirmationDialog, {
+            title: _t("מחיקת אירועי נוכחות"),
+            body: _t("למחוק את אירועי הנוכחות שנבחרו?"),
+            confirmLabel: _t("מחיקה"),
+            confirm: async () => {
+                await this.orm.call(
+                    "mdl.attendance.device.event", "timeline_delete_items",
+                    [eventIds, attendanceIds]
+                );
+                this.interactionState.selectedIds = [];
+                await this.model.fetchData();
+            },
+        });
+    }
+
+    onTimelineKeydown(ev) {
+        if (ev.key === "Delete" && this.interactionState.selectedIds.length) {
+            ev.preventDefault();
+            this.deleteSelectedTimelineItems();
+        }
+    }
+
     _getTimelinePosition(datetime, item = null) {
         const { globalStart, globalStop, scale } = this.model.metaData;
         if (!datetime?.isValid || datetime < globalStart || datetime >= globalStop) {
@@ -821,6 +1015,16 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
     async _executeContextAction(action) {
         try {
+            if (action.key === "create_event") {
+                const actionData = await this.orm.call(
+                    "mdl.attendance.device.event", "timeline_manual_event_action",
+                    [action.employee_id, "in", action.event_datetime, false]
+                );
+                await this.actionService.doAction(actionData, {
+                    onClose: () => this.model.fetchData(),
+                });
+                return;
+            }
             if (action.key === "open_event") {
                 return this.openTimelineItem({ source: "event", source_id: action.event_id });
             }

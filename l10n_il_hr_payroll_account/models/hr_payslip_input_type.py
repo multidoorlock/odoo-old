@@ -39,7 +39,7 @@ class HrPayslipInputType(models.Model):
         self.ensure_one()
         return {
             'il_adjustment_direction': self.il_adjustment_direction or 'positive',
-            'il_net_adjustment_treatment': self.il_net_adjustment_treatment or 'gross_up',
+            'il_net_adjustment_treatment': 'gross_up',
             'il_income_taxable': self.il_income_taxable,
             'il_national_insurance_applicable': self.il_national_insurance_applicable,
             'il_pensionable': self.il_pensionable,

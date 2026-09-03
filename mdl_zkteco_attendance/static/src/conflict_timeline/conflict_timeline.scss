@@ -17,6 +17,18 @@
         }
     }
 
+    .o_mdl_timeline_row_hitbox {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+        cursor: crosshair;
+    }
+
+    .o_mdl_attendance_event_tile_selected .o_mdl_attendance_event_tile {
+        outline: 3px solid #017e84 !important;
+        outline-offset: 1px !important;
+    }
+
     .o_mdl_attendance_summary_wrapper {
         position: relative;
         z-index: 4;
@@ -150,6 +162,35 @@
         }
 
     }
+}
+
+.o_mdl_timeline_selection_toolbar {
+    position: fixed;
+    z-index: 1090;
+    inset-inline-end: 24px;
+    bottom: 24px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--o-view-background-color, #fff);
+}
+
+.o_mdl_timeline_selection_box {
+    position: fixed;
+    z-index: 1080;
+    border: 1px solid #017e84;
+    background: rgba(1, 126, 132, .14);
+    pointer-events: none;
+}
+
+.o_mdl_timeline_drag_tooltip {
+    position: fixed;
+    z-index: 1110;
+    padding: 5px 8px;
+    border-radius: 4px;
+    background: #212529;
+    color: #fff;
+    font-size: 12px;
+    pointer-events: none;
 }
 
 .o_mdl_attendance_context_menu {

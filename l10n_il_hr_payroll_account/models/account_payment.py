@@ -23,6 +23,47 @@ class AccountPayment(models.Model):
         string='תשלום לעובד', compute='_compute_il_is_employee_payment', store=True)
     il_currency_rounding = fields.Float(
         related='currency_id.rounding', readonly=True)
+    il_payment_type_display = fields.Char(
+        string='סוג תשלום', compute='_compute_il_payment_type_display')
+
+    @api.depends('payment_type')
+    def _compute_il_payment_type_display(self):
+        for payment in self:
+            payment.il_payment_type_display = (
+                'שלח' if payment.payment_type == 'outbound' else 'קבל')
+
+    @api.onchange('amount')
+    def _onchange_il_limit_payslip_payment_amount(self):
+        payslip_id = self.env.context.get('il_origin_payslip_id')
+        maximum = self.env.context.get('il_max_payment_amount')
+        if not payslip_id or maximum is None or not self.amount:
+            return
+        payslip = self.env['hr.payslip'].browse(payslip_id)
+        currency = payslip.currency_id or payslip.company_id.currency_id
+        if currency.compare_amounts(self.amount, maximum) > 0:
+            self.amount = maximum
+            return {
+                'warning': {
+                    'title': 'סכום התשלום גבוה מדי',
+                    'message': 'לא ניתן לשלם יותר מהיתרה לתשלום בתלוש.',
+                },
+            }
+
+    @api.model
+    def _il_validate_origin_payslip_amount(self, vals):
+        payslip_id = self.env.context.get('il_origin_payslip_id')
+        if not payslip_id:
+            return
+        payslip = self.env['hr.payslip'].browse(payslip_id).exists()
+        if not payslip or payslip.state not in ('validated', 'paid'):
+            raise ValidationError('ניתן לקשר תשלום רק לתלוש מאושר.')
+        self.env.cr.execute(
+            'SELECT id FROM hr_payslip WHERE id = %s FOR UPDATE', (payslip.id,))
+        maximum = payslip.il_net_amount_to_pay
+        amount = vals.get('amount', 0.0)
+        currency = payslip.currency_id or payslip.company_id.currency_id
+        if currency.compare_amounts(amount, maximum) > 0:
+            raise ValidationError('לא ניתן לשלם יותר מהיתרה לתשלום בתלוש.')
 
     @api.depends('partner_id', 'company_id')
     def _compute_il_is_employee_payment(self):
@@ -58,6 +99,7 @@ class AccountPayment(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            self._il_validate_origin_payslip_amount(vals)
             if vals.get('il_spread_type', 'none') == 'per_payslip' and \
                     vals.get('il_split_line_ids'):
                 raise ValidationError(

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="l10n_il_hr_payroll_account.PaymentCycleMatrix">
+        <div class="table-responsive o_list_renderer border rounded">
+            <table class="table table-hover table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>עובד</th>
+                        <t t-foreach="state.types" t-as="cycleType" t-key="cycleType.id">
+                            <th class="text-end"><t t-esc="cycleType.name"/></th>
+                        </t>
+                        <th>חשבון בנק</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="state.employees" t-as="employee" t-key="employee.id">
+                        <td class="align-middle fw-medium"><t t-esc="employee.name"/></td>
+                        <td t-foreach="employee.amounts" t-as="amountData" t-key="amountData.type_id">
+                            <input type="number" min="0" step="0.01" class="form-control text-end"
+                                   t-att-value="amountData.amount"
+                                   t-att-disabled="!amountData.applicable"
+                                   t-on-change="(event) => this.changeAmount(employee, amountData, event)"/>
+                        </td>
+                        <td>
+                            <select class="form-select" t-on-change="(event) => this.changeBank(employee, event)">
+                                <option value="" t-att-selected="!employee.bank_id">ללא חשבון בנק</option>
+                                <option t-foreach="employee.banks" t-as="bank" t-key="bank.id"
+                                        t-att-value="bank.id" t-att-selected="bank.id === employee.bank_id">
+                                    <t t-esc="bank.name"/>
+                                </option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </t>
+</templates>

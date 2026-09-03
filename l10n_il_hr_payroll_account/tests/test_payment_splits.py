@@ -1,6 +1,6 @@
 from datetime import date
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
@@ -52,6 +52,49 @@ class TestPayrollPaymentSplits(TransactionCase):
             "date_to": date(2026, 7, 31),
         })
 
+    def _validate_payslip(self, slip, net_amount=1000.0):
+        rule = self.env.ref('l10n_il_hr_payroll_account.hr_salary_rule_il_net')
+        self.env['hr.payslip.line'].create({
+            'slip_id': slip.id,
+            'name': 'NET',
+            'code': 'NET',
+            'salary_rule_id': rule.id,
+            'category_id': rule.category_id.id,
+            'amount': net_amount,
+            'total': net_amount,
+            'quantity': 1.0,
+            'rate': 100.0,
+        })
+        # These focused payment tests do not run the full payroll engine. Keep
+        # the stored dashboard total coherent with the synthetic NET line and
+        # populate the confirmation timestamp expected by Odoo 19.
+        slip.write({
+            'state': 'validated',
+            'done_date': fields.Datetime.now(),
+            'net_wage': net_amount,
+        })
+        return slip
+
+    def _add_payment_summary_lines(self, slip):
+        for xmlid, code, name in (
+            ('hr_salary_rule_il_payments', 'IL_PAYMENTS', 'תשלומים'),
+            ('hr_salary_rule_il_net_to_pay', 'IL_NET_TO_PAY', 'נטו לתשלום'),
+        ):
+            rule = self.env.ref(f'l10n_il_hr_payroll_account.{xmlid}')
+            self.env['hr.payslip.line'].create({
+                'slip_id': slip.id,
+                'name': name,
+                'code': code,
+                'salary_rule_id': rule.id,
+                'category_id': rule.category_id.id,
+                'amount': slip.net_wage,
+                'quantity': 1.0,
+                'rate': 100.0,
+            })
+        slip.invalidate_recordset(['line_ids'])
+        slip.line_ids.invalidate_recordset(['amount', 'total'])
+        slip.net_wage = 1000.0
+
     def test_new_payslip_state_display_without_currency(self):
         slip = self.env["hr.payslip"].new({})
         self.assertEqual(slip.state_display, "draft")
@@ -67,20 +110,62 @@ class TestPayrollPaymentSplits(TransactionCase):
         with self.assertRaises(ValidationError):
             payment.il_split_line_ids.unlink()
 
-    def test_pay_from_payslip_creates_immediate_link_even_above_net(self):
-        slip = self._payslip()
+    def test_pay_from_payslip_rejects_amount_above_remaining_net(self):
+        slip = self._validate_payslip(self._payslip(), 1000.0)
+        self._add_payment_summary_lines(slip)
         action = slip.action_il_register_payment()
-        self.assertEqual(action["target"], "current")
+        self.assertEqual(action["target"], "new")
         self.assertEqual(action["context"]["default_il_spread_type"], "none")
         self.assertTrue(action["context"]["il_lock_immediate_spread"])
         payment = self.env["account.payment"].with_context(
-            **action["context"]).create(self._payment_values(amount=2500.0))
-        self.assertEqual(len(payment.il_split_line_ids), 1)
+            **action["context"]).create(self._payment_values(amount=1000.0))
+        slip.invalidate_recordset(['line_ids'])
+        slip.line_ids.invalidate_recordset(['amount', 'total'])
         self.assertEqual(payment.il_split_line_ids.payslip_id, slip)
-        self.assertEqual(payment.il_split_line_ids.amount, 2500.0)
-        self.assertEqual(slip.il_paid_amount, 2500.0)
-        self.assertEqual(slip.il_net_amount_to_pay, -2500.0)
-        self.assertEqual(slip.state_display, "overpayment")
+        self.assertEqual(slip.il_net_amount_to_pay, 0.0)
+        self.assertEqual(slip.line_ids.filtered(
+            lambda line: line.code == 'IL_PAYMENTS').total, -1000.0)
+        self.assertEqual(slip.line_ids.filtered(
+            lambda line: line.code == 'IL_NET_TO_PAY').total, 0.0)
+
+        payment_action = slip.action_il_open_payments()
+        self.assertEqual(payment_action['res_model'], 'account.payment.split.line')
+        self.assertEqual(payment_action['domain'], [('payslip_id', '=', slip.id)])
+
+        other_slip = self._validate_payslip(
+            self._payslip(self.other_employee), 1000.0)
+        other_action = other_slip.action_il_register_payment()
+        with self.assertRaises(ValidationError):
+            self.env["account.payment"].with_context(
+                **other_action["context"]).create(self._payment_values(
+                    employee=self.other_employee, amount=1000.01))
+
+    def test_draft_payslip_cannot_receive_a_payment_link(self):
+        slip = self._payslip()
+        payment = self.env["account.payment"].create(self._payment_values())
+        with self.assertRaises(ValidationError):
+            payment.il_split_line_ids.payslip_id = slip
+
+    def test_payrun_pay_and_mark_paid_are_separate(self):
+        run = self.env['hr.payslip.run'].create({
+            'name': 'Payment Validation Run',
+            'date_start': date(2026, 7, 1),
+            'date_end': date(2026, 7, 31),
+        })
+        slip = self._validate_payslip(self._payslip(), 1000.0)
+        slip.payslip_run_id = run
+
+        action = run.action_il_pay()
+
+        self.assertEqual(action['res_model'], 'account.payment')
+        self.assertEqual(slip.state, 'validated')
+        self.assertEqual(slip.il_net_amount_to_pay, 0.0)
+        self.assertEqual(len(slip.il_split_line_ids), 1)
+        self.assertEqual(slip.il_split_line_ids.amount, 1000.0)
+        self.assertEqual(slip.il_split_line_ids.payment_id.il_spread_type, 'none')
+
+        run.action_paid()
+        self.assertEqual(slip.state, 'paid')
 
     def test_planned_distribution_must_close_payment(self):
         payment = self.env["account.payment"].create(self._payment_values(
@@ -253,7 +338,7 @@ class TestPayrollPaymentSplits(TransactionCase):
             self.env["account.payment.split.line"].create({
                 "payment_id": payment.id, "sequence": 1, "amount": 100.0,
             })
-        slip = self._payslip()
+        slip = self._validate_payslip(self._payslip(), 1000.0)
         line = self.env["account.payment.split.line"].with_context(
             il_system_split_create=True).create({
                 "payment_id": payment.id,
@@ -270,7 +355,8 @@ class TestPayrollPaymentSplits(TransactionCase):
                     "payment_id": payment.id,
                     "sequence": 2,
                     "amount": 401.0,
-                    "payslip_id": self._payslip().id,
+                    "payslip_id": self._validate_payslip(
+                        self._payslip(), 1000.0).id,
                 })
 
     def test_split_cannot_link_to_another_employee(self):
@@ -282,11 +368,12 @@ class TestPayrollPaymentSplits(TransactionCase):
                     "payment_id": payment.id,
                     "sequence": 1,
                     "amount": 100.0,
-                    "payslip_id": self._payslip(self.other_employee).id,
+                    "payslip_id": self._validate_payslip(
+                        self._payslip(self.other_employee), 1000.0).id,
                 })
 
-    def test_deleting_payslip_reopens_linked_payment(self):
-        slip = self._payslip()
+    def test_returning_payslip_to_draft_reopens_linked_payment(self):
+        slip = self._validate_payslip(self._payslip(), 1000.0)
         payment = self.env["account.payment"].create(self._payment_values())
         line = payment.il_split_line_ids
         line.payslip_id = slip
@@ -294,7 +381,7 @@ class TestPayrollPaymentSplits(TransactionCase):
         self.assertEqual(payment.il_applied_amount, 1000.0)
         self.assertEqual(payment.il_remaining_amount, 0.0)
 
-        slip.unlink()
+        slip.write({'state': 'draft', 'done_date': False})
 
         self.assertFalse(line.payslip_id)
         self.assertFalse(line.is_applied)

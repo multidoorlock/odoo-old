@@ -61,6 +61,10 @@ class HrPayslip(models.Model):
     il_split_line_ids = fields.One2many(
         'account.payment.split.line', 'payslip_id', string='שורות תשלום')
 
+    il_visible_line_ids = fields.One2many(
+        'hr.payslip.line', 'slip_id', string='חישוב שכר',
+        domain=[('il_hide_redundant_base', '=', False)])
+
     def unlink(self):
         """Release payment instalments through the ORM before deleting slips.
 
@@ -85,10 +89,10 @@ class HrPayslip(models.Model):
             paid = sum(slip.il_split_line_ids.mapped('amount'))
             payments = slip.il_split_line_ids.mapped('payment_id')
             slip.il_paid_amount = paid
-            net_to_pay_lines = slip.line_ids.filtered(lambda line: line.code == 'IL_NET_TO_PAY')
-            calculated = sum(net_to_pay_lines.mapped('total')) if net_to_pay_lines \
-                else slip.net_wage - paid
-            slip.il_net_amount_to_pay = calculated
+            # Payment links change independently of salary-rule computation.
+            # Always derive the live balance from NET and the current links;
+            # a stored IL_NET_TO_PAY line may reflect an older link state.
+            slip.il_net_amount_to_pay = slip.net_wage - paid
             slip.il_payment_count = len(payments)
 
     @api.depends('error_count', 'warning_count', 'state', 'il_net_amount_to_pay', 'currency_id')
@@ -117,6 +121,24 @@ class HrPayslip(models.Model):
     def _il_applied_payment_amount(self):
         self.ensure_one()
         return sum(self.il_split_line_ids.mapped('amount'))
+
+    def _il_sync_payment_summary_lines(self):
+        """Keep post-validation payment rows aligned with live payment links."""
+        for slip in self:
+            paid = sum(self.env['account.payment.split.line'].search([
+                ('payslip_id', '=', slip.id),
+            ]).mapped('amount'))
+            values_by_code = {
+                'IL_PAYMENTS': -paid,
+                'IL_NET_TO_PAY': slip.net_wage - paid,
+            }
+            lines = self.env['hr.payslip.line'].search([
+                ('slip_id', '=', slip.id),
+                ('code', 'in', list(values_by_code)),
+            ])
+            for line in lines:
+                value = values_by_code[line.code]
+                line.write({'amount': value, 'total': value})
 
     def _il_attach_automatic_split_lines(self):
         """Link existing planned/no-spread instalments before Compute Sheet."""
@@ -155,10 +177,23 @@ class HrPayslip(models.Model):
                     currency.compare_amounts(line.amount, available) > 0
                     if currency else line.amount > available
                 )
+                amount_to_draw = min(line.amount, available)
+                if currency.compare_amounts(amount_to_draw, 0.0) <= 0:
+                    break
                 if exceeds_available:
-                    continue
+                    remainder = line.amount - amount_to_draw
+                    payment.with_context(
+                        il_skip_spread_total_check=True,
+                        il_system_split_create=True,
+                    ).write({
+                        'il_spread_type': 'planned',
+                        'il_split_line_ids': [
+                            Command.update(line.id, {'amount': amount_to_draw}),
+                            Command.create({'amount': remainder}),
+                        ],
+                    })
                 line.payslip_id = slip
-                available -= line.amount
+                available -= amount_to_draw
 
     # ------------------------------------------------------------------
     # כפתור "שלם" (סעיפים 18–19 באפיון)
@@ -173,7 +208,10 @@ class HrPayslip(models.Model):
             'name': 'תשלום לעובד',
             'res_model': 'account.payment',
             'view_mode': 'form',
-            'target': 'current',
+            'target': 'new',
+            'views': [(self.env.ref(
+                'l10n_il_hr_payroll_account.view_account_payment_form_employee').id,
+                'form')],
             'context': {
                 'default_partner_id': partner.id,
                 'default_payment_type': 'outbound',
@@ -182,20 +220,24 @@ class HrPayslip(models.Model):
                 'default_il_spread_type': 'none',
                 'il_employee_payment': True,
                 'il_origin_payslip_id': self.id,
+                'il_max_payment_amount': self.il_net_amount_to_pay,
                 'il_lock_immediate_spread': True,
+                'dialog_size': 'large',
             },
         }
 
     def action_il_open_payments(self):
         self.ensure_one()
-        payments = self._il_affecting_payments()
         return {
             'type': 'ir.actions.act_window',
             'name': 'תשלומים',
-            'res_model': 'account.payment',
-            'view_mode': 'list,form',
-            'domain': [('id', 'in', payments.ids)],
-            'context': {'il_employee_payment': True},
+            'res_model': 'account.payment.split.line',
+            'view_mode': 'list',
+            'views': [(self.env.ref(
+                'l10n_il_hr_payroll_account.il_payslip_payment_split_line_list').id,
+                'list')],
+            'domain': [('payslip_id', '=', self.id)],
+            'context': {'create': False, 'edit': False, 'delete': False},
         }
 
     def action_il_draw_open_payments(self):
@@ -281,6 +323,10 @@ class HrPayslip(models.Model):
     # ------------------------------------------------------------------
     def write(self, vals):
         res = super().write(vals)
+        if vals.get('state') == 'draft':
+            split_lines = self.mapped('il_split_line_ids')
+            if split_lines:
+                split_lines.write({'payslip_id': False})
         if 'state' in vals and vals['state'] == 'paid':
             for slip in self:
                 sign = -1 if slip.credit_note else 1
@@ -298,8 +344,7 @@ class HrPayslip(models.Model):
         deterministic order (attachment start date, then id)."""
         self.ensure_one()
         lines = self.input_line_ids.filtered(
-            lambda l: l.il_effect_type == 'net'
-            and l.il_net_adjustment_treatment == 'gross_up')
+            lambda l: l.il_effect_type == 'net')
         component_lines = lines.filtered(
             lambda l: not l.il_salary_attachment_id).sorted(
                 key=lambda l: l.id)
@@ -524,8 +569,23 @@ class HrPayslip(models.Model):
     def compute_sheet(self):
         draft_slips = self.filtered(lambda s: s.state == 'draft')
         draft_slips._il_run_gross_up_engine()
-        draft_slips._il_attach_automatic_split_lines()
         return super().compute_sheet()
+
+    def action_payslip_done(self):
+        result = super().action_payslip_done()
+        validated_slips = self.filtered(lambda slip: slip.state == 'validated')
+        validated_slips._il_attach_automatic_split_lines()
+        validated_slips._il_check_nonnegative_net_to_pay()
+        return result
+
+    def _il_check_nonnegative_net_to_pay(self):
+        for slip in self:
+            currency = slip.currency_id or slip.company_id.currency_id
+            if currency.compare_amounts(slip.il_net_amount_to_pay, 0.0) < 0:
+                raise ValidationError(
+                    'הסכום הכולל של התשלומים המקושרים לתלוש אינו יכול '
+                    'להיות גבוה מהנטו של התלוש.')
+        return True
 
     # ==================================================================
     # עזרי חוקי שכר — נקראים מקוד ה-Python של ה-Salary Rules
@@ -563,6 +623,21 @@ class HrPayslip(models.Model):
         self.ensure_one()
         currency = self.currency_id or self.company_id.currency_id or self.env.company.currency_id
         return (currency.rounding if currency else 0.01) or 0.01
+
+    def _il_payslip_rounding_amount(self, net_amount):
+        """Return the adjustment required to round the final NET to a shekel."""
+        self.ensure_one()
+        if self.env.context.get('il_skip_wage_rounding'):
+            return 0.0
+        amount = self._il_currency_round_decimal(_decimal(net_amount))
+        rounded = amount.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        return float(rounded - amount)
+
+    def _il_has_payslip_rounding(self, net_amount):
+        """Show the final rounding line only when it changes an agora amount."""
+        self.ensure_one()
+        adjustment = _decimal(self._il_payslip_rounding_amount(net_amount))
+        return self._il_currency_round_decimal(adjustment) != Decimal('0')
 
     def _il_refine_gross_at_currency_precision(self, set_amount, approximate, target_net):
         """Choose the payable currency amount whose rounded NET is closest.
@@ -676,7 +751,7 @@ class HrPayslip(models.Model):
 
     def _il_basic_line_name(self):
         self.ensure_one()
-        return 'שכר שעות' if self.version_id.mdl_wage_type == 'mdl_daily' else 'שכר בסיס'
+        return 'שכר בסיס'
 
     def _il_basic_amount(self):
         """BASIC uses the fixed gross wage or a gross-up solved WORK100 amount.
@@ -823,14 +898,13 @@ class HrPayslip(models.Model):
         for line in self.input_line_ids.filtered('il_salary_attachment_id'):
             if not line[flag_field]:
                 continue
-            if (line.il_effect_type == 'net'
-                    and line.il_net_adjustment_treatment == 'direct_net'):
-                continue
             total += line._il_signed_amount()
         return total
 
     def _il_adjustment_total(self, effect_type, treatment=None, attachments_only=True):
         self.ensure_one()
+        if effect_type == 'net':
+            treatment = None
         total = 0.0
         for line in self.input_line_ids:
             if attachments_only and not line.il_salary_attachment_id:

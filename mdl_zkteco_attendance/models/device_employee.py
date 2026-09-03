@@ -68,6 +68,7 @@ class AttendanceDeviceEmployee(models.Model):
     face_template_major_ver = fields.Integer(default=13, readonly=True)
     face_template_minor_ver = fields.Integer(default=0, readonly=True)
     active = fields.Boolean(default=True)
+    archived_by_employee = fields.Boolean(default=False, copy=False)
     link_state = fields.Selection(
         [("needs_employee_link", "דורש קישור לעובד"), ("linked", "מקושר")],
         default="needs_employee_link", required=True, readonly=True, index=True,
@@ -208,6 +209,14 @@ class AttendanceDeviceEmployee(models.Model):
             if card.employee_id and card.employee_id.company_id != card.device_id.company_id:
                 raise ValidationError(_("העובד והשעון חייבים להשתייך לאותה חברה."))
 
+    @api.constrains("employee_id", "active")
+    def _check_active_employee(self):
+        for card in self:
+            if card.active and card.employee_id and not card.employee_id.active:
+                raise ValidationError(_(
+                    "לא ניתן להפעיל כרטיס של עובד שנמצא בארכיון."
+                ))
+
     @api.model
     def _allocate_user_id(self, device):
         # Serialize allocation per device so two simultaneous card creations
@@ -243,6 +252,8 @@ class AttendanceDeviceEmployee(models.Model):
                 if employee:
                     vals["device_name"] = employee._attendance_device_name(device)
                     vals.setdefault("profile_photo", employee.image_1920)
+                    if not employee.active:
+                        vals.update({"active": False, "archived_by_employee": True})
                 vals["link_state"] = "linked"
         cards = super().create(vals_list)
         if not self.env.context.get("attendance_device_discovery"):
@@ -311,6 +322,18 @@ class AttendanceDeviceEmployee(models.Model):
         return True
 
     def write(self, vals):
+        vals = dict(vals)
+        if "active" in vals:
+            if vals["active"] and self.filtered(
+                lambda card: card.employee_id and not card.employee_id.active
+            ):
+                raise ValidationError(_(
+                    "לא ניתן להפעיל כרטיס של עובד שנמצא בארכיון."
+                ))
+            vals["archived_by_employee"] = bool(
+                not vals["active"]
+                and self.env.context.get("archive_card_from_employee")
+            )
         employee_changed = "employee_id" in vals
         identity_changed = employee_changed or "device_id" in vals
         result = super().write(vals)

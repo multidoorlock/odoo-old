@@ -42,8 +42,7 @@ class HrPayslipInput(models.Model):
 
     def _il_is_gross_up(self):
         self.ensure_one()
-        return (self.il_effect_type == 'net'
-                and self.il_net_adjustment_treatment == 'gross_up')
+        return self.il_effect_type == 'net'
 
     def _il_signed_amount(self):
         """Effective signed amount for rule computation (+/- per direction)."""

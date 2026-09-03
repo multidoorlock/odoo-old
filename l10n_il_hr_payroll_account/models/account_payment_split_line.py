@@ -64,15 +64,18 @@ class AccountPaymentSplitLine(models.Model):
                 raise ValidationError('יצירה ידנית של פעימות מותרת רק בפריסה מתוכננת.')
         lines = super().create(vals_list)
         lines._check_business_rules()
+        lines.mapped('payslip_id')._il_sync_payment_summary_lines()
         lines._check_complete_spread_outside_draft()
         return lines
 
     def write(self, vals):
         payments = self.mapped('payment_id') if 'sequence' in vals else self.env['account.payment']
+        payslips = self.mapped('payslip_id')
         result = super().write(vals)
         if payments and not self.env.context.get('il_system_resequence'):
             payments._il_resequence_split_lines()
         self._check_business_rules()
+        (payslips | self.mapped('payslip_id'))._il_sync_payment_summary_lines()
         if 'amount' in vals and not self.env.context.get('il_sync_from_payment'):
             for line in self.filtered(lambda item: item.payment_id.il_spread_type == 'none'):
                 line.payment_id.with_context(il_sync_from_line=True).amount = line.amount
@@ -84,7 +87,9 @@ class AccountPaymentSplitLine(models.Model):
                 self.filtered(lambda line: line.payment_id.il_spread_type != 'planned'):
             raise ValidationError('מחיקת פעימות מותרת רק בפריסה מתוכננת.')
         payments = self.mapped('payment_id')
+        payslips = self.mapped('payslip_id')
         result = super().unlink()
+        payslips._il_sync_payment_summary_lines()
         payments._il_resequence_split_lines()
         if not self.env.context.get('il_system_split_unlink'):
             payments.filtered(lambda payment: payment.state != 'draft') \
@@ -110,10 +115,17 @@ class AccountPaymentSplitLine(models.Model):
         for line in self:
             payment = line.payment_id
             if line.payslip_id:
+                if line.payslip_id.state not in ('validated', 'paid'):
+                    raise ValidationError('ניתן לקשר תשלום רק לתלוש מאושר.')
                 if line.payslip_id.company_id != payment.company_id:
                     raise ValidationError('התשלום והתלוש חייבים להיות באותה חברה.')
                 if line.payslip_id.employee_id != line.employee_id:
                     raise ValidationError('אסור לקשר פעימה לתלוש של עובד אחר.')
+                self.env.cr.execute(
+                    'SELECT id FROM hr_payslip WHERE id = %s FOR UPDATE',
+                    (line.payslip_id.id,),
+                )
+                line.payslip_id._il_check_nonnegative_net_to_pay()
             applied = sum(payment.il_split_line_ids.filtered('payslip_id').mapped('amount'))
             if payment.currency_id.compare_amounts(applied, payment.amount) > 0:
                 raise ValidationError('סכום הפעימות שקוזזו אינו יכול לעבור את סכום התשלום.')

@@ -12,9 +12,6 @@
                 <field name="il_adjustment_direction" widget="radio"
                        options="{'horizontal': true}"
                        invisible="not available_in_attachments"/>
-                <field name="il_net_adjustment_treatment" widget="radio"
-                       options="{'horizontal': true}"
-                       invisible="not available_in_attachments"/>
             </field>
             <field name="struct_ids" position="after">
                 <field name="il_income_taxable" invisible="not available_in_attachments"/>

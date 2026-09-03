@@ -19,11 +19,13 @@
              t-att-data-mdl-timeline-item-id="props.item.id"
              t-att-class="{
                 'o_mdl_attendance_event_tile_compact': props.item.compact,
+                'o_mdl_attendance_event_tile_selected': props.selected,
              }"
              t-att-aria-label="ariaLabel"
              role="button"
              tabindex="0"
              t-on-click="onClick"
+             t-on-pointerdown="onPointerDown"
              t-on-keydown="onKeydown"
              t-on-mouseenter="() => this.state.hovered = true"
              t-on-mouseleave="() => this.state.hovered = false"
@@ -95,6 +97,11 @@
         <t t-call="web_gantt.GanttRenderer.RowContent"/>
         <t t-set="timelineRow" t-value="getTimelineRow(row)"/>
         <t t-if="timelineRow">
+            <div class="o_mdl_timeline_row_hitbox"
+                 t-att-data-employee-id="row.resId"
+                 t-att-style="getTimelineRowHitboxStyle(row)"
+                 t-on-contextmenu="(ev) => this.onEmptyTimelineContextMenu(ev, row)"
+                 t-on-pointerdown="onEmptyTimelinePointerDown"/>
             <t t-if="timelineRow.detailed">
                 <t t-foreach="timelineRow.connections" t-as="connection" t-key="connection.id">
                     <t t-set="connector" t-value="getTimelineConnection(connection, row, timelineRow)"/>
@@ -105,7 +112,10 @@
                     <AttendanceEventTile t-if="itemStyle"
                                          item="item"
                                          style="itemStyle"
+                                         selected="isTimelineSelected(item)"
                                          onOpen="(selectedItem) => this.openTimelineItem(selectedItem)"
+                                         onSelect="(selectedItem, additive) => this.toggleTimelineSelection(selectedItem, additive)"
+                                         onPointerDown="(ev, selectedItem) => this.startTimelineDrag(ev, selectedItem)"
                                          onContextMenu="(ev, selectedItem) => this.onTimelineContextMenu(ev, selectedItem)"/>
                 </t>
             </t>
@@ -124,6 +134,19 @@
             <AttendanceContextMenu t-if="contextMenuState.menu"
                                    menu="contextMenuState.menu"
                                    onSelect="(action) => this.onContextAction(action)"/>
+            <div t-if="interactionState.selectedIds.length"
+                 class="o_mdl_timeline_selection_toolbar shadow-sm">
+                <span><t t-esc="interactionState.selectedIds.length"/> נבחרו</span>
+                <button type="button" class="btn btn-danger btn-sm ms-2"
+                        t-on-click="deleteSelectedTimelineItems">מחיקה</button>
+            </div>
+            <div t-if="interactionState.box" class="o_mdl_timeline_selection_box"
+                 t-att-style="selectionBoxStyle"/>
+            <div t-if="interactionState.drag &amp;&amp; interactionState.drag.moved"
+                 class="o_mdl_timeline_drag_tooltip shadow"
+                 t-att-style="`left:${interactionState.drag.x + 12}px;top:${interactionState.drag.y + 12}px`">
+                <t t-esc="interactionState.drag.label"/>
+            </div>
         </xpath>
     </t>
 </templates>

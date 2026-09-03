@@ -21,11 +21,13 @@ class HrAttendanceSegmentRuleset(models.Model):
         versions = self.env["hr.version"].search([("segment_ruleset_id", "in", self.ids)])
         if not versions:
             return self.env["hr.attendance"]
-        return self.env["hr.attendance"].search([
+        candidates = self.env["hr.attendance"].search([
             ("employee_id", "in", versions.employee_id.ids),
             ("check_out", "!=", False),
             ("date", ">=", min(versions.mapped("date_version"))),
         ])
+        return candidates.filtered(
+            lambda attendance: attendance._segment_ruleset() in self)
 
     def action_regenerate_segments(self):
         attendances = self._attendances_to_regenerate()
@@ -74,20 +76,25 @@ class HrAttendanceSegmentRule(models.Model):
     resource_calendar_id = fields.Many2one(
         "resource.calendar", string="Schedule", domain=[("flexible_hours", "=", False)])
     is_work = fields.Boolean(string="Work", default=True)
+    is_overtime = fields.Boolean(string="Overtime", default=False)
     segment_type = fields.Selection(
-        [("work", "Work"), ("non_work", "Non-Work")],
+        [("work", "Work"), ("non_work", "Non-Work"), ("overtime", "Overtime")],
         string="Segment Type", compute="_compute_segment_type", inverse="_inverse_segment_type",
         store=True, readonly=False,
     )
 
-    @api.depends("is_work")
+    @api.depends("is_work", "is_overtime")
     def _compute_segment_type(self):
         for rule in self:
-            rule.segment_type = "work" if rule.is_work else "non_work"
+            rule.segment_type = (
+                "overtime" if rule.is_overtime
+                else ("work" if rule.is_work else "non_work")
+            )
 
     def _inverse_segment_type(self):
         for rule in self:
-            rule.is_work = rule.segment_type == "work"
+            rule.is_overtime = rule.segment_type == "overtime"
+            rule.is_work = rule.segment_type in ("work", "overtime")
 
     _timing_start_valid = models.Constraint(
         "CHECK(0 <= timing_start AND timing_start < 24)", "Start must be an hour between 00:00 and 23:59.")
