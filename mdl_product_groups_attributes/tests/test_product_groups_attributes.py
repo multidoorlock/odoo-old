@@ -261,7 +261,7 @@ class TestProductGroupsAttributes(TransactionCase):
         blocked_action = template.action_mdl_open_blocked_rules()
         self.assertEqual(
             blocked_action["res_model"],
-            "product.template.attribute.exclusion",
+            "mdl.blocked.variant.preview",
         )
         self.assertEqual(
             blocked_action["views"],
@@ -269,16 +269,9 @@ class TestProductGroupsAttributes(TransactionCase):
                 (
                     self.env.ref(
                         "mdl_product_groups_attributes."
-                        "mdl_catalog_combination_rule_list_view"
+                        "mdl_blocked_variant_preview_list_view"
                     ).id,
                     "list",
-                ),
-                (
-                    self.env.ref(
-                        "mdl_product_groups_attributes."
-                        "mdl_catalog_combination_rule_form_view"
-                    ).id,
-                    "form",
                 ),
             ],
         )
