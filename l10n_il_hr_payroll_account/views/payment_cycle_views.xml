@@ -29,8 +29,8 @@
                         <field name="recurrence"/>
                         <field name="cancel_payments"/>
                     </group>
-                    <notebook invisible="not id">
-                        <page string="מחזורי תשלומים">
+                    <notebook>
+                        <page string="מחזורי תשלומים" invisible="not id">
                             <field name="batch_payment_ids" readonly="1">
                                 <list>
                                     <field name="name"/>

@@ -31,6 +31,7 @@ class HrPayslipRun(models.Model):
                 created |= Payment.with_context(
                     il_origin_payslip_id=slip.id,
                     il_max_payment_amount=remaining,
+                    il_auto_post_on_create=True,
                 ).create({
                     'partner_id': partner.id,
                     'company_id': slip.company_id.id,

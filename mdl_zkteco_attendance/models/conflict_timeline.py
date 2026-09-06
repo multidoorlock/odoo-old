@@ -536,6 +536,9 @@ class AttendanceConflictTimeline(models.Model):
             "id": f"event:{event.id}",
             "source": "event",
             "source_id": event.id,
+            # Keep a common field for drag persistence. Attendance-backed
+            # tiles already expose their originating device event this way.
+            "event_id": event.id,
             "kind": effective_state,
             "datetime": self._timeline_dt(event.event_datetime),
             "state": state,
@@ -600,11 +603,19 @@ class AttendanceConflictTimeline(models.Model):
                 return any(domain_mentions_conflict(item) for item in value)
             return False
 
+        def domain_mentions_data(value):
+            if isinstance(value, (list, tuple)):
+                if value and value[0] == "event_datetime" and value[1] == "!=":
+                    return True
+                return any(domain_mentions_data(item) for item in value)
+            return False
+
         # Direct RPC callers historically mean "conflicts only" when they do
         # not pass a search domain.  Removing the default search filter still
         # sends the action's base domain, which is how "all employees" is
         # distinguished without adding a second UI switch.
         only_conflicts = not active_domain or domain_mentions_conflict(active_domain)
+        only_with_data = domain_mentions_data(active_domain)
         Event = self.sudo()
         candidate_domain = [
             ("event_datetime", ">=", start),
@@ -641,7 +652,12 @@ class AttendanceConflictTimeline(models.Model):
             self._timeline_event_employee(event).id for event in conflicts
             if self._timeline_event_employee(event)
         ))
-        if not only_conflicts:
+        if not only_conflicts and only_with_data:
+            event_employee_ids = list(dict.fromkeys(
+                self._timeline_event_employee(event).id for event in candidates
+                if self._timeline_event_employee(event)
+            ))
+        elif not only_conflicts:
             event_employee_ids = self.env["hr.employee"].search([]).ids
         if not event_employee_ids:
             return {"rows": [], "start": self._timeline_dt(start), "end": self._timeline_dt(end)}

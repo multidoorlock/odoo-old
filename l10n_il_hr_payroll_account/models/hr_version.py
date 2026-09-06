@@ -64,10 +64,6 @@ class HrVersion(models.Model):
         for version in self:
             version.il_salary_structure_id = version.structure_type_id.default_struct_id
             version.schedule_pay = 'monthly'
-            if version.structure_type_id.country_id.code == 'IL':
-                version.mdl_wage_type = (
-                    'mdl_monthly' if version.structure_type_id.wage_type == 'monthly'
-                    else 'mdl_daily')
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -97,10 +93,6 @@ class HrVersion(models.Model):
         if structure_type and structure_type.country_id.code == 'IL':
             vals['schedule_pay'] = 'monthly'
             vals.setdefault('il_salary_structure_id', structure_type.default_struct_id.id)
-            vals.setdefault(
-                'mdl_wage_type',
-                'mdl_monthly' if structure_type.wage_type == 'monthly' else 'mdl_daily',
-            )
         vals['schedule_pay'] = 'monthly'
         result = super().write(vals)
         if not self.env.context.get('il_ensuring_contract_start'):

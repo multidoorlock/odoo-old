@@ -40,6 +40,27 @@ class HrEmployee(models.Model):
     attendance_device_card_ids = fields.One2many(
         "mdl.attendance.device.employee", "employee_id", string="כרטיסי שעוני נוכחות"
     )
+    attendance_device_card_count = fields.Integer(
+        string="כרטיסי עובד", compute="_compute_attendance_device_card_count",
+    )
+
+    def _compute_attendance_device_card_count(self):
+        Card = self.env["mdl.attendance.device.employee"].sudo().with_context(active_test=False)
+        counts = dict(Card._read_group(
+            [("employee_id", "in", self.ids)],
+            groupby=["employee_id"], aggregates=["__count"],
+        ))
+        for employee in self:
+            employee.attendance_device_card_count = counts.get(employee, 0)
+
+    def action_open_attendance_device_cards(self):
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id(
+            "mdl_zkteco_attendance.action_device_employee"
+        )
+        action["domain"] = [("employee_id", "=", self.id)]
+        action["context"] = {"default_employee_id": self.id, "active_test": False}
+        return action
 
     def _prepare_resource_values(self, vals, tz):
         # hr.employee normally removes name because it is a related field in

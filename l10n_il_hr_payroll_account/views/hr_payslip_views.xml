@@ -4,7 +4,8 @@
         <field name="name">mdl.payroll.payslip.payment.split.line.list</field>
         <field name="model">account.payment.split.line</field>
         <field name="arch" type="xml">
-            <list string="תשלומים" create="0" edit="0" delete="0">
+            <list string="תשלומים" create="0" edit="0" delete="0"
+                  action="action_open_payment" type="object">
                 <field name="payment_id" string="תשלום"/>
                 <field name="sequence" string="פעימה מספר"/>
                 <field name="amount" string="סכום כולל" sum="סה״כ"/>
@@ -17,17 +18,25 @@
         <field name="model">hr.payslip</field>
         <field name="inherit_id" ref="hr_payroll.view_hr_payslip_form"/>
         <field name="arch" type="xml">
-            <field name="state" position="after">
-                <field name="state_display" widget="badge" class="ms-2"
-                       invisible="state_display != 'overpayment'"
-                       decoration-danger="state_display == 'overpayment'"/>
-            </field>
             <button name="action_payslip_paid" position="attributes">
-                <attribute name="invisible">state != 'validated'</attribute>
+                <attribute name="invisible">1</attribute>
+            </button>
+            <button name="action_payslip_unpaid" position="attributes">
+                <attribute name="invisible">1</attribute>
             </button>
             <button name="action_register_payment" position="attributes">
                 <attribute name="invisible">1</attribute>
             </button>
+            <button name="action_payslip_draft" position="attributes">
+                <attribute name="string">החזר לטיוטה</attribute>
+                <attribute name="invisible">state not in ('validated', 'paid', 'cancel')</attribute>
+            </button>
+            <xpath expr="(//button[@name='compute_sheet'])[1]" position="attributes">
+                <attribute name="invisible">state != 'draft' or il_visible_line_ids or credit_note</attribute>
+            </xpath>
+            <xpath expr="(//button[@name='compute_sheet'])[2]" position="attributes">
+                <attribute name="invisible">state != 'draft' or not il_visible_line_ids or credit_note</attribute>
+            </xpath>
             <button name="action_payslip_payment_report" position="after">
                 <button string="שלם" name="action_il_register_payment" type="object"
                         class="oe_highlight"
@@ -42,8 +51,16 @@
             <field name="line_ids" position="attributes">
                 <attribute name="name">il_visible_line_ids</attribute>
             </field>
+            <xpath expr="//field[@name='il_visible_line_ids']/list" position="attributes">
+                <attribute name="decoration-info">total == 0</attribute>
+                <attribute name="decoration-success">total &gt; 0 and code not in ('BASIC', 'GROSS', 'NET', 'IL_NET_TO_PAY', 'IL_EMPLOYER_COST', 'IL_TAX_BASE', 'IL_NI_BASE', 'IL_PENSION_BASE', 'IL_SEVERANCE_BASE', 'IL_STUDY_FUND_BASE', 'IL_PAL_EQUALIZATION_BASE')</attribute>
+                <attribute name="decoration-danger">total &lt; 0</attribute>
+            </xpath>
             <xpath expr="//field[@name='il_visible_line_ids']/list/field[@name='currency_id']" position="after">
                 <field name="il_hide_redundant_base" column_invisible="True"/>
+            </xpath>
+            <xpath expr="//field[@name='worked_days_line_ids']/list/field[@name='amount']" position="after">
+                <field name="daily_wage" string="שכר יומי" readonly="1"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="סיכום" name="il_summary">
@@ -65,9 +82,6 @@
         <field name="arch" type="xml">
             <field name="net_wage" position="after">
                 <field name="il_net_amount_to_pay" widget="monetary" optional="show"/>
-            </field>
-            <field name="state_display" position="attributes">
-                <attribute name="decoration-danger">state_display in ('error', 'overpayment')</attribute>
             </field>
         </field>
     </record>

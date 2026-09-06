@@ -24,6 +24,12 @@
         cursor: crosshair;
     }
 
+    .o_mdl_attendance_event_tile_dragging {
+        opacity: .92;
+        cursor: grabbing;
+        filter: drop-shadow(0 5px 8px rgba(0, 0, 0, .28));
+    }
+
     .o_mdl_attendance_event_tile_selected .o_mdl_attendance_event_tile {
         outline: 3px solid #017e84 !important;
         outline-offset: 1px !important;
@@ -162,24 +168,6 @@
         }
 
     }
-}
-
-.o_mdl_timeline_selection_toolbar {
-    position: fixed;
-    z-index: 1090;
-    inset-inline-end: 24px;
-    bottom: 24px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    background: var(--o-view-background-color, #fff);
-}
-
-.o_mdl_timeline_selection_box {
-    position: fixed;
-    z-index: 1080;
-    border: 1px solid #017e84;
-    background: rgba(1, 126, 132, .14);
-    pointer-events: none;
 }
 
 .o_mdl_timeline_drag_tooltip {

@@ -137,6 +137,22 @@ class HrVersion(models.Model):
                 version.mdl_daily_wage = (
                     version.wage * std_hours / avg_hours if avg_hours else 0.0)
 
+    @api.onchange('mdl_daily_wage')
+    def _onchange_mdl_daily_wage_copy_additional_day_rate(self):
+        """Start an additional-day rate from the currently shown day rate."""
+        for version in self:
+            version.mdl_additional_day_wage = version.mdl_daily_wage
+
+    @api.onchange('mdl_wage_type')
+    def _onchange_mdl_wage_type_structure(self):
+        """Clear a salary category that does not match the chosen wage type."""
+        for version in self:
+            expected = (
+                'hourly' if version.mdl_wage_type == 'mdl_daily' else 'monthly')
+            if version.structure_type_id and \
+                    version.structure_type_id.wage_type != expected:
+                version.structure_type_id = False
+
     @api.depends(
         'mdl_additional_day_wage', 'resource_calendar_id.hours_per_day',
         'resource_calendar_id.mdl_schedule_type',
@@ -211,3 +227,13 @@ class HrVersion(models.Model):
             if float_compare(
                     version.mdl_additional_day_wage, 0.0, precision_digits=2) < 0:
                 raise ValidationError('תעריף יום נוסף אינו יכול להיות שלילי.')
+
+    @api.constrains('mdl_wage_type', 'structure_type_id')
+    def _check_mdl_wage_type_structure(self):
+        for version in self.filtered('structure_type_id'):
+            expected = (
+                'hourly' if version.mdl_wage_type == 'mdl_daily' else 'monthly')
+            if version.structure_type_id.wage_type != expected:
+                raise ValidationError(
+                    'קטגוריית השכר חייבת להתאים לסוג העובד: '
+                    'קטגוריה יומית לעובד יומי וקטגוריה חודשית לעובד חודשי.')

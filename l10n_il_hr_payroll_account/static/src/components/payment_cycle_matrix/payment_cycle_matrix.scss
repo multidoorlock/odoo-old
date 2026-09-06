@@ -1,0 +1,28 @@
+.o_il_payment_cycle_matrix {
+    width: 100%;
+    min-height: 55vh;
+    max-height: 70vh;
+    overflow: auto;
+
+    thead {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--o-view-background-color, #fff);
+    }
+
+    th,
+    td {
+        min-width: 10rem;
+        vertical-align: middle;
+    }
+
+    th:first-child,
+    td:first-child {
+        position: sticky;
+        inset-inline-start: 0;
+        z-index: 1;
+        min-width: 14rem;
+        background: var(--o-view-background-color, #fff);
+    }
+}

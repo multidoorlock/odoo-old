@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from decimal import Decimal, ROUND_HALF_UP
 
-from odoo import Command, api, fields, models
+from odoo import Command, api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
 # מצבי Payment שבהם התשלום נחשב "בוצע" ומשתתף בחישוב הסכום ששולם.
@@ -63,7 +63,10 @@ class HrPayslip(models.Model):
 
     il_visible_line_ids = fields.One2many(
         'hr.payslip.line', 'slip_id', string='חישוב שכר',
-        domain=[('il_hide_redundant_base', '=', False)])
+        domain=[
+            ('il_hide_redundant_base', '=', False),
+            ('code', '!=', 'IL_NET_BEFORE_DIRECT_ADJUSTMENTS'),
+        ])
 
     def unlink(self):
         """Release payment instalments through the ORM before deleting slips.
@@ -139,6 +142,35 @@ class HrPayslip(models.Model):
             for line in lines:
                 value = values_by_code[line.code]
                 line.write({'amount': value, 'total': value})
+        self._il_sync_paid_state_from_balance()
+
+    def _il_sync_paid_state_from_balance(self):
+        """Derive the legal paid state from the live net balance.
+
+        A validated payslip is paid as soon as its payable balance reaches
+        zero.  If a payment link is later released, the payslip becomes
+        validated again.  Draft and cancelled payslips are never touched.
+        """
+        for slip in self.filtered(lambda item: item.state in ('validated', 'paid')):
+            currency = slip.currency_id or slip.company_id.currency_id
+            is_zero = currency.compare_amounts(slip.il_net_amount_to_pay, 0.0) == 0
+            if is_zero and slip.state == 'validated':
+                slip.action_payslip_paid()
+            elif not is_zero and slip.state == 'paid':
+                slip.action_payslip_unpaid()
+        self._il_sync_account_move_state_from_payment_balance()
+
+    def _il_sync_account_move_state_from_payment_balance(self):
+        """Post a payroll move only when every payslip it contains is paid."""
+        moves = self.mapped('move_id')
+        for move in moves:
+            linked_slips = self.search([('move_id', '=', move.id)])
+            should_be_posted = bool(linked_slips) and all(
+                slip.state == 'paid' for slip in linked_slips)
+            if should_be_posted and move.state == 'draft':
+                move.action_post()
+            elif not should_be_posted and move.state == 'posted':
+                move.button_draft()
 
     def _il_attach_automatic_split_lines(self):
         """Link existing planned/no-spread instalments before Compute Sheet."""
@@ -148,19 +180,35 @@ class HrPayslip(models.Model):
             if not partner:
                 continue
             available = max(
-                slip._il_compute_net_total() - slip._il_applied_payment_amount(), 0.0)
+                slip.net_wage - slip._il_applied_payment_amount(), 0.0)
             payments = self.env['account.payment'].search([
                 ('partner_id', '=', partner.id),
                 ('company_id', '=', slip.company_id.id),
                 ('payment_type', '=', 'outbound'),
                 ('state', 'not in', ('draft', 'canceled')),
                 ('date', '<=', slip.date_to),
-                ('il_spread_type', 'in', ('planned', 'none')),
+                ('il_spread_type', 'in', ('planned', 'none', 'per_payslip')),
                 ('il_remaining_amount', '>', 0),
             ], order='date, id')
             for payment in payments:
                 if payment.il_split_line_ids.filtered(
                         lambda existing: existing.payslip_id == slip):
+                    continue
+                currency = (
+                    slip.currency_id
+                    or slip.company_id.currency_id
+                    or self.env.company.currency_id
+                )
+                if payment.il_spread_type == 'per_payslip':
+                    amount_to_draw = min(payment.il_remaining_amount, available)
+                    if currency.compare_amounts(amount_to_draw, 0.0) <= 0:
+                        break
+                    Split.with_context(il_system_split_create=True).create({
+                        'payment_id': payment.id,
+                        'amount': amount_to_draw,
+                        'payslip_id': slip.id,
+                    })
+                    available -= amount_to_draw
                     continue
                 line = Split.search([
                     ('payment_id', '=', payment.id),
@@ -168,11 +216,6 @@ class HrPayslip(models.Model):
                 ], order='sequence, id', limit=1)
                 if not line:
                     continue
-                currency = (
-                    slip.currency_id
-                    or slip.company_id.currency_id
-                    or self.env.company.currency_id
-                )
                 exceeds_available = (
                     currency.compare_amounts(line.amount, available) > 0
                     if currency else line.amount > available
@@ -222,6 +265,7 @@ class HrPayslip(models.Model):
                 'il_origin_payslip_id': self.id,
                 'il_max_payment_amount': self.il_net_amount_to_pay,
                 'il_lock_immediate_spread': True,
+                'il_auto_post_on_create': True,
                 'dialog_size': 'large',
             },
         }
@@ -323,10 +367,6 @@ class HrPayslip(models.Model):
     # ------------------------------------------------------------------
     def write(self, vals):
         res = super().write(vals)
-        if vals.get('state') == 'draft':
-            split_lines = self.mapped('il_split_line_ids')
-            if split_lines:
-                split_lines.write({'payslip_id': False})
         if 'state' in vals and vals['state'] == 'paid':
             for slip in self:
                 sign = -1 if slip.credit_note else 1
@@ -457,14 +497,21 @@ class HrPayslip(models.Model):
         version = self.version_id
         additional_lines = self.worked_days_line_ids.filtered(
             lambda line: line.code == 'ADDITIONAL_DAY')
-        if (not additional_lines or not version.mdl_additional_day_wage
-                or version.mdl_wage_rate_type != 'net'
-                or version.mdl_wage_type != 'mdl_monthly'):
+        if (not additional_lines
+                or version.mdl_wage_rate_type != 'net'):
             return
-        target_delta = (
-            self._il_worked_days_units('ADDITIONAL_DAY')
-            * version.mdl_additional_day_wage
-        )
+        if version.mdl_wage_type == 'mdl_monthly':
+            target_delta = (
+                self._il_worked_days_units('ADDITIONAL_DAY')
+                * version.mdl_additional_day_wage
+            )
+        elif version.mdl_wage_type == 'mdl_daily':
+            target_delta = float(self._il_currency_round_decimal(
+                _decimal(self._il_worked_days_hours('ADDITIONAL_DAY'))
+                * self._il_exact_hourly_rate()
+            ))
+        else:
+            return
         if not target_delta:
             return
 
@@ -517,7 +564,8 @@ class HrPayslip(models.Model):
             for line in gross_up_lines:
                 line.amount = 0.0
             if (slip.version_id.mdl_wage_rate_type == 'net'
-                    and slip.version_id.mdl_additional_day_wage):
+                    and slip.worked_days_line_ids.filtered(
+                        lambda line: line.code == 'ADDITIONAL_DAY')):
                 slip._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
             slip._il_gross_up_regular_attendance()
             slip._il_gross_up_additional_day()
@@ -566,16 +614,63 @@ class HrPayslip(models.Model):
                 )
                 base_net = slip._il_compute_net_total()
 
+    def _il_reset_accounting_entries_for_recompute(self):
+        """Remove stale accounting entries before a draft slip is recomputed.
+
+        The custom workflow allows a validated or paid payslip to return
+        directly to draft while its employee payments remain linked.  Native
+        Odoo only exposes that transition after cancellation, where the
+        accounting move has already been removed or reversed.  Keeping the
+        old move here prevents ``_action_create_account_move`` from creating
+        a fresh entry on the next approval and leaves its journal items out of
+        sync with the recomputed salary lines or updated salary-rule accounts.
+        """
+        moves = self.mapped('move_id')
+        if not moves:
+            return
+
+        linked_slips = self.search([('move_id', 'in', moves.ids)])
+        other_slips = linked_slips - self
+        if other_slips:
+            raise UserError(_(
+                "The accounting entry is shared with other payslips. Return "
+                "all payslips linked to that entry to draft together."
+            ))
+
+        linked_runs = self.env['hr.payslip.run'].search([
+            ('move_id', 'in', moves.ids),
+        ])
+        moves.sudo()._unlink_or_reverse()
+        # Draft moves are unlinked and clear this field through PostgreSQL's
+        # ON DELETE behavior.  A protected/locked move is reversed instead,
+        # so clear the old link explicitly in both cases.
+        self.write({'move_id': False})
+        linked_runs.write({'move_id': False})
+
+    def action_payslip_draft(self):
+        result = super().action_payslip_draft()
+        self._il_reset_accounting_entries_for_recompute()
+        return result
+
     def compute_sheet(self):
         draft_slips = self.filtered(lambda s: s.state == 'draft')
+        draft_slips._il_reset_accounting_entries_for_recompute()
         draft_slips._il_run_gross_up_engine()
-        return super().compute_sheet()
+        result = super().compute_sheet()
+        # gross_wage is stored by Odoo only after the salary lines have been
+        # replaced.  Refresh the display-only base marker at that point;
+        # computing it while lines are being created can compare against the
+        # previous gross and leave equal bases visible.
+        self.mapped('line_ids')._compute_il_hide_redundant_base()
+        return result
 
     def action_payslip_done(self):
         result = super().action_payslip_done()
+        self.mapped('line_ids')._compute_il_hide_redundant_base()
         validated_slips = self.filtered(lambda slip: slip.state == 'validated')
         validated_slips._il_attach_automatic_split_lines()
         validated_slips._il_check_nonnegative_net_to_pay()
+        validated_slips._il_sync_paid_state_from_balance()
         return result
 
     def _il_check_nonnegative_net_to_pay(self):
@@ -625,19 +720,11 @@ class HrPayslip(models.Model):
         return (currency.rounding if currency else 0.01) or 0.01
 
     def _il_payslip_rounding_amount(self, net_amount):
-        """Return the adjustment required to round the final NET to a shekel."""
-        self.ensure_one()
-        if self.env.context.get('il_skip_wage_rounding'):
-            return 0.0
-        amount = self._il_currency_round_decimal(_decimal(net_amount))
-        rounded = amount.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
-        return float(rounded - amount)
+        """Retired: NET is intentionally never rounded by a salary rule."""
+        return 0.0
 
     def _il_has_payslip_rounding(self, net_amount):
-        """Show the final rounding line only when it changes an agora amount."""
-        self.ensure_one()
-        adjustment = _decimal(self._il_payslip_rounding_amount(net_amount))
-        return self._il_currency_round_decimal(adjustment) != Decimal('0')
+        return False
 
     def _il_refine_gross_at_currency_precision(self, set_amount, approximate, target_net):
         """Choose the payable currency amount whose rounded NET is closest.
@@ -771,8 +858,8 @@ class HrPayslip(models.Model):
                 lambda line: line.code == 'WORK100')
             return sum(attendance_lines.mapped('amount'))
         if version.mdl_wage_type == 'mdl_daily':
-            _exact_total, display_total = self._il_daily_hourly_amounts()
-            return float(self._il_currency_round_decimal(display_total))
+            return sum(self.worked_days_line_ids.filtered(
+                lambda line: line.code == 'WORK100').mapped('amount'))
         if version.wage_type == 'hourly':
             return self._il_worked_days_hours('WORK100') * version.hourly_wage
         # Missing an attendance is not, by itself, an unpaid leave. Explicit
@@ -781,26 +868,11 @@ class HrPayslip(models.Model):
         return max(version.wage, 0.0)
 
     def _il_wage_rounding_amount(self):
-        """Rounded exact result minus the rounded displayed-rate result.
-
-        Both operands are final payslip amounts at currency precision.  Their
-        subtraction therefore always closes the two visible lines exactly and
-        cannot land on a binary-float half-cent boundary inside Odoo's salary
-        rule engine.
-        """
-        self.ensure_one()
-        exact_total, display_total = self._il_daily_hourly_amounts()
-        exact_total = self._il_currency_round_decimal(exact_total)
-        display_total = self._il_currency_round_decimal(display_total)
-        return float(exact_total - display_total)
+        """Retired: attendance wages are rounded on WORK100 itself."""
+        return 0.0
 
     def _il_has_wage_rounding(self):
-        """Avoid a visible zero line when the difference rounds to no agorot."""
-        self.ensure_one()
-        if self.env.context.get('il_skip_wage_rounding'):
-            return False
-        amount = _decimal(self._il_wage_rounding_amount())
-        return self._il_currency_round_decimal(amount) != Decimal('0')
+        return False
 
     def _il_net_base_gross_hourly_rate(self):
         """Gross hourly rate solved on this payslip for a net base wage."""
@@ -881,12 +953,18 @@ class HrPayslip(models.Model):
     def _il_additional_day_amount(self):
         self.ensure_one()
         version = self.version_id
-        if (not version.mdl_additional_day_wage
-                or version.mdl_wage_type != 'mdl_monthly'):
+        additional_lines = self.worked_days_line_ids.filtered(
+            lambda line: line.code == 'ADDITIONAL_DAY')
+        if not additional_lines:
             return 0.0
-        if version.mdl_wage_rate_type == 'net':
-            return sum(self.worked_days_line_ids.filtered(
-                lambda line: line.code == 'ADDITIONAL_DAY').mapped('amount'))
+        # Daily workers already receive their calculated hourly/daily amount
+        # on the Worked Days row.  It must be consumed by the salary rule just
+        # like the solved gross amount of a net daily worker.
+        if (version.mdl_wage_type == 'mdl_daily'
+                or version.mdl_wage_rate_type == 'net'):
+            return sum(additional_lines.mapped('amount'))
+        if not version.mdl_additional_day_wage:
+            return 0.0
         return self._il_worked_days_units('ADDITIONAL_DAY') * version.mdl_additional_day_wage
 
     def _il_inputs_base(self, flag_field):
@@ -945,6 +1023,11 @@ class HrPayslip(models.Model):
 
     def _il_income_tax(self, current_base, rule_code):
         self.ensure_one()
+        # Do not create a cumulative tax refund/charge on a zero-income slip.
+        # Such a value changes NET despite there being no taxable earnings and
+        # can create a fictitious payable balance after the slip was settled.
+        if current_base <= 0:
+            return 0.0
         version = self.version_id
         year_start = self._il_tax_year_start()
         months = self.date_to.month

@@ -30,6 +30,7 @@
             <xpath expr="//field[@name='structure_type_id']" position="attributes">
                 <attribute name="string">קטגוריית שכר</attribute>
                 <attribute name="placeholder">ללא קטגוריה — לא ייכלל בחישובי שכר</attribute>
+                <attribute name="domain">[('wage_type', '=', 'hourly' if mdl_wage_type == 'mdl_daily' else 'monthly')]</attribute>
             </xpath>
 
             <!-- עמודת "שכר" לצד עמודת החוזה -->

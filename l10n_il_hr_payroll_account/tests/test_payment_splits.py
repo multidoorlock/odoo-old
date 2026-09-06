@@ -26,6 +26,18 @@ class TestPayrollPaymentSplits(TransactionCase):
             ("company_id", "=", cls.company.id),
             ("type", "in", ("bank", "cash")),
         ], limit=1)
+        cls.payment_debit_account = cls.env['account.account'].search([
+            ('company_ids', 'in', cls.company.id),
+            ('account_type', 'in', ('expense', 'asset_current')),
+        ], limit=1)
+        cls.payment_credit_account = cls.env['account.account'].search([
+            ('company_ids', 'in', cls.company.id),
+            ('account_type', 'in', ('liability_current', 'liability_payable')),
+        ], limit=1)
+        cls.company.write({
+            'il_employee_payment_debit_account_id': cls.payment_debit_account.id,
+            'il_employee_payment_credit_account_id': cls.payment_credit_account.id,
+        })
 
     def _payment_values(self, employee=None, **extra):
         employee = employee or self.employee
@@ -122,7 +134,9 @@ class TestPayrollPaymentSplits(TransactionCase):
         slip.invalidate_recordset(['line_ids'])
         slip.line_ids.invalidate_recordset(['amount', 'total'])
         self.assertEqual(payment.il_split_line_ids.payslip_id, slip)
+        self.assertNotEqual(payment.state, 'draft')
         self.assertEqual(slip.il_net_amount_to_pay, 0.0)
+        self.assertEqual(slip.state, 'paid')
         self.assertEqual(slip.line_ids.filtered(
             lambda line: line.code == 'IL_PAYMENTS').total, -1000.0)
         self.assertEqual(slip.line_ids.filtered(
@@ -140,13 +154,110 @@ class TestPayrollPaymentSplits(TransactionCase):
                 **other_action["context"]).create(self._payment_values(
                     employee=self.other_employee, amount=1000.01))
 
+    def test_applied_splits_create_separate_posted_moves(self):
+        first_slip = self._validate_payslip(self._payslip(), 400.0)
+        second_slip = self._validate_payslip(self._payslip(), 600.0)
+        payment = self.env['account.payment'].create(self._payment_values(
+            il_spread_type='planned',
+            il_split_line_ids=[
+                Command.create({'amount': 400.0}),
+                Command.create({'amount': 600.0}),
+            ],
+        ))
+        payment.action_post()
+        first, second = payment.il_split_line_ids
+
+        first.payslip_id = first_slip
+        first_move = first.account_move_id
+        self.assertTrue(first_move)
+        self.assertEqual(first_move.state, 'posted')
+        self.assertEqual(first_move.il_employee_payment_id, payment)
+        self.assertEqual(first_move.il_employee_payment_split_line_id, first)
+        self.assertEqual(sum(first_move.line_ids.mapped('debit')), 400.0)
+        self.assertEqual(sum(first_move.line_ids.mapped('credit')), 400.0)
+        self.assertFalse(payment.move_id)
+
+        second.payslip_id = second_slip
+        second_move = second.account_move_id
+        self.assertTrue(second_move)
+        self.assertNotEqual(second_move, first_move)
+        self.assertEqual(second_move.state, 'posted')
+        self.assertEqual(sum(second_move.line_ids.mapped('debit')), 600.0)
+        self.assertEqual(sum(second_move.line_ids.mapped('credit')), 600.0)
+        self.assertEqual(payment.il_split_move_ids, first_move | second_move)
+
+    def test_payslip_move_posts_at_zero_and_returns_to_draft(self):
+        slip = self._validate_payslip(self._payslip(), 1000.0)
+        move = self.env['account.move'].create({
+            'move_type': 'entry',
+            'date': date(2026, 7, 31),
+            'journal_id': self.journal.id,
+            'line_ids': [
+                Command.create({
+                    'name': 'Payroll debit',
+                    'account_id': self.payment_debit_account.id,
+                    'debit': 1000.0,
+                }),
+                Command.create({
+                    'name': 'Payroll credit',
+                    'account_id': self.payment_credit_account.id,
+                    'credit': 1000.0,
+                }),
+            ],
+        })
+        slip.move_id = move
+        payment = self.env['account.payment'].create(self._payment_values())
+
+        payment.il_split_line_ids.payslip_id = slip
+        self.assertEqual(slip.state, 'paid')
+        self.assertEqual(move.state, 'posted')
+
+        payment.il_split_line_ids.payslip_id = False
+        self.assertEqual(slip.state, 'validated')
+        self.assertEqual(move.state, 'draft')
+
+    def test_daily_rate_onchange_copies_additional_day_rate(self):
+        daily_version = self.env['hr.version'].new({
+            'company_id': self.company.id,
+            'mdl_wage_type': 'mdl_daily',
+            'mdl_daily_wage': 475.0,
+        })
+        daily_version._onchange_mdl_daily_wage_copy_additional_day_rate()
+        self.assertEqual(daily_version.mdl_additional_day_wage, 475.0)
+
+        monthly_version = self.env['hr.version'].new({
+            'company_id': self.company.id,
+            'mdl_wage_type': 'mdl_monthly',
+            'resource_calendar_id': self.company.resource_calendar_id.id,
+            'wage': 10000.0,
+        })
+        monthly_day_rate = monthly_version.mdl_daily_wage
+        monthly_version._onchange_mdl_daily_wage_copy_additional_day_rate()
+        self.assertGreater(monthly_day_rate, 0.0)
+        self.assertEqual(
+            monthly_version.mdl_additional_day_wage, monthly_day_rate)
+
+    def test_wage_type_rejects_mismatched_salary_category(self):
+        monthly_type = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_type_il')
+        daily_type = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_type_il_daily')
+        version = self.employee.version_id
+        version.write({
+            'mdl_wage_type': 'mdl_daily',
+            'mdl_daily_wage': 400.0,
+            'structure_type_id': daily_type.id,
+        })
+        with self.assertRaises(ValidationError):
+            version.write({'structure_type_id': monthly_type.id})
+
     def test_draft_payslip_cannot_receive_a_payment_link(self):
         slip = self._payslip()
         payment = self.env["account.payment"].create(self._payment_values())
         with self.assertRaises(ValidationError):
             payment.il_split_line_ids.payslip_id = slip
 
-    def test_payrun_pay_and_mark_paid_are_separate(self):
+    def test_payrun_pay_automatically_marks_zero_balance_paid(self):
         run = self.env['hr.payslip.run'].create({
             'name': 'Payment Validation Run',
             'date_start': date(2026, 7, 1),
@@ -158,14 +269,16 @@ class TestPayrollPaymentSplits(TransactionCase):
         action = run.action_il_pay()
 
         self.assertEqual(action['res_model'], 'account.payment')
-        self.assertEqual(slip.state, 'validated')
+        self.assertEqual(slip.state, 'paid')
+        self.assertEqual(run.state, '03_paid')
         self.assertEqual(slip.il_net_amount_to_pay, 0.0)
         self.assertEqual(len(slip.il_split_line_ids), 1)
         self.assertEqual(slip.il_split_line_ids.amount, 1000.0)
         self.assertEqual(slip.il_split_line_ids.payment_id.il_spread_type, 'none')
 
-        run.action_paid()
-        self.assertEqual(slip.state, 'paid')
+        slip.il_split_line_ids.payslip_id = False
+        self.assertEqual(slip.state, 'validated')
+        self.assertEqual(run.state, '02_close')
 
     def test_planned_distribution_must_close_payment(self):
         payment = self.env["account.payment"].create(self._payment_values(
@@ -372,18 +485,147 @@ class TestPayrollPaymentSplits(TransactionCase):
                         self._payslip(self.other_employee), 1000.0).id,
                 })
 
-    def test_returning_payslip_to_draft_reopens_linked_payment(self):
+    def test_returning_paid_payslip_to_draft_keeps_payment_linked(self):
         slip = self._validate_payslip(self._payslip(), 1000.0)
         payment = self.env["account.payment"].create(self._payment_values())
         line = payment.il_split_line_ids
         line.payslip_id = slip
+        old_move = self.env['account.move'].create({
+            'journal_id': self.journal.id,
+            'date': slip.date_to,
+        })
+        slip.move_id = old_move
         self.assertTrue(line.is_applied)
         self.assertEqual(payment.il_applied_amount, 1000.0)
         self.assertEqual(payment.il_remaining_amount, 0.0)
 
-        slip.write({'state': 'draft', 'done_date': False})
+        self.assertEqual(slip.state, 'paid')
+        slip.action_payslip_draft()
 
-        self.assertFalse(line.payslip_id)
-        self.assertFalse(line.is_applied)
-        self.assertEqual(payment.il_applied_amount, 0.0)
-        self.assertEqual(payment.il_remaining_amount, 1000.0)
+        self.assertEqual(slip.state, 'draft')
+        self.assertFalse(slip.move_id)
+        self.assertFalse(old_move.exists())
+        self.assertEqual(line.payslip_id, slip)
+        self.assertTrue(line.is_applied)
+        self.assertEqual(payment.il_applied_amount, 1000.0)
+        self.assertEqual(payment.il_remaining_amount, 0.0)
+
+    def test_reapproval_rebuilds_accounting_lines_from_rule_accounts(self):
+        rule = self.env.ref('l10n_il_hr_payroll_account.hr_salary_rule_il_net')
+        accounts = self.env['account.account'].search([], limit=2)
+        self.assertEqual(len(accounts), 2)
+        rule.struct_id.journal_id = self.journal
+
+        slip = self._payslip()
+        slip.struct_id = rule.struct_id
+        self._validate_payslip(slip, 1000.0)
+        old_move = self.env['account.move'].create({
+            'journal_id': self.journal.id,
+            'date': slip.date_to,
+        })
+        slip.move_id = old_move
+
+        slip.action_payslip_draft()
+        rule.account_debit = accounts[0]
+        rule.account_credit = accounts[1]
+        slip.write({
+            'state': 'validated',
+            'done_date': fields.Datetime.now(),
+        })
+        slip._action_create_account_move()
+
+        self.assertTrue(slip.move_id)
+        self.assertNotEqual(slip.move_id, old_move)
+        self.assertEqual(len(slip.move_id.line_ids), 2)
+        self.assertEqual(
+            set(slip.move_id.line_ids.mapped('account_id').ids),
+            set(accounts.ids),
+        )
+
+    def test_compute_sheet_removes_stale_move_from_draft_payslip(self):
+        slip = self._payslip()
+        old_move = self.env['account.move'].create({
+            'journal_id': self.journal.id,
+            'date': slip.date_to,
+        })
+        slip.move_id = old_move
+
+        slip.compute_sheet()
+
+        self.assertFalse(slip.move_id)
+        self.assertFalse(old_move.exists())
+
+    def test_il_rule_account_mapping_is_complete_and_reconcilable(self):
+        self.env['hr.payroll.structure']._il_ensure_payroll_accounting_configuration(
+            overwrite=True,
+        )
+        structures = self.env['hr.payroll.structure'].search([('code', 'in', (
+            'IL_ISR_MONTHLY', 'IL_ISR_DAILY',
+            'IL_PAL_MONTHLY', 'IL_PAL_DAILY',
+        ))])
+        mapped_codes = {
+            'BASIC', 'IL_OVERTIME', 'IL_ADDITIONAL_DAY_GROSS',
+            'IL_ADJUSTMENT_GROSS', 'IL_ADJUSTMENT_NET_GROSSUP',
+            'IL_ISR_INCOME_TAX', 'IL_ISR_NI_EE', 'IL_ISR_HEALTH_EE',
+            'IL_ISR_PENSION_EE', 'IL_ISR_STUDY_EE', 'IL_ISR_NI_ER',
+            'IL_ISR_PENSION_ER', 'IL_ISR_SEVERANCE_ER', 'IL_ISR_STUDY_ER',
+            'IL_PAL_INCOME_TAX', 'IL_PAL_NI_EE', 'IL_PAL_HEALTH_STAMP',
+            'IL_PAL_ORGANIZATION_TAX', 'IL_PAL_PENSION_EE',
+            'IL_PAL_STUDY_EE', 'IL_PAL_NI_ER', 'IL_PAL_EQUALIZATION_ER',
+            'IL_PAL_PENSION_ER', 'IL_PAL_SEVERANCE_ER', 'IL_PAL_STUDY_ER',
+            'NET',
+        }
+        rules = structures.mapped('rule_ids').filtered(
+            lambda rule: rule.active and rule.code in mapped_codes
+        )
+        for journal in structures.mapped('journal_id'):
+            self.assertTrue(journal.default_account_id)
+            self.assertTrue(journal.default_account_id.reconcile)
+        self.assertTrue(rules)
+        for rule in rules:
+            self.assertTrue(
+                rule.account_debit or rule.account_credit,
+                f'Missing accounting mapping for {rule.struct_id.code}/{rule.code}',
+            )
+            for account in rule.account_debit | rule.account_credit:
+                self.assertTrue(account.reconcile)
+
+        technical_codes = {
+            'GROSS', 'IL_TAX_BASE', 'IL_NI_BASE', 'IL_PENSION_BASE',
+            'IL_SEVERANCE_BASE', 'IL_STUDY_FUND_BASE',
+            'IL_PAL_EQUALIZATION_BASE', 'IL_PAYMENTS', 'IL_NET_TO_PAY',
+            'IL_EMPLOYER_COST',
+        }
+        technical_rules = structures.mapped('rule_ids').filtered(
+            lambda rule: rule.active and rule.code in technical_codes
+        )
+        for rule in technical_rules:
+            self.assertFalse(rule.account_debit)
+            self.assertFalse(rule.account_credit)
+
+    def test_approval_draws_only_available_net_from_open_payment(self):
+        slip = self._validate_payslip(self._payslip(), 1000.0)
+        payment = self.env["account.payment"].create(self._payment_values(
+            amount=1500.0,
+            il_spread_type="per_payslip",
+        ))
+        payment.action_post()
+
+        eligible = self.env['account.payment'].search([
+            ('partner_id', '=', slip.employee_id.work_contact_id.id),
+            ('company_id', '=', slip.company_id.id),
+            ('payment_type', '=', 'outbound'),
+            ('state', 'not in', ('draft', 'canceled')),
+            ('date', '<=', slip.date_to),
+            ('il_spread_type', 'in', ('planned', 'none', 'per_payslip')),
+            ('il_remaining_amount', '>', 0),
+        ])
+        self.assertIn(payment, eligible)
+
+        slip._il_attach_automatic_split_lines()
+
+        self.assertEqual(len(payment.il_split_line_ids), 1)
+        self.assertEqual(payment.il_split_line_ids.amount, 1000.0)
+        self.assertEqual(payment.il_split_line_ids.payslip_id, slip)
+        self.assertEqual(slip.il_net_amount_to_pay, 0.0)
+        self.assertEqual(payment.il_remaining_amount, 500.0)

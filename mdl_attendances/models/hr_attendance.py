@@ -99,13 +99,53 @@ class HrAttendance(models.Model):
                 "start": max(item_start, start),
                 "stop": min(item_stop, stop),
                 "is_work": rule.is_work,
-                "is_overtime": rule.is_overtime,
+                # Segmentation rules decide only work/non-work. Overtime is
+                # applied later and comes exclusively from native Odoo data.
+                "is_overtime": False,
                 "rule_id": rule.id,
                 "name": rule.name,
             })
             if stop < item_stop:
                 result.append({**item, "start": stop})
         return [item for item in result if item["start"] < item["stop"]]
+
+    def _apply_native_overtime(self, intervals, overtime_hours):
+        """Mark the final effective-work portion as Odoo overtime."""
+        already_marked = sum(
+            (item["stop"] - item["start"]).total_seconds() / 3600.0
+            for item in intervals
+            if item["is_work"] and item.get("is_overtime")
+        )
+        remaining = max((overtime_hours or 0.0) - already_marked, 0.0)
+        if not remaining:
+            return intervals
+        result = list(intervals)
+        for index in range(len(result) - 1, -1, -1):
+            item = result[index]
+            if not item["is_work"] or item.get("is_overtime"):
+                continue
+            duration = (item["stop"] - item["start"]).total_seconds() / 3600.0
+            overtime_duration = min(duration, remaining)
+            overtime_start = item["stop"] - timedelta(hours=overtime_duration)
+            overtime_item = {
+                **item,
+                "start": overtime_start,
+                "is_work": True,
+                "is_overtime": True,
+                "rule_id": False,
+                "name": _("Overtime"),
+            }
+            if overtime_start > item["start"]:
+                result[index:index + 1] = [
+                    {**item, "stop": overtime_start},
+                    overtime_item,
+                ]
+            else:
+                result[index] = overtime_item
+            remaining -= overtime_duration
+            if remaining <= 1e-9:
+                break
+        return result
 
     def _timing_rule_windows(self, rule):
         self.ensure_one()
@@ -176,6 +216,11 @@ class HrAttendance(models.Model):
             attendance.segment_ids.with_context(segment_boundary_sync=True).unlink()
             if not attendance.check_in or not attendance.check_out:
                 continue
+            # Odoo queues these stored fields for recomputation after editing
+            # attendance boundaries. Read a fresh value before constructing
+            # the visual segments, otherwise an old month-long value can leak
+            # into the regenerated timeline.
+            attendance._compute_overtime_hours()
             intervals = [{
                 "start": attendance.check_in,
                 "stop": attendance.check_out,
@@ -247,6 +292,9 @@ class HrAttendance(models.Model):
                         remaining -= min(duration, remaining)
                         if remaining <= 0:
                             break
+            intervals = attendance._apply_native_overtime(
+                intervals, attendance.overtime_hours,
+            )
             Segment.create([{
                 "attendance_id": attendance.id,
                 "time_start": item["start"],
@@ -309,12 +357,26 @@ class HrAttendance(models.Model):
         self.flush_recordset(["worked_hours"])
         self.invalidate_recordset(["worked_hours"])
         self._update_overtime()
+        self._refresh_displayed_overtime_fields()
+
+    def _refresh_displayed_overtime_fields(self):
+        """Refresh stored overtime values before returning the edited form."""
+        closed = self.filtered("check_out")
+        if not closed:
+            return
+        closed._compute_overtime_hours()
+        closed._compute_validated_overtime_hours()
+        closed._compute_overtime_status()
+        closed.flush_recordset([
+            "overtime_hours", "validated_overtime_hours", "overtime_status",
+        ])
 
     def action_regenerate_segments(self):
         self.with_context(segment_generation=True)._generate_segments()
         self.env.add_to_compute(self._fields["worked_hours"], self)
         self.flush_recordset(["worked_hours"])
         self._update_overtime()
+        self._refresh_displayed_overtime_fields()
         return {"type": "ir.actions.client", "tag": "reload"}
 
     @api.model_create_multi

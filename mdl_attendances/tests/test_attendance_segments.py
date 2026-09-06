@@ -165,19 +165,23 @@ class TestAttendanceSegments(TransactionCase):
         self.assertTrue(attendance.segment_ids.is_work)
         self.assertAlmostEqual(attendance.worked_hours, 8.0)
 
-    def test_overtime_segment_is_work_with_distinct_type(self):
-        rule = self.ruleset.rule_ids
-        rule.segment_type = "overtime"
-        attendance = self.env["hr.attendance"].create({
-            "employee_id": self.employee.id,
-            "check_in": datetime(2026, 1, 5, 16, 0),
-            "check_out": datetime(2026, 1, 6, 6, 30),
-        })
-        overtime = attendance.segment_ids.filtered("is_overtime")
-        self.assertEqual(len(overtime), 1)
-        self.assertEqual(overtime.segment_type, "overtime")
-        self.assertTrue(overtime.is_work)
-        self.assertAlmostEqual(attendance.worked_hours, 14.5)
+    def test_native_overtime_marks_the_tail_as_distinct_work(self):
+        start = datetime(2026, 1, 5, 2, 0)
+        stop = datetime(2026, 1, 5, 22, 30)
+        intervals = self.employee.env["hr.attendance"]._apply_native_overtime([{
+            "start": start,
+            "stop": stop,
+            "is_work": True,
+            "is_overtime": False,
+            "rule_id": False,
+            "name": "Work",
+        }], 10.5)
+
+        self.assertEqual(len(intervals), 2)
+        self.assertFalse(intervals[0]["is_overtime"])
+        self.assertTrue(intervals[1]["is_overtime"])
+        self.assertEqual(intervals[1]["start"], datetime(2026, 1, 5, 12, 0))
+        self.assertEqual(intervals[1]["stop"], stop)
 
     def test_overlapping_timing_rules_are_rejected(self):
         with self.assertRaises(ValidationError):

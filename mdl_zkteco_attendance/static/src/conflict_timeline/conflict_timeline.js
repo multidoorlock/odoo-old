@@ -29,6 +29,7 @@ const SUMMARY_HEIGHT = 28;
 const SUMMARY_TOP = 4;
 const BUCKET_ITEM_GAP = 5;
 const BUCKET_PADDING = 5;
+const MIN_TILE_GAP = 8;
 
 const VARIANT_BY_STATE = {
     "1": "success",
@@ -57,7 +58,7 @@ export class AttendanceTooltip extends Component {
 export class AttendanceEventTile extends Component {
     static template = "mdl_zkteco_attendance.AttendanceEventTile";
     static components = { AttendanceTooltip };
-    static props = ["item", "style", "selected", "onOpen", "onSelect", "onPointerDown", "onContextMenu"];
+    static props = ["item", "style", "dragging", "selected", "onOpen", "onSelect", "onPointerDown", "onContextMenu"];
 
     setup() {
         this.state = useState({ hovered: false });
@@ -70,7 +71,7 @@ export class AttendanceEventTile extends Component {
     onClick(ev) {
         ev.stopPropagation();
         if (ev.ctrlKey || ev.metaKey) {
-            this.props.onSelect(this.props.item, true);
+            this.props.onSelect(this.props.item);
             return;
         }
         if (this.props.item.dragged) {
@@ -277,13 +278,12 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
     setup() {
         super.setup();
         this.contextMenuState = useState({ menu: null });
-        this.interactionState = useState({ selectedIds: [], drag: null, box: null });
+        this.interactionState = useState({ selectedIds: [], drag: null });
         useExternalListener(window, "click", () => {
             this.contextMenuState.menu = null;
         });
         useExternalListener(window, "pointermove", (ev) => this.onTimelinePointerMove(ev));
         useExternalListener(window, "pointerup", (ev) => this.onTimelinePointerUp(ev));
-        useExternalListener(window, "keydown", (ev) => this.onTimelineKeydown(ev));
     }
 
     computeDerivedParams() {
@@ -497,16 +497,26 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                 connectedItemIds.add(connection.toItem.id);
                 usableConnections.push(connection);
             }
-            if (this._timelineUsesExpandedTimeColumns) {
-                this._packItemsInsideTimeBuckets(items, metrics, globalStart);
+            // Keep every event on the employee's single timeline row. Close
+            // timestamps are packed horizontally inside an expanded time
+            // column, with the same minimum gap whether or not they are linked.
+            this._packItemsInsideTimeBuckets(items, metrics, globalStart);
+            for (const item of items) {
+                item.visualLane = 0;
             }
+            const laneCount = 1;
             this._timelineRowsByEmployee.set(Number(sourceRow.employee_id), {
                 ...sourceRow,
                 items,
                 connections: usableConnections,
                 summaries: [],
                 metrics,
-                rowHeight: Math.max(32, metrics.top * 2 + metrics.height),
+                rowHeight: Math.max(
+                    32,
+                    metrics.top * 2
+                        + laneCount * metrics.height
+                        + Math.max(0, laneCount - 1) * MIN_TILE_GAP,
+                ),
                 detailed: true,
             });
             for (const item of items) {
@@ -543,14 +553,90 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             }
         }
         for (const [columnIndex, count] of maximumCountByColumn) {
-            const contentWidth =
-                count * metrics.width + Math.max(0, count - 1) * BUCKET_ITEM_GAP;
+            const contentWidth = count * metrics.width
+                + Math.max(0, count - 1) * BUCKET_ITEM_GAP;
             widths.set(
                 columnIndex,
                 Math.max(scale.minimalColumnWidth, contentWidth + BUCKET_PADDING * 2)
             );
         }
         return widths;
+    }
+
+    _assignTimelineLanes(items, metrics, globalStart) {
+        if (!items.length) {
+            return 1;
+        }
+        const { interval } = this.model.metaData.scale;
+        const defaultColumnWidth = this.columnWidth;
+        const columnOffsets = [0];
+        for (let index = 0; index < this.foldedGridColumnCount; index++) {
+            columnOffsets.push(
+                columnOffsets[index]
+                    + (this._timelineDesiredColumnWidths.get(index) || defaultColumnWidth)
+            );
+        }
+        const laneHeap = [];
+        let laneCount = 0;
+        const pushLane = (entry) => {
+            laneHeap.push(entry);
+            let index = laneHeap.length - 1;
+            while (index > 0) {
+                const parent = Math.floor((index - 1) / 2);
+                if (laneHeap[parent].right <= entry.right) {
+                    break;
+                }
+                laneHeap[index] = laneHeap[parent];
+                index = parent;
+            }
+            laneHeap[index] = entry;
+        };
+        const popLane = () => {
+            const first = laneHeap[0];
+            const last = laneHeap.pop();
+            if (laneHeap.length) {
+                let index = 0;
+                while (true) {
+                    let child = index * 2 + 1;
+                    if (child >= laneHeap.length) {
+                        break;
+                    }
+                    if (child + 1 < laneHeap.length
+                            && laneHeap[child + 1].right < laneHeap[child].right) {
+                        child++;
+                    }
+                    if (laneHeap[child].right >= last.right) {
+                        break;
+                    }
+                    laneHeap[index] = laneHeap[child];
+                    index = child;
+                }
+                laneHeap[index] = last;
+            }
+            return first;
+        };
+        for (const item of items) {
+            const columnIndex = this._getTimelineColumnIndex(item.datetime, globalStart);
+            const columnStart = globalStart.startOf(interval).plus({ [interval]: columnIndex });
+            const columnStop = columnStart.plus({ [interval]: 1 });
+            const duration = Math.max(columnStop.toMillis() - columnStart.toMillis(), 1);
+            const fraction = Math.max(
+                0,
+                Math.min(1, (item.datetime.toMillis() - columnStart.toMillis()) / duration),
+            );
+            const columnWidth = this._timelineDesiredColumnWidths.get(columnIndex)
+                || defaultColumnWidth;
+            const center = (columnOffsets[columnIndex] || 0) + fraction * columnWidth;
+            const left = center - metrics.width / 2;
+            const right = center + metrics.width / 2;
+            const available = laneHeap[0]?.right + MIN_TILE_GAP <= left
+                ? popLane()
+                : null;
+            const lane = available ? available.lane : laneCount++;
+            pushLane({ lane, right });
+            item.visualLane = lane;
+        }
+        return Math.max(1, laneCount);
     }
 
     _packItemsInsideTimeBuckets(items, metrics, globalStart) {
@@ -654,19 +740,44 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         });
     }
 
-    _datetimeFromPointer(ev, element) {
+    _datetimeFromPointer(ev, element, clientX = ev.clientX) {
         const rect = element.getBoundingClientRect();
-        const horizontalRatio = Math.max(
-            0, Math.min(1, (ev.clientX - rect.left) / rect.width)
-        );
-        const ratio = localization.direction === "rtl"
-            ? 1 - horizontalRatio
-            : horizontalRatio;
         const { globalStart, globalStop } = this.model.metaData;
-        const milliseconds = globalStop.toMillis() - globalStart.toMillis();
-        const raw = globalStart.plus({ milliseconds: milliseconds * ratio });
+        let raw;
+        if (this._timelineColumnWidths?.length) {
+            let offset = localization.direction === "rtl"
+                ? rect.right - clientX
+                : clientX - rect.left;
+            offset = Math.max(0, Math.min(rect.width, offset));
+            let columnIndex = 0;
+            while (
+                columnIndex < this._timelineColumnWidths.length - 1
+                && offset > this._timelineColumnWidths[columnIndex]
+            ) {
+                offset -= this._timelineColumnWidths[columnIndex];
+                columnIndex++;
+            }
+            const width = this._timelineColumnWidths[columnIndex] || this.columnWidth;
+            const fraction = Math.max(0, Math.min(1, offset / width));
+            const interval = this.model.metaData.scale.interval;
+            const columnStart = globalStart.startOf(interval).plus({ [interval]: columnIndex });
+            const columnStop = columnStart.plus({ [interval]: 1 });
+            raw = columnStart.plus({
+                milliseconds: (columnStop.toMillis() - columnStart.toMillis()) * fraction,
+            });
+        } else {
+            const horizontalRatio = Math.max(
+                0, Math.min(1, (clientX - rect.left) / rect.width)
+            );
+            const ratio = localization.direction === "rtl"
+                ? 1 - horizontalRatio
+                : horizontalRatio;
+            const milliseconds = globalStop.toMillis() - globalStart.toMillis();
+            raw = globalStart.plus({ milliseconds: milliseconds * ratio });
+        }
         const minute = Math.round(raw.minute / 15) * 15;
-        return raw.startOf("hour").plus({ minutes: minute });
+        const snapped = raw.startOf("hour").plus({ minutes: minute });
+        return snapped < globalStart ? globalStart : (snapped >= globalStop ? globalStop.minus({ minutes: 15 }) : snapped);
     }
 
     onEmptyTimelineContextMenu(ev, row) {
@@ -685,25 +796,27 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         };
     }
 
-    onEmptyTimelinePointerDown(ev) {
-        if (ev.button !== 0 || ev.ctrlKey || ev.metaKey) {
+    startTimelineDrag(ev, item) {
+        const eventId = item.event_id || (item.source === "event" ? item.source_id : false);
+        if (!eventId) {
             return;
         }
         ev.preventDefault();
-        this.interactionState.box = {
-            startX: ev.clientX, startY: ev.clientY,
-            x: ev.clientX, y: ev.clientY,
-        };
-        this.interactionState.selectedIds = [];
-    }
-
-    startTimelineDrag(ev, item) {
-        ev.preventDefault();
         ev.stopPropagation();
+        const tile = ev.currentTarget;
+        const rect = tile.getBoundingClientRect();
         this.interactionState.drag = {
             item, startX: ev.clientX, startY: ev.clientY,
             x: ev.clientX, y: ev.clientY, moved: false,
+            grabX: ev.clientX - rect.left,
+            grabY: ev.clientY - rect.top,
+            width: rect.width,
+            height: rect.height,
+            eventId: Number(eventId),
             employeeId: item.employeeId,
+            hitbox: document.querySelector(
+                `.o_mdl_timeline_row_hitbox[data-employee-id="${item.employeeId}"]`
+            ),
             datetime: item.datetime,
             label: item.tooltipDate,
         };
@@ -713,23 +826,21 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         const drag = this.interactionState.drag;
         if (drag) {
             drag.x = ev.clientX;
-            drag.y = ev.clientY;
+            // A timeline event always belongs to its employee. Vertical mouse
+            // movement is deliberately ignored; dragging only changes time.
+            drag.y = drag.startY;
             drag.moved = drag.moved || Math.hypot(
                 ev.clientX - drag.startX, ev.clientY - drag.startY
             ) > 3;
-            const hitbox = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(
-                ".o_mdl_timeline_row_hitbox"
-            );
+            const hitbox = drag.hitbox;
             if (hitbox) {
-                drag.employeeId = Number(hitbox.dataset.employeeId);
-                drag.datetime = this._datetimeFromPointer(ev, hitbox);
+                // The event datetime belongs to the centre of the tile. Keep
+                // the exact point grabbed by the user under the pointer so a
+                // drag that starts at an edge does not jump by half a tile.
+                const tileCenterX = ev.clientX + drag.width / 2 - drag.grabX;
+                drag.datetime = this._datetimeFromPointer(ev, hitbox, tileCenterX);
                 drag.label = drag.datetime.toFormat("dd/LL/yyyy HH:mm");
             }
-        }
-        const box = this.interactionState.box;
-        if (box) {
-            box.x = ev.clientX;
-            box.y = ev.clientY;
         }
     }
 
@@ -737,38 +848,28 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         const drag = this.interactionState.drag;
         if (drag) {
             this.interactionState.drag = null;
-            if (drag.moved && drag.item.event_id) {
+            if (drag.moved && drag.eventId) {
                 drag.item.dragged = true;
                 await this.orm.call(
                     "mdl.attendance.device.event", "timeline_move_event",
-                    [drag.item.event_id, drag.employeeId, serializeDateTime(drag.datetime)]
+                    [drag.eventId, drag.employeeId, serializeDateTime(drag.datetime)]
                 );
                 await this.model.fetchData();
             }
             return;
         }
-        const box = this.interactionState.box;
-        if (!box) {
-            return;
-        }
-        this.interactionState.box = null;
-        const selection = {
-            left: Math.min(box.startX, box.x), right: Math.max(box.startX, box.x),
-            top: Math.min(box.startY, box.y), bottom: Math.max(box.startY, box.y),
-        };
-        const ids = [];
-        for (const element of document.querySelectorAll("[data-mdl-timeline-item-id]")) {
-            const rect = element.getBoundingClientRect();
-            if (rect.right >= selection.left && rect.left <= selection.right
-                    && rect.bottom >= selection.top && rect.top <= selection.bottom) {
-                ids.push(element.dataset.mdlTimelineItemId);
-            }
-        }
-        this.interactionState.selectedIds = ids;
+        return;
     }
 
-    toggleTimelineSelection(item, additive = false) {
-        const selected = new Set(additive ? this.interactionState.selectedIds : []);
+    isTimelineDragging(item) {
+        const drag = this.interactionState.drag;
+        return Boolean(
+            drag?.moved && drag.item.id === item.id
+        );
+    }
+
+    toggleTimelineSelection(item) {
+        const selected = new Set(this.interactionState.selectedIds);
         if (selected.has(item.id)) {
             selected.delete(item.id);
         } else {
@@ -781,16 +882,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         return this.interactionState.selectedIds.includes(item.id);
     }
 
-    get selectionBoxStyle() {
-        const box = this.interactionState.box;
-        if (!box) {
-            return "";
-        }
-        return `left:${Math.min(box.startX, box.x)}px;top:${Math.min(box.startY, box.y)}px;`
-            + `width:${Math.abs(box.x - box.startX)}px;height:${Math.abs(box.y - box.startY)}px`;
-    }
-
-    async deleteSelectedTimelineItems() {
+    deleteSelectedTimelineItems() {
         const items = this.interactionState.selectedIds
             .map((id) => this._timelineItemsById.get(id)).filter(Boolean);
         const eventIds = [...new Set(items.filter((item) => item.source === "event")
@@ -802,7 +894,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         }
         this.dialogService.add(ConfirmationDialog, {
             title: _t("מחיקת אירועי נוכחות"),
-            body: _t("למחוק את אירועי הנוכחות שנבחרו?"),
+            body: _t("למחוק את כל אירועי הנוכחות שנבחרו?"),
             confirmLabel: _t("מחיקה"),
             confirm: async () => {
                 await this.orm.call(
@@ -815,13 +907,6 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         });
     }
 
-    onTimelineKeydown(ev) {
-        if (ev.key === "Delete" && this.interactionState.selectedIds.length) {
-            ev.preventDefault();
-            this.deleteSelectedTimelineItems();
-        }
-    }
-
     _getTimelinePosition(datetime, item = null) {
         const { globalStart, globalStop, scale } = this.model.metaData;
         if (!datetime?.isValid || datetime < globalStart || datetime >= globalStop) {
@@ -830,23 +915,6 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         const { column, delta } = this.getSubColumnFromDate(datetime);
         let columnNumber =
             1 + diffColumn(globalStart, column, scale.interval) * scale.cellPart + delta;
-        if (
-            item?.visualTimeColumn !== undefined
-            && this._timelineColumnWidths
-        ) {
-            const coarseWidth =
-                this._timelineColumnWidths[item.visualTimeColumn] || this.columnWidth;
-            const visualX = Math.max(
-                0,
-                Math.min(coarseWidth, item.visualBucketOffset ?? coarseWidth / 2)
-            );
-            columnNumber = 1 + item.visualTimeColumn * scale.cellPart;
-            return {
-                column: columnNumber,
-                offset: visualX,
-                span: scale.cellPart,
-            };
-        }
         const subColumn = this.getSubColumnFromColNumber(columnNumber);
         const subColumnStop = subColumn.start.plus({ [scale.time]: scale.cellTime });
         const duration = subColumnStop.toMillis() - subColumn.start.toMillis();
@@ -855,6 +923,16 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             Math.min(1, (datetime.toMillis() - subColumn.start.toMillis()) / duration)
         );
         const coarseIndex = Math.floor((columnNumber - 1) / scale.cellPart);
+        if (
+            item?.visualTimeColumn === coarseIndex
+            && Number.isFinite(item.visualBucketOffset)
+        ) {
+            return {
+                column: 1 + coarseIndex * scale.cellPart,
+                span: scale.cellPart,
+                offset: item.visualBucketOffset,
+            };
+        }
         const subColumnWidth = this._timelineColumnWidths
             ? this._timelineColumnWidths[coarseIndex] / scale.cellPart
             : this.cellPartWidth;
@@ -871,7 +949,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         }
         const { metrics } = this.getTimelineRow(row);
         const [rowStart, rowStop] = row.grid.row;
-        return [
+        const style = [
             this.getGridPosition({
                 column: [position.column, position.column + (position.span || 1)],
                 row: [rowStart, rowStop],
@@ -879,8 +957,17 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             `width:${metrics.width}px`,
             `height:${metrics.height}px`,
             `margin-inline-start:${position.offset - metrics.width / 2}px`,
-            `margin-top:${metrics.top}px`,
-        ].join(";");
+            `margin-top:${metrics.top + (item.visualLane || 0) * (metrics.height + MIN_TILE_GAP)}px`,
+        ];
+        const drag = this.interactionState.drag;
+        if (drag?.moved && drag.item.id === item.id) {
+            style.push(
+                `transform:translate(${drag.x - drag.startX}px,${drag.y - drag.startY}px)`,
+                "z-index:1110",
+                "pointer-events:none"
+            );
+        }
+        return style.join(";");
     }
 
     getTimelineSummaryStyle(summary, row) {
@@ -930,8 +1017,12 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         let x1 = isRtl ? width - logicalFrom : logicalFrom;
         let x2 = isRtl ? width - logicalTo : logicalTo;
         const { metrics } = timelineRow;
-        const y1 = metrics.top + metrics.height / 2;
-        const y2 = y1;
+        const y1 = metrics.top
+            + (connection.fromItem.visualLane || 0) * (metrics.height + MIN_TILE_GAP)
+            + metrics.height / 2;
+        const y2 = metrics.top
+            + (connection.toItem.visualLane || 0) * (metrics.height + MIN_TILE_GAP)
+            + metrics.height / 2;
         const direction = Math.sign(x2 - x1) || 1;
         if (Math.abs(x2 - x1) >= metrics.width) {
             x1 += direction * (metrics.width / 2);
@@ -988,6 +1079,18 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
     }
 
     onTimelineContextMenu(ev, item) {
+        if (
+            this.interactionState.selectedIds.length > 1
+            && this.interactionState.selectedIds.includes(item.id)
+        ) {
+            this.contextMenuState.menu = {
+                item,
+                actions: [{ key: "delete_selected", label: _t("מחיקה") }],
+                x: Math.min(ev.clientX, window.innerWidth - 230),
+                y: Math.min(ev.clientY, window.innerHeight - 220),
+            };
+            return;
+        }
         if (!item.actions?.length) {
             return;
         }
@@ -1001,6 +1104,10 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
     async onContextAction(action) {
         this.contextMenuState.menu = null;
+        if (action.key === "delete_selected") {
+            this.deleteSelectedTimelineItems();
+            return;
+        }
         if (["dismiss_event", "dismiss_pair"].includes(action.key)) {
             this.dialogService.add(ConfirmationDialog, {
                 title: _t("להסתיר את אירוע הנוכחות?"),

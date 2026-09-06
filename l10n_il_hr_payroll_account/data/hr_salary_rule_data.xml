@@ -24,6 +24,8 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="name">עיגול שכר</field>
             <field name="code">IL_WAGE_ROUNDING</field>
             <field name="sequence">2</field>
+            <field name="active">False</field>
+            <field name="appears_on_payslip">False</field>
             <field name="condition_select">python</field>
             <field name="condition_python">result = payslip._il_has_wage_rounding()</field>
             <field name="amount_select">code</field>
@@ -562,27 +564,17 @@ result_name = payslip._il_basic_line_name()</field>
              נטו — משותף לכל סוגי העובדים
              ================================================================ -->
 
-        <record id="hr_salary_rule_il_net_before_direct" model="hr.salary.rule">
-            <field name="struct_id" ref="hr_payroll_structure_il"/>
-            <field name="category_id" ref="hr_payroll.NET"/>
-            <field name="name">נטו לפני התאמות ישירות</field>
-            <field name="code">IL_NET_BEFORE_DIRECT_ADJUSTMENTS</field>
-            <field name="sequence">500</field>
-            <field name="appears_on_payslip">False</field>
-            <field name="condition_select">none</field>
-            <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + categories['IL_ADJ'] + categories['DED']</field>
-        </record>
-
         <record id="hr_salary_rule_il_payslip_rounding" model="hr.salary.rule">
             <field name="struct_id" ref="hr_payroll_structure_il"/>
             <field name="category_id" ref="hr_payroll.NET"/>
             <field name="name">עיגול תלוש</field>
             <field name="code">IL_PAYSLIP_ROUNDING</field>
             <field name="sequence">515</field>
+            <field name="active">False</field>
+            <field name="appears_on_payslip">False</field>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = payslip._il_payslip_rounding_amount(IL_NET_BEFORE_DIRECT_ADJUSTMENTS)</field>
+            <field name="amount_python_compute">result = payslip._il_payslip_rounding_amount(categories['BASIC'] + categories['ALW'] + categories['IL_ADJ'] + categories['DED'])</field>
         </record>
 
         <record id="hr_salary_rule_il_net" model="hr.salary.rule">
@@ -593,7 +585,7 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="sequence">520</field>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = IL_NET_BEFORE_DIRECT_ADJUSTMENTS + IL_PAYSLIP_ROUNDING</field>
+            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + categories['IL_ADJ'] + categories['DED']</field>
         </record>
 
         <record id="hr_salary_rule_il_payments" model="hr.salary.rule">

@@ -25,6 +25,16 @@ class AccountPayment(models.Model):
         related='currency_id.rounding', readonly=True)
     il_payment_type_display = fields.Char(
         string='סוג תשלום', compute='_compute_il_payment_type_display')
+    il_split_move_ids = fields.One2many(
+        'account.move', 'il_employee_payment_id',
+        string='פקודות יומן לפיצולי תשלום', copy=False)
+    il_split_move_count = fields.Integer(
+        string='פקודות יומן', compute='_compute_il_split_move_count')
+
+    @api.depends('il_split_move_ids')
+    def _compute_il_split_move_count(self):
+        for payment in self:
+            payment.il_split_move_count = len(payment.il_split_move_ids)
 
     @api.depends('payment_type')
     def _compute_il_payment_type_display(self):
@@ -96,6 +106,57 @@ class AccountPayment(models.Model):
             and self.currency_id.compare_amounts(self.il_remaining_amount, 0.0) > 0
         )
 
+    def _il_uses_split_accounting(self):
+        """Employee payments are accounted per applied split, not in full."""
+        self.ensure_one()
+        return bool(
+            self._il_employee()
+            and self.payment_type == 'outbound'
+            and self.partner_type == 'supplier'
+        )
+
+    def action_il_open_split_moves(self):
+        self.ensure_one()
+        action = {
+            'type': 'ir.actions.act_window',
+            'name': 'פקודות יומן לתשלום עובד',
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': [('il_employee_payment_id', '=', self.id)],
+            'context': {'create': False},
+        }
+        if self.il_split_move_count == 1:
+            action.update({
+                'view_mode': 'form',
+                'res_id': self.il_split_move_ids.id,
+            })
+        return action
+
+    def _generate_journal_entry(self, write_off_line_vals=None,
+                                force_balance=None, line_ids=None):
+        """Keep native accounting for every payment except employee payments.
+
+        A full native payment move would book the complete payment before its
+        installments are applied. Employee-payment moves are instead created
+        one by one by ``account.payment.split.line``.
+        """
+        regular_payments = self.filtered(
+            lambda payment: not payment._il_uses_split_accounting())
+        if regular_payments:
+            return super(AccountPayment, regular_payments)._generate_journal_entry(
+                write_off_line_vals=write_off_line_vals,
+                force_balance=force_balance,
+                line_ids=line_ids,
+            )
+        return None
+
+    @api.constrains('state', 'move_id')
+    def _check_move_id(self):
+        """The native full-payment move is absent only on employee payments."""
+        return super(AccountPayment, self.filtered(
+            lambda payment: not payment._il_uses_split_accounting()
+        ))._check_move_id()
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -125,6 +186,8 @@ class AccountPayment(models.Model):
                 il_sync_from_payment=True,
                 il_skip_spread_total_check=True).amount = payment.amount
         payments._check_il_spread_complete()
+        if self.env.context.get('il_auto_post_on_create'):
+            payments.action_post()
         return payments
 
     def write(self, vals):

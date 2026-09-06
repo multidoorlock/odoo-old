@@ -18,6 +18,12 @@ class TestAttendanceDevices(TransactionCase):
             "timezone": "UTC", "punch_state_column": 3,
             "punch_in_values": "1", "punch_out_values": "15",
         })
+        cls.other_device = cls.env["mdl.attendance.device"].create({
+            "name": "Second test clock", "manufacturer": "zkteco",
+            "device_identifier": "TEST-SN-2", "company_id": cls.env.company.id,
+            "timezone": "UTC", "punch_state_column": 3,
+            "punch_in_values": "1", "punch_out_values": "15",
+        })
         cls.employee = cls.env["hr.employee"].create({"name": "Clock Employee", "company_id": cls.env.company.id})
         cls.card = cls.env["mdl.attendance.device.employee"].with_context(attendance_device_discovery=True).create({
             "device_id": cls.device.id, "device_user_id": "74", "device_name": "Clock Employee",
@@ -55,7 +61,7 @@ class TestAttendanceDevices(TransactionCase):
         manual_card = self.env["mdl.attendance.device.employee"].with_context(
             attendance_device_discovery=True,
         ).create({
-            "device_id": self.device.id,
+            "device_id": self.other_device.id,
             "device_user_id": "archive-manual",
             "employee_id": self.employee.id,
         })
@@ -76,6 +82,28 @@ class TestAttendanceDevices(TransactionCase):
         self.assertFalse(self.card.archived_by_employee)
         self.assertFalse(manual_card.active)
         self.assertFalse(manual_card.archived_by_employee)
+
+    def test_employee_can_only_have_one_active_card_per_device(self):
+        with self.assertRaises(ValidationError):
+            self.env["mdl.attendance.device.employee"].with_context(
+                attendance_device_discovery=True,
+            ).create({
+                "device_id": self.device.id,
+                "device_user_id": "duplicate-employee",
+                "employee_id": self.employee.id,
+            })
+
+        self.card.active = False
+        replacement = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": self.device.id,
+            "device_user_id": "replacement-employee",
+            "employee_id": self.employee.id,
+        })
+        self.assertTrue(replacement.active)
+        with self.assertRaises(ValidationError):
+            self.card.active = True
 
     def test_manual_attendance_creates_and_keeps_endpoint_events_in_sync(self):
         check_in = fields.Datetime.now() - timedelta(hours=8)
@@ -857,6 +885,10 @@ class TestAttendanceDevices(TransactionCase):
         by_source_id = {
             item["source_id"]: item for item in row["items"] if item["source"] == "event"
         }
+        self.assertEqual(
+            {source_id: item["event_id"] for source_id, item in by_source_id.items()},
+            {source_id: source_id for source_id in by_source_id},
+        )
         self.assertFalse(any(item["linkable"] for item in by_source_id.values()))
         self.assertEqual(by_source_id[out_event.id]["state"], "3")
         self.assertEqual(

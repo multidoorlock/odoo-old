@@ -16,10 +16,10 @@
                     <field name="journal_id"/>
                     <field name="payment_method_id"/>
                 </group>
-                <group invisible="step != 'employees'">
+                <div class="w-100" invisible="step != 'employees'">
                     <field name="employee_line_ids" invisible="1"/>
                     <field name="matrix_data" widget="il_payment_cycle_matrix" nolabel="1"/>
-                </group>
+                </div>
                 <footer>
                     <button name="action_next" type="object" string="הבא" class="btn-primary"
                             invisible="step != 'details'"/>

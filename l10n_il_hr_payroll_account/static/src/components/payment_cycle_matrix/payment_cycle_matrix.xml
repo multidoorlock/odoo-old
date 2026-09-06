@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="l10n_il_hr_payroll_account.PaymentCycleMatrix">
-        <div class="table-responsive o_list_renderer border rounded">
+        <div class="table-responsive o_list_renderer border rounded o_il_payment_cycle_matrix">
             <table class="table table-hover table-sm mb-0">
                 <thead>
                     <tr>

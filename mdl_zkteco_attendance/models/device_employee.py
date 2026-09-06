@@ -149,6 +149,37 @@ class AttendanceDeviceEmployee(models.Model):
         "UNIQUE(device_id, device_user_id)",
         "מזהה המשתמש חייב להיות ייחודי באותו שעון.",
     )
+    @api.constrains("employee_id", "device_id", "active")
+    def _check_unique_device_employee(self):
+        for card in self.filtered(
+            lambda item: item.active and item.employee_id and item.device_id
+        ):
+            if self.search_count([
+                ("employee_id", "=", card.employee_id.id),
+                ("device_id", "=", card.device_id.id),
+                ("active", "=", True),
+                ("id", "!=", card.id),
+            ], limit=1):
+                raise ValidationError(
+                    _("לא ניתן להפעיל יותר מכרטיס אחד של אותו עובד באותו שעון."))
+
+    @api.onchange("employee_id", "device_id", "active")
+    def _onchange_unique_device_employee(self):
+        if not self.active or not self.employee_id or not self.device_id:
+            return
+        duplicate = self.search([
+            ("employee_id", "=", self.employee_id.id),
+            ("device_id", "=", self.device_id.id),
+            ("active", "=", True),
+            ("id", "!=", self._origin.id or 0),
+        ], limit=1)
+        if duplicate:
+            return {
+                "warning": {
+                    "title": _("כרטיס עובד פעיל כבר קיים"),
+                    "message": _("לא ניתן להפעיל יותר מכרטיס אחד של אותו עובד באותו שעון."),
+                }
+            }
 
     def init(self):
         # ``has_face`` was introduced after face templates were already kept
@@ -320,6 +351,19 @@ class AttendanceDeviceEmployee(models.Model):
                     "name", {language_code: card.device_name}, source_lang=language_code,
                 )
         return True
+
+    def action_open_employee(self):
+        self.ensure_one()
+        if not self.employee_id:
+            return False
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("עובד"),
+            "res_model": "hr.employee",
+            "res_id": self.employee_id.id,
+            "view_mode": "form",
+            "target": "current",
+        }
 
     def write(self, vals):
         vals = dict(vals)

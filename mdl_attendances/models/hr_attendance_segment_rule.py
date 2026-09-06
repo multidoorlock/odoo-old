@@ -76,25 +76,6 @@ class HrAttendanceSegmentRule(models.Model):
     resource_calendar_id = fields.Many2one(
         "resource.calendar", string="Schedule", domain=[("flexible_hours", "=", False)])
     is_work = fields.Boolean(string="Work", default=True)
-    is_overtime = fields.Boolean(string="Overtime", default=False)
-    segment_type = fields.Selection(
-        [("work", "Work"), ("non_work", "Non-Work"), ("overtime", "Overtime")],
-        string="Segment Type", compute="_compute_segment_type", inverse="_inverse_segment_type",
-        store=True, readonly=False,
-    )
-
-    @api.depends("is_work", "is_overtime")
-    def _compute_segment_type(self):
-        for rule in self:
-            rule.segment_type = (
-                "overtime" if rule.is_overtime
-                else ("work" if rule.is_work else "non_work")
-            )
-
-    def _inverse_segment_type(self):
-        for rule in self:
-            rule.is_overtime = rule.segment_type == "overtime"
-            rule.is_work = rule.segment_type in ("work", "overtime")
 
     _timing_start_valid = models.Constraint(
         "CHECK(0 <= timing_start AND timing_start < 24)", "Start must be an hour between 00:00 and 23:59.")
