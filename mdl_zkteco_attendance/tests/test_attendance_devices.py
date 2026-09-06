@@ -144,7 +144,7 @@ class TestAttendanceDevices(TransactionCase):
         )
 
         draft = self.env["mdl.attendance.device.employee"].new({
-            "device_id": self.device.id,
+            "device_id": self.other_device.id,
         })
         draft.employee_id = self.employee
         draft._onchange_employee_id_set_card_identity()
@@ -154,7 +154,7 @@ class TestAttendanceDevices(TransactionCase):
         card = self.env["mdl.attendance.device.employee"].with_context(
             attendance_device_discovery=True,
         ).create({
-            "device_id": self.device.id,
+            "device_id": self.other_device.id,
             "employee_id": self.employee.id,
         })
         self.assertEqual(card.device_name, self.employee.name)
@@ -181,16 +181,16 @@ class TestAttendanceDevices(TransactionCase):
         self.employee.update_field_translations("name", {
             language.code: translated_name,
         })
-        self.device.write({"device_language": language.code})
+        self.other_device.write({"device_language": language.code})
         card = self.env["mdl.attendance.device.employee"].with_context(
             attendance_device_discovery=True,
         ).create({
-            "device_id": self.device.id,
+            "device_id": self.other_device.id,
             "employee_id": self.employee.id,
             "device_name": "This value must be overwritten",
         })
 
-        command = self.device._adapter().build_command("update_name", card)
+        command = self.other_device._adapter().build_command("update_name", card)
         self.assertIn(f"Name={translated_name}", command)
         self.assertEqual(card.device_name, translated_name)
 
@@ -218,11 +218,11 @@ class TestAttendanceDevices(TransactionCase):
         if language and language.active:
             language.active = False
 
-        self.device.device_language = language_code
+        self.other_device.device_language = language_code
         card = self.env["mdl.attendance.device.employee"].with_context(
             attendance_device_discovery=True,
         ).create({
-            "device_id": self.device.id,
+            "device_id": self.other_device.id,
             "employee_id": self.employee.id,
         })
         self.assertEqual(card.device_name, self.employee.name)

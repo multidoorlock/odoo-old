@@ -64,8 +64,10 @@ class TestAttendanceSegments(TransactionCase):
             "check_in": datetime(2026, 1, 5, 6, 30),
             "check_out": datetime(2026, 1, 5, 16, 0),
         })
-        self.assertEqual(len(attendance.segment_ids), 1)
-        self.assertTrue(attendance.segment_ids.is_work)
+        segments = attendance.segment_ids.sorted("time_start")
+        self.assertTrue(all(segments.mapped("is_work")))
+        self.assertEqual(segments[0].time_start, attendance.check_in)
+        self.assertEqual(segments[-1].time_stop, attendance.check_out)
         self.assertAlmostEqual(attendance.worked_hours, 9.5)
 
     def test_timing_tolerance_keeps_six_oclock_entry_as_work(self):
@@ -137,8 +139,10 @@ class TestAttendanceSegments(TransactionCase):
             "check_in": datetime(2026, 8, 25, 3, 15),
             "check_out": datetime(2026, 8, 25, 14, 30),
         })
-        self.assertEqual(len(morning.segment_ids), 1)
-        self.assertTrue(morning.segment_ids.is_work)
+        morning_segments = morning.segment_ids.sorted("time_start")
+        self.assertTrue(all(morning_segments.mapped("is_work")))
+        self.assertEqual(morning_segments[0].time_start, morning.check_in)
+        self.assertEqual(morning_segments[-1].time_stop, morning.check_out)
         self.assertAlmostEqual(morning.worked_hours, 11.25)
 
         # 17:30 Friday through 07:00 Saturday in Israel. The timing window is
@@ -149,9 +153,12 @@ class TestAttendanceSegments(TransactionCase):
             "check_out": datetime(2026, 8, 29, 4, 0),
         })
         segments = overnight.segment_ids.sorted("time_start")
-        self.assertEqual(segments.mapped("is_work"), [True, False])
-        self.assertEqual(segments[0].time_stop, datetime(2026, 8, 28, 22, 30))
-        self.assertEqual(segments[1].time_stop, overnight.check_out)
+        non_work_segments = segments.filtered(lambda segment: not segment.is_work)
+        self.assertEqual(len(non_work_segments), 1)
+        self.assertTrue(all(segments[:-1].mapped("is_work")))
+        self.assertEqual(
+            non_work_segments.time_start, datetime(2026, 8, 28, 22, 30))
+        self.assertEqual(non_work_segments.time_stop, overnight.check_out)
         self.assertAlmostEqual(overnight.worked_hours, 8.0)
 
     def test_no_matching_rule_defaults_to_work(self):

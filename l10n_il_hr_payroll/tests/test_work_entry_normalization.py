@@ -212,6 +212,10 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertAlmostEqual(additional[0]["duration"], 9.5)
 
     def test_daily_off_schedule_day_replaces_regular_work(self):
+        # This suite exercises work-entry normalization rather than salary
+        # category selection. Keep the existing category compatible with the
+        # daily worker type, as the UI and server now require.
+        self.version.structure_type_id.wage_type = "hourly"
         self.version.write({
             "mdl_wage_type": "mdl_daily",
             "mdl_daily_wage": 400.0,
@@ -236,6 +240,7 @@ class TestWorkEntryNormalization(TransactionCase):
                 "mdl_hours_per_day": 9.5,
                 "hours_per_week": 19.0,
             })
+        self.version.structure_type_id.wage_type = "hourly"
         self.version.write({
             "resource_calendar_id": weekly_calendar.id,
             "mdl_wage_type": "mdl_daily",

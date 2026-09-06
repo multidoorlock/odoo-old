@@ -1084,6 +1084,10 @@ class TestNetDailyWageGrossUp(TransactionCase):
         self.version.write({
             'mdl_wage_type': 'mdl_monthly',
             'mdl_wage_rate_type': 'net',
+            'structure_type_id': self.env.ref(
+                'l10n_il_hr_payroll_account.hr_payroll_structure_type_il').id,
+            'il_salary_structure_id': self.env.ref(
+                'l10n_il_hr_payroll_account.hr_payroll_structure_il').id,
         })
         self.assertEqual(self.version.mdl_wage_rate_type, 'net')
         self.assertEqual(self.version.schedule_pay, 'monthly')
