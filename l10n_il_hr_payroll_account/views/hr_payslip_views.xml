@@ -1,32 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- כפתור "שלם", כפתור חכם לתשלומים, טאב תשלומים ותצוגת נטו
-         ששולם/לתשלום/יתר (סעיפים 18–20 באפיון). -->
+    <record id="il_payslip_payment_split_line_list" model="ir.ui.view">
+        <field name="name">mdl.payroll.payslip.payment.split.line.list</field>
+        <field name="model">account.payment.split.line</field>
+        <field name="arch" type="xml">
+            <list string="תשלומים" create="0" edit="0" delete="0"
+                  action="action_open_payment" type="object">
+                <field name="payment_id" string="תשלום"/>
+                <field name="sequence" string="פעימה מספר"/>
+                <field name="amount" string="סכום כולל" sum="סה״כ"/>
+            </list>
+        </field>
+    </record>
+
     <record id="view_hr_payslip_form" model="ir.ui.view">
         <field name="name">mdl.payroll.hr.payslip.view.form</field>
         <field name="model">hr.payslip</field>
         <field name="inherit_id" ref="hr_payroll.view_hr_payslip_form"/>
         <field name="arch" type="xml">
-            <field name="state" position="after">
-                <field name="state_display" widget="badge" class="ms-2"
-                       invisible="state_display != 'overpayment'"
-                       decoration-danger="state_display == 'overpayment'"/>
-            </field>
-            <!-- hr_payroll_account מסתיר כברירת מחדל את "Mark as paid" הילידי
-                 ומציג במקומו "Pay" (action_register_payment) — זרימה מבוססת
-                 יומן/account.payment.register שמתעלמת לגמרי מהמנגנון שלנו
-                 (partner_id=work_contact_id, קישור/יצירת account.payment,
-                 סגירת תשלומי יתר). לכן: מחזירים את "Mark as paid" להיות
-                 גלוי, ומסתירים את "Pay" הילידי כדי שלא ילחצו עליו בטעות. -->
             <button name="action_payslip_paid" position="attributes">
-                <attribute name="invisible">state != 'validated'</attribute>
+                <attribute name="invisible">1</attribute>
+            </button>
+            <button name="action_payslip_unpaid" position="attributes">
+                <attribute name="invisible">1</attribute>
             </button>
             <button name="action_register_payment" position="attributes">
                 <attribute name="invisible">1</attribute>
             </button>
+            <button name="action_payslip_draft" position="attributes">
+                <attribute name="string">החזר לטיוטה</attribute>
+                <attribute name="invisible">state not in ('validated', 'paid', 'cancel')</attribute>
+            </button>
+            <xpath expr="(//button[@name='compute_sheet'])[1]" position="attributes">
+                <attribute name="invisible">state != 'draft' or il_visible_line_ids or credit_note</attribute>
+            </xpath>
+            <xpath expr="(//button[@name='compute_sheet'])[2]" position="attributes">
+                <attribute name="invisible">state != 'draft' or not il_visible_line_ids or credit_note</attribute>
+            </xpath>
             <button name="action_payslip_payment_report" position="after">
-                <button string="משיכת תשלומים פתוחים" name="action_il_draw_open_payments"
-                        type="object" invisible="state != 'draft'"/>
                 <button string="שלם" name="action_il_register_payment" type="object"
                         class="oe_highlight"
                         invisible="state not in ('validated', 'paid') or il_net_amount_to_pay &lt;= 0"/>
@@ -37,24 +48,28 @@
                     <field name="il_payment_count" widget="statinfo" string="תשלומים"/>
                 </button>
             </div>
-            <group name="top" position="after">
-                <group string="תשלום" invisible="state not in ('validated', 'paid')">
-                    <field name="currency_id" invisible="1"/>
-                    <field name="il_paid_amount" widget="monetary"/>
-                    <field name="il_net_amount_to_pay" widget="monetary"/>
-                </group>
-            </group>
+            <field name="line_ids" position="attributes">
+                <attribute name="name">il_visible_line_ids</attribute>
+            </field>
+            <xpath expr="//field[@name='il_visible_line_ids']/list" position="attributes">
+                <attribute name="decoration-info">total == 0</attribute>
+                <attribute name="decoration-success">total &gt; 0 and code not in ('BASIC', 'GROSS', 'NET', 'IL_NET_TO_PAY', 'IL_EMPLOYER_COST', 'IL_TAX_BASE', 'IL_NI_BASE', 'IL_PENSION_BASE', 'IL_SEVERANCE_BASE', 'IL_STUDY_FUND_BASE', 'IL_PAL_EQUALIZATION_BASE')</attribute>
+                <attribute name="decoration-danger">total &lt; 0</attribute>
+            </xpath>
+            <xpath expr="//field[@name='il_visible_line_ids']/list/field[@name='currency_id']" position="after">
+                <field name="il_hide_redundant_base" column_invisible="True"/>
+            </xpath>
+            <xpath expr="//field[@name='worked_days_line_ids']/list/field[@name='amount']" position="after">
+                <field name="daily_wage" string="שכר יומי" readonly="1"/>
+            </xpath>
             <xpath expr="//notebook" position="inside">
-                <page string="תשלומים" name="il_payments">
-                    <field name="il_split_line_ids" readonly="1">
-                        <list>
-                            <field name="payment_id"/>
-                            <field name="sequence"/>
-                            <field name="amount" sum="סה״כ"/>
-                            <field name="is_applied"/>
-                            <field name="currency_id" column_invisible="1"/>
-                        </list>
-                    </field>
+                <page string="סיכום" name="il_summary">
+                    <group>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="gross_wage" string="ברוטו" widget="monetary" readonly="1"/>
+                        <field name="net_wage" string="נטו" widget="monetary" readonly="1"/>
+                        <field name="il_net_amount_to_pay" string="נטו לתשלום" widget="monetary" readonly="1"/>
+                    </group>
                 </page>
             </xpath>
         </field>
@@ -67,9 +82,6 @@
         <field name="arch" type="xml">
             <field name="net_wage" position="after">
                 <field name="il_net_amount_to_pay" widget="monetary" optional="show"/>
-            </field>
-            <field name="state_display" position="attributes">
-                <attribute name="decoration-danger">state_display in ('error', 'overpayment')</attribute>
             </field>
         </field>
     </record>

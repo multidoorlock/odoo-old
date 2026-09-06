@@ -72,6 +72,10 @@
                 <field name="device_id"/>
                 <filter name="punch_in" string="כניסות" domain="[('punch_state', '=', 'in')]"/>
                 <filter name="punch_out" string="יציאות" domain="[('punch_state', '=', 'out')]"/>
+                <filter name="only_conflicts" string="קונפליקטים בלבד"
+                        domain="[('processing_state', 'in', ['new', 'not_applied', 'waiting_employee_link', 'error']), ('conflict_dismissed', '=', False)]"/>
+                <filter name="with_data" string="כולל נתונים"
+                        domain="[('event_datetime', '!=', False)]"/>
                 <group>
                     <filter name="group_employee" string="עובד" context="{'group_by': 'employee_id'}"/>
                 </group>
@@ -116,7 +120,8 @@
         <field name="res_model">mdl.attendance.device.event</field>
         <field name="view_mode">gantt,list,form</field>
         <field name="search_view_id" ref="view_attendance_conflict_search"/>
-        <field name="domain">[('processing_state', 'in', ['new', 'not_applied', 'waiting_employee_link', 'error']), ('punch_state', 'in', ['in', 'out']), ('employee_id', '!=', False), ('conflict_dismissed', '=', False)]</field>
+        <field name="domain">[('punch_state', 'in', ['in', 'out']), ('employee_id', '!=', False)]</field>
+        <field name="context">{'search_default_only_conflicts': 1, 'search_default_with_data': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">אין כרגע קונפליקטים באירועי הנוכחות.</p>
         </field>

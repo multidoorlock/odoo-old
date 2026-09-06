@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_payslip_run_kanban_payments" model="ir.ui.view">
+        <field name="name">mdl.payroll.hr.payslip.run.kanban.payments</field>
+        <field name="model">hr.payslip.run</field>
+        <field name="inherit_id" ref="hr_payroll.hr_payslip_run_view_kanban"/>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <t t-name="menu" position="inside">
+                <button name="action_il_pay" type="object" class="btn btn-secondary"
+                        string="שלם" invisible="state != '02_close'"/>
+            </t>
+            <xpath expr="//button[@name='action_paid']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_unpaid']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

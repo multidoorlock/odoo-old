@@ -2,4 +2,5 @@
 <odoo>
     <function model="hr.rule.parameter" name="_il_rebuild_2026_parameters"/>
     <function model="hr.payroll.structure" name="_il_sync_structures_and_rules"/>
+    <function model="hr.payroll.structure" name="_il_ensure_payroll_accounting_configuration"/>
 </odoo>

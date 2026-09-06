@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_employee_form_attendance_device_cards" model="ir.ui.view">
+        <field name="name">hr.employee.form.attendance.device.cards</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_open_attendance_device_cards" type="object"
+                        class="oe_stat_button" icon="fa-id-card">
+                    <field name="attendance_device_card_count" widget="statinfo"
+                           string="כרטיסי עובד"/>
+                </button>
+            </div>
+        </field>
+    </record>
+</odoo>

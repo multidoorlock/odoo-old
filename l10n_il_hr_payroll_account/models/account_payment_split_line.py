@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
@@ -22,6 +22,9 @@ class AccountPaymentSplitLine(models.Model):
         related='payment_id.company_id', store=True, readonly=True)
     employee_id = fields.Many2one(
         'hr.employee', compute='_compute_employee', store=True)
+    account_move_id = fields.Many2one(
+        'account.move', string='פקודת יומן', copy=False, readonly=True,
+        check_company=True, ondelete='set null')
 
     _positive_amount = models.Constraint(
         'CHECK(amount > 0)', 'סכום פעימה חייב להיות גדול מאפס.')
@@ -39,6 +42,11 @@ class AccountPaymentSplitLine(models.Model):
     def _compute_employee(self):
         for line in self:
             line.employee_id = line.payment_id._il_employee()
+
+    def action_open_payment(self):
+        """Open the payment represented by the clicked payslip payment row."""
+        self.ensure_one()
+        return self.payment_id.get_formview_action()
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -64,27 +72,110 @@ class AccountPaymentSplitLine(models.Model):
                 raise ValidationError('יצירה ידנית של פעימות מותרת רק בפריסה מתוכננת.')
         lines = super().create(vals_list)
         lines._check_business_rules()
+        lines.mapped('payslip_id')._il_sync_payment_summary_lines()
+        lines._il_create_account_moves_for_applied_lines()
         lines._check_complete_spread_outside_draft()
         return lines
 
     def write(self, vals):
         payments = self.mapped('payment_id') if 'sequence' in vals else self.env['account.payment']
+        payslips = self.mapped('payslip_id')
         result = super().write(vals)
         if payments and not self.env.context.get('il_system_resequence'):
             payments._il_resequence_split_lines()
         self._check_business_rules()
+        (payslips | self.mapped('payslip_id'))._il_sync_payment_summary_lines()
+        self._il_create_account_moves_for_applied_lines()
         if 'amount' in vals and not self.env.context.get('il_sync_from_payment'):
             for line in self.filtered(lambda item: item.payment_id.il_spread_type == 'none'):
                 line.payment_id.with_context(il_sync_from_line=True).amount = line.amount
         self._check_complete_spread_outside_draft()
         return result
 
+    def _il_create_account_moves_for_applied_lines(self):
+        """Create and post one immutable journal entry per applied split."""
+        if self.env.context.get('il_skip_split_move_creation'):
+            return
+        candidates = self.filtered(
+            lambda line: line.payslip_id
+            and not line.account_move_id
+            and line.payment_id._il_uses_split_accounting()
+        )
+        for candidate in candidates:
+            # Serialize concurrent attempts to apply the same installment.
+            self.env.cr.execute(
+                'SELECT id FROM account_payment_split_line WHERE id = %s FOR UPDATE',
+                (candidate.id,),
+            )
+            candidate.invalidate_recordset(['account_move_id', 'payslip_id'])
+            if not candidate.payslip_id or candidate.account_move_id:
+                continue
+
+            payment = candidate.payment_id
+            company = payment.company_id
+            debit_account = company.il_employee_payment_debit_account_id
+            credit_account = company.il_employee_payment_credit_account_id
+            if not debit_account or not credit_account:
+                raise ValidationError(_(
+                    'יש להגדיר בהגדרות השכר חשבון חובה וחשבון זכות '
+                    'לתשלומי עובד לפני קיזוז תשלום בתלוש.'
+                ))
+
+            company_currency = company.currency_id
+            payment_currency = payment.currency_id or company_currency
+            company_amount = payment_currency._convert(
+                candidate.amount, company_currency, company, payment.date)
+            company_amount = company_currency.round(company_amount)
+            label = _(
+                'תשלום עובד %(payment)s - פעימה %(sequence)s - תלוש %(payslip)s',
+                payment=payment.display_name,
+                sequence=candidate.sequence,
+                payslip=candidate.payslip_id.display_name,
+            )
+            common_line_vals = {
+                'name': label,
+                'partner_id': payment.partner_id.id,
+                'currency_id': payment_currency.id,
+            }
+            move = self.env['account.move'].create({
+                'move_type': 'entry',
+                'ref': label,
+                'date': payment.date,
+                'journal_id': payment.journal_id.id,
+                'company_id': company.id,
+                'partner_id': payment.partner_id.id,
+                'il_employee_payment_id': payment.id,
+                'il_employee_payment_split_line_id': candidate.id,
+                'line_ids': [
+                    Command.create({
+                        **common_line_vals,
+                        'account_id': debit_account.id,
+                        'debit': company_amount,
+                        'credit': 0.0,
+                        'amount_currency': candidate.amount,
+                    }),
+                    Command.create({
+                        **common_line_vals,
+                        'account_id': credit_account.id,
+                        'debit': 0.0,
+                        'credit': company_amount,
+                        'amount_currency': -candidate.amount,
+                    }),
+                ],
+            })
+            candidate.with_context(il_skip_split_move_creation=True).write({
+                'account_move_id': move.id,
+            })
+            move.action_post()
+
     def unlink(self):
         if not self.env.context.get('il_system_split_unlink') and \
                 self.filtered(lambda line: line.payment_id.il_spread_type != 'planned'):
             raise ValidationError('מחיקת פעימות מותרת רק בפריסה מתוכננת.')
         payments = self.mapped('payment_id')
+        payslips = self.mapped('payslip_id')
         result = super().unlink()
+        payslips._il_sync_payment_summary_lines()
         payments._il_resequence_split_lines()
         if not self.env.context.get('il_system_split_unlink'):
             payments.filtered(lambda payment: payment.state != 'draft') \
@@ -110,10 +201,17 @@ class AccountPaymentSplitLine(models.Model):
         for line in self:
             payment = line.payment_id
             if line.payslip_id:
+                if line.payslip_id.state not in ('validated', 'paid'):
+                    raise ValidationError('ניתן לקשר תשלום רק לתלוש מאושר.')
                 if line.payslip_id.company_id != payment.company_id:
                     raise ValidationError('התשלום והתלוש חייבים להיות באותה חברה.')
                 if line.payslip_id.employee_id != line.employee_id:
                     raise ValidationError('אסור לקשר פעימה לתלוש של עובד אחר.')
+                self.env.cr.execute(
+                    'SELECT id FROM hr_payslip WHERE id = %s FOR UPDATE',
+                    (line.payslip_id.id,),
+                )
+                line.payslip_id._il_check_nonnegative_net_to_pay()
             applied = sum(payment.il_split_line_ids.filtered('payslip_id').mapped('amount'))
             if payment.currency_id.compare_amounts(applied, payment.amount) > 0:
                 raise ValidationError('סכום הפעימות שקוזזו אינו יכול לעבור את סכום התשלום.')

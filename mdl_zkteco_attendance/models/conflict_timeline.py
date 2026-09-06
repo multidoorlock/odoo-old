@@ -89,7 +89,7 @@ class AttendanceConflictTimeline(models.Model):
             "label": _("פתח נוכחות"),
             "attendance_id": attendance.id,
         }]
-        if event and kind in ("in", "out"):
+        if event and not event.odoo_generated and kind in ("in", "out"):
             actions.append({
                 "key": "flip_event",
                 "label": _("הפוך ליציאה") if kind == "in" else _("הפוך לכניסה"),
@@ -229,7 +229,12 @@ class AttendanceConflictTimeline(models.Model):
                 if source_in or attendance.id in forced_ids:
                     managed_attendances |= attendance
 
-            event_sequence = list(events)
+            # Odoo-created endpoint mirrors are provenance records, not new
+            # clock punches.  They must never stand between two real punches
+            # while the reconciliation engine determines direct neighbours.
+            event_sequence = list(events.filtered(
+                lambda candidate: not candidate.odoo_generated
+            ))
             desired_pairs = []
             paired_event_ids = set()
             for index, in_event in enumerate(event_sequence[:-1]):
@@ -531,6 +536,9 @@ class AttendanceConflictTimeline(models.Model):
             "id": f"event:{event.id}",
             "source": "event",
             "source_id": event.id,
+            # Keep a common field for drag persistence. Attendance-backed
+            # tiles already expose their originating device event this way.
+            "event_id": event.id,
             "kind": effective_state,
             "datetime": self._timeline_dt(event.event_datetime),
             "state": state,
@@ -586,6 +594,28 @@ class AttendanceConflictTimeline(models.Model):
     def get_conflict_timeline(self, date_start, date_end, active_domain=None):
         self._timeline_check_manager()
         start, end = self._timeline_parse_range(date_start, date_end)
+        def domain_mentions_conflict(value):
+            if isinstance(value, (list, tuple)):
+                if value and value[0] in (
+                    "processing_state", "conflict_dismissed",
+                ):
+                    return True
+                return any(domain_mentions_conflict(item) for item in value)
+            return False
+
+        def domain_mentions_data(value):
+            if isinstance(value, (list, tuple)):
+                if value and value[0] == "event_datetime" and value[1] == "!=":
+                    return True
+                return any(domain_mentions_data(item) for item in value)
+            return False
+
+        # Direct RPC callers historically mean "conflicts only" when they do
+        # not pass a search domain.  Removing the default search filter still
+        # sends the action's base domain, which is how "all employees" is
+        # distinguished without adding a second UI switch.
+        only_conflicts = not active_domain or domain_mentions_conflict(active_domain)
+        only_with_data = domain_mentions_data(active_domain)
         Event = self.sudo()
         candidate_domain = [
             ("event_datetime", ">=", start),
@@ -622,6 +652,13 @@ class AttendanceConflictTimeline(models.Model):
             self._timeline_event_employee(event).id for event in conflicts
             if self._timeline_event_employee(event)
         ))
+        if not only_conflicts and only_with_data:
+            event_employee_ids = list(dict.fromkeys(
+                self._timeline_event_employee(event).id for event in candidates
+                if self._timeline_event_employee(event)
+            ))
+        elif not only_conflicts:
+            event_employee_ids = self.env["hr.employee"].search([]).ids
         if not event_employee_ids:
             return {"rows": [], "start": self._timeline_dt(start), "end": self._timeline_dt(end)}
 
@@ -680,7 +717,8 @@ class AttendanceConflictTimeline(models.Model):
             employee = (
                 self._timeline_event_employee(employee_events[0])
                 if employee_events
-                else employee_attendances[0].employee_id
+                else (employee_attendances[0].employee_id if employee_attendances
+                      else self.env["hr.employee"].browse(employee_id))
             )
             items = []
             connections = []
@@ -732,7 +770,12 @@ class AttendanceConflictTimeline(models.Model):
                 ))
                 item_id_by_event[event.id] = f"event:{event.id}"
 
-            event_sequence = list(employee_events)
+            # Synthetic endpoint events make Odoo-created attendances visible
+            # and movable, but must not split the neighbour relationship
+            # between two genuine clock events.
+            event_sequence = list(employee_events.filtered(
+                lambda candidate: not candidate.odoo_generated
+            ))
             for index, in_event in enumerate(event_sequence[:-1]):
                 out_event = event_sequence[index + 1]
                 if not (
@@ -822,6 +865,36 @@ class AttendanceConflictTimeline(models.Model):
         ):
             raise UserError(_("ניתן להסתיר רק זוג שמורכב משני אירועים שטרם נכנסו לנוכחות."))
         events.write({"conflict_dismissed": True})
+        return True
+
+    @api.model
+    def timeline_move_event(self, event_id, employee_id, event_datetime):
+        self._timeline_check_manager()
+        event = self.sudo().browse(int(event_id)).exists()
+        employee = self.env["hr.employee"].sudo().browse(int(employee_id)).exists()
+        value = fields.Datetime.to_datetime(event_datetime)
+        if not event or not employee or not value:
+            raise UserError(_("אירוע הנוכחות, העובד או המועד אינם תקינים."))
+        if event.processing_state == "ignored":
+            raise UserError(_("לא ניתן להזיז אירוע שהוגדר כהתעלמות."))
+        event.write({"employee_id": employee.id, "event_datetime": value})
+        return True
+
+    @api.model
+    def timeline_delete_items(self, event_ids=None, attendance_ids=None):
+        self._timeline_check_manager()
+        events = self.sudo().browse([int(value) for value in (event_ids or [])]).exists()
+        attendances = self.env["hr.attendance"].sudo().browse(
+            [int(value) for value in (attendance_ids or [])]
+        ).exists()
+        employee_ids = set(events.mapped("employee_id").ids)
+        employee_ids.update(attendances.mapped("employee_id").ids)
+        if attendances:
+            attendances.unlink()
+        if events:
+            events.exists().unlink()
+        if employee_ids:
+            self._timeline_reconcile_employee_ids(employee_ids)
         return True
 
     @api.model
