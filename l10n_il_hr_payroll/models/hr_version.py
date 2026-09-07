@@ -137,12 +137,6 @@ class HrVersion(models.Model):
                 version.mdl_daily_wage = (
                     version.wage * std_hours / avg_hours if avg_hours else 0.0)
 
-    @api.onchange('mdl_daily_wage')
-    def _onchange_mdl_daily_wage_copy_additional_day_rate(self):
-        """Start an additional-day rate from the currently shown day rate."""
-        for version in self:
-            version.mdl_additional_day_wage = version.mdl_daily_wage
-
     @api.onchange('mdl_wage_type')
     def _onchange_mdl_wage_type_structure(self):
         """Clear a salary category that does not match the chosen wage type."""

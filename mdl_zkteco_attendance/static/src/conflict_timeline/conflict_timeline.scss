@@ -105,6 +105,14 @@
         color: #000 !important;
     }
 
+    // A linked entry/exit pair uses one shared pill behind both event hitboxes.
+    // The hitboxes and their text stay in place, preserving the existing time
+    // sensitivity, minimum gap, selection and drag behaviour.
+    .o_mdl_attendance_event_tile_paired .o_mdl_attendance_event_tile {
+        background-color: transparent !important;
+        box-shadow: none;
+    }
+
     .o_mdl_attendance_event_fold {
         position: absolute;
         display: block;
@@ -156,7 +164,7 @@
 
     .o_mdl_attendance_connector {
         position: relative;
-        z-index: 5;
+        z-index: 3;
         overflow: visible;
         pointer-events: none;
         transition: opacity 120ms ease;

@@ -216,26 +216,20 @@ class TestPayrollPaymentSplits(TransactionCase):
         self.assertEqual(slip.state, 'validated')
         self.assertEqual(move.state, 'draft')
 
-    def test_daily_rate_onchange_copies_additional_day_rate(self):
-        daily_version = self.env['hr.version'].new({
-            'company_id': self.company.id,
+    def test_daily_rate_does_not_replace_additional_rate_server_side(self):
+        daily_type = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_type_il_daily')
+        version = self.employee.version_id
+        version.write({
             'mdl_wage_type': 'mdl_daily',
-            'mdl_daily_wage': 475.0,
+            'mdl_daily_wage': 400.0,
+            'mdl_additional_day_wage': 125.0,
+            'structure_type_id': daily_type.id,
         })
-        daily_version._onchange_mdl_daily_wage_copy_additional_day_rate()
-        self.assertEqual(daily_version.mdl_additional_day_wage, 475.0)
 
-        monthly_version = self.env['hr.version'].new({
-            'company_id': self.company.id,
-            'mdl_wage_type': 'mdl_monthly',
-            'resource_calendar_id': self.company.resource_calendar_id.id,
-            'wage': 10000.0,
-        })
-        monthly_day_rate = monthly_version.mdl_daily_wage
-        monthly_version._onchange_mdl_daily_wage_copy_additional_day_rate()
-        self.assertGreater(monthly_day_rate, 0.0)
-        self.assertEqual(
-            monthly_version.mdl_additional_day_wage, monthly_day_rate)
+        version.write({'mdl_daily_wage': 475.0})
+
+        self.assertEqual(version.mdl_additional_day_wage, 125.0)
 
     def test_wage_type_rejects_mismatched_salary_category(self):
         monthly_type = self.env.ref(

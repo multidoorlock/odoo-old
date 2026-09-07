@@ -42,6 +42,7 @@
                            options="{'horizontal': true}"/>
                     <field name="mdl_monthly_wage" invisible="mdl_wage_type != 'mdl_monthly'"/>
                     <field name="mdl_daily_wage" string="שכר יומי מותאם"
+                           widget="mdl_daily_wage_sync"
                            readonly="mdl_wage_type == 'mdl_monthly'"/>
                     <field name="mdl_hourly_wage" string="תעריף שעה" readonly="1"/>
                     <field name="mdl_additional_day_wage" string="תעריף יום נוסף"/>
