@@ -12,15 +12,26 @@ class TestPayrollPaymentSplits(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.company = cls.env.company
-        cls.employee = cls.env["hr.employee"].create({
-            "name": "Payment Split Employee",
+        monthly_type = cls.env.ref(
+            "l10n_il_hr_payroll_account.hr_payroll_structure_type_il"
+        )
+        monthly_structure = cls.env.ref(
+            "l10n_il_hr_payroll_account.hr_payroll_structure_il"
+        )
+        employee_vals = {
             "company_id": cls.company.id,
             "contract_date_start": date(2026, 1, 1),
+            "structure_type_id": monthly_type.id,
+            "il_salary_structure_id": monthly_structure.id,
+            "mdl_wage_type": "mdl_monthly",
+        }
+        cls.employee = cls.env["hr.employee"].create({
+            **employee_vals,
+            "name": "Payment Split Employee",
         })
         cls.other_employee = cls.env["hr.employee"].create({
+            **employee_vals,
             "name": "Other Payment Employee",
-            "company_id": cls.company.id,
-            "contract_date_start": date(2026, 1, 1),
         })
         cls.journal = cls.env["account.journal"].search([
             ("company_id", "=", cls.company.id),
