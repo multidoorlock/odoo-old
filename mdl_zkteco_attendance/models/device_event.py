@@ -29,6 +29,7 @@ class AttendanceDeviceEvent(models.Model):
     ], default="new", required=True, readonly=True, index=True)
     processing_message = fields.Text(readonly=True)
     attendance_id = fields.Many2one("hr.attendance", readonly=True, ondelete="set null", index=True)
+    odoo_generated = fields.Boolean(readonly=True, copy=False, index=True)
     manual_punch_state = fields.Selection(
         [("in", "כניסה"), ("out", "יציאה")],
         string="סוג מתוקן ידנית", copy=False, index=True,

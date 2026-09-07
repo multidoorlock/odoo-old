@@ -211,6 +211,53 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertAlmostEqual(sum(value["duration"] for value in regular), 19.0)
         self.assertAlmostEqual(additional[0]["duration"], 9.5)
 
+    def test_daily_off_schedule_day_replaces_regular_work(self):
+        # This suite exercises work-entry normalization rather than salary
+        # category selection. Keep the existing category compatible with the
+        # daily worker type, as the UI and server now require.
+        self.version.structure_type_id.wage_type = "hourly"
+        self.version.write({
+            "mdl_wage_type": "mdl_daily",
+            "mdl_daily_wage": 400.0,
+        })
+        self._attendance(
+            datetime(2026, 1, 10, 6, 30),
+            datetime(2026, 1, 10, 16, 0),
+        )
+
+        values = self._values(date(2026, 1, 10), date(2026, 1, 11))
+        codes = [code for code, _value in values]
+        self.assertEqual(codes, ["ADDITIONAL_DAY"])
+
+    def test_daily_weekly_quota_has_one_row_for_the_extra_day(self):
+        weekly_calendar = self.env["resource.calendar"].with_company(
+            self.company).create({
+                "name": "Daily Two Day Weekly Quota",
+                "company_id": self.company.id,
+                "tz": "UTC",
+                "mdl_schedule_type": "attendance",
+                "mdl_schedule_frequency": "weekly_quota",
+                "mdl_hours_per_day": 9.5,
+                "hours_per_week": 19.0,
+            })
+        self.version.structure_type_id.wage_type = "hourly"
+        self.version.write({
+            "resource_calendar_id": weekly_calendar.id,
+            "mdl_wage_type": "mdl_daily",
+            "mdl_daily_wage": 400.0,
+        })
+        for day in (5, 6, 7):
+            self._attendance(
+                datetime(2026, 1, day, 6, 30),
+                datetime(2026, 1, day, 16, 0),
+            )
+
+        values = self._values(date(2026, 1, 5), date(2026, 1, 8))
+        codes = [code for code, _value in values]
+        self.assertEqual(codes.count("WORK100"), 2)
+        self.assertEqual(codes.count("ADDITIONAL_DAY"), 1)
+        self.assertEqual(len(codes), 3)
+
     def test_calendar_weekday_is_not_a_separate_weekend_rate(self):
         self._attendance(
             datetime(2026, 1, 10, 6, 30), datetime(2026, 1, 10, 16, 0))

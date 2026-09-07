@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="l10n_il_hr_payroll_account.PayRunCard"
+       t-inherit="hr_payroll.PayRunCard" t-inherit-mode="extension">
+        <xpath expr="//t[@t-set-slot='paid_prio']" position="replace">
+            <t t-set-slot="paid_prio" isVisible="payrun.state === '02_close'" isPriority="true">
+                <ViewButton className="'btn btn-primary'"
+                            clickParams="{type: 'object', name: 'action_il_pay'}"
+                            record="props.record"
+                            string.translate="Pay"/>
+            </t>
+        </xpath>
+    </t>
+</templates>

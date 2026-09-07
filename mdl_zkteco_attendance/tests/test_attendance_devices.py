@@ -10,6 +10,21 @@ from odoo.tools import mute_logger
 @tagged("post_install", "-at_install")
 class TestAttendanceDevices(TransactionCase):
     @classmethod
+    def _employee_vals(cls, name, company):
+        """Keep clock tests compatible with optional payroll constraints."""
+        vals = {"name": name, "company_id": company.id}
+        Employee = cls.env["hr.employee"]
+        if "mdl_wage_type" in Employee._fields:
+            vals["mdl_wage_type"] = "mdl_monthly"
+        if "structure_type_id" in Employee._fields:
+            monthly_structure_type = cls.env[
+                "hr.payroll.structure.type"
+            ].search([("wage_type", "=", "monthly")], limit=1)
+            if monthly_structure_type:
+                vals["structure_type_id"] = monthly_structure_type.id
+        return vals
+
+    @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.device = cls.env["mdl.attendance.device"].create({
@@ -18,7 +33,15 @@ class TestAttendanceDevices(TransactionCase):
             "timezone": "UTC", "punch_state_column": 3,
             "punch_in_values": "1", "punch_out_values": "15",
         })
-        cls.employee = cls.env["hr.employee"].create({"name": "Clock Employee", "company_id": cls.env.company.id})
+        cls.other_device = cls.env["mdl.attendance.device"].create({
+            "name": "Second test clock", "manufacturer": "zkteco",
+            "device_identifier": "TEST-SN-2", "company_id": cls.env.company.id,
+            "timezone": "UTC", "punch_state_column": 3,
+            "punch_in_values": "1", "punch_out_values": "15",
+        })
+        cls.employee = cls.env["hr.employee"].create(
+            cls._employee_vals("Clock Employee", cls.env.company)
+        )
         cls.card = cls.env["mdl.attendance.device.employee"].with_context(attendance_device_discovery=True).create({
             "device_id": cls.device.id, "device_user_id": "74", "device_name": "Clock Employee",
             "employee_id": cls.employee.id,
@@ -51,6 +74,122 @@ class TestAttendanceDevices(TransactionCase):
             [self.employee.id],
         )
 
+    def test_employee_archive_only_restores_cards_archived_by_employee(self):
+        manual_card = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": self.other_device.id,
+            "device_user_id": "archive-manual",
+            "employee_id": self.employee.id,
+        })
+        manual_card.active = False
+
+        self.employee.active = False
+        self.card.invalidate_recordset(["active", "archived_by_employee"])
+        self.assertFalse(self.card.active)
+        self.assertTrue(self.card.archived_by_employee)
+
+        with self.assertRaises(ValidationError):
+            self.card.active = True
+
+        self.employee.active = True
+        self.card.invalidate_recordset(["active", "archived_by_employee"])
+        manual_card.invalidate_recordset(["active", "archived_by_employee"])
+        self.assertTrue(self.card.active)
+        self.assertFalse(self.card.archived_by_employee)
+        self.assertFalse(manual_card.active)
+        self.assertFalse(manual_card.archived_by_employee)
+
+    def test_employee_can_only_have_one_active_card_per_device(self):
+        with self.assertRaises(ValidationError):
+            self.env["mdl.attendance.device.employee"].with_context(
+                attendance_device_discovery=True,
+            ).create({
+                "device_id": self.device.id,
+                "device_user_id": "duplicate-employee",
+                "employee_id": self.employee.id,
+            })
+
+        self.card.active = False
+        replacement = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": self.device.id,
+            "device_user_id": "replacement-employee",
+            "employee_id": self.employee.id,
+        })
+        self.assertTrue(replacement.active)
+        with self.assertRaises(ValidationError):
+            self.card.active = True
+
+    def test_manual_attendance_creates_and_keeps_endpoint_events_in_sync(self):
+        check_in = fields.Datetime.now() - timedelta(hours=8)
+        check_out = check_in + timedelta(hours=7)
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": check_in,
+            "check_out": check_out,
+        })
+        events = self.env["mdl.attendance.device.event"].search([
+            ("attendance_id", "=", attendance.id),
+        ]).sorted("event_datetime")
+        self.assertEqual(len(events), 2)
+        self.assertTrue(all(events.mapped("odoo_generated")))
+        self.assertEqual(events.mapped("punch_state"), ["in", "out"])
+
+        new_check_out = check_out + timedelta(minutes=30)
+        attendance.check_out = new_check_out
+        events.invalidate_recordset(["event_datetime"])
+        self.assertEqual(events[-1].event_datetime, new_check_out)
+
+    def test_manual_attendance_reuses_matching_raw_event(self):
+        check_in = fields.Datetime.now() - timedelta(hours=2)
+        raw_event = self._pending_event(check_in, "in", "reuse-manual")
+        attendance = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": check_in,
+        })
+        raw_event.invalidate_recordset(["attendance_id", "processing_state"])
+        self.assertEqual(raw_event.attendance_id, attendance)
+        self.assertEqual(raw_event.processing_state, "processed")
+        self.assertFalse(raw_event.odoo_generated)
+
+    def test_attendance_does_not_reuse_legacy_event_from_another_company(self):
+        other_company = self.env["res.company"].create({
+            "name": "Attendance endpoint company",
+        })
+        other_employee = self.env["hr.employee"].with_company(other_company).create(
+            self._employee_vals("Other-company attendance employee", other_company)
+        )
+        check_in = fields.Datetime.now() - timedelta(hours=3)
+        attendance = self.env["hr.attendance"].with_company(other_company).with_context(
+            skip_attendance_event_sync=True,
+        ).create({
+            "employee_id": other_employee.id,
+            "check_in": check_in,
+        })
+        legacy_event = self._pending_event(check_in, "in", "legacy-other-company")
+        legacy_event.with_context(attendance_event_system_write=True).write({
+            "attendance_id": attendance.id,
+        })
+
+        attendance.with_context(
+            skip_attendance_event_sync=False,
+        ).with_company(other_company)._ensure_attendance_device_events()
+
+        legacy_event.invalidate_recordset([
+            "attendance_id", "processing_state", "processing_message",
+        ])
+        self.assertFalse(legacy_event.attendance_id)
+        self.assertEqual(legacy_event.processing_state, "not_applied")
+        replacement = self.env["mdl.attendance.device.event"].search([
+            ("attendance_id", "=", attendance.id),
+        ])
+        self.assertEqual(len(replacement), 1)
+        self.assertTrue(replacement.odoo_generated)
+        self.assertEqual(replacement.company_id, other_company)
+        self.assertEqual(replacement.employee_id, other_employee)
+
     def test_new_card_copies_employee_name_and_profile_photo(self):
         self.employee.image_1920 = (
             b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
@@ -58,7 +197,7 @@ class TestAttendanceDevices(TransactionCase):
         )
 
         draft = self.env["mdl.attendance.device.employee"].new({
-            "device_id": self.device.id,
+            "device_id": self.other_device.id,
         })
         draft.employee_id = self.employee
         draft._onchange_employee_id_set_card_identity()
@@ -68,7 +207,7 @@ class TestAttendanceDevices(TransactionCase):
         card = self.env["mdl.attendance.device.employee"].with_context(
             attendance_device_discovery=True,
         ).create({
-            "device_id": self.device.id,
+            "device_id": self.other_device.id,
             "employee_id": self.employee.id,
         })
         self.assertEqual(card.device_name, self.employee.name)
@@ -95,16 +234,16 @@ class TestAttendanceDevices(TransactionCase):
         self.employee.update_field_translations("name", {
             language.code: translated_name,
         })
-        self.device.write({"device_language": language.code})
+        self.other_device.write({"device_language": language.code})
         card = self.env["mdl.attendance.device.employee"].with_context(
             attendance_device_discovery=True,
         ).create({
-            "device_id": self.device.id,
+            "device_id": self.other_device.id,
             "employee_id": self.employee.id,
             "device_name": "This value must be overwritten",
         })
 
-        command = self.device._adapter().build_command("update_name", card)
+        command = self.other_device._adapter().build_command("update_name", card)
         self.assertIn(f"Name={translated_name}", command)
         self.assertEqual(card.device_name, translated_name)
 
@@ -118,10 +257,11 @@ class TestAttendanceDevices(TransactionCase):
         card.write({"employee_id": self.employee.id})
         self.assertEqual(card.device_name, edited_name)
 
-        created_employee = self.env["hr.employee"].create({
-            "name": "Created through translated name field",
-            "company_id": self.env.company.id,
-        })
+        created_employee = self.env["hr.employee"].create(
+            self._employee_vals(
+                "Created through translated name field", self.env.company,
+            )
+        )
         self.assertEqual(created_employee.name, "Created through translated name field")
 
     def test_inactive_clock_language_falls_back_to_current_odoo_language(self):
@@ -130,13 +270,16 @@ class TestAttendanceDevices(TransactionCase):
             ("code", "=", language_code),
         ], limit=1)
         if language and language.active:
-            language.active = False
+            # The optional Website module prevents deactivating any language
+            # assigned to a website.  This test only needs an inactive language
+            # in its rolled-back transaction, so write the field directly.
+            language._fields["active"].write(language, False)
 
-        self.device.device_language = language_code
+        self.other_device.device_language = language_code
         card = self.env["mdl.attendance.device.employee"].with_context(
             attendance_device_discovery=True,
         ).create({
-            "device_id": self.device.id,
+            "device_id": self.other_device.id,
             "employee_id": self.employee.id,
         })
         self.assertEqual(card.device_name, self.employee.name)
@@ -672,9 +815,9 @@ class TestAttendanceDevices(TransactionCase):
 
     def test_pending_event_time_and_type_can_be_edited(self):
         event = self._pending_event("2026-08-15 08:00:00", "in", "editable-event")
-        other_employee = self.env["hr.employee"].create({
-            "name": "Edited Timeline Employee", "company_id": self.env.company.id,
-        })
+        other_employee = self.env["hr.employee"].create(
+            self._employee_vals("Edited Timeline Employee", self.env.company)
+        )
         event.write({
             "event_datetime": "2026-08-15 08:30:00",
             "effective_punch_state": "out",
@@ -799,6 +942,10 @@ class TestAttendanceDevices(TransactionCase):
         by_source_id = {
             item["source_id"]: item for item in row["items"] if item["source"] == "event"
         }
+        self.assertEqual(
+            {source_id: item["event_id"] for source_id, item in by_source_id.items()},
+            {source_id: source_id for source_id in by_source_id},
+        )
         self.assertFalse(any(item["linkable"] for item in by_source_id.values()))
         self.assertEqual(by_source_id[out_event.id]["state"], "3")
         self.assertEqual(

@@ -97,9 +97,7 @@
                             <field name="timing_type" optional="show"/>
                             <field name="timing_start" widget="float_time" optional="show"/>
                             <field name="timing_stop" widget="float_time" optional="show"/>
-                            <field name="segment_type" widget="badge"
-                                   decoration-success="segment_type == 'work'"
-                                   decoration-danger="segment_type == 'non_work'"/>
+                            <field name="is_work" widget="boolean_toggle"/>
                         </list>
                        </field>
                       </page>

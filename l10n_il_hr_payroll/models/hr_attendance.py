@@ -18,12 +18,12 @@ class HrAttendance(models.Model):
         return result
 
     def _mdl_remove_additional_day_overtimes(self):
-        """Keep a monthly off-schedule day out of Odoo's overtime bucket.
+        """Keep an off-schedule day out of Odoo's overtime bucket.
 
         Odoo correctly sees zero expected hours and initially classifies all
-        attendance as overtime.  In the Israeli monthly layer that same day is
-        a single fixed-rate additional day, so the native overtime rows must
-        not remain visible or become payable as well.
+        attendance as overtime.  In the Israeli payroll layer that same day is
+        a single additional day, so native overtime rows must not remain
+        visible or become payable as well.
         """
         additional_type = self.env.ref(
             'l10n_il_hr_payroll.work_entry_type_additional_day')
@@ -31,7 +31,6 @@ class HrAttendance(models.Model):
         for attendance in self:
             version = attendance.employee_id.sudo()._get_version(attendance.date)
             if (not version
-                    or version.mdl_wage_type != 'mdl_monthly'
                     or version.work_entry_source not in ('attendance', 'calendar')):
                 continue
             tz = pytz.timezone(version._get_tz() or 'UTC')
@@ -79,10 +78,7 @@ class HrAttendance(models.Model):
                 and version.resource_calendar_id
                 and (
                     version.work_entry_source == 'attendance'
-                    or (
-                        version.work_entry_source == 'calendar'
-                        and version.mdl_wage_type == 'mdl_monthly'
-                    )
+                    or version.work_entry_source == 'calendar'
                 )
             )
 
@@ -103,10 +99,7 @@ class HrAttendance(models.Model):
             for version in versions:
                 if not (
                         version.work_entry_source == 'attendance'
-                        or (
-                            version.work_entry_source == 'calendar'
-                            and version.mdl_wage_type == 'mdl_monthly'
-                        )):
+                        or version.work_entry_source == 'calendar'):
                     continue
                 # יצירה ישירה רק בתוך תקופה שכבר חוללה — כמו במנגנון הסטנדרטי,
                 # אך ברמת יום עסקי שלם: אם חלק כלשהו מהיום נמצא בטווח שנוצר,

@@ -4,6 +4,12 @@
 .claude/settings.local.json
 .codex/
 
+# Local Odoo test data and filestores
+.tmp-attendance-test/
+.tmp-odoo-test/
+__pycache__/
+*.py[cod]
+
 
 # PERSONAL
 

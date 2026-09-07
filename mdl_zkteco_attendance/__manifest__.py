@@ -1,6 +1,6 @@
 {
     "name": "Multi Doorlock - Clock Attendance",
-    "version": "19.0.5.9.53",
+    "version": "19.0.5.9.64",
     "summary": "Generic attendance device management",
     "category": "Human Resources/Attendances",
     "license": "LGPL-3",
@@ -19,6 +19,7 @@
         "security/security.xml",
         "security/ir.model.access.csv",
         "views/attendance_device_views.xml",
+        "views/hr_employee_views.xml",
         "views/device_employee_views.xml",
         "views/device_command_views.xml",
         "views/device_log_views.xml",

@@ -22,15 +22,14 @@ class HrVersion(models.Model):
         vals_list = super()._get_work_entries_values(date_start, date_stop)
         attendance_versions = self.sudo().filtered(
             lambda v: v.work_entry_source == 'attendance' and v.resource_calendar_id)
-        # Calendar-based versions keep Odoo's planned WORK100 entries.  For a
-        # monthly employee we additionally inspect real clockings and append
-        # only off-schedule/quota-excess ADDITIONAL_DAY entries.  This is a
+        # Calendar-based versions keep Odoo's planned WORK100 entries.  We
+        # additionally inspect real clockings and append only off-schedule or
+        # quota-excess ADDITIONAL_DAY entries.  This is a
         # hybrid layer: the calendar remains the source of regular work and
         # attendance is solely the evidence for an actually worked extra day.
         calendar_additional_versions = self.sudo().filtered(
             lambda v: v.work_entry_source == 'calendar'
-            and v.resource_calendar_id
-            and v.mdl_wage_type == 'mdl_monthly')
+            and v.resource_calendar_id)
         if not attendance_versions and not calendar_additional_versions:
             return vals_list
         # הסרת רשומות הנוכחות הגולמיות שהמנגנון הסטנדרטי יצר עבור עובדי
@@ -81,6 +80,19 @@ class HrVersion(models.Model):
             additional_dates = {
                 vals['date'] for vals in additional_vals
             }
+
+            # An additional day replaces regular work for that date.  It must
+            # never be paid as a second row alongside a planned WORK100 entry.
+            regular_type = self.env.ref(
+                'hr_work_entry.work_entry_type_attendance')
+            vals_list = [
+                vals for vals in vals_list
+                if not (
+                    vals.get('version_id') == version.id
+                    and vals.get('work_entry_type_id') == regular_type.id
+                    and vals.get('date') in additional_dates
+                )
+            ]
 
             # A calendar-source employee with an Odoo overtime ruleset can
             # receive native overtime entries sourced from the same clocking.
@@ -312,8 +324,8 @@ class HrVersion(models.Model):
 
             total_actual_hours = sum(
                 attendance.worked_hours for attendance in (day_attendances or []))
-            # A monthly employee's day outside the schedule (or beyond a
-            # weekly quota) is one additional day. Odoo may still create
+            # A day outside the schedule (or beyond a weekly quota) is one
+            # additional day. Odoo may still create
             # overtime lines because its native expected duration is zero.
             # They must not replace the additional day or be paid on top of it.
             is_additional_day = any(
@@ -351,7 +363,7 @@ class HrVersion(models.Model):
                 category = 'regular'
                 h_date = scheduled_hours
             else:
-                category = 'additional_day' if monthly_worker else 'regular'
+                category = 'additional_day'
                 h_date = std_day_hours
 
         else:  # מכסה שבועית
@@ -360,7 +372,7 @@ class HrVersion(models.Model):
                 category = 'regular'
                 h_date = min(std_day_hours, remaining)
             else:
-                category = 'additional_day' if monthly_worker else 'regular'
+                category = 'additional_day'
                 h_date = std_day_hours
 
         # All effective attendance on an additional day belongs to that day.
@@ -462,12 +474,12 @@ class HrVersion(models.Model):
             )
             if frequency == 'daily_duration':
                 category = ('regular' if scheduled_hours
-                            else ('additional_day' if monthly_worker else 'regular'))
+                            else 'additional_day')
             else:  # מכסה שבועית של משמרות
                 if consumed_shifts < quota_shifts:
                     category = 'regular'
                 else:
-                    category = 'additional_day' if monthly_worker else 'regular'
+                    category = 'additional_day'
             applied_native_overtime = (
                 0.0 if category == 'additional_day' else native_overtime_hours
             )

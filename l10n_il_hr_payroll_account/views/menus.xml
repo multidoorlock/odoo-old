@@ -28,6 +28,18 @@
               action="action_il_salary_adjustment"
               sequence="20"/>
 
+    <menuitem id="menu_il_payment_cycles"
+              name="מחזורי תשלומים"
+              parent="menu_il_payments_root"
+              action="action_il_payment_cycles"
+              sequence="30"/>
+
+    <menuitem id="menu_il_payment_cycle_types"
+              name="סוגי מחזורי תשלומים"
+              parent="menu_il_payments_root"
+              action="action_il_payment_cycle_types"
+              sequence="40"/>
+
     <!-- Keep the former XML id only to deactivate it on upgraded databases. -->
     <record id="menu_il_cycles_list" model="ir.ui.menu">
         <field name="name">מחזורים והוראות</field>

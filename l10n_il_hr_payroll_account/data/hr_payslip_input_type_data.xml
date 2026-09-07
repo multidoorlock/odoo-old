@@ -76,7 +76,7 @@
             <field name="country_id" ref="base.il"/>
             <field name="available_in_attachments">True</field>
             <field name="il_adjustment_direction">negative</field>
-            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
             <field name="il_ni_payment_treatment">none</field>
         </record>
 
@@ -86,7 +86,7 @@
             <field name="country_id" ref="base.il"/>
             <field name="available_in_attachments">True</field>
             <field name="il_adjustment_direction">negative</field>
-            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
             <field name="il_ni_payment_treatment">none</field>
         </record>
 
@@ -96,7 +96,7 @@
             <field name="country_id" ref="base.il"/>
             <field name="available_in_attachments">True</field>
             <field name="il_adjustment_direction">negative</field>
-            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
             <field name="il_ni_payment_treatment">none</field>
         </record>
 
@@ -106,7 +106,7 @@
             <field name="country_id" ref="base.il"/>
             <field name="available_in_attachments">True</field>
             <field name="il_adjustment_direction">negative</field>
-            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
             <field name="il_ni_payment_treatment">none</field>
         </record>
 
@@ -116,7 +116,7 @@
             <field name="country_id" ref="base.il"/>
             <field name="available_in_attachments">True</field>
             <field name="il_adjustment_direction">negative</field>
-            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
             <field name="il_ni_payment_treatment">none</field>
         </record>
 
@@ -126,7 +126,7 @@
             <field name="country_id" ref="base.il"/>
             <field name="available_in_attachments">True</field>
             <field name="il_adjustment_direction">negative</field>
-            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
             <field name="il_ni_payment_treatment">none</field>
         </record>
 
@@ -136,7 +136,7 @@
             <field name="country_id" ref="base.il"/>
             <field name="available_in_attachments">True</field>
             <field name="il_adjustment_direction">negative</field>
-            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
             <field name="il_ni_payment_treatment">none</field>
         </record>
 
@@ -146,7 +146,7 @@
             <field name="country_id" ref="base.il"/>
             <field name="available_in_attachments">True</field>
             <field name="il_adjustment_direction">negative</field>
-            <field name="il_net_adjustment_treatment">direct_net</field>
+            <field name="il_net_adjustment_treatment">gross_up</field>
             <field name="il_ni_payment_treatment">none</field>
         </record>
 

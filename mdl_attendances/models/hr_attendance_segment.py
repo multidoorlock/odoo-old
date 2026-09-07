@@ -18,8 +18,9 @@ class HrAttendanceSegment(models.Model):
     time_stop = fields.Datetime(required=True, index=True)
     duration = fields.Float(compute="_compute_duration", store=True)
     is_work = fields.Boolean(string="Work", default=True, required=True)
+    is_overtime = fields.Boolean(string="Overtime", default=False)
     segment_type = fields.Selection(
-        [("work", "Work"), ("non_work", "Non-Work")],
+        [("work", "Work"), ("non_work", "Non-Work"), ("overtime", "Overtime")],
         string="Segment Type", compute="_compute_segment_type", inverse="_inverse_segment_type",
         store=True, readonly=False,
     )
@@ -31,14 +32,18 @@ class HrAttendanceSegment(models.Model):
     is_last = fields.Boolean(compute="_compute_edge_flags")
     hover_label = fields.Char(compute="_compute_hover_label")
 
-    @api.depends("is_work")
+    @api.depends("is_work", "is_overtime")
     def _compute_segment_type(self):
         for segment in self:
-            segment.segment_type = "work" if segment.is_work else "non_work"
+            segment.segment_type = (
+                "overtime" if segment.is_overtime
+                else ("work" if segment.is_work else "non_work")
+            )
 
     def _inverse_segment_type(self):
         for segment in self:
-            segment.is_work = segment.segment_type == "work"
+            segment.is_overtime = segment.segment_type == "overtime"
+            segment.is_work = segment.segment_type in ("work", "overtime")
 
     @api.depends("time_start", "time_stop", "is_work", "employee_id")
     def _compute_hover_label(self):

@@ -43,6 +43,17 @@
                     </group>
                 </group>
             </group>
+            <notebook position="inside">
+                <page string="סוגי מחזורי תשלום" name="il_payment_cycle_types">
+                    <field name="il_payment_cycle_type_line_ids" context="{'default_employee_id': id}">
+                        <list editable="bottom">
+                            <field name="cycle_type_id"/>
+                            <field name="amount"/>
+                            <field name="currency_id" column_invisible="True"/>
+                        </list>
+                    </field>
+                </page>
+            </notebook>
         </field>
     </record>
 </odoo>
