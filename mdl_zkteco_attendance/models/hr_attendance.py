@@ -37,10 +37,35 @@ class HrAttendance(models.Model):
             return
         Event = self.env["mdl.attendance.device.event"].sudo()
         for attendance in self.filtered(lambda item: item.employee_id and item.check_in):
+            company = attendance.employee_id.company_id or self.env.company
             device, card = attendance._attendance_event_source()
+            linked_events = Event.search([
+                ("attendance_id", "=", attendance.id),
+            ])
+            incompatible_events = linked_events.filtered(
+                lambda event: event.company_id != company
+            )
+            if incompatible_events:
+                # A legacy event can still point to an attendance whose employee
+                # was moved to another company.  Keep raw clock evidence on its
+                # original device/company, but do not reuse that event as an
+                # endpoint for the cross-company attendance.  Generated endpoint
+                # events have no source evidence and can safely be rebuilt below.
+                incompatible_events.filtered("odoo_generated").unlink()
+                incompatible_events.filtered(
+                    lambda event: not event.odoo_generated
+                ).with_context(attendance_event_system_write=True).write({
+                    "attendance_id": False,
+                    "processing_state": "not_applied",
+                    "processing_message": (
+                        "Attendance link removed because the employee belongs "
+                        "to another company"
+                    ),
+                })
             log = Event.search([
                 ("attendance_id", "=", attendance.id),
                 ("odoo_generated", "=", True),
+                ("company_id", "=", company.id),
             ], limit=1).log_id
             if not log:
                 log = self.env["mdl.attendance.device.log"].sudo().create({
@@ -56,6 +81,7 @@ class HrAttendance(models.Model):
             for kind, value in endpoints:
                 linked = Event.search([
                     ("attendance_id", "=", attendance.id),
+                    ("company_id", "=", company.id),
                 ], order="odoo_generated asc, id").filtered(
                     lambda event: (event.manual_punch_state or event.punch_state) == kind
                 )[:1]
@@ -66,6 +92,7 @@ class HrAttendance(models.Model):
                     linked = Event.search([
                         ("attendance_id", "=", False),
                         ("employee_id", "=", attendance.employee_id.id),
+                        ("company_id", "=", company.id),
                         ("event_datetime", "=", value),
                         ("processing_state", "!=", "ignored"),
                     ], order="odoo_generated asc, id").filtered(
