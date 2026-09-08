@@ -12,6 +12,7 @@ class TestPayrollPaymentSplits(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.company = cls.env.company
+        cls.company.country_id = cls.env.ref('base.il')
         monthly_type = cls.env.ref(
             "l10n_il_hr_payroll_account.hr_payroll_structure_type_il"
         )
@@ -21,9 +22,11 @@ class TestPayrollPaymentSplits(TransactionCase):
         employee_vals = {
             "company_id": cls.company.id,
             "contract_date_start": date(2026, 1, 1),
+            "date_version": date(2026, 1, 1),
             "structure_type_id": monthly_type.id,
             "il_salary_structure_id": monthly_structure.id,
             "mdl_wage_type": "mdl_monthly",
+            "schedule_pay": "monthly",
         }
         cls.employee = cls.env["hr.employee"].create({
             **employee_vals,
