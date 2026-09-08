@@ -53,6 +53,7 @@ class ProductProduct(models.Model):
         string="Product Name",
         compute="_compute_mdl_catalog_values",
         store=True,
+        translate=True,
         index="trigram",
     )
     mdl_variant_list_name = fields.Char(
@@ -282,4 +283,3 @@ class ProductProduct(models.Model):
                 )
             else:
                 product.display_name = final_name
-

@@ -175,6 +175,7 @@ class ProductTemplate(models.Model):
         compute="_compute_mdl_effective_base_name",
         inverse="_inverse_mdl_effective_base_name",
         store=True,
+        translate=True,
         help=(
             "The product name before attributes. By default it comes from the "
             "product group. Model is a regular, orderable attribute value."
@@ -275,10 +276,12 @@ class ProductTemplate(models.Model):
     mdl_variant_base_name = fields.Char(
         string="Legacy Base Name (Unused)",
         copy=True,
+        translate=True,
     )
     mdl_name_suffix = fields.Char(
         string="Final Format Text (Technical)",
         copy=True,
+        translate=True,
     )
 
     @api.depends(
