@@ -239,6 +239,19 @@ class TestPayrollPaymentSplits(TransactionCase):
         self.assertEqual(slip.state, 'validated')
         self.assertEqual(move.state, 'posted')
 
+    def test_net_accounting_line_uses_employee_work_contact(self):
+        self.company.batch_payroll_move_lines = False
+        slip = self._validate_payslip(self._payslip(), 1000.0)
+        line = slip.line_ids.filtered(lambda item: item.code == 'NET')
+        line.salary_rule_id.partner_id = False
+        values = slip._prepare_line_values(
+            line, self.payment_credit_account, slip.date_to, 0.0, 1000.0)
+        matching = [value for value in values
+                    if value.get('account_id') == self.payment_credit_account.id]
+        self.assertTrue(matching)
+        self.assertTrue(all(value['partner_id'] == self.employee.work_contact_id.id
+                            for value in matching))
+
     def test_future_salary_adjustment_closes_on_payroll_payment_date(self):
         start = fields.Date.add(fields.Date.today(), years=1)
         paid_on = fields.Date.add(start, months=1)

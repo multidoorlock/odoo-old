@@ -175,6 +175,22 @@ class HrPayslip(models.Model):
             if should_be_posted and move.state == 'draft':
                 move.action_post()
 
+    def _prepare_line_values(self, line, account, date, debit, credit):
+        values = super()._prepare_line_values(line, account, date, debit, credit)
+        if (line.code == 'NET'
+                and self.struct_id.code in (
+                    'IL_ISR_MONTHLY', 'IL_ISR_DAILY',
+                    'IL_PAL_MONTHLY', 'IL_PAL_DAILY')
+                and not self.company_id.batch_payroll_move_lines
+                and not line.salary_rule_id.partner_id
+                and self.employee_id.work_contact_id):
+            # Employee payments use the work contact even without an employee
+            # bank account. Use that same partner for the matching NET liability.
+            for value in values:
+                if value.get('account_id') == account.id:
+                    value['partner_id'] = self.employee_id.work_contact_id.id
+        return values
+
     def _il_attach_automatic_split_lines(self):
         """Link existing planned/no-spread instalments before Compute Sheet."""
         Split = self.env['account.payment.split.line']
