@@ -866,3 +866,53 @@ msgstr "سيُسمح فقط بالمنتجات التي تحتوي على جمي
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
 msgid "Select one value from at least two different attributes, for example “Model: Window” with “Color: Orange”."
 msgstr "اختر قيمة واحدة من سمتين مختلفتين على الأقل، مثل «الموديل: نافذة» مع «اللون: برتقالي»."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_form.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Product Template"
+msgstr "قالب المنتج"
+
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_form.py:0
+msgid "Product Variants"
+msgstr "متغيرات المنتج"
+
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_variant_seller_ids
+msgid "Variant Vendor Prices"
+msgstr "أسعار الموردين لهذا المتغير"
+
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_variant_pricelist_item_ids
+msgid "Variant Sales Prices"
+msgstr "أسعار البيع لهذا المتغير"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Sales Price (Template + Extras)"
+msgstr "سعر البيع (القالب + الإضافات)"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Edit this variant here. Shared settings are read-only; use Product Template to change them for all variants."
+msgstr "يمكنك تعديل هذا المتغير هنا. الإعدادات المشتركة للقراءة فقط؛ استخدم قالب المنتج لتغييرها لجميع المتغيرات."
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Only prices assigned to this variant are listed. Shared template and pricelist rules may still apply."
+msgstr "تُعرض فقط الأسعار المخصصة لهذا المتغير. قد تظل قواعد القالب وقوائم الأسعار المشتركة سارية."
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Only vendor prices assigned to this variant are listed. Shared vendor prices are managed on the product template and may still apply."
+msgstr "تُعرض فقط أسعار الموردين المخصصة لهذا المتغير. تُدار أسعار الموردين المشتركة في قالب المنتج وقد تظل سارية."

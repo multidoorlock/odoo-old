@@ -866,3 +866,53 @@ msgstr "רק פריטים שמכילים יחד את כל הערכים שנבח�
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
 msgid "Select one value from at least two different attributes, for example “Model: Window” with “Color: Orange”."
 msgstr "בחר ערך אחד לפחות משני מאפיינים שונים, לדוגמה „דגם: חלון” יחד עם „צבע: כתום”."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_form.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Product Template"
+msgstr "תבנית מוצר"
+
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_form.py:0
+msgid "Product Variants"
+msgstr "וריאנטים של מוצר"
+
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_variant_seller_ids
+msgid "Variant Vendor Prices"
+msgstr "מחירי ספקים לווריאנט"
+
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_variant_pricelist_item_ids
+msgid "Variant Sales Prices"
+msgstr "מחירי מכירה לווריאנט"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Sales Price (Template + Extras)"
+msgstr "מחיר מכירה (תבנית + תוספות)"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Edit this variant here. Shared settings are read-only; use Product Template to change them for all variants."
+msgstr "כאן עורכים את הווריאנט הזה. ההגדרות המשותפות הן לקריאה בלבד; לשינוי עבור כל הווריאנטים יש לפתוח את תבנית המוצר."
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Only prices assigned to this variant are listed. Shared template and pricelist rules may still apply."
+msgstr "מוצגים רק מחירים שהוגדרו לווריאנט הזה. כללים משותפים מהתבנית וממחירונים עדיין עשויים לחול."
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Only vendor prices assigned to this variant are listed. Shared vendor prices are managed on the product template and may still apply."
+msgstr "מוצגים רק מחירי ספקים שהוגדרו לווריאנט הזה. מחירי ספקים משותפים מנוהלים בתבנית המוצר ועדיין עשויים לחול."

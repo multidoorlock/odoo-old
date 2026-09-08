@@ -5,6 +5,7 @@ from . import product_template_attribute_exclusion
 from . import product_template_attribute_line
 from . import product_template
 from . import product_product
+from . import product_variant_form
 from . import sale_order_line
 from . import res_config_settings
 from . import blocked_variant_preview
