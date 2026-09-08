@@ -12,6 +12,7 @@ class TestPayrollPaymentSplits(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.company = cls.env.company
+        cls.company.country_id = cls.env.ref('base.il')
         monthly_type = cls.env.ref(
             "l10n_il_hr_payroll_account.hr_payroll_structure_type_il"
         )
@@ -21,9 +22,11 @@ class TestPayrollPaymentSplits(TransactionCase):
         employee_vals = {
             "company_id": cls.company.id,
             "contract_date_start": date(2026, 1, 1),
+            "date_version": date(2026, 1, 1),
             "structure_type_id": monthly_type.id,
             "il_salary_structure_id": monthly_structure.id,
             "mdl_wage_type": "mdl_monthly",
+            "schedule_pay": "monthly",
         }
         cls.employee = cls.env["hr.employee"].create({
             **employee_vals,
@@ -197,7 +200,7 @@ class TestPayrollPaymentSplits(TransactionCase):
         self.assertEqual(sum(second_move.line_ids.mapped('credit')), 600.0)
         self.assertEqual(payment.il_split_move_ids, first_move | second_move)
 
-    def test_payslip_move_posts_at_zero_and_returns_to_draft(self):
+    def test_payslip_move_stays_posted_across_payment_settlement(self):
         slip = self._validate_payslip(self._payslip(), 1000.0)
         move = self.env['account.move'].create({
             'move_type': 'entry',
@@ -217,7 +220,16 @@ class TestPayrollPaymentSplits(TransactionCase):
             ],
         })
         slip.move_id = move
-        payment = self.env['account.payment'].create(self._payment_values())
+        slip._il_sync_account_move_state_from_payment_balance()
+        self.assertEqual(slip.state, 'validated')
+        self.assertEqual(move.state, 'posted')
+        payment = self.env['account.payment'].create(self._payment_values(amount=400.0))
+
+        payment.il_split_line_ids.payslip_id = slip
+        self.assertEqual(slip.state, 'validated')
+        self.assertEqual(move.state, 'posted')
+        remaining = self.env['account.payment'].create(self._payment_values(amount=600.0))
+        remaining.il_split_line_ids.payslip_id = slip
 
         payment.il_split_line_ids.payslip_id = slip
         self.assertEqual(slip.state, 'paid')
@@ -225,7 +237,67 @@ class TestPayrollPaymentSplits(TransactionCase):
 
         payment.il_split_line_ids.payslip_id = False
         self.assertEqual(slip.state, 'validated')
-        self.assertEqual(move.state, 'draft')
+        self.assertEqual(move.state, 'posted')
+
+    def test_net_accounting_line_uses_employee_work_contact(self):
+        self.company.batch_payroll_move_lines = False
+        slip = self._validate_payslip(self._payslip(), 1000.0)
+        line = slip.line_ids.filtered(lambda item: item.code == 'NET')
+        line.salary_rule_id.partner_id = False
+        values = slip._prepare_line_values(
+            line, self.payment_credit_account, slip.date_to, 0.0, 1000.0)
+        matching = [value for value in values
+                    if value.get('account_id') == self.payment_credit_account.id]
+        self.assertTrue(matching)
+        self.assertTrue(all(value['partner_id'] == self.employee.work_contact_id.id
+                            for value in matching))
+
+    def test_future_salary_adjustment_closes_on_payroll_payment_date(self):
+        start = fields.Date.add(fields.Date.today(), years=1)
+        paid_on = fields.Date.add(start, months=1)
+        input_type = self.env['hr.payslip.input.type'].search([
+            ('available_in_attachments', '=', True),
+            ('il_net_adjustment_treatment', '=', 'gross_up'),
+        ], limit=1)
+        self.assertTrue(input_type)
+        attachment = self.env['hr.salary.attachment'].create({
+            'employee_ids': [Command.set(self.employee.ids)],
+            'company_id': self.company.id,
+            'description': 'Future payroll bonus closure',
+            'date_start': start,
+            'duration_type': 'one',
+            'monthly_amount': 1000.0,
+            'total_amount': 1000.0,
+            'other_input_type_id': input_type.id,
+        })
+        attachment.with_context(il_payroll_payment_date=paid_on).record_payment(1000.0)
+        self.env.flush_all()
+        self.assertEqual(attachment.state, 'close')
+        self.assertEqual(attachment.date_start, start)
+        self.assertEqual(attachment.date_end, paid_on)
+
+    def test_future_salary_adjustment_without_payment_date_preserves_start(self):
+        start = fields.Date.add(fields.Date.today(), years=1)
+        input_type = self.env['hr.payslip.input.type'].search([
+            ('available_in_attachments', '=', True),
+            ('il_net_adjustment_treatment', '=', 'gross_up'),
+        ], limit=1)
+        self.assertTrue(input_type)
+        attachment = self.env['hr.salary.attachment'].create({
+            'employee_ids': [Command.set(self.employee.ids)],
+            'company_id': self.company.id,
+            'description': 'Future payroll bonus without payment context',
+            'date_start': start,
+            'duration_type': 'one',
+            'monthly_amount': 1000.0,
+            'total_amount': 1000.0,
+            'other_input_type_id': input_type.id,
+        })
+        attachment.record_payment(1000.0)
+        self.env.flush_all()
+        self.assertEqual(attachment.state, 'close')
+        self.assertEqual(attachment.date_start, start)
+        self.assertEqual(attachment.date_end, start)
 
     def test_daily_rate_does_not_replace_additional_rate_server_side(self):
         daily_type = self.env.ref(
