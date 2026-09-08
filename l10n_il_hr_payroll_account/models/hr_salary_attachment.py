@@ -14,6 +14,18 @@ IL_SNAPSHOT_FIELDS = [
 class HrSalaryAttachment(models.Model):
     _inherit = 'hr.salary.attachment'
 
+    @api.depends('state', 'date_start')
+    def _compute_date_end(self):
+        super()._compute_date_end()
+        effective_date = fields.Date.to_date(
+            self.env.context.get('il_payroll_payment_date'))
+        for attachment in self.filtered(lambda item: item.state == 'close'):
+            # Native closure uses today's date. A future payroll payment must
+            # never close an adjustment before that adjustment has started.
+            attachment.date_end = max(filter(None, (
+                attachment.date_end, attachment.date_start, effective_date,
+            )))
+
     # ------------------------------------------------------------------
     # סוג השפעה (סעיף "שדה חדש ב-Salary Adjustment" באפיון)
     # ------------------------------------------------------------------

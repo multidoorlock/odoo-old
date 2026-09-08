@@ -161,16 +161,19 @@ class HrPayslip(models.Model):
         self._il_sync_account_move_state_from_payment_balance()
 
     def _il_sync_account_move_state_from_payment_balance(self):
-        """Post a payroll move only when every payslip it contains is paid."""
+        """Recognize approved payroll independently of payment settlement.
+
+        Removing or partially applying a payment changes the employee balance,
+        not the already recognized wage expense and payroll liabilities.
+        Cancellation/reset remains responsible for reversing payroll entries.
+        """
         moves = self.mapped('move_id')
         for move in moves:
             linked_slips = self.search([('move_id', '=', move.id)])
             should_be_posted = bool(linked_slips) and all(
-                slip.state == 'paid' for slip in linked_slips)
+                slip.state in ('validated', 'paid') for slip in linked_slips)
             if should_be_posted and move.state == 'draft':
                 move.action_post()
-            elif not should_be_posted and move.state == 'posted':
-                move.button_draft()
 
     def _il_attach_automatic_split_lines(self):
         """Link existing planned/no-spread instalments before Compute Sheet."""
@@ -373,7 +376,11 @@ class HrPayslip(models.Model):
                 for line in slip.input_line_ids.filtered('il_salary_attachment_id'):
                     amount = abs(line.il_original_amount or line.amount)
                     if amount:
-                        line.il_salary_attachment_id.record_payment(sign * amount)
+                        payment_dates = slip.il_split_line_ids.mapped('payment_id.date')
+                        effective_date = max([slip.date_to, *payment_dates])
+                        line.il_salary_attachment_id.with_context(
+                            il_payroll_payment_date=effective_date,
+                        ).record_payment(sign * amount)
         return res
 
     # ==================================================================
