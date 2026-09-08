@@ -14,53 +14,53 @@ class ProductProduct(models.Model):
     _inherit = "product.product"
 
     mdl_max_protected_area_m2 = fields.Float(
-        string="שטח מוגן מרבי (מ״ר)",
-        help="נתון טכני של הפריט; אינו יוצר וריאנטים חדשים.",
+        string="Maximum Protected Area (m²)",
+        help="Technical product data; it does not create variants.",
     )
     mdl_installation_type = fields.Selection(
         selection=[
-            ("overhead", "עילית"),
-            ("concealed", "סמויה"),
-            ("other", "אחר"),
+            ("overhead", "Overhead"),
+            ("concealed", "Concealed"),
+            ("other", "Other"),
         ],
-        string="סוג התקנה",
-        help="נתון טכני של הפריט; אינו חלק משם המוצר.",
+        string="Installation Type",
+        help="Technical product data; it is not part of the product name.",
     )
     mdl_length_cm = fields.Float(
-        string="אורך (ס״מ)",
-        help="אורך הפריט בסנטימטרים.",
+        string="Length (cm)",
+        help="Product length in centimetres.",
     )
     mdl_width_cm = fields.Float(
-        string="רוחב (ס״מ)",
-        help="רוחב הפריט בסנטימטרים.",
+        string="Width (cm)",
+        help="Product width in centimetres.",
     )
     mdl_height_cm = fields.Float(
-        string="גובה (ס״מ)",
-        help="גובה הפריט בסנטימטרים.",
+        string="Height (cm)",
+        help="Product height in centimetres.",
     )
 
     mdl_catalog_allowed = fields.Boolean(
-        string="שילוב קטלוג מותר (טכני)",
+        string="Catalog Combination Allowed (Technical)",
         default=True,
         index=True,
         copy=False,
         help=(
-            "שדה טכני לנתונים מוסבים שבהם כלל השילוב אינו ניתן לביטוי "
-            "באמצעות ההחרגות הזוגיות של Odoo."
+            "Technical compatibility field for migrated data whose rule "
+            "cannot be represented by Odoo's native pair exclusions."
         ),
     )
     mdl_generated_name = fields.Char(
-        string="שם הפריט",
+        string="Product Name",
         compute="_compute_mdl_catalog_values",
         store=True,
         index="trigram",
     )
     mdl_variant_list_name = fields.Char(
-        string="שם פריט ברשימה (טכני)",
+        string="Product List Name (Technical)",
         compute="_compute_mdl_variant_list_name",
         help=(
-            "שם התצוגה של Odoo ללא המק״ט הפנימי, המשמש ברשימת "
-            "הווריאנטים שבה המק״ט כבר מופיע בעמודה נפרדת."
+            "Odoo's display name without the Internal Reference, used where "
+            "the variant list already shows the SKU in a separate column."
         ),
     )
 
@@ -270,7 +270,9 @@ class ProductProduct(models.Model):
                     display_format or DEFAULT_VARIANT_DISPLAY_FORMAT,
                     {
                         "שם הפריט": final_name,
+                        "Product Name": final_name,
                         "מק״ט": ltr_isolate(f"[{final_sku}]"),
+                        "SKU": ltr_isolate(f"[{final_sku}]"),
                     },
                 )
                 product.display_name = (

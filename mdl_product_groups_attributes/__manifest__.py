@@ -1,7 +1,7 @@
 {
     "name": "Multi Doorlock - Product Groups & Attributes",
-    "summary": "הרחבת קבוצות פריטים, מאפיינים, ערכים ושמות ומק\"טים של וריאנטים",
-    "version": "19.0.2.8.0",
+    "summary": "Native product groups, attributes, combination rules, names, and SKUs",
+    "version": "19.0.3.0.0",
     "category": "Inventory/Inventory",
     "author": "Multi Doorlock",
     "license": "LGPL-3",
@@ -14,6 +14,11 @@
         "views/sale_order_views.xml",
         "views/res_config_settings_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "mdl_product_groups_attributes/static/src/scss/product_groups_attributes.scss",
+        ],
+    },
     "pre_init_hook": "pre_init_hook",
     "post_init_hook": "post_init_hook",
     "uninstall_hook": "uninstall_hook",

@@ -1,4 +1,4 @@
-from odoo import Command, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
@@ -19,21 +19,21 @@ class ProductTemplateAttributeExclusion(models.Model):
     _inherit = "product.template.attribute.exclusion"
 
     mdl_is_catalog_condition = fields.Boolean(
-        string="תנאי קטלוג",
+        string="Catalog Condition",
         default=False,
         index=True,
     )
     mdl_rule_type = fields.Selection(
         selection=[
-            ("forbidden", "חסום את השילוב"),
-            ("allowed", "אפשר רק את השילוב"),
+            ("forbidden", "Block Combination"),
+            ("allowed", "Allow Only Combination"),
         ],
-        string="סוג כלל",
+        string="Rule Type",
         default="forbidden",
         required=True,
         help=(
-            "שילוב אסור חוסם כל פריט שמכיל את כל הערכים שנבחרו. אם קיימים "
-            "כללי שילוב מותר, רק פריטים שמתאימים לפחות לאחד מהם יהיו זמינים."
+            "A blocked combination prevents products containing all selected "
+            "values. If allow rules exist, only products matching one are available."
         ),
     )
     mdl_combination_value_ids = fields.Many2many(
@@ -41,10 +41,10 @@ class ProductTemplateAttributeExclusion(models.Model):
         relation="mdl_product_exclusion_combination_rel",
         column1="exclusion_id",
         column2="ptav_id",
-        string="ערכי הכלל",
+        string="Rule Values",
         help=(
-            "בחר שני ערכים או יותר ממאפיינים שונים. ניתן ליצור גם תנאי "
-            "שתלוי בדגם ובכמה מאפיינים יחד."
+            "Select two or more values from different attributes. A condition "
+            "may depend on a model and several attributes together."
         ),
     )
 
@@ -59,23 +59,25 @@ class ProductTemplateAttributeExclusion(models.Model):
             values = rule.mdl_combination_value_ids
             if len(values) < 2:
                 raise ValidationError(
-                    "בכל כלל שילוב יש לבחור לפחות שני ערכים."
+                    _("Select at least two values in every combination rule.")
                 )
             if any(value.product_tmpl_id != rule.product_tmpl_id for value in values):
                 raise ValidationError(
-                    "ניתן לבחור רק ערכים השייכים לקבוצה הנוכחית."
+                    _("Only values from the current product group can be selected.")
                 )
             if any(
                 value.attribute_id.create_variant == "no_variant"
                 for value in values
             ):
                 raise ValidationError(
-                    "לא ניתן להשתמש בכלל שילוב בערך של מאפיין שאינו יוצר "
-                    "וריאנטים."
+                    _(
+                        "A value from an attribute that does not create "
+                        "variants cannot be used in a combination rule."
+                    )
                 )
             if len(values.attribute_id) != len(values):
                 raise ValidationError(
-                    "בכל כלל ניתן לבחור ערך אחד בלבד מכל מאפיין."
+                    _("Select only one value from each attribute in a rule.")
                 )
             uses_custom_rule_engine = (
                 rule.mdl_rule_type == "allowed" or len(values) > 2
@@ -86,13 +88,17 @@ class ProductTemplateAttributeExclusion(models.Model):
             )
             if uses_custom_rule_engine and has_no_variant_line:
                 raise ValidationError(
-                    "כלל מותר או כלל של שלושה ערכים ומעלה אינו נתמך "
-                    "בקבוצה שיש בה מאפיין שאינו יוצר וריאנטים."
+                    _(
+                        "Allow rules and rules with three or more values are "
+                        "not supported when an attribute does not create variants."
+                    )
                 )
             if uses_custom_rule_engine and rule.product_tmpl_id.has_dynamic_attributes():
                 raise ValidationError(
-                    "כלל מותר או כלל של שלושה ערכים ומעלה דורש שמאפייני "
-                    "הקבוצה ייצרו וריאנטים באופן מיידי."
+                    _(
+                        "Allow rules and rules with three or more values "
+                        "require attributes that create variants instantly."
+                    )
                 )
 
     @staticmethod

@@ -1,0 +1,197 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following module:
+#   * mdl_product_groups_attributes
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"PO-Revision-Date: 2026-09-08 00:00+0000\n"
+"Last-Translator: Multi Doorlock\n"
+"Language-Team: Hebrew\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Product Groups & Attributes"
+msgstr "קבוצות פריטים ומאפיינים"
+
+msgid "Product Group Setup"
+msgstr "הגדרת קבוצת הפריטים"
+
+msgid "Product Group"
+msgstr "קבוצת פריטים"
+
+msgid "Product Group Name"
+msgstr "שם קבוצת הפריטים"
+
+msgid "Product Group SKU"
+msgstr "מק״ט קבוצת הפריטים"
+
+msgid "Product Category"
+msgstr "קטגוריית מוצר"
+
+msgid "Manage Names and SKUs by Attributes"
+msgstr "ניהול שמות ומק״טים לפי מאפיינים"
+
+msgid "Product Status"
+msgstr "מצב הפריטים"
+
+msgid "Active Products"
+msgstr "פריטים פעילים"
+
+msgid "Archived Products"
+msgstr "פריטים בארכיון"
+
+msgid "Blocked Combinations"
+msgstr "שילובים חסומים"
+
+msgid "Group Attribute Values"
+msgstr "ערכי מאפיינים בקבוצה"
+
+msgid "Attribute"
+msgstr "מאפיין"
+
+msgid "Attribute Value"
+msgstr "ערך המאפיין"
+
+msgid "Default Text"
+msgstr "טקסט ברירת מחדל"
+
+msgid "Default SKU"
+msgstr "מק״ט ברירת מחדל"
+
+msgid "Group Text"
+msgstr "טקסט בקבוצה"
+
+msgid "Group SKU"
+msgstr "מק״ט בקבוצה"
+
+msgid "Text After"
+msgstr "טקסט אחרי"
+
+msgid "Sequence"
+msgstr "סדר"
+
+msgid "Combination Rules"
+msgstr "כללי שילובים"
+
+msgid "Combination Rule"
+msgstr "כלל שילוב"
+
+msgid "Action"
+msgstr "פעולה"
+
+msgid "Rule Condition"
+msgstr "תנאי הכלל"
+
+msgid "When These Values Are Selected"
+msgstr "כאשר נבחרים הערכים"
+
+msgid "Block Combination"
+msgstr "חסום את השילוב"
+
+msgid "Allow Only Combination"
+msgstr "אפשר רק את השילוב"
+
+msgid "Product Name"
+msgstr "שם הפריט"
+
+msgid "Models"
+msgstr "דגמים"
+
+msgid "Technical Data"
+msgstr "נתונים טכניים"
+
+msgid "Dimensions and Weight"
+msgstr "מידות ומשקל"
+
+msgid "Weight"
+msgstr "משקל"
+
+msgid "Volume"
+msgstr "נפח"
+
+msgid "System Data"
+msgstr "נתוני מערכת"
+
+msgid "Product Display"
+msgstr "תצוגת פריטים"
+
+msgid "Product Display Format"
+msgstr "פורמט תצוגת פריט"
+
+msgid "Display Format in Search and Documents"
+msgstr "פורמט תצוגה בחיפוש ובמסמכים"
+
+msgid "Display Example"
+msgstr "דוגמת תצוגה"
+
+msgid "Example: "
+msgstr "תצוגה לדוגמה: "
+
+msgid "Reset text to the Odoo value"
+msgstr "אפס את הטקסט לערך של Odoo"
+
+msgid "Reset SKU to its source value"
+msgstr "אפס את המק״ט לערך המקור"
+
+msgid "Final SKU"
+msgstr "מק״ט סופי"
+
+msgid "Final Product Name"
+msgstr "שם הפריט"
+
+msgid "Attribute Values"
+msgstr "ערכי מאפיינים"
+
+msgid "Overhead"
+msgstr "עילית"
+
+msgid "Concealed"
+msgstr "סמויה"
+
+msgid "Other"
+msgstr "אחר"
+
+msgid "Installation Type"
+msgstr "סוג התקנה"
+
+msgid "Length (cm)"
+msgstr "אורך (ס״מ)"
+
+msgid "Width (cm)"
+msgstr "רוחב (ס״מ)"
+
+msgid "Height (cm)"
+msgstr "גובה (ס״מ)"
+
+msgid "Maximum Protected Area (m²)"
+msgstr "שטח מוגן מרבי (מ״ר)"
+
+msgid "Institutional blast door left 100/20 L"
+msgstr "דלת הדף מוסדית שמאל 100/20 L"
+
+msgid "Enable group management to generate product names and SKUs from attribute values."
+msgstr "הפעל את ניהול הקבוצה כדי ליצור שמות ומק״טים מערכי המאפיינים."
+
+msgid "Choose a product category, review the group name and SKU, then arrange the attributes and their values. Each value contributes to the generated name and SKU."
+msgstr "בחר קטגוריית מוצר, בדוק את שם הקבוצה והמק״ט, ואז סדר את המאפיינים והערכים שלהם. כל ערך משתתף בשם ובמק״ט המחושבים."
+
+msgid "Selecting a category copies its name and SKU component. Model is a regular attribute value."
+msgstr "בחירת קטגוריה מעתיקה את שמה ואת רכיב המק״ט שלה. דגם הוא ערך מאפיין רגיל."
+
+msgid "This is a duplicated group. Set a new group SKU before generating product SKUs."
+msgstr "זו קבוצה שהועתקה. יש להגדיר מק״ט קבוצה חדש לפני יצירת מק״טים לפריטים."
+
+msgid "“Block Combination” prevents the selected values from appearing together. “Allow Only Combination” creates an allowlist and blocks all other combinations."
+msgstr "„חסום את השילוב” מונע מהערכים שנבחרו להופיע יחד. „אפשר רק את השילוב” יוצר רשימת שילובים מורשים וחוסם את כל השאר."
+
+msgid "Any product containing all selected values together will be blocked."
+msgstr "כל פריט שמכיל יחד את כל הערכים שנבחרו ייחסם."
+
+msgid "Only products containing all selected values together will be allowed. Once an allow rule exists, combinations that match no allow rule are blocked."
+msgstr "רק פריטים שמכילים יחד את כל הערכים שנבחרו יורשו. כשקיים כלל מותר, כל שילוב שאינו מתאים לכלל מותר נחסם."
+
+msgid "Select one value from at least two different attributes, for example “Model: Window” with “Color: Orange”."
+msgstr "בחר ערך אחד לפחות משני מאפיינים שונים, לדוגמה „דגם: חלון” יחד עם „צבע: כתום”."

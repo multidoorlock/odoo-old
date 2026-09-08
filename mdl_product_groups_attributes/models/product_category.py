@@ -6,11 +6,11 @@ class ProductCategory(models.Model):
     _inherit = "product.category"
 
     mdl_sku_component = fields.Char(
-        string="מק״ט קטגוריה ישן (טכני)",
+        string="Legacy Category SKU (Technical)",
         index=True,
         help=(
-            "שדה תאימות לקטלוג הקודם. קבוצת הפריטים והמק״ט שלה מנוהלים "
-            "כעת בתבנית המוצר בנפרד מקטגוריית המוצר."
+            "Compatibility field for the former catalogue. Product groups "
+            "and their SKUs are now managed on the product template."
         ),
     )
 
@@ -25,3 +25,4 @@ class ProductCategory(models.Model):
         if "mdl_sku_component" in vals:
             vals["mdl_sku_component"] = clean_text(vals["mdl_sku_component"])
         return super().write(vals)
+

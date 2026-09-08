@@ -7,11 +7,11 @@ class ProductAttributeValue(models.Model):
     _inherit = "product.attribute.value"
 
     mdl_sku_component = fields.Char(
-        string="מק״ט ברירת מחדל",
+        string="Default SKU",
         help=(
-            "החלק שיתווסף למק״ט של הווריאנט כאשר הערך נבחר. "
-            "יש להזין — כאשר הערך אינו אמור להוסיף דבר למק״ט. "
-            "המק״ט הסופי נשמר בשדה המקורי 'מק״ט פנימי' של Odoo."
+            "The component appended to the variant SKU when this value is "
+            "selected. Enter — when the value should add nothing. The final "
+            "SKU is stored in Odoo's native Internal Reference field."
         ),
     )
 
@@ -33,3 +33,4 @@ class ProductAttributeValue(models.Model):
             templates._mdl_ensure_full_model_names()
             templates._mdl_sync_variant_codes()
         return result
+
