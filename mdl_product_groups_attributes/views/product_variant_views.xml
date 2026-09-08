@@ -52,6 +52,22 @@
         </field>
     </record>
 
+    <record id="mdl_shared_supplier_price_form" model="ir.ui.view">
+        <field name="name">product.supplierinfo.shared.readonly.form</field>
+        <field name="model">product.supplierinfo</field>
+        <field name="inherit_id" ref="product.product_supplierinfo_form_view"/>
+        <field name="mode">primary</field>
+        <field name="priority" eval="1100"/>
+        <field name="arch" type="xml">
+            <form position="attributes">
+                <attribute name="edit">false</attribute>
+                <attribute name="create">false</attribute>
+                <attribute name="delete">false</attribute>
+                <attribute name="duplicate">false</attribute>
+            </form>
+        </field>
+    </record>
+
     <record id="mdl_product_variant_full_form" model="ir.ui.view">
         <field name="name">product.product.full.form.variant.scope</field>
         <field name="model">product.product</field>
@@ -103,9 +119,28 @@
                 </field>
             </field>
             <field name="seller_ids" position="replace">
+                <separator string="All variants"/>
                 <div class="text-muted mb-2">
-                    Only vendor prices assigned to this variant are listed. Shared vendor prices are managed on the product template and may still apply.
+                    These vendor prices apply to all variants, subject to quantity, validity dates, and company. Edit them on the Product Template.
                 </div>
+                <field name="mdl_shared_seller_ids" nolabel="1" readonly="1"
+                       context="{'form_view_ref': 'mdl_product_groups_attributes.mdl_shared_supplier_price_form'}">
+                    <list create="false" edit="false" delete="false">
+                        <field name="partner_id" options="{'no_open': True}"/>
+                        <field name="product_name" optional="hide"/>
+                        <field name="product_code" optional="hide"/>
+                        <field name="min_qty"/>
+                        <field name="product_uom_id" groups="uom.group_uom" options="{'no_open': True}"/>
+                        <field name="price"/>
+                        <field name="discount" optional="hide"/>
+                        <field name="currency_id" groups="base.group_multi_currency" options="{'no_open': True}"/>
+                        <field name="date_start" optional="show"/>
+                        <field name="date_end" optional="show"/>
+                        <field name="delay" optional="hide"/>
+                        <field name="company_id" groups="base.group_multi_company" optional="show" options="{'no_open': True}"/>
+                    </list>
+                </field>
+                <separator string="This variant"/>
                 <field name="mdl_variant_seller_ids" nolabel="1"
                        context="{'default_product_id': id, 'default_product_tmpl_id': product_tmpl_id, 'default_price': standard_price, 'product_template_invisible_variant': True, 'list_view_ref': 'mdl_product_groups_attributes.mdl_variant_supplier_price_list', 'form_view_ref': 'mdl_product_groups_attributes.mdl_variant_supplier_price_form'}"/>
             </field>

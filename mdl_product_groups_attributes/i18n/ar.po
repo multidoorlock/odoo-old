@@ -916,3 +916,26 @@ msgstr "تُعرض فقط الأسعار المخصصة لهذا المتغير.
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
 msgid "Only vendor prices assigned to this variant are listed. Shared vendor prices are managed on the product template and may still apply."
 msgstr "تُعرض فقط أسعار الموردين المخصصة لهذا المتغير. تُدار أسعار الموردين المشتركة في قالب المنتج وقد تظل سارية."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_shared_seller_ids
+msgid "All Variants"
+msgstr "جميع المتغيرات"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "All variants"
+msgstr "جميع المتغيرات"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "This variant"
+msgstr "هذا المتغير"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "These vendor prices apply to all variants, subject to quantity, validity dates, and company. Edit them on the Product Template."
+msgstr "تنطبق أسعار الموردين هذه على جميع المتغيرات وفقًا للكمية وتواريخ الصلاحية والشركة. يمكن تعديلها في قالب المنتج."

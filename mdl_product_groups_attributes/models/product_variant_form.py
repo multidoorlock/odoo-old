@@ -13,6 +13,12 @@ class ProductProduct(models.Model):
         string="Variant Vendor Prices",
         copy=False,
     )
+    mdl_shared_seller_ids = fields.Many2many(
+        "product.supplierinfo",
+        string="All Variants",
+        compute="_compute_mdl_shared_seller_ids",
+        readonly=True,
+    )
     mdl_variant_pricelist_item_ids = fields.One2many(
         "product.pricelist.item",
         "product_id",
@@ -20,6 +26,20 @@ class ProductProduct(models.Model):
         domain=[("applied_on", "=", "0_product_variant")],
         copy=False,
     )
+
+    @api.depends(
+        "product_tmpl_id",
+        "product_tmpl_id.seller_ids",
+        "product_tmpl_id.seller_ids.product_id",
+    )
+    @api.depends_context("company")
+    def _compute_mdl_shared_seller_ids(self):
+        for product in self:
+            # Reference the original supplier rows. Do not duplicate prices or
+            # include another variant's rows, and respect normal read access.
+            product.mdl_shared_seller_ids = product.product_tmpl_id.seller_ids.filtered(
+                lambda seller: not seller.product_id
+            )
 
     def action_mdl_open_product_template(self):
         self.ensure_one()

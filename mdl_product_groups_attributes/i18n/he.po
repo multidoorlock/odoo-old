@@ -916,3 +916,26 @@ msgstr "מוצגים רק מחירים שהוגדרו לווריאנט הזה. �
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
 msgid "Only vendor prices assigned to this variant are listed. Shared vendor prices are managed on the product template and may still apply."
 msgstr "מוצגים רק מחירי ספקים שהוגדרו לווריאנט הזה. מחירי ספקים משותפים מנוהלים בתבנית המוצר ועדיין עשויים לחול."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_shared_seller_ids
+msgid "All Variants"
+msgstr "כל הווריאנטים"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "All variants"
+msgstr "כל הווריאנטים"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "This variant"
+msgstr "הווריאנט הזה"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "These vendor prices apply to all variants, subject to quantity, validity dates, and company. Edit them on the Product Template."
+msgstr "מחירי ספקים אלה חלים על כל הווריאנטים, בכפוף לכמות, לתאריכי התוקף ולחברה. ניתן לערוך אותם בתבנית המוצר."

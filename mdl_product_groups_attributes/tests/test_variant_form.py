@@ -92,6 +92,49 @@ class TestVariantForm(TransactionCase):
         self.assertIn(shared, self.variant._prepare_sellers())
         self.assertNotIn(sibling_price, self.variant._prepare_sellers())
 
+    def test_shared_vendor_prices_follow_template_without_duplicates(self):
+        Supplier = self.env["product.supplierinfo"]
+        shared = Supplier.create({
+            "partner_id": self.vendor.id, "product_tmpl_id": self.template.id,
+            "price": 50,
+        })
+        specific = Supplier.create({
+            "partner_id": self.vendor.id, "product_id": self.sibling.id,
+            "price": 60,
+        })
+        other_template = self.env["product.template"].create({
+            "name": "Other supplier template", "mdl_catalog_managed": False,
+        })
+        Supplier.create({
+            "partner_id": self.vendor.id, "product_tmpl_id": other_template.id,
+            "price": 90,
+        })
+        count = Supplier.search_count([])
+        self.assertEqual(self.variant.mdl_shared_seller_ids, shared)
+        self.assertEqual(self.sibling.mdl_shared_seller_ids, shared)
+        self.assertFalse(self.variant.mdl_variant_seller_ids)
+        self.assertEqual(self.sibling.mdl_variant_seller_ids, specific)
+        shared.price = 55
+        self.assertEqual(self.variant.mdl_shared_seller_ids.price, 55)
+        self.assertEqual(self.sibling.mdl_shared_seller_ids.price, 55)
+        # Moving a shared row to a variant must invalidate the shared lists.
+        shared.product_id = self.variant
+        self.assertFalse(self.variant.mdl_shared_seller_ids)
+        self.assertFalse(self.sibling.mdl_shared_seller_ids)
+        self.assertEqual(self.variant.mdl_variant_seller_ids, shared)
+        shared.product_id = False
+        self.assertEqual(self.variant.mdl_shared_seller_ids, shared)
+        self.assertEqual(Supplier.search_count([]), count)
+        arch = self._variant_arch()
+        field = arch.xpath("//field[@name='mdl_shared_seller_ids']")[0]
+        self.assertEqual(field.get("readonly"), "1")
+        self.assertEqual(field.find("list").get("edit"), "false")
+        readonly_form = Supplier.get_view(
+            view_id=self.env.ref("mdl_product_groups_attributes.mdl_shared_supplier_price_form").id,
+            view_type="form",
+        )
+        self.assertEqual(etree.fromstring(readonly_form["arch"]).get("edit"), "false")
+
     def test_sales_price_form_creates_variant_rule_without_changing_shared_rule(self):
         shared = self.env["product.pricelist.item"].create({
             "pricelist_id": self.pricelist.id, "product_tmpl_id": self.template.id,
