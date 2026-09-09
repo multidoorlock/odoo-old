@@ -17,13 +17,25 @@
         }
     }
 
-    .o_mdl_catalog_setup,
-    .o_mdl_catalog_status {
+    .o_mdl_catalog_overview {
         margin-block: 1rem;
+    }
+
+    .o_mdl_catalog_overview > .o_group {
+        min-inline-size: 0;
     }
 
     .o_mdl_catalog_status .oe_stat_button {
         min-inline-size: 9.5rem;
+        max-inline-size: 100%;
+        white-space: normal;
+    }
+
+    .o_mdl_catalog_status .o_field_statinfo {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        text-align: start;
     }
 
     .o_mdl_catalog_table .o_list_table {
@@ -41,8 +53,7 @@
 
 @media (max-width: 767.98px) {
     .o_form_view {
-        .o_mdl_catalog_status > .o_group_col_6,
-        .o_mdl_catalog_setup > .o_group_col_6 {
+        .o_mdl_catalog_overview > .o_group_col_6 {
             inline-size: 100%;
         }
 

@@ -213,8 +213,8 @@
 
             <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']"
                    position="after">
-                <group string="Product Group Setup" class="o_mdl_catalog_setup">
-                    <group>
+                <group class="o_mdl_catalog_overview">
+                    <group string="Product Group Setup" class="o_mdl_catalog_setup">
                         <field name="mdl_catalog_managed"/>
                         <field name="categ_id"
                                string="Product Category"
@@ -225,59 +225,50 @@
                         <field name="mdl_group_default_sku"
                                string="Product Group SKU"
                                invisible="not mdl_catalog_managed"/>
-                    </group>
-                    <group>
-                        <div class="text-muted"
+                        <div class="text-muted" colspan="2"
                              invisible="mdl_catalog_managed">
                             Enable group management to generate product names and SKUs from attribute values.
                         </div>
-                        <div class="text-muted"
-                             invisible="not mdl_catalog_managed">
-                            Choose a product category, review the group name and
-                            SKU, then arrange the attributes and their values.
-                            Each value contributes to the generated name and SKU.
-                        </div>
-                        <div class="text-muted"
+                        <div class="text-muted" colspan="2"
                              invisible="not mdl_catalog_managed">
                             Selecting a category copies its name and SKU
                             component. Model is a regular attribute value.
                         </div>
-                        <div class="alert alert-warning mb-0"
+                        <div class="alert alert-warning mb-0" colspan="2"
                              role="alert"
                              invisible="not mdl_copy_requires_new_sku">
                             This is a duplicated group. Set a new group SKU before generating product SKUs.
                         </div>
                     </group>
-                </group>
-
-                <group string="Product Status" class="o_mdl_catalog_status"
-                       invisible="not mdl_catalog_managed">
-                    <div class="d-flex flex-wrap gap-2" colspan="2">
-                        <button name="action_mdl_open_active_variants"
-                                type="object"
-                                icon="fa-check-circle"
-                                class="oe_stat_button">
-                            <field name="mdl_active_variant_count"
-                                   string="Active Products"
-                                   widget="statinfo"/>
-                        </button>
-                        <button name="action_mdl_open_archived_variants"
-                                type="object"
-                                icon="fa-archive"
-                                class="oe_stat_button">
-                            <field name="mdl_archived_variant_count"
-                                   string="Archived Products"
-                                   widget="statinfo"/>
-                        </button>
-                        <button name="action_mdl_open_blocked_rules"
-                                type="object"
-                                icon="fa-ban"
-                                class="oe_stat_button">
-                            <field name="mdl_blocked_variant_count"
-                                   string="Blocked Combinations"
-                                   widget="statinfo"/>
-                        </button>
-                    </div>
+                    <group string="Product Status" class="o_mdl_catalog_status"
+                           invisible="not mdl_catalog_managed">
+                        <div class="d-flex flex-wrap gap-2" colspan="2">
+                            <button name="action_mdl_open_active_variants"
+                                    type="object"
+                                    icon="fa-check-circle"
+                                    class="oe_stat_button">
+                                <field name="mdl_active_variant_count"
+                                       string="Active Products"
+                                       widget="statinfo"/>
+                            </button>
+                            <button name="action_mdl_open_archived_variants"
+                                    type="object"
+                                    icon="fa-archive"
+                                    class="oe_stat_button">
+                                <field name="mdl_archived_variant_count"
+                                       string="Archived Products"
+                                       widget="statinfo"/>
+                            </button>
+                            <button name="action_mdl_open_blocked_rules"
+                                    type="object"
+                                    icon="fa-ban"
+                                    class="oe_stat_button">
+                                <field name="mdl_blocked_variant_count"
+                                       string="Blocked Combinations"
+                                       widget="statinfo"/>
+                            </button>
+                        </div>
+                    </group>
                 </group>
 
                 <separator string="Group Attribute Values"
