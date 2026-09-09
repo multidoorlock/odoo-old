@@ -724,6 +724,7 @@ class AttendanceConflictTimeline(models.Model):
             connections = []
             item_id_by_event = {}
             attendance_connection_ids = set()
+            attendance_endpoint_ids = set()
 
             for attendance in employee_attendances:
                 pair_key = f"attendance:{attendance.id}"
@@ -744,9 +745,14 @@ class AttendanceConflictTimeline(models.Model):
                     connections.append({
                         "id": pair_key, "from": f"attendance:{attendance.id}:in",
                         "to": f"attendance:{attendance.id}:out", "state": state,
+                        "pair_type": "attendance",
                         "actions": [],
                     })
                     attendance_connection_ids.add(attendance.id)
+                    attendance_endpoint_ids.update({
+                        f"attendance:{attendance.id}:in",
+                        f"attendance:{attendance.id}:out",
+                    })
                     if in_source:
                         item_id_by_event[in_source.id] = f"attendance:{attendance.id}:in"
                     if out_source:
@@ -787,6 +793,11 @@ class AttendanceConflictTimeline(models.Model):
                 to_item = item_id_by_event.get(out_event.id)
                 if not from_item or not to_item:
                     continue
+                # A closed attendance already has an authoritative connection.
+                # A nearby conflict must never borrow either green endpoint for
+                # a second, visually contradictory neighbour connection.
+                if from_item in attendance_endpoint_ids or to_item in attendance_endpoint_ids:
+                    continue
                 if (
                     in_event.attendance_id
                     and in_event.attendance_id == out_event.attendance_id
@@ -799,6 +810,7 @@ class AttendanceConflictTimeline(models.Model):
                     "from": from_item,
                     "to": to_item,
                     "state": "7",
+                    "pair_type": "neighbors",
                     "blocked": True,
                     "actions": [],
                 })

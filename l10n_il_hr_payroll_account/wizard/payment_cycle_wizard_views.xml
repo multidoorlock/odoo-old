@@ -4,7 +4,7 @@
         <field name="name">il.payment.cycle.wizard.form</field>
         <field name="model">il.payment.cycle.wizard</field>
         <field name="arch" type="xml">
-            <form string="יצירת מחזורי תשלומים">
+            <form string="יצירת מחזור תשלומים">
                 <field name="step" invisible="1"/>
                 <field name="company_id" invisible="1"/>
                 <field name="available_payment_method_ids" invisible="1"/>
@@ -16,10 +16,51 @@
                     <field name="journal_id"/>
                     <field name="payment_method_id"/>
                 </group>
-                <div class="w-100" invisible="step != 'employees'">
-                    <field name="employee_line_ids" invisible="1"/>
-                    <field name="matrix_data" widget="il_payment_cycle_matrix" nolabel="1"/>
-                </div>
+                <field name="cycle_type_1_id" invisible="1"/>
+                <field name="cycle_type_2_id" invisible="1"/>
+                <field name="cycle_type_3_id" invisible="1"/>
+                <field name="cycle_type_4_id" invisible="1"/>
+                <field name="cycle_type_5_id" invisible="1"/>
+                <field name="cycle_type_6_id" invisible="1"/>
+                <field name="cycle_type_7_id" invisible="1"/>
+                <field name="cycle_type_8_id" invisible="1"/>
+                <field name="cycle_type_9_id" invisible="1"/>
+                <field name="cycle_type_10_id" invisible="1"/>
+                <field name="cycle_type_11_id" invisible="1"/>
+                <field name="cycle_type_12_id" invisible="1"/>
+                <field name="employee_line_ids" nolabel="1" invisible="step != 'employees'">
+                    <list editable="bottom" create="0" delete="0" default_order="employee_id">
+                        <field name="selected"/>
+                        <field name="employee_id" widget="many2one_avatar_employee"/>
+                        <field name="employee_partner_id" column_invisible="True"/>
+                        <field name="currency_id" column_invisible="True"/>
+                        <field name="applicable_1" column_invisible="True"/>
+                        <field name="amount_1" readonly="not applicable_1" column_invisible="not parent.cycle_type_1_id"/>
+                        <field name="applicable_2" column_invisible="True"/>
+                        <field name="amount_2" readonly="not applicable_2" column_invisible="not parent.cycle_type_2_id"/>
+                        <field name="applicable_3" column_invisible="True"/>
+                        <field name="amount_3" readonly="not applicable_3" column_invisible="not parent.cycle_type_3_id"/>
+                        <field name="applicable_4" column_invisible="True"/>
+                        <field name="amount_4" readonly="not applicable_4" column_invisible="not parent.cycle_type_4_id"/>
+                        <field name="applicable_5" column_invisible="True"/>
+                        <field name="amount_5" readonly="not applicable_5" column_invisible="not parent.cycle_type_5_id"/>
+                        <field name="applicable_6" column_invisible="True"/>
+                        <field name="amount_6" readonly="not applicable_6" column_invisible="not parent.cycle_type_6_id"/>
+                        <field name="applicable_7" column_invisible="True"/>
+                        <field name="amount_7" readonly="not applicable_7" column_invisible="not parent.cycle_type_7_id"/>
+                        <field name="applicable_8" column_invisible="True"/>
+                        <field name="amount_8" readonly="not applicable_8" column_invisible="not parent.cycle_type_8_id"/>
+                        <field name="applicable_9" column_invisible="True"/>
+                        <field name="amount_9" readonly="not applicable_9" column_invisible="not parent.cycle_type_9_id"/>
+                        <field name="applicable_10" column_invisible="True"/>
+                        <field name="amount_10" readonly="not applicable_10" column_invisible="not parent.cycle_type_10_id"/>
+                        <field name="applicable_11" column_invisible="True"/>
+                        <field name="amount_11" readonly="not applicable_11" column_invisible="not parent.cycle_type_11_id"/>
+                        <field name="applicable_12" column_invisible="True"/>
+                        <field name="amount_12" readonly="not applicable_12" column_invisible="not parent.cycle_type_12_id"/>
+                        <field name="partner_bank_id" optional="show"/>
+                    </list>
+                </field>
                 <footer>
                     <button name="action_next" type="object" string="הבא" class="btn-primary"
                             invisible="step != 'details'"/>
@@ -34,7 +75,7 @@
     </record>
 
     <record id="action_il_payment_cycle_wizard" model="ir.actions.act_window">
-        <field name="name">יצירת מחזורי תשלומים</field>
+        <field name="name">יצירת מחזור תשלומים</field>
         <field name="res_model">il.payment.cycle.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>

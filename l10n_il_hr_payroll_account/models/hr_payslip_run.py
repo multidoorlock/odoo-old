@@ -40,7 +40,6 @@ class HrPayslipRun(models.Model):
                     'journal_id': journal.id,
                     'date': slip.date_to,
                     'amount': remaining,
-                    'il_spread_type': 'none',
                 })
         if not created:
             raise UserError('אין יתרת נטו לתשלום באף תלוש מאושר במחזור זה.')

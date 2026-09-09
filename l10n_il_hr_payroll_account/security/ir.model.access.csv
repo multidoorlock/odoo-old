@@ -1,9 +1,8 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_account_payment_split_line_user,account.payment.split.line.user,model_account_payment_split_line,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_hr_payslip_payment_draw_wizard_user,hr.payslip.payment.draw.wizard.user,model_hr_payslip_payment_draw_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_hr_payslip_payment_draw_wizard_line_user,hr.payslip.payment.draw.wizard.line.user,model_hr_payslip_payment_draw_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_il_payment_cycle_type_user,il.payment.cycle.type.user,model_il_payment_cycle_type,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_hr_employee_payment_cycle_type_line_user,hr.employee.payment.cycle.type.line.user,model_hr_employee_payment_cycle_type_line,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_il_payment_cycle_wizard_user,il.payment.cycle.wizard.user,model_il_payment_cycle_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_il_payment_cycle_wizard_line_user,il.payment.cycle.wizard.line.user,model_il_payment_cycle_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_account_batch_payment_payroll_user,account.batch.payment.payroll.user,account_batch_payment.model_account_batch_payment,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_il_masav_export_wizard_user,il.masav.export.wizard.user,model_il_masav_export_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_il_masav_export_wizard_line_user,il.masav.export.wizard.line.user,model_il_masav_export_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1
