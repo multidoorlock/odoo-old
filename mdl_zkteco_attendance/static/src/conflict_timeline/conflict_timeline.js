@@ -266,8 +266,12 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
     setup() {
         super.setup();
+        this._timelineRendererDestroyed = false;
         this.contextMenuState = useState({ menu: null });
         this.interactionState = useState({ selectedIds: [], drag: null });
+        onWillUnmount(() => {
+            this._timelineRendererDestroyed = true;
+        });
         useExternalListener(window, "click", () => {
             this.contextMenuState.menu = null;
         });
@@ -471,9 +475,13 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             for (const connection of connections) {
                 const fromIndex = itemIndexById.get(connection.fromItem.id);
                 const toIndex = itemIndexById.get(connection.toItem.id);
-                // A connector is a visual statement that two direct neighbours
-                // belong together.  Never draw it across a third event.
-                if (Math.abs(fromIndex - toIndex) !== 1) {
+                // Automatic neighbour suggestions may only join direct
+                // neighbours. A real attendance pair remains authoritative even
+                // when a conflicting event falls chronologically between it.
+                if (
+                    connection.pair_type !== "attendance"
+                    && Math.abs(fromIndex - toIndex) !== 1
+                ) {
                     continue;
                 }
                 if (
@@ -492,10 +500,30 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             // timestamps are packed horizontally inside an expanded time
             // column, with the same minimum gap whether or not they are linked.
             this._packItemsInsideTimeBuckets(items, metrics, globalStart);
-            for (const item of items) {
-                item.visualLane = 0;
+            const interveningItemIds = new Set();
+            for (const connection of usableConnections) {
+                if (connection.pair_type !== "attendance") {
+                    continue;
+                }
+                const fromIndex = itemIndexById.get(connection.fromItem.id);
+                const toIndex = itemIndexById.get(connection.toItem.id);
+                const firstIndex = Math.min(fromIndex, toIndex);
+                const lastIndex = Math.max(fromIndex, toIndex);
+                for (let index = firstIndex + 1; index < lastIndex; index++) {
+                    const item = items[index];
+                    if (!connectedItemIds.has(item.id)) {
+                        interveningItemIds.add(item.id);
+                    }
+                }
             }
-            const laneCount = 1;
+            const hasInterveningItems = interveningItemIds.size > 0;
+            for (const item of items) {
+                // Only an unpaired event inside a real pair is lifted. All
+                // ordinary close neighbours continue to share the same row.
+                item.visualLane = hasInterveningItems
+                    && !interveningItemIds.has(item.id) ? 1 : 0;
+            }
+            const laneCount = hasInterveningItems ? 2 : 1;
             this._timelineRowsByEmployee.set(Number(sourceRow.employee_id), {
                 ...sourceRow,
                 items,
@@ -845,7 +873,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     "mdl.attendance.device.event", "timeline_move_event",
                     [drag.eventId, drag.employeeId, serializeDateTime(drag.datetime)]
                 );
-                await this.model.fetchData();
+                await this._refreshTimelineIfAlive();
             }
             return;
         }
@@ -892,8 +920,10 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     "mdl.attendance.device.event", "timeline_delete_items",
                     [eventIds, attendanceIds]
                 );
-                this.interactionState.selectedIds = [];
-                await this.model.fetchData();
+                if (!this._timelineRendererDestroyed) {
+                    this.interactionState.selectedIds = [];
+                }
+                await this._refreshTimelineIfAlive();
             },
         });
     }
@@ -1053,9 +1083,12 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                 [eventId, false]
             );
             await this.actionService.doAction(actionData, {
-                onClose: () => this.model.fetchData(),
+                onClose: () => this._refreshTimelineIfAlive(),
             });
         } catch (error) {
+            if (this._timelineRendererDestroyed) {
+                return;
+            }
             const message = error.data?.message || error.message || _t("לא ניתן לפתוח את הרשומה.");
             this.notificationService.add(message, { type: "danger", sticky: true });
         }
@@ -1111,7 +1144,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     [action.employee_id, "in", action.event_datetime, false]
                 );
                 await this.actionService.doAction(actionData, {
-                    onClose: () => this.model.fetchData(),
+                    onClose: () => this._refreshTimelineIfAlive(),
                 });
                 return;
             }
@@ -1125,7 +1158,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     [action.attendance_id]
                 );
                 await this.actionService.doAction(actionData, {
-                    onClose: () => this.model.fetchData(),
+                    onClose: () => this._refreshTimelineIfAlive(),
                 });
                 return;
             }
@@ -1151,8 +1184,11 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     [action.event_ids]
                 );
             }
-            await this.model.fetchData();
+            await this._refreshTimelineIfAlive();
         } catch (error) {
+            if (this._timelineRendererDestroyed) {
+                return;
+            }
             const message = error.data?.message || error.message || _t("הפעולה נכשלה.");
             this.notificationService.add(message, { type: "danger", sticky: true });
         }
@@ -1163,6 +1199,21 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             this.notificationService.add(result.message, { type: "danger", sticky: true });
         } else {
             this.notificationService.add(successMessage, { type: "success" });
+        }
+    }
+
+    async _refreshTimelineIfAlive() {
+        if (this._timelineRendererDestroyed) {
+            return;
+        }
+        try {
+            await this.model.fetchData();
+        } catch (error) {
+            // Odoo may destroy the underlying action while its dialog is
+            // closing. In that case there is no timeline left to refresh.
+            if (!this._timelineRendererDestroyed) {
+                throw error;
+            }
         }
     }
 }

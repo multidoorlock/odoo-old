@@ -1976,3 +1976,27 @@ class TestAttendanceDevices(TransactionCase):
         self.assertEqual(out_event.attendance_id, attendance)
         self.assertFalse(extra_in.attendance_id)
         self.assertEqual(extra_in.processing_state, "not_applied")
+
+        data = self.env["mdl.attendance.device.event"].get_conflict_timeline(
+            "2026-08-24 00:00:00", "2026-08-25 00:00:00",
+        )
+        row = next(
+            row for row in data["rows"]
+            if row["employee_id"] == self.employee.id
+        )
+        attendance_connection = next(
+            connection for connection in row["connections"]
+            if connection["id"] == f"attendance:{attendance.id}"
+        )
+        self.assertEqual(attendance_connection["pair_type"], "attendance")
+        attendance_endpoints = {
+            f"attendance:{attendance.id}:in",
+            f"attendance:{attendance.id}:out",
+        }
+        self.assertFalse(any(
+            connection["id"] != attendance_connection["id"]
+            and attendance_endpoints.intersection({
+                connection["from"], connection["to"],
+            })
+            for connection in row["connections"]
+        ))

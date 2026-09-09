@@ -7,7 +7,6 @@ from . import hr_payslip_line
 from . import hr_payslip_worked_days
 from . import hr_attendance_overtime_rule
 from . import account_payment
-from . import account_payment_split_line
 from . import account_move
 from . import res_company
 from . import res_config_settings
@@ -15,3 +14,4 @@ from . import hr_payroll_structure
 from . import hr_rule_parameter
 from . import hr_payslip_run
 from . import payment_cycle
+from . import res_partner_bank

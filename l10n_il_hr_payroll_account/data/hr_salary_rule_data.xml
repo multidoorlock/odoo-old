@@ -585,6 +585,7 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="sequence">520</field>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
+            <field name="employee_move_line">True</field>
             <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + categories['IL_ADJ'] + categories['DED']</field>
         </record>
 
@@ -594,9 +595,12 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="name">תשלומים</field>
             <field name="code">IL_PAYMENTS</field>
             <field name="sequence">525</field>
-            <field name="condition_select">none</field>
+            <field name="active">False</field>
+            <field name="appears_on_payslip">False</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = False</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = -payslip._il_applied_payment_amount()</field>
+            <field name="amount_python_compute">result = 0.0</field>
         </record>
 
         <record id="hr_salary_rule_il_net_to_pay" model="hr.salary.rule">
@@ -605,9 +609,12 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="name">נטו לתשלום</field>
             <field name="code">IL_NET_TO_PAY</field>
             <field name="sequence">530</field>
-            <field name="condition_select">none</field>
+            <field name="active">False</field>
+            <field name="appears_on_payslip">False</field>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = False</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = NET + IL_PAYMENTS</field>
+            <field name="amount_python_compute">result = 0.0</field>
         </record>
 
         <!-- ================================================================

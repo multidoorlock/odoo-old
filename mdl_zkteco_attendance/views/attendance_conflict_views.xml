@@ -121,7 +121,7 @@
         <field name="view_mode">gantt,list,form</field>
         <field name="search_view_id" ref="view_attendance_conflict_search"/>
         <field name="domain">[('punch_state', 'in', ['in', 'out']), ('employee_id', '!=', False)]</field>
-        <field name="context">{'search_default_only_conflicts': 1, 'search_default_with_data': 1}</field>
+        <field name="context">{'search_default_only_conflicts': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">אין כרגע קונפליקטים באירועי הנוכחות.</p>
         </field>
