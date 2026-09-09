@@ -1,7 +1,7 @@
 {
     "name": "Multi Doorlock - Product Groups & Attributes",
     "summary": "Native product groups, attributes, combination rules, names, and SKUs",
-    "version": "19.0.3.4.2",
+    "version": "19.0.3.4.3",
     "category": "Inventory/Inventory",
     "author": "Multi Doorlock",
     "license": "LGPL-3",
@@ -25,5 +25,5 @@
     "uninstall_hook": "uninstall_hook",
     "installable": True,
     "application": False,
-    "auto_install": True,
+    "auto_install": ["stock"],
 }
