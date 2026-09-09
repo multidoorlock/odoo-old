@@ -8,7 +8,7 @@
             <xpath expr="//block[@id='mdl_payroll_settings']" position="inside">
                 <setting string="חשבונות תשלומי עובד"
                          id="il_employee_payment_accounts"
-                         help="חשבונות החובה והזכות לפקודת היומן שנוצרת לכל פעימת תשלום שקוזזה בתלוש.">
+                         help="חשבונות החובה והזכות לפקודת היומן המלאה שנוצרת לכל תשלום עובד.">
                     <div class="content-group mt8">
                         <group>
                             <field name="il_employee_payment_debit_account_id"
@@ -17,6 +17,21 @@
                             <field name="il_employee_payment_credit_account_id"
                                    options="{'no_create': True}"
                                    domain="[('company_ids', 'parent_of', company_id)]"/>
+                        </group>
+                    </div>
+                </setting>
+            </xpath>
+            <xpath expr="//block[@id='hr_payroll_settings']" position="inside">
+                <setting string="הגדרות קובץ מס״ב"
+                         id="il_masav_file_settings"
+                         help="מספרי הזיהוי שנמסרו לחברה על ידי מס״ב והקידוד לקובץ התשלומים.">
+                    <div class="content-group mt8">
+                        <group>
+                            <field name="il_masav_institution_number"
+                                   placeholder="8 ספרות"/>
+                            <field name="il_masav_sender_number"
+                                   placeholder="5 ספרות"/>
+                            <field name="il_masav_hebrew_code"/>
                         </group>
                     </div>
                 </setting>

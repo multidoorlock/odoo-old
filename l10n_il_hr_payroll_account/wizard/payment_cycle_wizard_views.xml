@@ -4,7 +4,7 @@
         <field name="name">il.payment.cycle.wizard.form</field>
         <field name="model">il.payment.cycle.wizard</field>
         <field name="arch" type="xml">
-            <form string="יצירת מחזורי תשלומים">
+            <form string="יצירת מחזור תשלומים">
                 <field name="step" invisible="1"/>
                 <field name="company_id" invisible="1"/>
                 <field name="available_payment_method_ids" invisible="1"/>
@@ -16,10 +16,18 @@
                     <field name="journal_id"/>
                     <field name="payment_method_id"/>
                 </group>
-                <div class="w-100" invisible="step != 'employees'">
-                    <field name="employee_line_ids" invisible="1"/>
-                    <field name="matrix_data" widget="il_payment_cycle_matrix" nolabel="1"/>
-                </div>
+                <field name="employee_line_ids" nolabel="1" invisible="step != 'employees'">
+                    <list editable="bottom" create="0" delete="0" default_order="sequence,id">
+                        <field name="sequence" column_invisible="True"/>
+                        <field name="selected"/>
+                        <field name="employee_id" widget="many2one_avatar_employee"/>
+                        <field name="cycle_type_id"/>
+                        <field name="amount"/>
+                        <field name="employee_partner_id" column_invisible="True"/>
+                        <field name="currency_id" column_invisible="True"/>
+                        <field name="partner_bank_id"/>
+                    </list>
+                </field>
                 <footer>
                     <button name="action_next" type="object" string="הבא" class="btn-primary"
                             invisible="step != 'details'"/>
@@ -34,7 +42,7 @@
     </record>
 
     <record id="action_il_payment_cycle_wizard" model="ir.actions.act_window">
-        <field name="name">יצירת מחזורי תשלומים</field>
+        <field name="name">יצירת מחזור תשלומים</field>
         <field name="res_model">il.payment.cycle.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>

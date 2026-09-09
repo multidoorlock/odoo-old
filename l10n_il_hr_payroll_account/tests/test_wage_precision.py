@@ -112,8 +112,9 @@ class TestWagePrecision(TransactionCase):
             final_rounding_rules = structure.rule_ids.filtered(
                 lambda rule: rule.code == 'IL_PAYSLIP_ROUNDING' and rule.active)
             self.assertFalse(final_rounding_rules)
-            self.assertEqual(len(structure.rule_ids.filtered(
-                lambda rule: rule.code == 'IL_PAYMENTS' and rule.active)), 1)
+            self.assertFalse(structure.rule_ids.filtered(
+                lambda rule: rule.code in ('IL_PAYMENTS', 'IL_NET_TO_PAY')
+                and rule.active))
             self.assertFalse(structure.rule_ids.filtered(
                 lambda rule: rule.code == 'IL_ADJUSTMENT_NET_DIRECT' and rule.active))
 
@@ -1073,7 +1074,8 @@ class TestNetDailyWageGrossUp(TransactionCase):
                 self.assertEqual(payslip._il_worker_profile(), expected_profile)
                 self.assertIn('GROSS', by_code)
                 self.assertIn('NET', by_code)
-                self.assertIn('IL_NET_TO_PAY', by_code)
+                self.assertNotIn('IL_PAYMENTS', by_code)
+                self.assertNotIn('IL_NET_TO_PAY', by_code)
                 self.assertNotIn('IL_WAGE_ROUNDING', by_code)
 
     def test_daily_wage_validation_and_shared_rate_type(self):

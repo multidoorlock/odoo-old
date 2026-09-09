@@ -17,6 +17,7 @@ IL_PAYROLL_ACCOUNT_SPECS = {
     'equalization_expense': ('630600', 'Equalization Levy Expenses', 'הוצאות היטל השוואה', 'expense'),
     'payroll_rounding': ('630900', 'Payroll Rounding Differences', 'הפרשי עיגול שכר', 'expense'),
     'salary_payable': ('230000', 'Salaries Payable', 'משכורות לתשלום', 'liability_current'),
+    'outstanding_payments': ('101404', 'Outstanding Payments', 'תשלומים בדרך', 'asset_current'),
     'income_tax_payable': ('230110', 'Income Tax Payable', 'מס הכנסה לשלם', 'liability_current'),
     'national_insurance_payable': ('230120', 'National Insurance Payable', 'ביטוח לאומי לשלם', 'liability_current'),
     'health_insurance_payable': ('230130', 'Health Insurance Payable', 'ביטוח בריאות לשלם', 'liability_current'),
@@ -139,10 +140,30 @@ class HrPayrollStructure(models.Model):
             }
             if values:
                 rule.write(values)
+        payment_accounts = {
+            'il_employee_payment_debit_account_id': accounts['salary_payable'],
+            'il_employee_payment_credit_account_id': accounts['outstanding_payments'],
+        }
+        company_values = {
+            field_name: account
+            for field_name, account in payment_accounts.items()
+            if overwrite or not company[field_name]
+        }
+        if company_values:
+            company.write(company_values)
         return True
 
     @api.model
     def _il_sync_structures_and_rules(self):
+        # Payments and Net to Pay are live reconciliation-backed payslip
+        # summary values, not salary rules. Retire every legacy copy before
+        # synchronising the four Israeli structures.
+        self.env['hr.salary.rule'].with_context(active_test=False).search([
+            ('code', 'in', ('IL_PAYMENTS', 'IL_NET_TO_PAY')),
+        ]).write({
+            'active': False,
+            'appears_on_payslip': False,
+        })
         refs = {
             'isr_monthly': self.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_il'),
             'pal_monthly': self.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_monthly'),

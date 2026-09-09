@@ -1,0 +1,31 @@
+.o_il_grouped_batch_payments {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+
+    .o_view_controller,
+    .o_content,
+    .o_list_renderer {
+        box-sizing: border-box;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .o_list_renderer {
+        overflow-x: hidden;
+        padding-inline: 2px;
+        padding-top: 2px;
+    }
+
+    table.o_list_table {
+        margin: 0;
+        max-width: 100%;
+        width: 100%;
+    }
+
+    thead th {
+        overflow: visible;
+        padding-top: 4px;
+    }
+}

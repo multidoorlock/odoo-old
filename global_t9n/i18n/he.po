@@ -1,0 +1,787 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-30 00:00+0000\n"
+"PO-Revision-Date: 2026-07-30 00:00+0000\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "%(label)s at %(currency_amount)s"
+msgstr "%(label)s בסכום %(currency_amount)s"
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "%(label)s at %(currency_amount)s (Draft)"
+msgstr "%(label)s בסכום %(currency_amount)s (טיוטה)"
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "%(name)s%(ref)s at %(currency_amount)s"
+msgstr "%(name)s%(ref)s בסכום %(currency_amount)s"
+
+#. module: account
+#: code:addons/account/wizard/accrued_orders.py:0
+msgid "%(order)s - %(order_line)s; %(qty_invoiced)s invoiced, %(qty_delivered)s delivered at %(unit_price)s"
+msgstr "%(order)s - %(order_line)s; חויבו %(qty_invoiced)s, סופקו %(qty_delivered)s במחיר יחידה %(unit_price)s"
+
+#. module: account
+#: code:addons/account/wizard/accrued_orders.py:0
+msgid "%(order)s - %(order_line)s; price difference for %(product)s"
+msgstr "%(order)s - %(order_line)s; הפרש מחיר עבור %(product)s"
+
+#. module: account
+#: code:addons/account/models/account_code_mapping.py:0
+msgid "Account Code Mapping cannot be accessed directly. It is designed to be used only through the Chart of Accounts."
+msgstr "לא ניתן לגשת ישירות למיפוי קודי החשבונות. יש להשתמש בו רק דרך לוח החשבונות."
+
+#. module: account
+#: code:addons/account/wizard/accrued_orders.py:0
+msgid "Accrual entry created on %(date)s: %(accrual_entry)s.                And its reverse entry: %(reverse_entry)s."
+msgstr "נוצרה פקודת צבירה בתאריך %(date)s: %(accrual_entry)s. פקודת ההיפוך שלה: %(reverse_entry)s."
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_send_wizard__attachments_not_supported
+msgid "Attachments Not Supported"
+msgstr "קבצים מצורפים אינם נתמכים"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.view_partner_property_form
+msgid "Bank accounts"
+msgstr "חשבונות בנק"
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "Bank settings"
+msgstr "הגדרות בנק"
+
+#. module: account
+#: code:addons/account/wizard/account_move_send_batch_wizard.py:0
+msgid "Batch invoice sending is unavailable. Please, contact your system administrator to activate the cron to enable batch sending of invoices."
+msgstr "שליחת חשבוניות באצווה אינה זמינה. יש לפנות למנהל המערכת כדי להפעיל את הפעולה המתוזמנת לשליחת חשבוניות באצווה."
+
+#. module: account
+#: code:addons/account/wizard/account_payment_register.py:0
+msgid "Consider paying the amount with %(btn_start)searly payment discount%(btn_end)s instead."
+msgstr "כדאי לשקול לשלם את הסכום באמצעות %(btn_start)sהנחת תשלום מוקדם%(btn_end)s."
+
+#. module: account
+msgid "Count Reconciled Lines"
+msgstr "מספר השורות שהותאמו"
+
+#. module: account
+msgid "Count Reconciled Lines Excluding Exchange Diff"
+msgstr "מספר השורות שהותאמו, ללא הפרשי שער"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_send_wizard__display_attachments_widget
+msgid "Display Attachments Widget"
+msgstr "הצגת רכיב הקבצים המצורפים"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.view_partner_property_form
+msgid "e-Invoicing & Email"
+msgstr "חשבוניות אלקטרוניות ודוא״ל"
+
+#. module: account
+#: model:ir.model.fields,help:account.field_account_journal__incoming_einvoice_notification_email
+msgid "Email addresses that will receive copy for sent and received invoices. Separate entries with ';'."
+msgstr "כתובות דוא״ל שיקבלו עותק של חשבוניות שנשלחו והתקבלו. יש להפריד בין הכתובות באמצעות ';'."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "Export ZIP"
+msgstr "ייצוא לקובץ ZIP"
+
+#. module: account
+msgid "First Reconciled Lines"
+msgstr "שורות ההתאמה הראשונות"
+
+#. module: account
+msgid "First Reconciled Lines Excluding Exchange Diff"
+msgstr "שורות ההתאמה הראשונות, ללא הפרשי שער"
+
+#. module: account
+#: code:addons/account/wizard/accrued_orders.py:0
+msgid "Goods Delivered not Invoiced (perpetual valuation)"
+msgstr "סחורה שסופקה אך טרם חויבה בחשבונית, בשיטת מלאי תמידי"
+
+#. module: account
+#: code:addons/account/wizard/accrued_orders.py:0
+msgid "Goods Invoiced not Delivered (perpetual valuation)"
+msgstr "סחורה שחויבה בחשבונית אך טרם סופקה, בשיטת מלאי תמידי"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_line__has_invalid_analytics
+msgid "Has Invalid Analytics"
+msgstr "כולל שיוך אנליטי לא תקין"
+
+#. module: account
+#: code:addons/account/models/account_report.py:0
+msgid "Invalid formula for expression '%(label)s' of line '%(line)s': %(formula)s"
+msgstr "נוסחה לא תקינה עבור הביטוי '%(label)s' בשורה '%(line)s': %(formula)s"
+
+#. module: account
+#: code:addons/account/models/partner.py:0
+msgid "Invoices/Bills/Mandates"
+msgstr "חשבוניות לקוח, חשבוניות ספק והרשאות חיוב"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__is_draft_duplicated_ref_ids model:ir.model.fields,field_description:account.field_account_move__is_draft_duplicated_ref_ids
+msgid "Is Draft Duplicated Ref"
+msgstr "הפניה כפולה בטיוטה"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__is_exact_move_duplicate model:ir.model.fields,field_description:account.field_account_move__is_exact_move_duplicate
+msgid "Is Exact Move Duplicate"
+msgstr "פקודת יומן כפולה זהה"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_line__is_imported
+msgid "Is Imported"
+msgstr "יובא למערכת"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_payment_register__is_register_payment_on_draft
+msgid "Is Register Payment On Draft"
+msgstr "רישום תשלום על מסמך בטיוטה"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__journal_line_ids model:ir.model.fields,field_description:account.field_account_move__journal_line_ids
+msgid "Journal Items (DEPRECATED)"
+msgstr "שורות יומן, מיושן"
+
+#. module: account
+#: model:mail.template,name:account.mail_template_invoice_subscriber
+msgid "Journal Notification"
+msgstr "התראת יומן"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_line__parent_id
+msgid "Parent Section Line"
+msgstr "שורת הסעיף הראשי"
+
+#. module: account
+#: model:res.groups,name:account.group_partial_purchase_deductibility
+msgid "Partial Purchase Deductibility"
+msgstr "הכרה חלקית בהוצאות רכישה"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_res_partner__partner_company_registry_placeholder model:ir.model.fields,field_description:account.field_res_users__partner_company_registry_placeholder
+msgid "Partner Company Registry Placeholder"
+msgstr "מציין מקום למספר רישום החברה של איש הקשר"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_res_partner__partner_vat_placeholder model:ir.model.fields,field_description:account.field_res_users__partner_vat_placeholder
+msgid "Partner Vat Placeholder"
+msgstr "מציין מקום למספר העוסק של איש הקשר"
+
+#. module: account
+#: code:addons/account/models/partner.py:0
+msgid "Partners that are used in hashed entries cannot be merged."
+msgstr "לא ניתן למזג אנשי קשר המשמשים בפקודות יומן מאובטחות באמצעות גיבוב."
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.view_partner_bank_form_inherit_account model_terms:ir.ui.view,arch_db:account.view_partner_property_form
+msgid "Partners with same bank"
+msgstr "אנשי קשר עם אותו חשבון בנק"
+
+#. module: account
+#: model:ir.model.fields,help:account.field_account_bank_statement_line__reconciled_payment_ids model:ir.model.fields,help:account.field_account_move__reconciled_payment_ids
+msgid "Payments that have been reconciled with this invoice."
+msgstr "תשלומים שבוצעה להם התאמה עם חשבונית זו."
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.res_config_settings_view_form
+msgid "Product Accounts:"
+msgstr "חשבונות המוצר:"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.report_invoice_document
+msgid "Proforma Credit Note"
+msgstr "הודעת זיכוי פרופורמה"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.report_invoice_document
+msgid "Proforma Invoice"
+msgstr "חשבונית פרופורמה"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.report_invoice_document
+msgid "Proforma Vendor Bill"
+msgstr "חשבונית ספק פרופורמה"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.report_invoice_document
+msgid "Proforma Vendor Credit Note"
+msgstr "זיכוי ספק פרופורמה"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_res_partner__property_inbound_payment_method_line_id model:ir.model.fields,field_description:account.field_res_users__property_inbound_payment_method_line_id
+msgid "Property Inbound Payment Method Line"
+msgstr "שיטת ברירת מחדל לתשלומים נכנסים"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_res_partner__property_outbound_payment_method_line_id model:ir.model.fields,field_description:account.field_res_users__property_outbound_payment_method_line_id
+msgid "Property Outbound Payment Method Line"
+msgstr "שיטת ברירת מחדל לתשלומים יוצאים"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.res_config_settings_view_form
+msgid "Propose to validate bills automatically when AI accuracy is right 3 times in a row for a vendor."
+msgstr "הצעת אישור אוטומטי של חשבוניות ספק כאשר זיהוי הבינה המלאכותית מדויק שלוש פעמים ברצף עבור אותו ספק."
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.view_move_form
+msgid "Recompute all taxes and accounts based on this fiscal position"
+msgstr "חישוב מחדש של כל המיסים והחשבונות לפי מיקום פיסקלי זה"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_line__reconciled_lines_ids
+msgid "Reconciled Lines"
+msgstr "שורות מותאמות"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_line__reconciled_lines_excluding_exchange_diff_ids
+msgid "Reconciled Lines Excluding Exchange Diff"
+msgstr "שורות מותאמות, ללא הפרשי שער"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__reconciled_payment_ids model:ir.model.fields,field_description:account.field_account_move__reconciled_payment_ids
+msgid "Reconciled Payments"
+msgstr "תשלומים מותאמים"
+
+#. module: account
+#: code:addons/account/models/account_tax.py:0
+msgid "Recursion found for tax “%s”."
+msgstr "נמצאה הפניה מעגלית במס “%s”."
+
+#. module: account
+#: code:addons/account/static/src/components/fetch_einvoices/fetch_einvoices_cog.js:0
+msgid "Refresh e-Invoices Status"
+msgstr "רענון מצב החשבוניות האלקטרוניות"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_send_wizard__res_ids
+msgid "Related Document IDs"
+msgstr "מזהי המסמכים המקושרים"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__exchange_diff_partial_ids model:ir.model.fields,field_description:account.field_account_move__exchange_diff_partial_ids
+msgid "Related reconciliation"
+msgstr "התאמה מקושרת"
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "Remove empty lines"
+msgstr "הסרת שורות ריקות"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.view_move_form
+msgid "Reset the currency rate to the default accordingly to the invoice date"
+msgstr "איפוס שער המטבע לברירת המחדל לפי תאריך החשבונית"
+
+#. module: account
+#: model:onboarding.onboarding.step,button_text:account.onboarding_onboarding_step_chart_of_accounts
+msgid "Review Accounts"
+msgstr "סקירת חשבונות"
+
+#. module: account
+#: model:ir.model.fields.selection,name:account.selection__res_company__tax_calculation_rounding_method__round_globally
+msgid "Round per Tax"
+msgstr "עיגול לפי כל מס"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_line__search_account_id
+msgid "Search Account"
+msgstr "חשבון לחיפוש"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.view_move_form
+msgid "Select an old purchase document"
+msgstr "בחירת מסמך רכש קודם"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_journal__is_self_billing model_terms:ir.ui.view,arch_db:account.report_invoice_document
+msgid "Self Billing"
+msgstr "חיוב עצמי"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.report_invoice_document
+msgid "Self Billing Credit Note"
+msgstr "זיכוי בחיוב עצמי"
+
+#. module: account
+#: model:mail.template,name:account.email_template_edi_self_billing_credit_note
+msgid "Self-billing credit note: Sending"
+msgstr "זיכוי בחיוב עצמי: שליחה"
+
+#. module: account
+#: model:mail.template,name:account.email_template_edi_self_billing_invoice
+msgid "Self-billing invoice: Sending"
+msgstr "חשבונית בחיוב עצמי: שליחה"
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.res_config_settings_view_form
+msgid "Sell and purchase products in different units of measure or packagings"
+msgstr "מכירה ורכישה של מוצרים ביחידות מידה או באריזות שונות"
+
+#. module: account
+#: model:mail.template,description:account.email_template_edi_self_billing_credit_note
+msgid "Sent to customers with the self-billing credit note in attachment"
+msgstr "נשלח ללקוחות עם זיכוי בחיוב עצמי כקובץ מצורף"
+
+#. module: account
+#: model:mail.template,description:account.email_template_edi_self_billing_invoice
+msgid "Sent to customers with their self-billing invoices in attachment"
+msgstr "נשלח ללקוחות עם חשבוניות החיוב העצמי שלהם כקובץ מצורף"
+
+#. module: account
+#: code:addons/account/static/src/components/section_and_note_fields_backend/section_and_note_fields_backend.xml:0
+msgid "Show all lines"
+msgstr "הצגת כל השורות"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_journal__show_fetch_in_einvoices_button
+msgid "Show E-Invoice Buttons"
+msgstr "הצגת כפתורי חשבונית אלקטרונית"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_journal__show_refresh_out_einvoices_status_button
+msgid "Show E-Invoice Status Buttons"
+msgstr "הצגת כפתורי מצב חשבונית אלקטרונית"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__show_journal model:ir.model.fields,field_description:account.field_account_move__show_journal
+msgid "Show Journal"
+msgstr "הצגת יומן"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__show_taxable_supply_date model:ir.model.fields,field_description:account.field_account_move__show_taxable_supply_date
+msgid "Show Taxable Supply Date"
+msgstr "הצגת תאריך אספקה לצורכי מס"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_tax__tax_label
+msgid "Tax Label"
+msgstr "תווית מס"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__taxable_supply_date model:ir.model.fields,field_description:account.field_account_move__taxable_supply_date
+msgid "Taxable Supply Date"
+msgstr "תאריך אספקה לצורכי מס"
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__taxable_supply_date_placeholder model:ir.model.fields,field_description:account.field_account_move__taxable_supply_date_placeholder
+msgid "Taxable Supply Date Placeholder"
+msgstr "מציין מקום לתאריך אספקה לצורכי מס"
+
+#. module: account
+#: model:ir.ui.menu,name:account.account_reports_taxes_and_fiscal_menu
+msgid "Taxes & Fiscal"
+msgstr "מיסים ומיסוי"
+
+#. module: account
+#: code:addons/account/models/account_move_line.py:0
+msgid "The account %(name)s (%(code)s) is archived."
+msgstr "החשבון %(name)s (%(code)s) נמצא בארכיון."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "The bank account of your company is not trusted. Please ask an admin or someone with approval rights to check it."
+msgstr "חשבון הבנק של החברה אינו מאומת. יש לבקש ממנהל מערכת או ממשתמש בעל הרשאת אישור לבדוק אותו."
+
+#. module: account
+#: code:addons/account/models/account_tax.py:0
+msgid "The cash basis transition account needs to allow reconciliation."
+msgstr "חשבון המעבר של בסיס המזומן חייב לאפשר התאמה."
+
+#. module: account
+#: code:addons/account/models/partner.py:0
+msgid "The country of the foreign VAT number could not be detected. Please assign a country to the fiscal position."
+msgstr "לא ניתן לזהות את המדינה של מספר המס הזר. יש להגדיר מדינה במיקום הפיסקלי."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "The entry is not balanced."
+msgstr "פקודת היומן אינה מאוזנת."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "The entry is using accounts (%(accounts_codes_names)s) from a different company."
+msgstr "פקודת היומן משתמשת בחשבונות (%(accounts_codes_names)s) של חברה אחרת."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "The invoice already contains lines."
+msgstr "החשבונית כבר מכילה שורות."
+
+#. module: account
+#: code:addons/account/models/account_move_send.py:0
+msgid "The scheduled action 'Send Invoices automatically' is archived. You won't be able to send invoices in batch."
+msgstr "הפעולה המתוזמנת 'שליחת חשבוניות אוטומטית' נמצאת בארכיון. לא ניתן יהיה לשלוח חשבוניות באצווה."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "There is no template that applies to invoices."
+msgstr "לא קיימת תבנית המתאימה לחשבוניות."
+
+#. module: account
+#: code:addons/account/models/account_document_import_mixin.py:0
+msgid "There was an error while importing the bill, you can find attached the incoming XML"
+msgstr "אירעה שגיאה בעת ייבוא חשבונית הספק. קובץ ה־XML שהתקבל מצורף להודעה."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "This document is protected by a hash. Therefore, you cannot edit the following fields: %s."
+msgstr "מסמך זה מוגן באמצעות גיבוב ולכן לא ניתן לערוך את השדות הבאים: %s."
+
+#. module: account
+#: code:addons/account/models/account_document_import_mixin.py:0
+msgid "This document was created from the following attachment(s)."
+msgstr "מסמך זה נוצר מהקבצים המצורפים הבאים."
+
+#. module: account
+#: model:ir.model.fields,help:account.field_account_journal__is_self_billing
+msgid "This journal is for self-billing invoices. Invoices will be created using a different sequence per partner."
+msgstr "יומן זה מיועד לחשבוניות בחיוב עצמי. החשבוניות ייווצרו ברצף מספור נפרד לכל איש קשר."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "This move is configured to be posted automatically at the accounting date: %s."
+msgstr "פקודת יומן זו מוגדרת לרישום אוטומטי בתאריך החשבונאי: %s."
+
+#. module: account
+#: model_terms:ir.ui.view,arch_db:account.res_config_settings_view_form
+msgid "This setting locks once a journal entry is created."
+msgstr "הגדרה זו ננעלת לאחר יצירת פקודת יומן."
+
+#. module: account
+#: code:addons/account/wizard/account_move_reversal.py:0
+msgid "To reverse a journal entry, it has to be posted first."
+msgstr "כדי להפוך פקודת יומן, יש לרשום אותה תחילה."
+
+#. module: account
+#: code:addons/account/models/account_payment_term.py:0
+msgid "Uh-oh! Those payment terms are quite popular and can't be deleted since there are still some records referencing them. How about archiving them instead?"
+msgstr "לא ניתן למחוק תנאי תשלום אלה משום שקיימות רשומות שמפנות אליהם. ניתן להעביר אותם לארכיון במקום זאת."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "Validated entries can only be changed by your accountant."
+msgstr "רק מנהל חשבונות רשאי לשנות פקודות יומן שאושרו."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "We've noticed some empty lines on your invoice."
+msgstr "נמצאו שורות ריקות בחשבונית."
+
+#. module: account
+#: code:addons/account/models/account_move_line.py:0
+msgid "You can not reconcile cancelled entries."
+msgstr "לא ניתן לבצע התאמה לפקודות יומן שבוטלו."
+
+#. module: account
+#: code:addons/account/models/account_payment.py:0
+msgid "You cannot change the amount of a payment with multiple liquidity lines."
+msgstr "לא ניתן לשנות את סכום התשלום כאשר קיימות בו מספר שורות נזילות."
+
+#. module: account
+#: code:addons/account/models/account_tax.py:0
+msgid "You cannot delete taxes that are currently in use. Consider archiving them instead."
+msgstr "לא ניתן למחוק מיסים הנמצאים בשימוש. ניתן להעביר אותם לארכיון במקום זאת."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "You cannot post an entry with an archived analytic account: %s"
+msgstr "לא ניתן לרשום פקודת יומן עם חשבון אנליטי שנמצא בארכיון: %s"
+
+#. module: account
+msgid "You cannot register payments for blocked invoices."
+msgstr "לא ניתן לרשום תשלומים עבור חשבוניות חסומות."
+
+#. module: account
+#: code:addons/account/models/account_move.py:0
+msgid "You cannot switch the type of a document with an existing sequence number."
+msgstr "לא ניתן לשנות את סוג המסמך לאחר שהוקצה לו מספר רצף."
+
+#. module: account
+#: code:addons/account/models/account_move_line.py:0
+msgid "You cannot use an archived account."
+msgstr "לא ניתן להשתמש בחשבון שנמצא בארכיון."
+
+#. module: base
+#: code:addons/base/models/ir_ui_view.py:0
+msgid "Access Rights Inconsistency"
+msgstr "חוסר עקביות בהרשאות גישה"
+
+#. module: base
+#: model:res.groups,comment:base.group_user
+msgid "Access to the home menu"
+msgstr "גישה לתפריט הבית"
+
+#. module: base
+#: model:res.groups,comment:base.group_system
+msgid "Access to the settings to configure the apps"
+msgstr "גישה להגדרות לצורך תצורת היישומים"
+
+#. module: base
+#: code:addons/base/models/ir_ui_view.py:0
+msgid "Accessible only for the super user"
+msgstr "נגיש למשתמש-העל בלבד"
+
+#. module: base
+#: code:addons/base/models/ir_ui_view.py:0
+msgid "Action %(action_reference)s (id: %(action_id)s) does not exist for button of type action."
+msgstr "הפעולה %(action_reference)s (מזהה: %(action_id)s) אינה קיימת עבור כפתור מסוג פעולה."
+
+#. module: base
+#: model_terms:ir.ui.view,arch_db:base.view_users_form model_terms:ir.ui.view,arch_db:base.view_users_form_simple_modif
+msgid "Add a language"
+msgstr "הוספת שפה"
+
+#. module: base
+#: model:ir.model.fields,field_description:base.field_res_partner__type_address_label model:ir.model.fields,field_description:base.field_res_users__type_address_label
+msgid "Address Type Description"
+msgstr "תיאור סוג הכתובת"
+
+#. module: base
+#: model:ir.model.fields,field_description:base.field_ir_actions_server__allowed_states model:ir.model.fields,field_description:base.field_ir_cron__allowed_states
+msgid "Allowed states"
+msgstr "מצבים מותרים"
+
+#. module: base
+#: code:addons/base/models/res_partner.py:0
+msgid "Another partner already has this barcode"
+msgstr "לאיש קשר אחר כבר משויך ברקוד זה"
+
+#. module: base
+#: model_terms:ir.ui.view,arch_db:base.base_partner_merge_automatic_wizard_form
+msgid "Are you sure to execute the automatic merge of your contacts?"
+msgstr "האם לבצע את המיזוג האוטומטי של אנשי הקשר?"
+
+#. module: base
+#: model_terms:ir.ui.view,arch_db:base.base_partner_merge_automatic_wizard_form
+msgid "Are you sure to execute the list of automatic merges of your contacts?"
+msgstr "האם לבצע את רשימת המיזוגים האוטומטיים של אנשי הקשר?"
+
+#. module: base
+#: code:addons/base/models/ir_attachment.py:0
+msgid "Attachment is not encoded in base64."
+msgstr "הקובץ המצורף אינו מקודד בתבנית Base64."
+
+#. module: base
+#: code:addons/models.py:0
+msgid "Cannot grab a lock on records"
+msgstr "לא ניתן לנעול את הרשומות"
+
+#. module: base
+#: code:addons/models.py:0
+msgid "Cannot update a record without specifying its id or xml_id"
+msgstr "לא ניתן לעדכן רשומה בלי לציין מזהה ID או XML ID"
+
+#. module: base
+#: code:addons/base/models/ir_module.py:0
+msgid "Cannot upgrade module “%s”. It is not installed."
+msgstr "לא ניתן לשדרג את המודול “%s” משום שאינו מותקן."
+
+#. module: base
+#: model:ir.model.constraint,message:base.constraint_ir_mail_server_certificate_requires_tls
+msgid "Certificate-based authentication requires a TLS transport"
+msgstr "אימות מבוסס תעודה דורש תקשורת TLS"
+
+#. module: base
+#: code:addons/base/models/res_partner.py:0
+msgid "Company Address"
+msgstr "כתובת החברה"
+
+#. module: base
+#: model:ir.model.fields,field_description:base.field_ir_model_fields__company_dependent
+msgid "Company Dependent"
+msgstr "תלוי חברה"
+
+#. module: base
+#: model:ir.model.fields,field_description:base.field_res_partner__company_registry_label model:ir.model.fields,field_description:base.field_res_users__company_registry_label
+msgid "Company ID Label"
+msgstr "תווית מזהה החברה"
+
+#. module: base
+#: model:ir.model.fields,field_description:base.field_res_company__company_registry_placeholder model:ir.model.fields,field_description:base.field_res_partner__company_registry_placeholder model:ir.model.fields,field_description:base.field_res_users__company_registry_placeholder
+msgid "Company Registry Placeholder"
+msgstr "מציין מקום למספר רישום החברה"
+
+#. module: base
+#: model:ir.model.fields,help:base.field_res_company__report_header
+msgid "Company tagline, which is included in a printed document's header or footer (depending on the selected layout)."
+msgstr "סיסמת החברה, המופיעה בכותרת העליונה או התחתונה של מסמכים מודפסים, בהתאם לפריסה שנבחרה."
+
+#. module: base
+#: model_terms:ir.ui.view,arch_db:base.ir_mail_server_form
+msgid "Convert attachments to links for emails over"
+msgstr "המרת קבצים מצורפים לקישורים בהודעות דוא״ל שגודלן מעל"
+
+#. module: base
+#: model:ir.model.fields,field_description:base.field_ir_model__count
+msgid "Count (Incl. Archived)"
+msgstr "כמות, כולל רשומות בארכיון"
+
+#. module: base
+#: model:ir.model.fields,field_description:base.field_res_country__country_group_codes
+msgid "Country Group Codes"
+msgstr "קודי קבוצות מדינות"
+
+#. module: base
+#: code:addons/base/models/ir_actions.py:0
+msgid "Create %(model_name)s"
+msgstr "יצירת %(model_name)s"
+
+#. module: base
+#: code:addons/base/models/ir_model.py:0
+msgid "Currency field does not have type many2one"
+msgstr "שדה המטבע אינו מסוג Many2one"
+
+#. module: base
+#: code:addons/base/models/ir_model.py:0
+msgid "Currency field is empty and there is no fallback field in the model"
+msgstr "שדה המטבע ריק ולא הוגדר במודל שדה חלופי"
+
+#. module: base
+#: code:addons/base/models/ir_model.py:0
+msgid "Currency field should have a res.currency relation"
+msgstr "שדה המטבע חייב להיות מקושר למודל res.currency"
+
+#. module: base
+#: model:ir.model.fields,help:base.field_res_currency__iso_numeric
+msgid "Currency Numeric Code (ISO 4217)."
+msgstr "הקוד המספרי של המטבע לפי ISO 4217."
+
+#. module: base
+#: model:ir.model.fields,field_description:base.field_res_currency__iso_numeric
+msgid "Currency numeric code."
+msgstr "הקוד המספרי של המטבע."
+
+#. module: base
+#: code:addons/base/models/res_currency.py:0
+msgid "Currency rates should only be created for main companies"
+msgstr "יש ליצור שערי מטבע רק עבור חברות ראשיות"
+
+#. module: base
+#: model:ir.model.constraint,message:base.constraint_ir_model_fields_name_manual_field
+msgid "Custom fields must have a name that starts with 'x_'!"
+msgstr "שם של שדה מותאם אישית חייב להתחיל ב־'x_'!"
+
+#. module: base
+#: model:ir.module.module,shortdesc:base.module_account_iso20022
+msgid "SEPA Credit Transfer / ISO20022"
+msgstr "העברת אשראי SEPA / ISO 20022"
+
+#. module: base
+#: code:addons/base/models/res_users.py:0
+msgid "The provided API key is invalid or does not belong to the current user."
+msgstr "מפתח ה־API שסופק אינו תקין או שאינו שייך למשתמש הנוכחי."
+
+#. module: base
+#: code:addons/base/models/res_users.py:0
+msgid "The provided API key is invalid."
+msgstr "מפתח ה־API שסופק אינו תקין."
+
+#. module: base
+#: code:addons/base/models/ir_binary.py:0
+msgid "The related attachment does not exist."
+msgstr "הקובץ המצורף המקושר אינו קיים."
+
+#. module: base
+#: code:addons/base/models/res_partner.py:0
+msgid "The selected company is not compatible with the companies of the related user(s)"
+msgstr "החברה שנבחרה אינה תואמת לחברות של המשתמשים המקושרים"
+
+#. module: base
+#: code:addons/base/models/ir_mail_server.py:0
+msgid "The server \"%(server_name)s\" doesn't return the maximum email size."
+msgstr "השרת “%(server_name)s” אינו מחזיר את גודל הודעת הדוא״ל המרבי."
+
+#. module: base
+#: model:ir.model.fields,help:base.field_ir_filters__user_ids
+msgid "The users the filter is shared with. If empty, the filter is shared with all users."
+msgstr "המשתמשים שאיתם המסנן משותף. כאשר השדה ריק, המסנן משותף עם כל המשתמשים."
+
+#. module: base
+#: code:addons/base/models/res_currency.py:0
+msgid "This currency is set on a company and therefore cannot be deactivated."
+msgstr "מטבע זה מוגדר בחברה ולכן לא ניתן להשבית אותו."
+
+#. module: base
+#: code:addons/image.py:0
+msgid "This file could not be decoded as an image file."
+msgstr "לא ניתן לפענח קובץ זה כקובץ תמונה."
+
+#. module: base
+#: code:addons/image.py:0
+msgid "This file is not a webp file."
+msgstr "קובץ זה אינו קובץ WebP."
+
+#. module: base
+#: code:addons/models.py:0
+msgid "Uh-oh! You’ve got some company inconsistencies here:"
+msgstr "נמצאו חוסרי עקביות בין החברות:"
+
+#. module: base
+#: code:addons/models.py:0
+msgid "Unable to delete %(record)s because it is used as the default value of %(field)s"
+msgstr "לא ניתן למחוק את %(record)s משום שהוא משמש כערך ברירת המחדל של %(field)s"
+
+#. module: base
+#: model_terms:ir.ui.view,arch_db:base.view_base_module_uninstall
+msgid "Uninstalling modules can be risky, we recommend you to try it on a duplicate or test database first."
+msgstr "הסרת מודולים עלולה להיות מסוכנת. מומלץ לבצע אותה תחילה במסד נתונים משוכפל או בסביבת בדיקות."
+
+#. module: base
+#: model_terms:ir.ui.view,arch_db:base.view_users_form_simple_modif
+msgid "Update Preferences"
+msgstr "עדכון העדפות"
+
+#. module: base
+#: code:addons/base/models/res_users.py:0
+msgid "User %(user)s cannot be at the same time in exclusive groups %(groups)s."
+msgstr "המשתמש %(user)s אינו יכול להשתייך בו־זמנית לקבוצות הסותרות %(groups)s."
+
+#. module: base
+#: model:ir.model,name:base.model_res_users_apikeys
+msgid "Users API Keys"
+msgstr "מפתחות API של משתמשים"
+
+#. module: base
+#: code:addons/base/models/ir_actions_report.py:0
+msgid "View Problematic Record(s)"
+msgstr "הצגת הרשומות הבעייתיות"
+
+#. module: base
+#: model:ir.model.fields,help:base.field_res_partner__employee model:ir.model.fields,help:base.field_res_users__employee
+msgid "Whether this contact is an Employee."
+msgstr "מציין אם איש קשר זה הוא עובד."
+
+#. module: base
+#: model:ir.model.constraint,message:base.constraint_ir_sequence_date_range_unique_range_per_sequence
+msgid "You cannot create two date ranges for the same sequence with the same date range."
+msgstr "לא ניתן ליצור שני טווחי תאריכים זהים עבור אותו רצף מספור."
+
+#. module: base
+#: code:addons/models.py:0
+msgid "You cannot delete %(to_delete_record)s, as it is used by %(on_restrict_record)s"
+msgstr "לא ניתן למחוק את %(to_delete_record)s משום שהוא נמצא בשימוש על ידי %(on_restrict_record)s"
+
+#. module: base
+#: code:addons/base/models/res_users.py:0
+msgid "You must have at least an administrator user."
+msgstr "חייב להיות במערכת לפחות משתמש מנהל אחד."
+
+#. module: hr_payroll
+#: code:addons/hr_payroll/models/hr_payslip.py:0 code:addons/hr_payroll/models/hr_salary_attachment.py:0 model:ir.model.fields,field_description:hr_payroll.field_hr_employee__salary_attachment_ids model:ir.model.fields,field_description:hr_payroll.field_hr_payslip__salary_attachment_ids model:ir.ui.menu,name:hr_payroll.hr_menu_salary_attachments model_terms:ir.ui.view,arch_db:hr_payroll.hr_salary_attachment_view_pivot model_terms:ir.ui.view,arch_db:hr_payroll.hr_salary_attachment_view_tree model_terms:ir.ui.view,arch_db:hr_payroll.payroll_hr_employee_view_form model_terms:ir.ui.view,arch_db:hr_payroll.view_hr_payslip_form
+msgid "Salary Adjustments"
+msgstr "התאמות שכר"

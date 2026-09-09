@@ -7,45 +7,111 @@
         <field name="arch" type="xml">
             <field name="company_id" position="after">
                 <field name="il_is_employee_payment" invisible="1"/>
+                <field name="il_currency_rounding" invisible="1"/>
             </field>
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_il_open_split_moves" type="object"
-                        class="oe_stat_button" icon="fa-book"
-                        invisible="not il_is_employee_payment or il_split_move_count == 0"
-                        groups="account.group_account_user,account.group_account_readonly">
-                    <field name="il_split_move_count" widget="statinfo" string="פקודות יומן"/>
-                </button>
+            <button name="button_open_invoices" position="attributes">
+                <attribute name="invisible">reconciled_invoices_count == 0 or il_is_employee_payment or context.get('il_employee_payment')</attribute>
+            </button>
+            <button name="button_open_bills" position="attributes">
+                <attribute name="invisible">reconciled_bills_count == 0 or il_is_employee_payment or context.get('il_employee_payment')</attribute>
+            </button>
+            <button name="button_open_statement_lines" position="attributes">
+                <attribute name="invisible">reconciled_statement_lines_count == 0 or il_is_employee_payment or context.get('il_employee_payment')</attribute>
+            </button>
+            <button name="action_validate" position="attributes">
+                <attribute name="invisible">state != 'in_process' or (move_id and not il_is_employee_payment and not context.get('il_employee_payment'))</attribute>
+            </button>
+
+            <field name="payment_type" position="attributes">
+                <attribute name="invisible">il_is_employee_payment or context.get('il_employee_payment')</attribute>
+                <attribute name="readonly">state != 'draft'</attribute>
+            </field>
+            <field name="amount" position="attributes">
+                <attribute name="readonly">state != 'draft'</attribute>
+            </field>
+            <field name="currency_id" position="attributes">
+                <attribute name="readonly">state != 'draft'</attribute>
+            </field>
+            <field name="date" position="attributes">
+                <attribute name="readonly">state != 'draft'</attribute>
+            </field>
+            <field name="memo" position="attributes">
+                <attribute name="readonly">state != 'draft'</attribute>
+            </field>
+            <field name="journal_id" position="attributes">
+                <attribute name="readonly">state != 'draft'</attribute>
+            </field>
+            <field name="payment_method_line_id" position="attributes">
+                <attribute name="readonly">state != 'draft'</attribute>
+            </field>
+            <field name="payment_type" position="after">
+                <field name="il_payment_type_display" string="סוג תשלום" readonly="1"
+                       invisible="not il_is_employee_payment and not context.get('il_employee_payment')"/>
+                <field name="il_masav_file" filename="il_masav_filename" readonly="1"
+                       invisible="not il_masav_file"/>
+                <field name="il_masav_filename" invisible="1"/>
+                <field name="il_masav_generated_on" readonly="1"
+                       invisible="not il_masav_file"/>
+            </field>
+
+            <xpath expr="(//field[@name='partner_id'])[1]" position="attributes">
+                <attribute name="invisible">partner_type != 'customer' or il_is_employee_payment or context.get('il_employee_payment')</attribute>
+            </xpath>
+            <xpath expr="(//field[@name='partner_id'])[2]" position="attributes">
+                <attribute name="invisible">partner_type != 'supplier' or il_is_employee_payment or context.get('il_employee_payment')</attribute>
+            </xpath>
+            <xpath expr="(//field[@name='partner_id'])[2]" position="after">
+                <field name="partner_id" string="עובד"
+                       domain="[('employee_ids', '!=', False)]"
+                       context="{}" options="{'no_quick_create': True}"
+                       readonly="state != 'draft'"
+                       invisible="not il_is_employee_payment and not context.get('il_employee_payment')"/>
+            </xpath>
+
+            <xpath expr="(//field[@name='partner_bank_id'])[2]" position="attributes">
+                <attribute name="invisible">not show_partner_bank_account or partner_type != 'supplier' or payment_type == 'inbound' or il_is_employee_payment or context.get('il_employee_payment')</attribute>
+            </xpath>
+            <xpath expr="(//field[@name='partner_bank_id'])[2]" position="after">
+                <field name="partner_bank_id" string="חשבון בנק (עובד)"
+                       context="{'default_partner_id': partner_id, 'display_account_trust': True}"
+                       invisible="not il_is_employee_payment and not context.get('il_employee_payment')"
+                       readonly="state != 'draft'"
+                       required="False"/>
             </xpath>
             <notebook position="inside">
-                <page string="מעקב שכר" name="il_payroll" invisible="not il_is_employee_payment">
+                <page string="מעקב שכר" name="il_payroll"
+                      invisible="not il_is_employee_payment and not context.get('il_employee_payment')">
                     <group>
-                        <field name="il_currency_rounding" invisible="1"/>
-                        <field name="il_spread_type" readonly="context.get('il_lock_immediate_spread')"/>
+                        <field name="il_spread_type"
+                               readonly="state != 'draft'"/>
                         <field name="il_planned_amount" widget="monetary" readonly="1"/>
                         <field name="il_applied_amount" widget="monetary" readonly="1"/>
                         <field name="il_remaining_amount" widget="monetary" readonly="1"/>
                     </group>
-                    <field name="il_split_line_ids" widget="il_quick_split_lines" invisible="il_spread_type != 'planned'">
+                    <field name="il_split_line_ids" widget="il_quick_split_lines"
+                           readonly="state != 'draft'"
+                           invisible="il_spread_type != 'planned'">
                         <list editable="bottom">
                             <field name="sequence" widget="handle"/>
                             <field name="sequence" string="פעימה מס'" readonly="1"/>
                             <field name="amount" sum="סה״כ"/>
-                            <field name="payslip_id" domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
-                            <field name="is_applied" readonly="1"/>
-                            <field name="employee_id" column_invisible="1"/>
-                            <field name="company_id" column_invisible="1"/>
-                            <field name="currency_id" column_invisible="1"/>
+                            <field name="reconcile_id" string="התאמה"/>
+                            <field name="is_applied" string="קוזז" readonly="1"/>
+                            <field name="employee_id" column_invisible="True"/>
+                            <field name="company_id" column_invisible="True"/>
+                            <field name="currency_id" column_invisible="True"/>
                         </list>
                     </field>
-                    <field name="il_split_line_ids" invisible="il_spread_type == 'planned'">
+                    <field name="il_split_line_ids" readonly="state != 'draft'"
+                           invisible="il_spread_type == 'planned'">
                         <list editable="bottom" create="0" delete="0">
                             <field name="sequence" readonly="1"/>
                             <field name="amount" sum="סה״כ"/>
-                            <field name="payslip_id" domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
-                            <field name="is_applied" readonly="1"/>
-                            <field name="employee_id" column_invisible="1"/>
-                            <field name="company_id" column_invisible="1"/>
-                            <field name="currency_id" column_invisible="1"/>
+                            <field name="reconcile_id" string="התאמה"/>
+                            <field name="is_applied" string="קוזז" readonly="1"/>
+                            <field name="employee_id" column_invisible="True"/>
+                            <field name="company_id" column_invisible="True"/>
+                            <field name="currency_id" column_invisible="True"/>
                         </list>
                     </field>
                 </page>
@@ -63,63 +129,16 @@
     <record id="view_account_payment_form_employee" model="ir.ui.view">
         <field name="name">mdl.payroll.account.payment.view.form.employee</field>
         <field name="model">account.payment</field>
-        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="inherit_id" ref="view_account_payment_form_payroll_common"/>
         <field name="mode">primary</field>
         <field name="arch" type="xml">
             <form position="attributes">
                 <attribute name="string">תשלום לעובד</attribute>
+                <attribute name="edit">1</attribute>
             </form>
-            <xpath expr="//header/button[@name='action_post']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-
-            <!-- תשלום עובד הוא תמיד "שליחה" (outbound) — הבחירה מיותרת. -->
-            <field name="payment_type" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </field>
-            <field name="payment_type" position="after">
-                <field name="il_payment_type_display" string="סוג תשלום" readonly="1"/>
-            </field>
-
-            <!-- שדה הלקוח כלל לא רלוונטי לתשלום עובד. -->
-            <xpath expr="(//field[@name='partner_id'])[1]" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <!-- שדה הספק הופך ל"עובד", עם דומיין לאנשי קשר המקושרים לעובד. -->
-            <xpath expr="(//field[@name='partner_id'])[2]" position="attributes">
-                <attribute name="invisible">0</attribute>
-                <attribute name="string">עובד</attribute>
-                <attribute name="domain">[('employee_ids', '!=', False)]</attribute>
-                <attribute name="context">{}</attribute>
-            </xpath>
-
-            <!-- כפתור האישור הראשי למעלה מוחלף בכפתורי footer מפורשים למטה. -->
-            <xpath expr="(//field[@name='partner_bank_id'])[1]" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="(//field[@name='partner_bank_id'])[3]" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="(//field[@name='partner_bank_id'])[2]" position="attributes">
-                <attribute name="invisible">0</attribute>
-                <attribute name="string">חשבון בנק (עובד)</attribute>
-            </xpath>
-
-            <!-- כפתורי חשבוניות/חשבוניות ספק/דפי בנק לא רלוונטיים לתשלום עובד. -->
-            <button name="button_open_invoices" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </button>
-            <button name="button_open_bills" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </button>
-            <button name="button_open_statement_lines" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </button>
-
-            <field name="company_id" position="after">
-                <field name="il_is_employee_payment" invisible="1"/>
-            </field>
-            <!-- The common inherited view already adds the payroll tab. -->
+            <!-- All employee-specific fields, buttons and payroll tracking are
+                 inherited from the common form so every entry path resolves
+                 to exactly the same architecture. -->
         </field>
     </record>
 
@@ -139,6 +158,23 @@
             </list>
             <field name="partner_id" position="attributes">
                 <attribute name="string">עובד / שותף</attribute>
+            </field>
+            <xpath expr="//field[@name='company_id']" position="replace"/>
+            <xpath expr="//field[@name='amount_signed' and @groups='!base.group_multi_currency']"
+                   position="replace"/>
+            <xpath expr="//field[@name='amount_signed' and @groups='base.group_multi_currency']"
+                   position="replace"/>
+            <xpath expr="//field[@name='currency_id']" position="replace">
+                <!-- Keep the technical currency value loaded for the monetary
+                     widget without displaying the Payment Currency column. -->
+                <field name="currency_id" column_invisible="True"/>
+            </xpath>
+            <xpath expr="//field[@name='activity_ids']" position="replace"/>
+            <field name="partner_id" position="after">
+                <field name="il_relevant_installment_number"
+                       column_invisible="not context.get('il_payslip_id')"/>
+                <field name="il_relevant_installment_amount"
+                       column_invisible="not context.get('il_payslip_id')"/>
             </field>
         </field>
     </record>
@@ -191,9 +227,7 @@
         <field name="search_view_id" ref="view_account_payment_search_employee"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">רישום תשלום עובד ראשון</p>
-            <p>כל קישור לתלוש מתבצע דרך שורת פריסה. אפשר לבחור פריסה מתוכננת,
-               פריסה לפי תלוש או שורה יחידה בפריסה מיידית. יתר המשיכה נגזר רק
-               מהשורות שכבר קושרו לתלושים.</p>
+            <p>תשלומי עובדים נרשמים במלואם ומותאמים לתלושים באמצעות מנגנון ההתאמה החשבונאית של Odoo.</p>
         </field>
     </record>
 </odoo>

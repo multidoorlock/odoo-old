@@ -29,9 +29,7 @@ class HrPayslipRun(models.Model):
                 if not journal:
                     raise UserError('לא נמצא יומן בנק או מזומן ליצירת תשלומי השכר.')
                 created |= Payment.with_context(
-                    il_origin_payslip_id=slip.id,
-                    il_max_payment_amount=remaining,
-                    il_auto_post_on_create=True,
+                    il_employee_payment=True,
                 ).create({
                     'partner_id': partner.id,
                     'company_id': slip.company_id.id,
@@ -40,7 +38,6 @@ class HrPayslipRun(models.Model):
                     'journal_id': journal.id,
                     'date': slip.date_to,
                     'amount': remaining,
-                    'il_spread_type': 'none',
                 })
         if not created:
             raise UserError('אין יתרת נטו לתשלום באף תלוש מאושר במחזור זה.')

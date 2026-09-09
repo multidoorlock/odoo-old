@@ -14,6 +14,32 @@ IL_SNAPSHOT_FIELDS = [
 class HrSalaryAttachment(models.Model):
     _inherit = 'hr.salary.attachment'
 
+    def record_payment(self, *args, **kwargs):
+        # Limit the date correction to the native payment workflow; ordinary
+        # edits must continue to enforce the standard date constraint.
+        return super(HrSalaryAttachment, self.with_context(
+            il_salary_attachment_payment_closure=True,
+        )).record_payment(*args, **kwargs)
+
+    def write(self, vals):
+        if not self.env.context.get('il_salary_attachment_payment_closure') or not vals.get('date_end'):
+            return super().write(vals)
+        effective_date = fields.Date.to_date(
+            self.env.context.get('il_payroll_payment_date'))
+        result = True
+        for attachment in self:
+            values = dict(vals)
+            # Native closure uses today's date. A future payroll payment must
+            # never close an adjustment before that adjustment has started.
+            if values.get('state', attachment.state) == 'close':
+                values['date_end'] = max(filter(None, (
+                    fields.Date.to_date(values['date_end']),
+                    fields.Date.to_date(values.get('date_start')) or attachment.date_start,
+                    effective_date,
+                )))
+            result = super(HrSalaryAttachment, attachment).write(values) and result
+        return result
+
     # ------------------------------------------------------------------
     # סוג השפעה (סעיף "שדה חדש ב-Salary Adjustment" באפיון)
     # ------------------------------------------------------------------
