@@ -52,6 +52,8 @@ msgstr "إعداد مجموعة المنتجات"
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
 msgid "Product Group"
 msgstr "مجموعة المنتجات"
 
@@ -66,6 +68,8 @@ msgstr "مجموعة المنتجات"
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
 msgid "Product Group Name"
 msgstr "اسم مجموعة المنتجات"
 
@@ -80,6 +84,8 @@ msgstr "اسم مجموعة المنتجات"
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
 msgid "Product Group SKU"
 msgstr "رمز مجموعة المنتجات"
 
@@ -960,6 +966,8 @@ msgstr "الاسم التلقائي"
 #. module: mdl_product_groups_attributes
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_product_form_final_name
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_easy_form_final_name
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
 msgid "Reset to the automatic name"
 msgstr "استعادة الاسم التلقائي"
 
@@ -1017,3 +1025,77 @@ msgstr "اسم المنتج المُولّد (تقني)"
 #: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template_attribute_value__mdl_attribute_group_id
 msgid "Attribute Group Heading"
 msgstr "عنوان مجموعة السمات"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+msgid "Name and SKU Overrides"
+msgstr "تخصيص الاسم والرمز"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Template Name"
+msgstr "اسم القالب"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Custom Group Text"
+msgstr "نص مخصص للمجموعة"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Custom Group SKU"
+msgstr "رمز مخصص للمجموعة"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Custom Model Text"
+msgstr "نص مخصص للطراز"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Custom Model SKU"
+msgstr "رمز مخصص للطراز"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Text After All Attributes"
+msgstr "نص بعد جميع الخصائص"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "The custom template name replaces the group and model text in variant names. Use Undo to return to automatic naming."
+msgstr "يحل اسم القالب المخصص محل نص المجموعة والطراز في أسماء المتغيرات. استخدم التراجع للعودة إلى التسمية التلقائية."
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Leave an override blank to use its source value. Enter — to omit that component. Attribute values are added after the shared name and SKU."
+msgstr "اترك حقل التخصيص فارغًا لاستخدام القيمة الأصلية. أدخل — لحذف هذا الجزء. تضاف قيم الخصائص بعد الاسم والرمز المشتركين."
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Model"
+msgstr "الطراز"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Save"
+msgstr "حفظ"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Cancel"
+msgstr "إلغاء"

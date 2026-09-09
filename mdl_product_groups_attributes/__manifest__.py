@@ -1,7 +1,7 @@
 {
     "name": "Multi Doorlock - Product Groups & Attributes",
     "summary": "Native product groups, attributes, combination rules, names, and SKUs",
-    "version": "19.0.3.4.8",
+    "version": "19.0.3.4.9",
     "category": "Inventory/Inventory",
     "author": "Multi Doorlock",
     "license": "LGPL-3",
@@ -10,6 +10,7 @@
         "security/ir.model.access.csv",
         "data/product_attribute_data.xml",
         "views/product_groups_attributes_views.xml",
+        "views/product_name_override_views.xml",
         "views/product_variant_views.xml",
         "views/blocked_variant_preview_views.xml",
         "views/sale_order_views.xml",
