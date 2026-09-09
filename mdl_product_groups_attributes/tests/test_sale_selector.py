@@ -18,7 +18,10 @@ class TestCatalogSaleSelector(TransactionCase):
         self.assertEqual(variant.get('optional'), 'hide')
         for node in (template, variant):
             self.assertEqual(node.get('widget'), 'sol_product_many2one')
-            self.assertTrue(safe_eval(node.get('options'))['no_create'])
+        template_options = safe_eval(template.get('options'))
+        self.assertFalse(template_options.get('no_create'))
+        self.assertFalse(template_options.get('no_quick_create'))
+        self.assertTrue(safe_eval(variant.get('options'))['no_create'])
 
     def test_regular_product_remains_searchable_by_reference(self):
         template = self.env['product.template'].create({
