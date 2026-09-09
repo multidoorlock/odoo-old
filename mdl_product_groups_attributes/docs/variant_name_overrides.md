@@ -1,10 +1,13 @@
 # Per-language variant names
 
-Version 19.0.3.4.0 adds **Custom Name in This Language** to both variant forms.
-The standard Odoo language button opens the installed languages. A non-empty
-value replaces that variant's generated name only in that exact language.
-Clearing one language restores its generated name without clearing other
-languages. **Automatic Name** remains visible beside the editable field.
+Version 19.0.3.4.1 makes **Product Name** editable directly in the title of both
+variant forms. The Undo icon appears beside a title that differs from its
+automatic name and restores the automatic name in the current language.
+The separate custom-name and automatic-name rows are no longer displayed.
+The standard Odoo language button opens the installed languages. Each language
+shows its effective name; editing it customizes only that exact language.
+Clearing a name or entering its automatic value removes that language's
+override, so later attribute changes continue updating it automatically.
 
 The effective name is used in the form title, variant list, display name,
 product selection/search, and newly generated sale descriptions. Sales use
@@ -24,6 +27,8 @@ existing precedence in a supplier context. Internal references are unchanged.
   falls back to English, and native False writes clear all translations.
 - `mdl_generated_name` remains the existing automatic helper;
   `mdl_automatic_name` and `mdl_effective_name` render in the current language.
+  The effective field now has an inverse and uses the same translation adapter.
+  Automatic computation is separate so inverse protection cannot hide its value.
 - Searches extract only the active language from JSON, using a parameterized
   expression inside the ORM query, preserving record rules and result limits.
 - Missing languages, including languages activated later, keep automatic names.
@@ -47,7 +52,9 @@ odoo-bin -d "$ODOO_TEST_DATABASE" -u mdl_product_groups_attributes \
   --stop-after-init
 ```
 
-In the UI, open a managed product variant, enter an English custom name, open
-the language button, and enter a Hebrew name while leaving Arabic blank.
-Switch the user language to verify the custom names and Arabic automatic name.
-Clear Hebrew using the language dialog and verify English remains customized.
+In the UI, edit the title of a managed variant, then use the language button
+to enter a Hebrew title while leaving the Arabic automatic name unchanged.
+Switch languages to verify the custom names and automatic Arabic name.
+Use Undo in Hebrew and verify English remains customized. Check both the full
+and easy variant forms, including Undo after an unsaved title edit. Neither
+form should display the old custom-name or automatic-name rows.

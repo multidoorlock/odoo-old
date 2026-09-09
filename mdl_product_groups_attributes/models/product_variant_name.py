@@ -31,11 +31,13 @@ class ProductProduct(models.Model):
     mdl_effective_name = fields.Char(
         string="Product Name",
         compute="_compute_mdl_effective_name",
+        inverse="_inverse_mdl_effective_name",
         search="_search_mdl_effective_name",
+        translate=True,
     )
     mdl_automatic_name = fields.Char(
         string="Automatic Name",
-        compute="_compute_mdl_effective_name",
+        compute="_compute_mdl_automatic_name",
     )
 
     @api.depends("mdl_name_overrides")
@@ -54,11 +56,36 @@ class ProductProduct(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
-        if "mdl_name_override" in vals:
+        if {"mdl_name_override", "mdl_effective_name"} & vals.keys():
             # Inverses protect their field while its backing data is written.
             # Discard that protected value, especially False, for every lang.
-            self.invalidate_recordset(["mdl_name_override"])
+            self.invalidate_recordset(["mdl_name_override", "mdl_effective_name"])
         return result
+
+    def _inverse_mdl_effective_name(self):
+        lang = self.env.lang or "en_US"
+        for product in self:
+            product._mdl_update_effective_names({lang: product.mdl_effective_name})
+
+    def _mdl_update_effective_names(self, translations):
+        self.ensure_one()
+        # Normalize through the same language and access validation as the
+        # existing override API. Matching the automatic name restores sync.
+        if not isinstance(translations, dict):
+            return self._mdl_update_name_overrides(translations)
+        values = dict(translations)
+        installed = {code for code, _name in self.env["res.lang"].get_installed()}
+        for lang, value in values.items():
+            if lang in installed and isinstance(value, str):
+                automatic = self.with_context(lang=lang).mdl_automatic_name
+                if clean_text(value) == clean_text(automatic):
+                    values[lang] = False
+        return self._mdl_update_name_overrides(values)
+
+    def action_mdl_reset_variant_name(self):
+        self.ensure_one()
+        self._mdl_update_name_overrides({self.env.lang or "en_US": False})
+        return True
 
     @api.constrains("mdl_name_overrides")
     def _check_mdl_name_overrides(self):
@@ -95,7 +122,7 @@ class ProductProduct(models.Model):
         return True
 
     def get_field_translations(self, field_name, langs=None):
-        if field_name != "mdl_name_override":
+        if field_name not in ("mdl_name_override", "mdl_effective_name"):
             return super().get_field_translations(field_name, langs=langs)
         self.ensure_one()
         self.check_access("read")
@@ -103,7 +130,10 @@ class ProductProduct(models.Model):
         values = self.mdl_name_overrides or {}
         langs = langs or [code for code, _name in self.env["res.lang"].get_installed()]
         return [
-            {"lang": lang, "source": "", "value": values.get(lang, "")}
+            {"lang": lang, "source": "", "value": (
+                self.with_context(lang=lang).mdl_effective_name
+                if field_name == "mdl_effective_name" else values.get(lang, "")
+            )}
             for lang in sorted(set(langs))
         ], {"translation_type": "char", "translation_show_source": False}
 
@@ -112,28 +142,34 @@ class ProductProduct(models.Model):
         # Other fields retain the native translation/import behavior.
         if field_name == "mdl_name_override":
             return self._mdl_update_name_overrides(translations)
+        if field_name == "mdl_effective_name":
+            return self._mdl_update_effective_names(translations)
         return super()._update_field_translations(
             field_name, translations, digest=digest, source_lang=source_lang,
         )
 
     @api.depends(
-        "mdl_name_override", "mdl_generated_name", "name",
+        "mdl_generated_name", "name",
         "product_tmpl_id.mdl_catalog_managed",
     )
     @api.depends_context("lang")
-    def _compute_mdl_effective_name(self):
+    def _compute_mdl_automatic_name(self):
         for product in self:
             if not product.product_tmpl_id.mdl_catalog_managed:
                 product.mdl_automatic_name = product.name
-                product.mdl_effective_name = product.name
                 continue
             _sku, automatic_name, _missing = product.product_tmpl_id._mdl_render_catalog_values(
                 product.product_template_attribute_value_ids
             )
             product.mdl_automatic_name = automatic_name or product.mdl_generated_name or product.name
+
+    @api.depends("mdl_name_override", "mdl_automatic_name", "product_tmpl_id.mdl_catalog_managed")
+    @api.depends_context("lang")
+    def _compute_mdl_effective_name(self):
+        for product in self:
             product.mdl_effective_name = (
-                product.mdl_name_override or automatic_name
-                or product.mdl_generated_name or product.name
+                (product.mdl_name_override if product.mdl_catalog_managed else "")
+                or product.mdl_automatic_name or ""
             )
 
     @api.model

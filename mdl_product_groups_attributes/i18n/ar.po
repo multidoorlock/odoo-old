@@ -960,6 +960,12 @@ msgstr "الاسم التلقائي"
 #. module: mdl_product_groups_attributes
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_product_form_final_name
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_easy_form_final_name
+msgid "Reset to the automatic name"
+msgstr "استعادة الاسم التلقائي"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_product_form_final_name
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_easy_form_final_name
 msgid "Leave empty to use the automatic name"
 msgstr "اتركه فارغًا لاستخدام الاسم التلقائي"
 

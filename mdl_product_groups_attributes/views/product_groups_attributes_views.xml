@@ -431,34 +431,40 @@
                    position="replace">
                 <label for="mdl_effective_name"
                        string="Product Name"
-                       invisible="not mdl_generated_name"/>
+                       invisible="not mdl_catalog_managed"/>
                 <label for="name"
                        string="Product Name"
-                       invisible="mdl_generated_name"/>
+                       invisible="mdl_catalog_managed"/>
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]//field[@name='name']"
                    position="replace">
-                <field name="mdl_effective_name"
-                       class="text-break"
-                       readonly="1"
-                       invisible="not mdl_generated_name"/>
+                <div class="d-flex align-items-baseline gap-2" invisible="not mdl_catalog_managed">
+                    <field name="mdl_effective_name"
+                           class="text-break flex-grow-1"
+                           widget="text"
+                           options="{'line_breaks': False}"
+                           readonly="0"/>
+                    <button name="action_mdl_reset_variant_name"
+                            type="object"
+                            icon="fa-undo"
+                            title="Reset to the automatic name"
+                            class="btn-link p-0"
+                            invisible="mdl_effective_name == mdl_automatic_name"/>
+                </div>
                 <field name="name"
                        class="text-break"
                        options="{'line_breaks': False}"
                        widget="text"
-                       invisible="mdl_generated_name"/>
+                       invisible="mdl_catalog_managed"/>
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]" position="after">
                 <field name="mdl_generated_name" invisible="1"/>
-                <group name="mdl_variant_name_override" invisible="not mdl_catalog_managed">
-                    <field name="mdl_catalog_managed" invisible="1"/>
-                    <field name="mdl_name_override" placeholder="Leave empty to use the automatic name"/>
-                    <field name="mdl_automatic_name" readonly="1"/>
-                </group>
+                <field name="mdl_catalog_managed" invisible="1"/>
+                <field name="mdl_automatic_name" invisible="1"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Technical Data"
-                      name="mdl_technical_data"
+                       name="mdl_technical_data"
                       invisible="not mdl_generated_name">
                     <group>
                         <group string="Dimensions and Weight">
@@ -490,27 +496,34 @@
                    position="replace">
                 <label for="mdl_effective_name"
                        string="Product Name"
-                       invisible="not mdl_generated_name"/>
+                       invisible="not mdl_catalog_managed"/>
                 <label for="name"
                        string="Product Name"
-                       invisible="mdl_generated_name"/>
+                       invisible="mdl_catalog_managed"/>
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]/h1/field[@name='name']"
                    position="replace">
-                <field name="mdl_effective_name"
-                       readonly="1"
-                       invisible="not mdl_generated_name"/>
+                <div class="d-flex align-items-baseline gap-2" invisible="not mdl_catalog_managed">
+                    <field name="mdl_effective_name"
+                           class="text-break flex-grow-1"
+                           widget="text"
+                           options="{'line_breaks': False}"
+                           readonly="0"/>
+                    <button name="action_mdl_reset_variant_name"
+                            type="object"
+                            icon="fa-undo"
+                            title="Reset to the automatic name"
+                            class="btn-link p-0"
+                            invisible="mdl_effective_name == mdl_automatic_name"/>
+                </div>
                 <field name="name"
                        readonly="1"
-                       invisible="mdl_generated_name"/>
+                       invisible="mdl_catalog_managed"/>
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]" position="after">
                 <field name="mdl_generated_name" invisible="1"/>
-                <group name="mdl_variant_name_override" invisible="not mdl_catalog_managed">
-                    <field name="mdl_catalog_managed" invisible="1"/>
-                    <field name="mdl_name_override" placeholder="Leave empty to use the automatic name"/>
-                    <field name="mdl_automatic_name" readonly="1"/>
-                </group>
+                <field name="mdl_catalog_managed" invisible="1"/>
+                <field name="mdl_automatic_name" invisible="1"/>
             </xpath>
         </field>
     </record>
