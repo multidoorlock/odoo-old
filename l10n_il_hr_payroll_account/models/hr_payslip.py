@@ -4,9 +4,6 @@ from decimal import Decimal, ROUND_HALF_UP
 from odoo import Command, api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
-# מצבי Payment שבהם התשלום נחשב "בוצע" ומשתתף בחישוב הסכום ששולם.
-IL_EFFECTIVE_PAYMENT_STATES = ('in_process', 'paid')
-
 IL_LEGACY_NET_COMPONENT_CODES = ('IL_NET_WEEKEND', 'IL_NET_ADDITIONAL_DAY')
 
 IL_INPUT_SNAPSHOT_FIELDS = [
@@ -57,10 +54,6 @@ class HrPayslip(models.Model):
     il_payment_count = fields.Integer(
         string='מספר תשלומים', compute='_compute_il_payment_amounts')
 
-    # Reverse relation to the unified split table, used by computed totals.
-    il_split_line_ids = fields.One2many(
-        'account.payment.split.line', 'payslip_id', string='שורות תשלום')
-
     il_visible_line_ids = fields.One2many(
         'hr.payslip.line', 'slip_id', string='חישוב שכר',
         domain=[
@@ -68,35 +61,51 @@ class HrPayslip(models.Model):
             ('code', '!=', 'IL_NET_BEFORE_DIRECT_ADJUSTMENTS'),
         ])
 
-    def unlink(self):
-        """Release payment instalments through the ORM before deleting slips.
-
-        The split-to-payslip foreign key uses ``ON DELETE SET NULL``. A raw
-        database cascade does not notify Odoo's stored computed fields, which
-        used to leave ``is_applied`` and payment remaining amounts stale after
-        a payslip was deleted. Clearing the relation explicitly makes the
-        normal dependency graph run before the payslip disappears.
-        """
-        split_lines = self.il_split_line_ids
-        if split_lines:
-            split_lines.write({'payslip_id': False})
-        return super().unlink()
-
-    # ------------------------------------------------------------------
-    # Applied amount is exactly the sum of split lines linked to this payslip.
-    # ------------------------------------------------------------------
-    @api.depends('net_wage', 'line_ids.total', 'line_ids.code',
-                 'il_split_line_ids.amount', 'il_split_line_ids.payment_id')
+    @api.depends(
+        'net_wage', 'move_id.line_ids.amount_residual',
+        'move_id.line_ids.amount_residual_currency',
+        'move_id.line_ids.reconciled',
+    )
     def _compute_il_payment_amounts(self):
         for slip in self:
-            paid = sum(slip.il_split_line_ids.mapped('amount'))
-            payments = slip.il_split_line_ids.mapped('payment_id')
-            slip.il_paid_amount = paid
-            # Payment links change independently of salary-rule computation.
-            # Always derive the live balance from NET and the current links;
-            # a stored IL_NET_TO_PAY line may reflect an older link state.
-            slip.il_net_amount_to_pay = slip.net_wage - paid
-            slip.il_payment_count = len(payments)
+            payable_lines = slip._il_salary_payable_lines()
+            residual = sum(abs(value) for value in payable_lines.mapped(
+                'amount_residual_currency'))
+            if not payable_lines or any(not line.currency_id for line in payable_lines):
+                residual = sum(abs(value) for value in payable_lines.mapped(
+                    'amount_residual'))
+            original = sum(abs(line.balance) for line in payable_lines)
+            if not payable_lines and slip.state in ('draft', 'cancel'):
+                residual = max(slip.net_wage, 0.0)
+                original = residual
+            slip.il_paid_amount = max(original - residual, 0.0)
+            slip.il_net_amount_to_pay = residual
+            slip.il_payment_count = len(slip._il_affecting_payments())
+
+    def _il_salary_payable_lines(self):
+        """Return this payslip's own Salaries Payable journal items."""
+        self.ensure_one()
+        account = self.company_id.il_employee_payment_debit_account_id
+        return self.move_id.line_ids.filtered(
+            lambda line: line.il_payslip_id == self and line.account_id == account)
+
+    def _prepare_line_values(self, line, account, date, debit, credit):
+        values = super()._prepare_line_values(line, account, date, debit, credit)
+        if line.code == 'NET':
+            for line_values in values:
+                line_values.update({
+                    'il_payslip_id': self.id,
+                    'partner_id': self.employee_id.work_contact_id.id,
+                })
+        return values
+
+    def _get_existing_lines(self, line_ids, line, account_id, debit, credit):
+        # Keep an independent payable residual for every payslip, including
+        # when the company batches several payslips in one journal entry.
+        if line.code == 'NET':
+            return iter(())
+        return super()._get_existing_lines(
+            line_ids, line, account_id, debit, credit)
 
     @api.depends('error_count', 'warning_count', 'state', 'il_net_amount_to_pay', 'currency_id')
     def _compute_state_display(self):
@@ -117,32 +126,14 @@ class HrPayslip(models.Model):
                 slip.state_display = 'overpayment'
 
     def _il_affecting_payments(self):
-        """Direct payments linked to this payslip, including their history."""
+        """Payments reached through native reconciliation, never a direct link."""
         self.ensure_one()
-        return self.il_split_line_ids.mapped('payment_id')
-
-    def _il_applied_payment_amount(self):
-        self.ensure_one()
-        return sum(self.il_split_line_ids.mapped('amount'))
-
-    def _il_sync_payment_summary_lines(self):
-        """Keep post-validation payment rows aligned with live payment links."""
-        for slip in self:
-            paid = sum(self.env['account.payment.split.line'].search([
-                ('payslip_id', '=', slip.id),
-            ]).mapped('amount'))
-            values_by_code = {
-                'IL_PAYMENTS': -paid,
-                'IL_NET_TO_PAY': slip.net_wage - paid,
-            }
-            lines = self.env['hr.payslip.line'].search([
-                ('slip_id', '=', slip.id),
-                ('code', 'in', list(values_by_code)),
-            ])
-            for line in lines:
-                value = values_by_code[line.code]
-                line.write({'amount': value, 'total': value})
-        self._il_sync_paid_state_from_balance()
+        lines = self._il_salary_payable_lines()
+        counterparts = (
+            lines.matched_debit_ids.debit_move_id
+            | lines.matched_credit_ids.credit_move_id
+        )
+        return counterparts.mapped('payment_id')
 
     def _il_sync_paid_state_from_balance(self):
         """Derive the legal paid state from the live net balance.
@@ -158,85 +149,6 @@ class HrPayslip(models.Model):
                 slip.action_payslip_paid()
             elif not is_zero and slip.state == 'paid':
                 slip.action_payslip_unpaid()
-        self._il_sync_account_move_state_from_payment_balance()
-
-    def _il_sync_account_move_state_from_payment_balance(self):
-        """Post a payroll move only when every payslip it contains is paid."""
-        moves = self.mapped('move_id')
-        for move in moves:
-            linked_slips = self.search([('move_id', '=', move.id)])
-            should_be_posted = bool(linked_slips) and all(
-                slip.state == 'paid' for slip in linked_slips)
-            if should_be_posted and move.state == 'draft':
-                move.action_post()
-            elif not should_be_posted and move.state == 'posted':
-                move.button_draft()
-
-    def _il_attach_automatic_split_lines(self):
-        """Link existing planned/no-spread instalments before Compute Sheet."""
-        Split = self.env['account.payment.split.line']
-        for slip in self:
-            partner = slip.employee_id.work_contact_id
-            if not partner:
-                continue
-            available = max(
-                slip.net_wage - slip._il_applied_payment_amount(), 0.0)
-            payments = self.env['account.payment'].search([
-                ('partner_id', '=', partner.id),
-                ('company_id', '=', slip.company_id.id),
-                ('payment_type', '=', 'outbound'),
-                ('state', 'not in', ('draft', 'canceled')),
-                ('date', '<=', slip.date_to),
-                ('il_spread_type', 'in', ('planned', 'none', 'per_payslip')),
-                ('il_remaining_amount', '>', 0),
-            ], order='date, id')
-            for payment in payments:
-                if payment.il_split_line_ids.filtered(
-                        lambda existing: existing.payslip_id == slip):
-                    continue
-                currency = (
-                    slip.currency_id
-                    or slip.company_id.currency_id
-                    or self.env.company.currency_id
-                )
-                if payment.il_spread_type == 'per_payslip':
-                    amount_to_draw = min(payment.il_remaining_amount, available)
-                    if currency.compare_amounts(amount_to_draw, 0.0) <= 0:
-                        break
-                    Split.with_context(il_system_split_create=True).create({
-                        'payment_id': payment.id,
-                        'amount': amount_to_draw,
-                        'payslip_id': slip.id,
-                    })
-                    available -= amount_to_draw
-                    continue
-                line = Split.search([
-                    ('payment_id', '=', payment.id),
-                    ('payslip_id', '=', False),
-                ], order='sequence, id', limit=1)
-                if not line:
-                    continue
-                exceeds_available = (
-                    currency.compare_amounts(line.amount, available) > 0
-                    if currency else line.amount > available
-                )
-                amount_to_draw = min(line.amount, available)
-                if currency.compare_amounts(amount_to_draw, 0.0) <= 0:
-                    break
-                if exceeds_available:
-                    remainder = line.amount - amount_to_draw
-                    payment.with_context(
-                        il_skip_spread_total_check=True,
-                        il_system_split_create=True,
-                    ).write({
-                        'il_spread_type': 'planned',
-                        'il_split_line_ids': [
-                            Command.update(line.id, {'amount': amount_to_draw}),
-                            Command.create({'amount': remainder}),
-                        ],
-                    })
-                line.payslip_id = slip
-                available -= amount_to_draw
 
     # ------------------------------------------------------------------
     # כפתור "שלם" (סעיפים 18–19 באפיון)
@@ -260,12 +172,8 @@ class HrPayslip(models.Model):
                 'default_payment_type': 'outbound',
                 'default_partner_type': 'supplier',
                 'default_amount': self.il_net_amount_to_pay,
-                'default_il_spread_type': 'none',
                 'il_employee_payment': True,
                 'il_origin_payslip_id': self.id,
-                'il_max_payment_amount': self.il_net_amount_to_pay,
-                'il_lock_immediate_spread': True,
-                'il_auto_post_on_create': True,
                 'dialog_size': 'large',
             },
         }
@@ -275,39 +183,15 @@ class HrPayslip(models.Model):
         return {
             'type': 'ir.actions.act_window',
             'name': 'תשלומים',
-            'res_model': 'account.payment.split.line',
-            'view_mode': 'list',
+            'res_model': 'account.payment',
+            'view_mode': 'list,form',
             'views': [(self.env.ref(
-                'l10n_il_hr_payroll_account.il_payslip_payment_split_line_list').id,
-                'list')],
-            'domain': [('payslip_id', '=', self.id)],
+                'l10n_il_hr_payroll_account.view_account_payment_list_employee').id,
+                'list'), (self.env.ref(
+                    'l10n_il_hr_payroll_account.view_account_payment_form_employee').id,
+                    'form')],
+            'domain': [('id', 'in', self._il_affecting_payments().ids)],
             'context': {'create': False, 'edit': False, 'delete': False},
-        }
-
-    def action_il_draw_open_payments(self):
-        self.ensure_one()
-        payments = self.env['account.payment'].search([
-            ('partner_id', '=', self.employee_id.work_contact_id.id),
-            ('company_id', '=', self.company_id.id),
-            ('payment_type', '=', 'outbound'),
-            ('state', 'not in', ('draft', 'canceled')),
-            ('il_spread_type', '=', 'per_payslip'),
-            ('il_remaining_amount', '>', 0),
-        ], order='date, id')
-        payments = payments.filtered(
-            lambda payment: not payment.il_split_line_ids.filtered(
-                lambda line: line.payslip_id == self))
-        wizard = self.env['hr.payslip.payment.draw.wizard'].create({
-            'payslip_id': self.id,
-            'line_ids': [Command.create({'payment_id': payment.id}) for payment in payments],
-        })
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'משיכת תשלומים פתוחים',
-            'res_model': 'hr.payslip.payment.draw.wizard',
-            'res_id': wizard.id,
-            'view_mode': 'form',
-            'target': 'new',
         }
 
     # ------------------------------------------------------------------
@@ -373,7 +257,11 @@ class HrPayslip(models.Model):
                 for line in slip.input_line_ids.filtered('il_salary_attachment_id'):
                     amount = abs(line.il_original_amount or line.amount)
                     if amount:
-                        line.il_salary_attachment_id.record_payment(sign * amount)
+                        payment_dates = slip._il_affecting_payments().mapped('date')
+                        effective_date = max([slip.date_to, *payment_dates])
+                        line.il_salary_attachment_id.with_context(
+                            il_payroll_payment_date=effective_date,
+                        ).record_payment(sign * amount)
         return res
 
     # ==================================================================
@@ -618,7 +506,7 @@ class HrPayslip(models.Model):
         """Remove stale accounting entries before a draft slip is recomputed.
 
         The custom workflow allows a validated or paid payslip to return
-        directly to draft while its employee payments remain linked.  Native
+        directly to draft while its accounting history remains available. Native
         Odoo only exposes that transition after cancellation, where the
         accounting move has already been removed or reversed.  Keeping the
         old move here prevents ``_action_create_account_move`` from creating
@@ -668,7 +556,6 @@ class HrPayslip(models.Model):
         result = super().action_payslip_done()
         self.mapped('line_ids')._compute_il_hide_redundant_base()
         validated_slips = self.filtered(lambda slip: slip.state == 'validated')
-        validated_slips._il_attach_automatic_split_lines()
         validated_slips._il_check_nonnegative_net_to_pay()
         validated_slips._il_sync_paid_state_from_balance()
         return result

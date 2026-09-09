@@ -6,7 +6,7 @@ Run while the normal Odoo service is stopped::
         l10n_il_hr_payroll_account/scripts/reset_duplicated_payroll_modules.py
 
 Take a PostgreSQL backup first.  The script deliberately refuses to run when
-it finds payslips, payroll payment split lines, salary adjustments, or an
+it finds payslips, salary adjustments, or an
 unexpected installed module which depends on one of the payroll modules.
 
 Employees and ``hr.attendance`` rows are standard Odoo business records.  The
@@ -51,8 +51,6 @@ print('Payroll module state before reset:', module_summary(modules))
 # transactions.  It is safer to stop than to guess when production data exists.
 protected_counts = {
     'hr.payslip': count_if_loaded('hr.payslip'),
-    'account.payment.split.line': count_if_loaded(
-        'account.payment.split.line'),
     'hr.salary.attachment': count_if_loaded('hr.salary.attachment'),
 }
 nonempty = {

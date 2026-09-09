@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_il_masav_export_wizard_form" model="ir.ui.view">
+        <field name="name">il.masav.export.wizard.form</field>
+        <field name="model">il.masav.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="יצירת קובץ מס״ב">
+                <group>
+                    <field name="batch_payment_id"/>
+                    <field name="company_id"/>
+                    <field name="payment_date"/>
+                </group>
+                <field name="line_ids" nolabel="1">
+                    <list create="0" delete="0" editable="bottom">
+                        <field name="selected"/>
+                        <field name="payment_id"/>
+                        <field name="partner_id"/>
+                        <field name="date"/>
+                        <field name="partner_bank_id"/>
+                        <field name="amount" sum="סה״כ"/>
+                        <field name="currency_id" column_invisible="True"/>
+                        <field name="state" widget="badge"/>
+                    </list>
+                </field>
+                <field name="file_data" filename="filename" invisible="not file_data"/>
+                <field name="filename" invisible="1"/>
+                <footer>
+                    <button name="action_generate" type="object"
+                            string="יצירת קובץ מס״ב" class="btn-primary"/>
+                    <button string="ביטול" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

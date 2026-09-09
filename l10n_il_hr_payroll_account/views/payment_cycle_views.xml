@@ -7,7 +7,7 @@
             <list string="סוגי מחזורי תשלומים">
                 <field name="name"/>
                 <field name="recurrence"/>
-                <field name="cancel_payments"/>
+                <field name="payment_state"/>
                 <field name="batch_payment_count" string="מחזורים"/>
             </list>
         </field>
@@ -27,7 +27,7 @@
                     <group>
                         <field name="name"/>
                         <field name="recurrence"/>
-                        <field name="cancel_payments"/>
+                        <field name="payment_state"/>
                     </group>
                     <notebook>
                         <page string="מחזורי תשלומים" invisible="not id">
@@ -64,7 +64,7 @@
                             string="חדש" class="btn-primary" display="always"/>
                 </header>
                 <field name="name"/>
-                <field name="il_payment_cycle_type_id"/>
+                <field name="il_payment_cycle_type_ids" widget="many2many_tags"/>
                 <field name="date"/>
                 <field name="journal_id"/>
                 <field name="payment_method_id"/>
@@ -79,8 +79,13 @@
         <field name="model">account.batch.payment</field>
         <field name="inherit_id" ref="account_batch_payment.view_batch_payment_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_il_create_masav_file" type="object"
+                        string="יצירת קובץ מס״ב" class="btn-primary"
+                        invisible="not il_payment_cycle_type_ids"/>
+            </xpath>
             <field name="batch_type" position="after">
-                <field name="il_payment_cycle_type_id" readonly="payment_ids"/>
+                <field name="il_payment_cycle_type_ids" widget="many2many_tags" readonly="payment_ids"/>
             </field>
         </field>
     </record>
@@ -90,7 +95,7 @@
         <field name="res_model">account.batch.payment</field>
         <field name="view_mode">list,form</field>
         <field name="view_id" ref="view_il_payment_cycle_batch_list"/>
-        <field name="domain">[('il_payment_cycle_type_id', '!=', False)]</field>
+        <field name="domain">[('il_payment_cycle_type_ids', '!=', False)]</field>
         <field name="context">{'default_batch_type': 'outbound'}</field>
     </record>
 </odoo>

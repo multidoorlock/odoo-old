@@ -12,6 +12,15 @@ class ResCompany(models.Model):
         'account.account', string='חשבון זכות לתשלומי עובד',
         check_company=True)
 
+    il_masav_institution_number = fields.Char(
+        string='מספר מוסד / נושא במס״ב', size=8)
+    il_masav_sender_number = fields.Char(
+        string='מספר מוסד שולח במס״ב', size=5)
+    il_masav_hebrew_code = fields.Selection([
+        ('b', 'קוד עברי ב׳'),
+        ('a', 'קוד עברי א׳'),
+    ], string='קידוד עברית במס״ב', default='b', required=True)
+
     def _il_enable_employee_payment_account_reconciliation(self):
         accounts = (
             self.mapped('il_employee_payment_debit_account_id')

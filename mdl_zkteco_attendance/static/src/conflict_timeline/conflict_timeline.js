@@ -117,11 +117,12 @@ export class AttendanceConnector extends Component {
             measured: false,
             width: 0,
             height: 0,
+            left: 0,
+            top: 0,
+            rectWidth: 0,
+            rectHeight: 0,
             x1: 0,
-            y1: 0,
             x2: 0,
-            y2: 0,
-            path: "",
         });
         onMounted(() => this._scheduleGeometryMeasurement());
         onPatched(() => this._scheduleGeometryMeasurement());
@@ -154,19 +155,11 @@ export class AttendanceConnector extends Component {
             return;
         }
         const itemContainer = root.closest(".o_gantt_cells") || document;
-        let fromElement = null;
-        let toElement = null;
-        for (const element of itemContainer.querySelectorAll("[data-mdl-timeline-item-id]")) {
-            if (element.dataset.mdlTimelineItemId === String(this.props.connection.fromId)) {
-                fromElement = element;
-            }
-            if (element.dataset.mdlTimelineItemId === String(this.props.connection.toId)) {
-                toElement = element;
-            }
-            if (fromElement && toElement) {
-                break;
-            }
-        }
+        const findItemElement = (itemId) => itemContainer.querySelector(
+            `[data-mdl-timeline-item-id="${CSS.escape(String(itemId))}"]`
+        );
+        const fromElement = findItemElement(this.props.connection.fromId);
+        const toElement = findItemElement(this.props.connection.toId);
         if (!fromElement || !toElement) {
             return;
         }
@@ -174,25 +167,21 @@ export class AttendanceConnector extends Component {
         const rootRect = root.getBoundingClientRect();
         const fromRect = fromElement.getBoundingClientRect();
         const toRect = toElement.getBoundingClientRect();
-        const fromCenterX = (fromRect.left + fromRect.right) / 2;
-        const toCenterX = (toRect.left + toRect.right) / 2;
-        const direction = Math.sign(toCenterX - fromCenterX) || 1;
-        const x1 = (direction > 0 ? fromRect.right : fromRect.left) - rootRect.left;
-        const x2 = (direction > 0 ? toRect.left : toRect.right) - rootRect.left;
-        const y1 = (fromRect.top + fromRect.bottom) / 2 - rootRect.top;
-        const y2 = (toRect.top + toRect.bottom) / 2 - rootRect.top;
         const nextGeometry = {
             measured: true,
             width: Math.max(1, rootRect.width),
             height: Math.max(1, rootRect.height),
-            x1,
-            y1,
-            x2,
-            y2,
-            path: `M ${x1} ${y1} L ${x2} ${y2}`,
+            left: Math.min(fromRect.left, toRect.left) - rootRect.left,
+            top: Math.min(fromRect.top, toRect.top) - rootRect.top,
+            rectWidth: Math.max(fromRect.right, toRect.right)
+                - Math.min(fromRect.left, toRect.left),
+            rectHeight: Math.max(fromRect.bottom, toRect.bottom)
+                - Math.min(fromRect.top, toRect.top),
+            x1: (fromRect.left + fromRect.right) / 2 - rootRect.left,
+            x2: (toRect.left + toRect.right) / 2 - rootRect.left,
         };
         const geometryChanged = !this.measuredGeometry.measured
-            || ["width", "height", "x1", "y1", "x2", "y2"].some(
+            || ["width", "height", "left", "top", "rectWidth", "rectHeight", "x1", "x2"].some(
                 (key) => Math.abs(this.measuredGeometry[key] - nextGeometry[key]) > 0.25
             );
         if (geometryChanged) {
@@ -277,8 +266,12 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
     setup() {
         super.setup();
+        this._timelineRendererDestroyed = false;
         this.contextMenuState = useState({ menu: null });
         this.interactionState = useState({ selectedIds: [], drag: null });
+        onWillUnmount(() => {
+            this._timelineRendererDestroyed = true;
+        });
         useExternalListener(window, "click", () => {
             this.contextMenuState.menu = null;
         });
@@ -482,9 +475,13 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             for (const connection of connections) {
                 const fromIndex = itemIndexById.get(connection.fromItem.id);
                 const toIndex = itemIndexById.get(connection.toItem.id);
-                // A connector is a visual statement that two direct neighbours
-                // belong together.  Never draw it across a third event.
-                if (Math.abs(fromIndex - toIndex) !== 1) {
+                // Automatic neighbour suggestions may only join direct
+                // neighbours. A real attendance pair remains authoritative even
+                // when a conflicting event falls chronologically between it.
+                if (
+                    connection.pair_type !== "attendance"
+                    && Math.abs(fromIndex - toIndex) !== 1
+                ) {
                     continue;
                 }
                 if (
@@ -495,16 +492,38 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                 }
                 connectedItemIds.add(connection.fromItem.id);
                 connectedItemIds.add(connection.toItem.id);
+                connection.fromItem.paired = true;
+                connection.toItem.paired = true;
                 usableConnections.push(connection);
             }
             // Keep every event on the employee's single timeline row. Close
             // timestamps are packed horizontally inside an expanded time
             // column, with the same minimum gap whether or not they are linked.
             this._packItemsInsideTimeBuckets(items, metrics, globalStart);
-            for (const item of items) {
-                item.visualLane = 0;
+            const interveningItemIds = new Set();
+            for (const connection of usableConnections) {
+                if (connection.pair_type !== "attendance") {
+                    continue;
+                }
+                const fromIndex = itemIndexById.get(connection.fromItem.id);
+                const toIndex = itemIndexById.get(connection.toItem.id);
+                const firstIndex = Math.min(fromIndex, toIndex);
+                const lastIndex = Math.max(fromIndex, toIndex);
+                for (let index = firstIndex + 1; index < lastIndex; index++) {
+                    const item = items[index];
+                    if (!connectedItemIds.has(item.id)) {
+                        interveningItemIds.add(item.id);
+                    }
+                }
             }
-            const laneCount = 1;
+            const hasInterveningItems = interveningItemIds.size > 0;
+            for (const item of items) {
+                // Only an unpaired event inside a real pair is lifted. All
+                // ordinary close neighbours continue to share the same row.
+                item.visualLane = hasInterveningItems
+                    && !interveningItemIds.has(item.id) ? 1 : 0;
+            }
+            const laneCount = hasInterveningItems ? 2 : 1;
             this._timelineRowsByEmployee.set(Number(sourceRow.employee_id), {
                 ...sourceRow,
                 items,
@@ -854,7 +873,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     "mdl.attendance.device.event", "timeline_move_event",
                     [drag.eventId, drag.employeeId, serializeDateTime(drag.datetime)]
                 );
-                await this.model.fetchData();
+                await this._refreshTimelineIfAlive();
             }
             return;
         }
@@ -901,8 +920,10 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     "mdl.attendance.device.event", "timeline_delete_items",
                     [eventIds, attendanceIds]
                 );
-                this.interactionState.selectedIds = [];
-                await this.model.fetchData();
+                if (!this._timelineRendererDestroyed) {
+                    this.interactionState.selectedIds = [];
+                }
+                await this._refreshTimelineIfAlive();
             },
         });
     }
@@ -1014,22 +1035,13 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             firstColumn, toPosition.column, this.cellPartWidth
         ).distance + toPosition.offset;
         const isRtl = localization.direction === "rtl";
-        let x1 = isRtl ? width - logicalFrom : logicalFrom;
-        let x2 = isRtl ? width - logicalTo : logicalTo;
+        const x1 = isRtl ? width - logicalFrom : logicalFrom;
+        const x2 = isRtl ? width - logicalTo : logicalTo;
         const { metrics } = timelineRow;
-        const y1 = metrics.top
-            + (connection.fromItem.visualLane || 0) * (metrics.height + MIN_TILE_GAP)
-            + metrics.height / 2;
-        const y2 = metrics.top
-            + (connection.toItem.visualLane || 0) * (metrics.height + MIN_TILE_GAP)
-            + metrics.height / 2;
-        const direction = Math.sign(x2 - x1) || 1;
-        if (Math.abs(x2 - x1) >= metrics.width) {
-            x1 += direction * (metrics.width / 2);
-            x2 -= direction * (metrics.width / 2);
-        }
-
-        const path = `M ${x1} ${y1} L ${x2} ${y2}`;
+        const top = metrics.top + Math.min(
+            connection.fromItem.visualLane || 0,
+            connection.toItem.visualLane || 0,
+        ) * (metrics.height + MIN_TILE_GAP);
 
         const safeId = String(connection.id).replace(/[^a-zA-Z0-9_-]/g, "_");
         const [rowStart, rowStop] = row.grid.row;
@@ -1041,11 +1053,12 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             }),
             width,
             height: timelineRow.rowHeight,
+            left: Math.min(x1, x2) - metrics.width / 2,
+            top,
+            rectWidth: Math.abs(x2 - x1) + metrics.width,
+            rectHeight: metrics.height,
             x1,
-            y1,
             x2,
-            y2,
-            path,
             fromId: connection.fromItem.id,
             toId: connection.toItem.id,
             fromColor: COLOR_BY_VARIANT[connection.fromItem.variant],
@@ -1070,9 +1083,12 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                 [eventId, false]
             );
             await this.actionService.doAction(actionData, {
-                onClose: () => this.model.fetchData(),
+                onClose: () => this._refreshTimelineIfAlive(),
             });
         } catch (error) {
+            if (this._timelineRendererDestroyed) {
+                return;
+            }
             const message = error.data?.message || error.message || _t("לא ניתן לפתוח את הרשומה.");
             this.notificationService.add(message, { type: "danger", sticky: true });
         }
@@ -1128,7 +1144,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     [action.employee_id, "in", action.event_datetime, false]
                 );
                 await this.actionService.doAction(actionData, {
-                    onClose: () => this.model.fetchData(),
+                    onClose: () => this._refreshTimelineIfAlive(),
                 });
                 return;
             }
@@ -1142,7 +1158,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     [action.attendance_id]
                 );
                 await this.actionService.doAction(actionData, {
-                    onClose: () => this.model.fetchData(),
+                    onClose: () => this._refreshTimelineIfAlive(),
                 });
                 return;
             }
@@ -1168,8 +1184,11 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     [action.event_ids]
                 );
             }
-            await this.model.fetchData();
+            await this._refreshTimelineIfAlive();
         } catch (error) {
+            if (this._timelineRendererDestroyed) {
+                return;
+            }
             const message = error.data?.message || error.message || _t("הפעולה נכשלה.");
             this.notificationService.add(message, { type: "danger", sticky: true });
         }
@@ -1180,6 +1199,21 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             this.notificationService.add(result.message, { type: "danger", sticky: true });
         } else {
             this.notificationService.add(successMessage, { type: "success" });
+        }
+    }
+
+    async _refreshTimelineIfAlive() {
+        if (this._timelineRendererDestroyed) {
+            return;
+        }
+        try {
+            await this.model.fetchData();
+        } catch (error) {
+            // Odoo may destroy the underlying action while its dialog is
+            // closing. In that case there is no timeline left to refresh.
+            if (!this._timelineRendererDestroyed) {
+                throw error;
+            }
         }
     }
 }

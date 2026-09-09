@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import Command, api, fields, models, _
+from odoo.exceptions import UserError
 
 
 class IlPaymentCycleType(models.Model):
@@ -18,9 +19,15 @@ class IlPaymentCycleType(models.Model):
         ('half_year', 'חצי שנה'),
         ('year', 'שנה'),
     ], string='חזרה', required=True, default='month')
-    cancel_payments = fields.Boolean(string='ביטול תשלומים')
-    batch_payment_ids = fields.One2many(
-        'account.batch.payment', 'il_payment_cycle_type_id', string='מחזורי תשלומים')
+    payment_state = fields.Selection([
+        ('draft', 'טיוטה'),
+        ('canceled', 'בוטל'),
+        ('paid', 'שולם'),
+        ('in_process', 'בביצוע'),
+    ], string='סטטוס תשלום ביצירה', required=True, default='in_process')
+    batch_payment_ids = fields.Many2many(
+        'account.batch.payment', 'il_batch_payment_cycle_type_rel',
+        'cycle_type_id', 'batch_payment_id', string='מחזורי תשלומים')
     batch_payment_count = fields.Integer(compute='_compute_batch_payment_count')
 
     @api.depends('batch_payment_ids')
@@ -32,8 +39,8 @@ class IlPaymentCycleType(models.Model):
         self.ensure_one()
         action = self.env['ir.actions.actions']._for_xml_id(
             'l10n_il_hr_payroll_account.action_il_payment_cycles')
-        action['domain'] = [('il_payment_cycle_type_id', '=', self.id)]
-        action['context'] = {'search_default_il_payment_cycle_type_id': self.id}
+        action['domain'] = [('il_payment_cycle_type_ids', 'in', self.id)]
+        action['context'] = {'search_default_il_payment_cycle_type_ids': self.id}
         return action
 
 
@@ -66,6 +73,31 @@ class HrEmployee(models.Model):
 class AccountBatchPayment(models.Model):
     _inherit = 'account.batch.payment'
 
-    il_payment_cycle_type_id = fields.Many2one(
-        'il.payment.cycle.type', string='סוג מחזור תשלום',
-        ondelete='restrict', index=True, copy=False)
+    il_payment_cycle_type_ids = fields.Many2many(
+        'il.payment.cycle.type', 'il_batch_payment_cycle_type_rel',
+        'batch_payment_id', 'cycle_type_id', string='סוגי מחזור תשלום',
+        copy=False)
+
+    def action_il_create_masav_file(self):
+        self.ensure_one()
+        payments = self.payment_ids.filtered(
+            lambda payment: payment.state in ('in_process', 'paid'))
+        if not payments:
+            raise UserError(_(
+                'אין במחזור תשלומים בסטטוס לביצוע או שולם ליצירת קובץ מס״ב.'
+            ))
+        wizard = self.env['il.masav.export.wizard'].create({
+            'batch_payment_id': self.id,
+            'line_ids': [
+                Command.create({'payment_id': payment.id, 'selected': True})
+                for payment in payments
+            ],
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('יצירת קובץ מס״ב'),
+            'res_model': 'il.masav.export.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
