@@ -2,6 +2,21 @@
 // left-to-right and right-to-left languages. Logical properties are used so
 // the same rules work for every installed language.
 .o_form_view {
+    // Fill the native title row, including when it also contains a favorite star.
+    .o_mdl_variant_name {
+        flex: 1 1 0%;
+        min-inline-size: 0;
+
+        > .o_field_widget {
+            flex: 1 1 0%;
+            min-inline-size: 0;
+        }
+
+        > button {
+            flex: 0 0 auto;
+        }
+    }
+
     .o_mdl_catalog_setup,
     .o_mdl_catalog_status {
         margin-block: 1rem;

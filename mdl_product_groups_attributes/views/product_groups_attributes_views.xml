@@ -438,7 +438,7 @@
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]//field[@name='name']"
                    position="replace">
-                <div class="d-flex align-items-baseline gap-2" invisible="not mdl_catalog_managed">
+                <div class="o_mdl_variant_name d-flex align-items-baseline gap-2" invisible="not mdl_catalog_managed">
                     <field name="mdl_effective_name"
                            class="text-break flex-grow-1"
                            widget="text"
@@ -503,7 +503,7 @@
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]/h1/field[@name='name']"
                    position="replace">
-                <div class="d-flex align-items-baseline gap-2" invisible="not mdl_catalog_managed">
+                <div class="o_mdl_variant_name d-flex align-items-baseline gap-2" invisible="not mdl_catalog_managed">
                     <field name="mdl_effective_name"
                            class="text-break flex-grow-1"
                            widget="text"
