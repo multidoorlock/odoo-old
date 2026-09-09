@@ -3,3 +3,4 @@ from . import test_hook_hardening
 from . import test_native_copy_hardening
 from . import test_variant_lifecycle_hardening
 from . import test_variant_form
+from . import test_variant_name_override

@@ -402,6 +402,7 @@ msgstr "אפשר רק את השילוב"
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_effective_name
 msgid "Product Name"
 msgstr "שם הפריט"
 
@@ -939,3 +940,54 @@ msgstr "הווריאנט הזה"
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
 msgid "These vendor prices apply to all variants, subject to quantity, validity dates, and company. Edit them on the Product Template."
 msgstr "מחירי ספקים אלה חלים על כל הווריאנטים, בכפוף לכמות, לתאריכי התוקף ולחברה. ניתן לערוך אותם בתבנית המוצר."
+
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_name_overrides
+msgid "Product Name Overrides (Technical)"
+msgstr "שמות מותאמים לפריט (טכני)"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_name_override
+msgid "Custom Name in This Language"
+msgstr "שם מותאם בשפה זו"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_automatic_name
+msgid "Automatic Name"
+msgstr "שם אוטומטי"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_product_form_final_name
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_easy_form_final_name
+msgid "Leave empty to use the automatic name"
+msgstr "השאר ריק כדי להשתמש בשם האוטומטי"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_product__mdl_name_override
+msgid "Optional name for this variant in the current language. Use the language button to edit other languages. Clear a language to use its automatic name. The SKU and other variants are unchanged."
+msgstr "שם חלופי לווריאנט הזה בשפה הנוכחית. לחץ על כפתור השפה לעריכת שפות נוספות. רוקן שפה כדי לחזור לשם האוטומטי שלה. המק״ט והווריאנטים האחרים אינם משתנים."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
+msgid "Product name overrides must contain valid language codes and non-empty names."
+msgstr "שמות מותאמים חייבים לכלול קודי שפה תקינים ושמות שאינם ריקים."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
+msgid "Product name translations must be a language-to-name mapping."
+msgstr "תרגומי שם הפריט חייבים להיות מיפוי של שפה לשם."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
+msgid "Activate the language before adding a product name override."
+msgstr "יש להפעיל את השפה לפני הוספת שם מותאם."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
+msgid "A product name override must be text."
+msgstr "שם מותאם לפריט חייב להיות טקסט."

@@ -1911,7 +1911,7 @@ class ProductTemplate(models.Model):
         variant_domain = Domain.OR(
             [
                 Domain("default_code", operator, name),
-                Domain("mdl_generated_name", operator, name),
+                Domain("mdl_effective_name", operator, name),
             ]
         )
         extra_domain = Domain(domain or Domain.TRUE)

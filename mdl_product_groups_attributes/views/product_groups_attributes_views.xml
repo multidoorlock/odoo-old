@@ -429,7 +429,7 @@
         <field name="arch" type="xml">
             <xpath expr="//div[hasclass('oe_title')]/label[@for='name']"
                    position="replace">
-                <label for="mdl_generated_name"
+                <label for="mdl_effective_name"
                        string="Product Name"
                        invisible="not mdl_generated_name"/>
                 <label for="name"
@@ -438,7 +438,7 @@
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]//field[@name='name']"
                    position="replace">
-                <field name="mdl_generated_name"
+                <field name="mdl_effective_name"
                        class="text-break"
                        readonly="1"
                        invisible="not mdl_generated_name"/>
@@ -447,6 +447,14 @@
                        options="{'line_breaks': False}"
                        widget="text"
                        invisible="mdl_generated_name"/>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]" position="after">
+                <field name="mdl_generated_name" invisible="1"/>
+                <group name="mdl_variant_name_override" invisible="not mdl_catalog_managed">
+                    <field name="mdl_catalog_managed" invisible="1"/>
+                    <field name="mdl_name_override" placeholder="Leave empty to use the automatic name"/>
+                    <field name="mdl_automatic_name" readonly="1"/>
+                </group>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Technical Data"
@@ -480,7 +488,7 @@
         <field name="arch" type="xml">
             <xpath expr="//div[hasclass('oe_title')]/label[@for='name']"
                    position="replace">
-                <label for="mdl_generated_name"
+                <label for="mdl_effective_name"
                        string="Product Name"
                        invisible="not mdl_generated_name"/>
                 <label for="name"
@@ -489,12 +497,20 @@
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]/h1/field[@name='name']"
                    position="replace">
-                <field name="mdl_generated_name"
+                <field name="mdl_effective_name"
                        readonly="1"
                        invisible="not mdl_generated_name"/>
                 <field name="name"
                        readonly="1"
                        invisible="mdl_generated_name"/>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]" position="after">
+                <field name="mdl_generated_name" invisible="1"/>
+                <group name="mdl_variant_name_override" invisible="not mdl_catalog_managed">
+                    <field name="mdl_catalog_managed" invisible="1"/>
+                    <field name="mdl_name_override" placeholder="Leave empty to use the automatic name"/>
+                    <field name="mdl_automatic_name" readonly="1"/>
+                </group>
             </xpath>
         </field>
     </record>
@@ -504,12 +520,14 @@
         <field name="model">product.product</field>
         <field name="inherit_id" ref="product.product_search_form_view"/>
         <field name="arch" type="xml">
+            <field name="name" position="attributes">
+                <attribute name="filter_domain">['|', '|', '|', ('default_code', 'ilike', self), ('name', 'ilike', self), ('barcode', 'ilike', self), ('mdl_effective_name', 'ilike', self)]</attribute>
+            </field>
             <field name="name" position="after">
-                <field name="mdl_generated_name" string="Product Name"/>
+                <field name="mdl_effective_name" string="Product Name"/>
                 <field name="mdl_max_protected_area_m2"/>
                 <field name="mdl_installation_type"/>
             </field>
         </field>
     </record>
 </odoo>
-

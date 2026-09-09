@@ -65,6 +65,8 @@ class ProductProduct(models.Model):
         ),
     )
 
+    @api.depends("display_name")
+    @api.depends_context("lang")
     def _compute_mdl_variant_list_name(self):
         for product in self:
             product.mdl_variant_list_name = product.with_context(
@@ -166,7 +168,7 @@ class ProductProduct(models.Model):
         if remaining == 0:
             return results
         extra_domain = Domain(domain or Domain.TRUE)
-        extra_domain &= Domain("mdl_generated_name", operator, name)
+        extra_domain &= Domain("mdl_effective_name", operator, name)
         if existing_ids:
             extra_domain &= Domain("id", "not in", existing_ids)
         extra_products = self.search(extra_domain, limit=remaining)
@@ -179,6 +181,7 @@ class ProductProduct(models.Model):
         "default_code",
         "product_tmpl_id",
         "mdl_generated_name",
+        "mdl_name_overrides",
         "product_tmpl_id.mdl_catalog_managed",
         "product_tmpl_id.mdl_sku_prefix",
     )
@@ -247,7 +250,10 @@ class ProductProduct(models.Model):
                     product.product_template_attribute_value_ids
                 )
             )
-            final_name = generated_name or product.mdl_generated_name
+            final_name = (
+                product.mdl_name_override or generated_name
+                or product.mdl_generated_name
+            )
             final_sku = (
                 generated_sku
                 if generated_sku and not missing
