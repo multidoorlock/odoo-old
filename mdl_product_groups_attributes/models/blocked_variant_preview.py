@@ -8,21 +8,21 @@ class MdlBlockedVariantPreview(models.TransientModel):
 
     product_tmpl_id = fields.Many2one(
         "product.template",
-        string="קבוצת פריטים",
+        string="Product Group",
         required=True,
         readonly=True,
         index=True,
     )
     final_sku = fields.Char(
-        string="מק״ט סופי",
+        string="Final SKU",
         readonly=True,
     )
     final_name = fields.Char(
-        string="שם פריט סופי",
+        string="Final Product Name",
         readonly=True,
     )
     attribute_values = fields.Char(
-        string="ערכי מאפיינים",
+        string="Attribute Values",
         readonly=True,
     )
 
@@ -116,3 +116,4 @@ class MdlBlockedVariantPreview(models.TransientModel):
                 }
             )
         return self.create(rows)
+

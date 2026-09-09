@@ -14,56 +14,59 @@ class ProductProduct(models.Model):
     _inherit = "product.product"
 
     mdl_max_protected_area_m2 = fields.Float(
-        string="שטח מוגן מרבי (מ״ר)",
-        help="נתון טכני של הפריט; אינו יוצר וריאנטים חדשים.",
+        string="Maximum Protected Area (m²)",
+        help="Technical product data; it does not create variants.",
     )
     mdl_installation_type = fields.Selection(
         selection=[
-            ("overhead", "עילית"),
-            ("concealed", "סמויה"),
-            ("other", "אחר"),
+            ("overhead", "Overhead"),
+            ("concealed", "Concealed"),
+            ("other", "Other"),
         ],
-        string="סוג התקנה",
-        help="נתון טכני של הפריט; אינו חלק משם המוצר.",
+        string="Installation Type",
+        help="Technical product data; it is not part of the product name.",
     )
     mdl_length_cm = fields.Float(
-        string="אורך (ס״מ)",
-        help="אורך הפריט בסנטימטרים.",
+        string="Length (cm)",
+        help="Product length in centimetres.",
     )
     mdl_width_cm = fields.Float(
-        string="רוחב (ס״מ)",
-        help="רוחב הפריט בסנטימטרים.",
+        string="Width (cm)",
+        help="Product width in centimetres.",
     )
     mdl_height_cm = fields.Float(
-        string="גובה (ס״מ)",
-        help="גובה הפריט בסנטימטרים.",
+        string="Height (cm)",
+        help="Product height in centimetres.",
     )
 
     mdl_catalog_allowed = fields.Boolean(
-        string="שילוב קטלוג מותר (טכני)",
+        string="Catalog Combination Allowed (Technical)",
         default=True,
         index=True,
         copy=False,
         help=(
-            "שדה טכני לנתונים מוסבים שבהם כלל השילוב אינו ניתן לביטוי "
-            "באמצעות ההחרגות הזוגיות של Odoo."
+            "Technical compatibility field for migrated data whose rule "
+            "cannot be represented by Odoo's native pair exclusions."
         ),
     )
     mdl_generated_name = fields.Char(
-        string="שם הפריט",
+        string="Generated Product Name (Technical)",
         compute="_compute_mdl_catalog_values",
         store=True,
+        translate=True,
         index="trigram",
     )
     mdl_variant_list_name = fields.Char(
-        string="שם פריט ברשימה (טכני)",
+        string="Product List Name (Technical)",
         compute="_compute_mdl_variant_list_name",
         help=(
-            "שם התצוגה של Odoo ללא המק״ט הפנימי, המשמש ברשימת "
-            "הווריאנטים שבה המק״ט כבר מופיע בעמודה נפרדת."
+            "Odoo's display name without the Internal Reference, used where "
+            "the variant list already shows the SKU in a separate column."
         ),
     )
 
+    @api.depends("display_name")
+    @api.depends_context("lang")
     def _compute_mdl_variant_list_name(self):
         for product in self:
             product.mdl_variant_list_name = product.with_context(
@@ -165,7 +168,7 @@ class ProductProduct(models.Model):
         if remaining == 0:
             return results
         extra_domain = Domain(domain or Domain.TRUE)
-        extra_domain &= Domain("mdl_generated_name", operator, name)
+        extra_domain &= Domain("mdl_effective_name", operator, name)
         if existing_ids:
             extra_domain &= Domain("id", "not in", existing_ids)
         extra_products = self.search(extra_domain, limit=remaining)
@@ -178,6 +181,7 @@ class ProductProduct(models.Model):
         "default_code",
         "product_tmpl_id",
         "mdl_generated_name",
+        "mdl_name_overrides",
         "product_tmpl_id.mdl_catalog_managed",
         "product_tmpl_id.mdl_sku_prefix",
     )
@@ -246,7 +250,10 @@ class ProductProduct(models.Model):
                     product.product_template_attribute_value_ids
                 )
             )
-            final_name = generated_name or product.mdl_generated_name
+            final_name = (
+                product.mdl_name_override or generated_name
+                or product.mdl_generated_name
+            )
             final_sku = (
                 generated_sku
                 if generated_sku and not missing
@@ -270,7 +277,9 @@ class ProductProduct(models.Model):
                     display_format or DEFAULT_VARIANT_DISPLAY_FORMAT,
                     {
                         "שם הפריט": final_name,
+                        "Product Name": final_name,
                         "מק״ט": ltr_isolate(f"[{final_sku}]"),
+                        "SKU": ltr_isolate(f"[{final_sku}]"),
                     },
                 )
                 product.display_name = (
@@ -280,4 +289,3 @@ class ProductProduct(models.Model):
                 )
             else:
                 product.display_name = final_name
-

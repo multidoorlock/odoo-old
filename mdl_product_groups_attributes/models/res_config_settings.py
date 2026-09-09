@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 from .catalog_utils import (
@@ -15,16 +15,17 @@ class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
     mdl_variant_display_format = fields.Char(
-        string="פורמט תצוגת פריט",
+        string="Product Display Format",
         config_parameter=VARIANT_DISPLAY_FORMAT_PARAM,
         default=DEFAULT_VARIANT_DISPLAY_FORMAT,
         help=(
-            "פורמט אחיד להצגת וריאנטים בחיפוש ובמסמכים. "
-            "המציינים הזמינים הם [מק״ט] ו-[שם הפריט]."
+            "A single format for variants in search results and documents. "
+            "Use [SKU] and [Product Name]; the existing Hebrew tokens remain "
+            "supported for backward compatibility."
         ),
     )
     mdl_variant_display_example = fields.Char(
-        string="דוגמת תצוגה",
+        string="Display Example",
         compute="_compute_mdl_variant_display_example",
     )
 
@@ -36,7 +37,9 @@ class ResConfigSettings(models.TransientModel):
                 or DEFAULT_VARIANT_DISPLAY_FORMAT,
                 {
                     "מק״ט": ltr_isolate("[1001110020]"),
-                    "שם הפריט": "דלת הדף מוסדית שמאל 100/20 L",
+                    "SKU": ltr_isolate("[1001110020]"),
+                    "שם הפריט": _("Institutional blast door left 100/20 L"),
+                    "Product Name": _("Institutional blast door left 100/20 L"),
                 },
             )
             settings.mdl_variant_display_example = example
@@ -45,7 +48,9 @@ class ResConfigSettings(models.TransientModel):
     def _check_mdl_variant_display_format(self):
         allowed_tokens = {
             normalize_token("מק״ט"),
+            normalize_token("SKU"),
             normalize_token("שם הפריט"),
+            normalize_token("Product Name"),
         }
         for settings in self:
             tokens = {
@@ -54,9 +59,17 @@ class ResConfigSettings(models.TransientModel):
             }
             if tokens - allowed_tokens:
                 raise ValidationError(
-                    "בפורמט התצוגה ניתן להשתמש רק ב-[מק״ט] וב-[שם הפריט]."
+                    _(
+                        "The display format may only use [SKU], [Product Name], "
+                        "[מק״ט], and [שם הפריט]."
+                    )
                 )
-            if normalize_token("שם הפריט") not in tokens:
+            name_tokens = {
+                normalize_token("שם הפריט"),
+                normalize_token("Product Name"),
+            }
+            if not tokens.intersection(name_tokens):
                 raise ValidationError(
-                    "פורמט התצוגה חייב לכלול את המציין [שם הפריט]."
+                    _("The display format must include [Product Name] or [שם הפריט].")
                 )
+

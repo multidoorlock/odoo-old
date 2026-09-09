@@ -13,51 +13,52 @@ class ProductTemplateAttributeValue(models.Model):
 
     mdl_default_name_component = fields.Char(
         related="product_attribute_value_id.name",
-        string="טקסט ברירת מחדל",
+        string="Default Text",
         readonly=False,
-        help="שינוי כאן משנה את ערך המאפיין בכל הקבוצות המשתמשות בו.",
+        help="Changing this updates the attribute value in every group that uses it.",
     )
     mdl_default_sku_component = fields.Char(
         related="product_attribute_value_id.mdl_sku_component",
-        string="מק״ט ברירת מחדל",
+        string="Default SKU",
         readonly=False,
-        help="שינוי כאן משנה את רכיב המק״ט בכל הקבוצות המשתמשות בערך.",
+        help="Changing this updates the SKU component in every group that uses it.",
     )
     mdl_sku_component_override = fields.Char(
-        string="שינוי מק״ט",
+        string="SKU Override",
         help=(
-            "אופציונלי לקבוצה זו בלבד. אם ריק, ייעשה שימוש במק״ט ברירת "
-            "המחדל של ערך המאפיין."
+            "Optional for this group only. When empty, the attribute value's "
+            "default SKU component is used."
         ),
     )
     mdl_name_component_override = fields.Char(
-        string="שינוי טקסט",
+        string="Text Override",
+        translate=True,
         help=(
-            "אופציונלי לקבוצה זו בלבד. אם ריק, ייעשה שימוש בטקסט ברירת "
-            "המחדל של ערך המאפיין."
+            "Optional for this group only. When empty, the attribute value's "
+            "default text is used."
         ),
     )
     mdl_name_component_value = fields.Char(
-        string="טקסט בקבוצה",
+        string="Group Text",
         compute="_compute_mdl_name_component_value",
         inverse="_inverse_mdl_name_component_value",
         help=(
-            "הטקסט שבפועל יוצג בקבוצה. עריכה משנה רק את הקבוצה הזו; "
-            "איפוס מחזיר לשם של ערך המאפיין."
+            "The text displayed in this group. Editing affects only this "
+            "group; reset restores the attribute value name."
         ),
     )
     mdl_sku_component_value = fields.Char(
-        string="מק״ט בקבוצה",
+        string="Group SKU",
         compute="_compute_mdl_sku_component_value",
         inverse="_inverse_mdl_sku_component_value",
         help=(
-            "רכיב המק״ט שבפועל ישמש בקבוצה. עריכה משנה רק את הקבוצה הזו; "
-            "איפוס מחזיר למק״ט ברירת המחדל של ערך המאפיין."
+            "The SKU component used in this group. Editing affects only this "
+            "group; reset restores the attribute value's default SKU."
         ),
     )
     mdl_attribute_group_id = fields.Many2one(
         comodel_name="product.attribute",
-        string="מאפיין",
+        string="Attribute Group Heading",
         compute="_compute_mdl_attribute_group",
     )
     mdl_is_attribute_group_start = fields.Boolean(
