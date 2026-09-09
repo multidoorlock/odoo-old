@@ -997,3 +997,23 @@ msgstr "יש להפעיל את השפה לפני הוספת שם מותאם."
 #: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
 msgid "A product name override must be text."
 msgstr "שם מותאם לפריט חייב להיות טקסט."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_name
+msgid "Source Product Group Name"
+msgstr "שם מקור לקבוצת הפריטים"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_sku
+msgid "Source Product Group SKU"
+msgstr "מק״ט מקור לקבוצת הפריטים"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_generated_name
+msgid "Generated Product Name (Technical)"
+msgstr "שם פריט מחושב (טכני)"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template_attribute_value__mdl_attribute_group_id
+msgid "Attribute Group Heading"
+msgstr "כותרת קבוצת תכונות"

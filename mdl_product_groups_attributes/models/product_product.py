@@ -50,7 +50,7 @@ class ProductProduct(models.Model):
         ),
     )
     mdl_generated_name = fields.Char(
-        string="Product Name",
+        string="Generated Product Name (Technical)",
         compute="_compute_mdl_catalog_values",
         store=True,
         translate=True,

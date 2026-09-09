@@ -997,3 +997,23 @@ msgstr "فعّل اللغة قبل إضافة اسم مخصص للمنتج."
 #: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
 msgid "A product name override must be text."
 msgstr "يجب أن يكون اسم المنتج المخصص نصًا."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_name
+msgid "Source Product Group Name"
+msgstr "اسم مجموعة المنتجات الأصلي"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_sku
+msgid "Source Product Group SKU"
+msgstr "رمز مجموعة المنتجات الأصلي"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_generated_name
+msgid "Generated Product Name (Technical)"
+msgstr "اسم المنتج المُولّد (تقني)"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template_attribute_value__mdl_attribute_group_id
+msgid "Attribute Group Heading"
+msgstr "عنوان مجموعة السمات"

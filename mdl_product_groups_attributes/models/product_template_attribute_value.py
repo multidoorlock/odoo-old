@@ -58,7 +58,7 @@ class ProductTemplateAttributeValue(models.Model):
     )
     mdl_attribute_group_id = fields.Many2one(
         comodel_name="product.attribute",
-        string="Attribute",
+        string="Attribute Group Heading",
         compute="_compute_mdl_attribute_group",
     )
     mdl_is_attribute_group_start = fields.Boolean(

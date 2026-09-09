@@ -89,8 +89,8 @@ class ProductTemplate(models.Model):
         ),
     )
     mdl_group_default_name = fields.Char(
-        string="Product Group Name",
-        index=True,
+        string="Source Product Group Name",
+        index="trigram",
         translate=True,
         help=(
             "Shared name for the products. Selecting a product category copies "
@@ -98,7 +98,7 @@ class ProductTemplate(models.Model):
         ),
     )
     mdl_group_default_sku = fields.Char(
-        string="Product Group SKU",
+        string="Source Product Group SKU",
         index=True,
         help=(
             "Shared SKU component placed before attribute value components. "
