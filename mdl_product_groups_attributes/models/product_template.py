@@ -858,6 +858,10 @@ class ProductTemplate(models.Model):
             )
         group_name_was_provided = "mdl_group_default_name" in vals
         group_sku_was_provided = "mdl_group_default_sku" in vals
+        if group_name_was_provided and not self.env.context.get("skip_mdl_catalog_sync"):
+            # The visible group name supersedes an old hidden override in the
+            # edited language. Keep an override explicitly supplied in this write.
+            vals.setdefault("mdl_group_name_override", "")
         pending_source_skus = {
             template.id: (
                 clean_text(template.mdl_copy_source_group_sku)
@@ -989,6 +993,36 @@ class ProductTemplate(models.Model):
         ):
             self._mdl_ensure_full_model_names(previous_group_names)
             self._mdl_sync_variant_codes()
+        return result
+
+    def _update_field_translations(self, field_name, translations, digest=None, source_lang=""):
+        if field_name != "mdl_group_default_name" or self.env.context.get("skip_mdl_catalog_sync"):
+            return super()._update_field_translations(
+                field_name, translations, digest=digest, source_lang=source_lang,
+            )
+        self.ensure_one()
+        previous_names = self._fields[field_name]._get_stored_translations(self) or {}
+        # Odoo finishes translation updates with a write in the dialog's current
+        # language, which need not be the language whose translation was edited.
+        # Let it validate/store translations, then sync only changed languages.
+        result = super(
+            ProductTemplate, self.with_context(skip_mdl_catalog_sync=True),
+        )._update_field_translations(
+            field_name, dict(translations), digest=digest, source_lang=source_lang,
+        )
+        if result:
+            for lang in translations:
+                template = self.with_context(lang=lang)
+                previous_name = previous_names.get(lang, previous_names.get("en_US", ""))
+                if clean_text(template.mdl_group_default_name) == clean_text(previous_name):
+                    continue
+                template.with_context(skip_mdl_catalog_sync=True).write({
+                    "mdl_group_name_override": "",
+                    "mdl_native_name_override": "",
+                    "mdl_native_name_source": "",
+                })
+                template._mdl_ensure_full_model_names({template.id: previous_name})
+                template._mdl_sync_variant_codes()
         return result
 
     def action_mdl_reset_group_values(self):
