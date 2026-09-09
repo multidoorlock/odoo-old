@@ -51,7 +51,8 @@ class TestGroupNameEdit(TransactionCase):
         # The historical import above intentionally skipped recomputation.
         for lang in ("en_US", "he_IL", "ar_001"):
             translated = cls.template.with_context(lang=lang)
-            translated._compute_mdl_effective_base_name()
+            translated.env.add_to_compute(translated._fields["mdl_effective_base_name"], translated)
+            translated._recompute_recordset(["mdl_effective_base_name"])
             translated._mdl_sync_variant_codes()
         cls.products = cls.template.product_variant_ids.sorted("id")
         cls.identity = {p.id: (p.default_code, p.active) for p in cls.products}

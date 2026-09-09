@@ -872,9 +872,13 @@ class ProductTemplate(models.Model):
             )
             for template in self.filtered("mdl_copy_requires_new_sku")
         }
+        name_changed = "name" in vals and any(
+            clean_text(template.name) != clean_text(vals["name"])
+            for template in self
+        )
         native_name_sources = {}
         if (
-            "name" in vals
+            name_changed
             and "mdl_native_name_override" not in vals
             and not self.env.context.get("skip_mdl_catalog_sync")
         ):
@@ -884,7 +888,7 @@ class ProductTemplate(models.Model):
                 if not template.mdl_native_name_source
             }
         if "mdl_native_name_override" not in vals:
-            if "name" in vals and not self.env.context.get(
+            if name_changed and not self.env.context.get(
                 "skip_mdl_catalog_sync"
             ) and (
                 vals.get("mdl_catalog_managed") is True
@@ -996,12 +1000,20 @@ class ProductTemplate(models.Model):
         return result
 
     def _update_field_translations(self, field_name, translations, digest=None, source_lang=""):
-        if field_name != "mdl_group_default_name" or self.env.context.get("skip_mdl_catalog_sync"):
+        name_fields = {
+            "name", "mdl_group_default_name", "mdl_group_name_override",
+            "mdl_model_name_override", "mdl_name_suffix",
+        }
+        if (
+            field_name not in name_fields
+            or self.env.context.get("skip_mdl_catalog_sync")
+            or (field_name == "name" and not self.mdl_catalog_managed)
+        ):
             return super()._update_field_translations(
                 field_name, translations, digest=digest, source_lang=source_lang,
             )
         self.ensure_one()
-        previous_names = self._fields[field_name]._get_stored_translations(self) or {}
+        previous_values = self._fields[field_name]._get_stored_translations(self) or {}
         # Odoo finishes translation updates with a write in the dialog's current
         # language, which need not be the language whose translation was edited.
         # Let it validate/store translations, then sync only changed languages.
@@ -1013,17 +1025,42 @@ class ProductTemplate(models.Model):
         if result:
             for lang in translations:
                 template = self.with_context(lang=lang)
-                previous_name = previous_names.get(lang, previous_names.get("en_US", ""))
-                if clean_text(template.mdl_group_default_name) == clean_text(previous_name):
+                previous_value = previous_values.get(lang, previous_values.get("en_US", ""))
+                current_value = clean_text(template[field_name])
+                if current_value == clean_text(previous_value):
                     continue
-                template.with_context(skip_mdl_catalog_sync=True).write({
-                    "mdl_group_name_override": "",
-                    "mdl_native_name_override": "",
-                    "mdl_native_name_source": "",
-                })
-                template._mdl_ensure_full_model_names({template.id: previous_name})
+                previous_group_names = {}
+                if field_name == "mdl_group_default_name":
+                    template.with_context(skip_mdl_catalog_sync=True).write({
+                        "mdl_group_name_override": "",
+                        "mdl_native_name_override": "",
+                        "mdl_native_name_source": "",
+                    })
+                    previous_group_names = {template.id: previous_value}
+                elif field_name == "name":
+                    template.with_context(skip_mdl_catalog_sync=True).write({
+                        "mdl_native_name_override": current_value,
+                        "mdl_native_name_source": template.mdl_native_name_source or previous_value,
+                    })
+                template._mdl_ensure_full_model_names(previous_group_names)
+                template.env.add_to_compute(template._fields["mdl_effective_base_name"], template)
+                template._recompute_recordset(["mdl_effective_base_name"])
                 template._mdl_sync_variant_codes()
         return result
+
+    def action_mdl_open_name_sku_overrides(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Name and SKU Overrides"),
+            "res_model": "product.template",
+            "res_id": self.id,
+            "views": [(self.env.ref(
+                "mdl_product_groups_attributes.mdl_product_template_name_sku_form"
+            ).id, "form")],
+            "target": "new",
+            "context": dict(self.env.context),
+        }
 
     def action_mdl_reset_group_values(self):
         self.ensure_one()
