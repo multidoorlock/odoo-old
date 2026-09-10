@@ -34,6 +34,12 @@
                         icon="fa-money" invisible="il_payment_count == 0">
                     <field name="il_payment_count" widget="statinfo" string="תשלומים"/>
                 </button>
+                <button type="object" class="oe_stat_button"
+                        name="action_il_open_reconciliations" icon="fa-link"
+                        invisible="il_reconcile_count == 0">
+                    <field name="il_reconcile_count" widget="statinfo"
+                           string="התאמות"/>
+                </button>
             </div>
             <field name="line_ids" position="attributes">
                 <attribute name="name">il_visible_line_ids</attribute>
@@ -53,8 +59,10 @@
                 <page string="סיכום" name="il_summary">
                     <group>
                         <field name="currency_id" invisible="1"/>
+                        <field name="employer_cost" string="עלות מעסיק כוללת" widget="monetary" readonly="1"/>
                         <field name="gross_wage" string="ברוטו" widget="monetary" readonly="1"/>
                         <field name="net_wage" string="נטו" widget="monetary" readonly="1"/>
+                        <field name="il_paid_amount" string="תשלומים" widget="monetary" readonly="1"/>
                         <field name="il_net_amount_to_pay" string="נטו לתשלום" widget="monetary" readonly="1"/>
                     </group>
                 </page>

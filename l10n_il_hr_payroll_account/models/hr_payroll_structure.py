@@ -155,6 +155,15 @@ class HrPayrollStructure(models.Model):
 
     @api.model
     def _il_sync_structures_and_rules(self):
+        # Payments and Net to Pay are live reconciliation-backed payslip
+        # summary values, not salary rules. Retire every legacy copy before
+        # synchronising the four Israeli structures.
+        self.env['hr.salary.rule'].with_context(active_test=False).search([
+            ('code', 'in', ('IL_PAYMENTS', 'IL_NET_TO_PAY')),
+        ]).write({
+            'active': False,
+            'appears_on_payslip': False,
+        })
         refs = {
             'isr_monthly': self.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_il'),
             'pal_monthly': self.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_monthly'),
