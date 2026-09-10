@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="l10n_il_hr_payroll_account.GroupedBatchPayments">
+        <div class="o_field_x2many o_field_x2many_list o_il_grouped_batch_payments w-100">
+            <View t-if="props.record.resId and props.record.data.il_grouped_payment_view_id"
+                  t-props="viewProps"/>
+        </div>
+    </t>
+</templates>

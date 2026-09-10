@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
-from lxml import etree
-
 from odoo import Command, api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
-
-
-MAX_CYCLE_TYPE_COLUMNS = 12
 
 
 class IlPaymentCycleWizard(models.TransientModel):
@@ -13,7 +8,11 @@ class IlPaymentCycleWizard(models.TransientModel):
     _description = 'Create Payment Cycle'
 
     step = fields.Selection(
-        [('details', 'פרטים'), ('employees', 'עובדים')], default='details')
+        [
+            ('details', 'פרטים'),
+            ('selection', 'בחירת עובדים'),
+            ('amounts', 'סכומים'),
+        ], default='details')
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company)
     cycle_type_ids = fields.Many2many(
@@ -34,36 +33,9 @@ class IlPaymentCycleWizard(models.TransientModel):
         'account.payment.method', compute='_compute_available_payment_method_ids')
     employee_line_ids = fields.One2many(
         'il.payment.cycle.wizard.line', 'wizard_id', string='עובדים רלוונטיים')
-
-    # Odoo list columns have real ORM fields. The selected cycle types are
-    # assigned to these slots and get their user-facing labels in get_view().
-    for _slot in range(1, MAX_CYCLE_TYPE_COLUMNS + 1):
-        locals()[f'cycle_type_{_slot}_id'] = fields.Many2one(
-            'il.payment.cycle.type', readonly=True)
-    del _slot
-
-    @api.model
-    def get_view(self, view_id=None, view_type='form', **options):
-        result = super().get_view(view_id=view_id, view_type=view_type, **options)
-        wizard_id = (
-            self.env.context.get('il_payment_cycle_wizard_id')
-            or (
-                self.env.context.get('active_id')
-                if self.env.context.get('active_model') == self._name
-                else False
-            )
-        )
-        wizard = self.browse(wizard_id).exists() if wizard_id else self
-        if view_type != 'form' or not wizard:
-            return result
-        arch = etree.fromstring(result['arch'])
-        for slot in range(1, MAX_CYCLE_TYPE_COLUMNS + 1):
-            cycle_type = wizard[f'cycle_type_{slot}_id']
-            for node in arch.xpath(f"//field[@name='amount_{slot}']"):
-                if cycle_type:
-                    node.set('string', cycle_type.name)
-        result['arch'] = etree.tostring(arch, encoding='unicode')
-        return result
+    employee_selection_line_ids = fields.One2many(
+        'il.payment.cycle.wizard.employee.line', 'wizard_id',
+        string='בחירת עובדים')
 
     @api.depends('journal_id')
     def _compute_available_payment_method_ids(self):
@@ -80,53 +52,80 @@ class IlPaymentCycleWizard(models.TransientModel):
 
     def action_next(self):
         self.ensure_one()
+        if self.step == 'selection':
+            return self._action_prepare_amounts()
+
         cycle_types = self.cycle_type_ids.sorted('name')
         if not cycle_types:
             raise UserError(_('יש לבחור לפחות סוג מחזור תשלום אחד.'))
-        if len(cycle_types) > MAX_CYCLE_TYPE_COLUMNS:
-            raise ValidationError(_(
-                'ניתן לבחור עד %s סוגי מחזור בתהליך אחד.',
-                MAX_CYCLE_TYPE_COLUMNS,
-            ))
         configs = self.env['hr.employee.payment.cycle.type.line'].search([
             ('cycle_type_id', 'in', cycle_types.ids),
             ('employee_id.active', '=', True),
             ('employee_id.company_id', '=', self.company_id.id),
         ])
-        employees = configs.mapped('employee_id').sorted('name')
-        if not employees:
+        if not configs:
             raise UserError(_(
                 'לא נמצאו עובדים שמוגדר להם אחד מסוגי מחזורי התשלום שנבחרו.'
             ))
-        config_by_key = {
-            (line.employee_id.id, line.cycle_type_id.id): line
-            for line in configs
-        }
         values = {
-            'step': 'employees',
+            'step': 'selection',
+            'employee_selection_line_ids': [Command.clear()],
             'employee_line_ids': [Command.clear()],
         }
-        for slot in range(1, MAX_CYCLE_TYPE_COLUMNS + 1):
-            values[f'cycle_type_{slot}_id'] = (
-                cycle_types[slot - 1].id if slot <= len(cycle_types) else False)
-        for employee in employees:
-            bank = employee.primary_bank_account_id or employee.bank_account_ids[:1]
-            line_values = {
+        employees = configs.mapped('employee_id').sorted(
+            key=lambda employee: (employee.name or '', employee.id))
+        for sequence, employee in enumerate(employees, start=1):
+            employee_types = configs.filtered(
+                lambda config: config.employee_id == employee
+            ).mapped('cycle_type_id').sorted('name')
+            values['employee_selection_line_ids'].append(Command.create({
+                'sequence': sequence,
                 'selected': True,
                 'employee_id': employee.id,
-                'partner_bank_id': bank.id,
-            }
-            for slot, cycle_type in enumerate(cycle_types, start=1):
-                config = config_by_key.get((employee.id, cycle_type.id))
-                line_values[f'applicable_{slot}'] = bool(config)
-                line_values[f'amount_{slot}'] = config.amount if config else 0.0
-            values['employee_line_ids'].append(Command.create(line_values))
+                'cycle_type_ids': [Command.set(employee_types.ids)],
+            }))
         self.write(values)
+        return self._reopen()
+
+    def _action_prepare_amounts(self):
+        self.ensure_one()
+        selected_employees = self.employee_selection_line_ids.filtered(
+            'selected').mapped('employee_id')
+        if not selected_employees:
+            raise ValidationError(_('יש לבחור לפחות עובד אחד.'))
+        configs = self.env['hr.employee.payment.cycle.type.line'].search([
+            ('employee_id', 'in', selected_employees.ids),
+            ('cycle_type_id', 'in', self.cycle_type_ids.ids),
+            ('employee_id.active', '=', True),
+            ('employee_id.company_id', '=', self.company_id.id),
+        ])
+        commands = [Command.clear()]
+        ordered_configs = configs.sorted(
+            key=lambda line: (
+                line.employee_id.name or '', line.cycle_type_id.name or '',
+                line.id,
+            )
+        )
+        for sequence, config in enumerate(ordered_configs, start=1):
+            employee = config.employee_id
+            bank = employee.primary_bank_account_id or employee.bank_account_ids[:1]
+            commands.append(Command.create({
+                'sequence': sequence,
+                'selected': True,
+                'employee_id': employee.id,
+                'cycle_type_id': config.cycle_type_id.id,
+                'amount': config.amount,
+                'partner_bank_id': bank.id,
+            }))
+        self.write({
+            'step': 'amounts',
+            'employee_line_ids': commands,
+        })
         return self._reopen()
 
     def action_previous(self):
         self.ensure_one()
-        self.step = 'details'
+        self.step = 'selection' if self.step == 'amounts' else 'details'
         return self._reopen()
 
     def _reopen(self):
@@ -176,35 +175,32 @@ class IlPaymentCycleWizard(models.TransientModel):
             for state in ('draft', 'canceled', 'paid', 'in_process')
         }
         selected_types = self.env['il.payment.cycle.type']
-        for slot in range(1, MAX_CYCLE_TYPE_COLUMNS + 1):
-            cycle_type = self[f'cycle_type_{slot}_id']
-            if not cycle_type:
-                continue
+        for line in selected_lines.sorted('sequence'):
+            cycle_type = line.cycle_type_id
             selected_types |= cycle_type
-            for line in selected_lines.filtered(f'applicable_{slot}'):
-                amount = line[f'amount_{slot}']
-                if amount <= 0:
-                    raise ValidationError(_(
-                        'הסכום לעובד %s בסוג %s חייב להיות גדול מאפס.',
-                        line.employee_id.name, cycle_type.name,
-                    ))
-                payment = self.env['account.payment'].create({
-                    'payment_type': 'outbound',
-                    'partner_type': 'supplier',
-                    'partner_id': line.employee_id.work_contact_id.id,
-                    'partner_bank_id': line.partner_bank_id.id,
-                    'journal_id': self.journal_id.id,
-                    'date': self.date,
-                    'amount': amount,
-                    'currency_id': (
-                        self.journal_id.currency_id.id
-                        or self.company_id.currency_id.id
-                    ),
-                    'payment_method_line_id': method_line.id,
-                    'memo': '%s - %s' % (self.name, cycle_type.name),
-                })
-                payments |= payment
-                payments_by_state[cycle_type.payment_state] |= payment
+            if line.amount <= 0:
+                raise ValidationError(_(
+                    'הסכום לעובד %s בסוג %s חייב להיות גדול מאפס.',
+                    line.employee_id.name, cycle_type.name,
+                ))
+            payment = self.env['account.payment'].create({
+                'payment_type': 'outbound',
+                'partner_type': 'supplier',
+                'partner_id': line.employee_id.work_contact_id.id,
+                'partner_bank_id': line.partner_bank_id.id,
+                'journal_id': self.journal_id.id,
+                'date': self.date,
+                'amount': line.amount,
+                'currency_id': (
+                    self.journal_id.currency_id.id
+                    or self.company_id.currency_id.id
+                ),
+                'payment_method_line_id': method_line.id,
+                'il_payment_cycle_type_id': cycle_type.id,
+                'memo': '%s - %s' % (self.name, cycle_type.name),
+            })
+            payments |= payment
+            payments_by_state[cycle_type.payment_state] |= payment
         if not payments:
             raise UserError(_('לא נוצרו תשלומים.'))
 
@@ -237,13 +233,16 @@ class IlPaymentCycleWizard(models.TransientModel):
 class IlPaymentCycleWizardLine(models.TransientModel):
     _name = 'il.payment.cycle.wizard.line'
     _description = 'Payment Cycle Employee Amounts'
-    _order = 'employee_id'
+    _order = 'sequence, id'
 
     wizard_id = fields.Many2one(
         'il.payment.cycle.wizard', required=True, ondelete='cascade')
+    sequence = fields.Integer(default=1, readonly=True)
     selected = fields.Boolean(string='נבחר', default=True)
     employee_id = fields.Many2one(
         'hr.employee', string='עובד', required=True, readonly=True)
+    cycle_type_id = fields.Many2one(
+        'il.payment.cycle.type', string='סוג', required=True, readonly=True)
     employee_partner_id = fields.Many2one(
         'res.partner', related='employee_id.work_contact_id', readonly=True)
     currency_id = fields.Many2one(
@@ -251,9 +250,21 @@ class IlPaymentCycleWizardLine(models.TransientModel):
     partner_bank_id = fields.Many2one(
         'res.partner.bank', string='חשבון בנק',
         domain="[('partner_id', '=', employee_partner_id)]")
+    amount = fields.Monetary(
+        string='סכום', required=True, currency_field='currency_id')
 
-    for _slot in range(1, MAX_CYCLE_TYPE_COLUMNS + 1):
-        locals()[f'applicable_{_slot}'] = fields.Boolean(readonly=True)
-        locals()[f'amount_{_slot}'] = fields.Monetary(
-            string=f'סכום {_slot}', currency_field='currency_id')
-    del _slot
+
+class IlPaymentCycleWizardEmployeeLine(models.TransientModel):
+    _name = 'il.payment.cycle.wizard.employee.line'
+    _description = 'Payment Cycle Employee Selection'
+    _order = 'sequence, id'
+
+    wizard_id = fields.Many2one(
+        'il.payment.cycle.wizard', required=True, ondelete='cascade')
+    sequence = fields.Integer(default=1, readonly=True)
+    selected = fields.Boolean(string='נבחר', default=True)
+    employee_id = fields.Many2one(
+        'hr.employee', string='עובד', required=True, readonly=True)
+    cycle_type_ids = fields.Many2many(
+        'il.payment.cycle.type', 'il_cycle_wizard_employee_type_rel',
+        'line_id', 'cycle_type_id', string='סוגים', readonly=True)

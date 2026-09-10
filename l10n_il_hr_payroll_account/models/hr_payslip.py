@@ -53,6 +53,8 @@ class HrPayslip(models.Model):
         string='יתרת נטו לתשלום', compute='_compute_il_payment_amounts')
     il_payment_count = fields.Integer(
         string='מספר תשלומים', compute='_compute_il_payment_amounts')
+    il_reconcile_count = fields.Integer(
+        string='Reconciliations', compute='_compute_il_reconcile_count')
 
     il_visible_line_ids = fields.One2many(
         'hr.payslip.line', 'slip_id', string='חישוב שכר',
@@ -88,6 +90,19 @@ class HrPayslip(models.Model):
         account = self.company_id.il_employee_payment_debit_account_id
         return self.move_id.line_ids.filtered(
             lambda line: line.il_payslip_id == self and line.account_id == account)
+
+    def _il_reconciliations(self):
+        self.ensure_one()
+        lines = self._il_salary_payable_lines()
+        return lines.matched_debit_ids | lines.matched_credit_ids
+
+    @api.depends(
+        'move_id.line_ids.matched_debit_ids',
+        'move_id.line_ids.matched_credit_ids',
+    )
+    def _compute_il_reconcile_count(self):
+        for slip in self:
+            slip.il_reconcile_count = len(slip._il_reconciliations())
 
     def _prepare_line_values(self, line, account, date, debit, credit):
         values = super()._prepare_line_values(line, account, date, debit, credit)
@@ -172,7 +187,11 @@ class HrPayslip(models.Model):
                 'default_payment_type': 'outbound',
                 'default_partner_type': 'supplier',
                 'default_amount': self.il_net_amount_to_pay,
+                'default_il_spread_type': 'none',
                 'il_employee_payment': True,
+                # Ephemeral context only: it lets a payment confirmed directly
+                # from this popup reconcile now, without storing a forbidden
+                # Payment -> Payslip link.
                 'il_origin_payslip_id': self.id,
                 'dialog_size': 'large',
             },
@@ -191,6 +210,46 @@ class HrPayslip(models.Model):
                     'l10n_il_hr_payroll_account.view_account_payment_form_employee').id,
                     'form')],
             'domain': [('id', 'in', self._il_affecting_payments().ids)],
+            'context': {
+                'create': False,
+                'edit': True,
+                'delete': False,
+                'il_employee_payment': True,
+                'il_payslip_id': self.id,
+                'form_view_initial_mode': 'edit',
+            },
+        }
+
+    def action_il_open_reconciliations(self):
+        self.ensure_one()
+        reconciliations = self._il_reconciliations()
+        if not reconciliations:
+            raise UserError(_('This payslip has no reconciliations.'))
+
+        form_view = self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_partial_reconcile_payroll_form')
+        if len(reconciliations) == 1:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Reconciliation'),
+                'res_model': 'account.partial.reconcile',
+                'res_id': reconciliations.id,
+                'view_mode': 'form',
+                'views': [(form_view.id, 'form')],
+                'target': 'current',
+                'context': {'create': False, 'edit': False, 'delete': False},
+            }
+
+        list_view = self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_partial_reconcile_payroll_list')
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Reconciliations'),
+            'res_model': 'account.partial.reconcile',
+            'view_mode': 'list,form',
+            'views': [(list_view.id, 'list'), (form_view.id, 'form')],
+            'domain': [('id', 'in', reconciliations.ids)],
+            'target': 'current',
             'context': {'create': False, 'edit': False, 'delete': False},
         }
 
@@ -552,10 +611,75 @@ class HrPayslip(models.Model):
         self.mapped('line_ids')._compute_il_hide_redundant_base()
         return result
 
+    def _il_reconcile_payments_on_approval(self):
+        """Apply open employee-payment instalments at draft confirmation only."""
+        for slip in self:
+            partner = slip.employee_id.work_contact_id
+            if not partner:
+                continue
+            payments = self.env['account.payment'].search([
+                ('partner_id', '=', partner.id),
+                ('company_id', '=', slip.company_id.id),
+                ('payment_type', '=', 'outbound'),
+                ('partner_type', '=', 'supplier'),
+                ('state', 'in', ('in_process', 'paid')),
+            ], order='date, id')
+            payments = payments.filtered(
+                lambda payment: payment._il_uses_employee_payment_accounting())
+
+            lines = self.env['account.payment.split.line']
+            for payment in payments:
+                open_lines = payment.il_split_line_ids.filtered(
+                    lambda line: not line.reconcile_id
+                ).sorted(key=lambda line: (line.sequence, line.id))
+                # Planned payments advance exactly one instalment per payslip.
+                if payment.il_spread_type == 'planned':
+                    open_lines = open_lines[:1]
+                lines |= open_lines
+
+            if not lines:
+                continue
+
+            company_currency = slip.company_id.currency_id
+            requested_amount = sum(
+                line.currency_id._convert(
+                    line.amount, company_currency, slip.company_id,
+                    max(line.payment_id.date, slip.date_to),
+                )
+                for line in lines
+            )
+            if company_currency.compare_amounts(
+                    requested_amount, slip.il_net_amount_to_pay) > 0:
+                raise ValidationError(_(
+                    'סכום פעימות התשלום הפתוחות גבוה מהנטו של התלוש. '
+                    'יש לעדכן את פריסת התשלומים לפני אישור התלוש.'))
+            for line in lines.sorted(
+                    key=lambda item: (
+                        item.payment_id.date, item.payment_id.id,
+                        item.sequence, item.id)):
+                line._il_reconcile_with_payslip(slip)
+
+    def _il_post_accounting_entries_on_approval(self):
+        """Post each payslip JE before applying any payment reconciliation."""
+        for slip in self:
+            if not slip.move_id:
+                raise ValidationError(_(
+                    'לא נוצרה פקודת יומן לתלוש. יש להגדיר יומן וחשבונות שכר '
+                    'תקינים לפני אישור התלוש.'))
+            if slip.move_id.state == 'draft':
+                slip.move_id.action_post()
+            if slip.move_id.state != 'posted':
+                raise ValidationError(_(
+                    'לא ניתן לאשר את התלוש לפני שפקודת היומן שלו נרשמה.'))
+
     def action_payslip_done(self):
+        draft_slips = self.filtered(lambda slip: slip.state == 'draft')
         result = super().action_payslip_done()
         self.mapped('line_ids')._compute_il_hide_redundant_base()
-        validated_slips = self.filtered(lambda slip: slip.state == 'validated')
+        validated_slips = draft_slips.filtered(
+            lambda slip: slip.state == 'validated')
+        validated_slips._il_post_accounting_entries_on_approval()
+        validated_slips._il_reconcile_payments_on_approval()
         validated_slips._il_check_nonnegative_net_to_pay()
         validated_slips._il_sync_paid_state_from_balance()
         return result

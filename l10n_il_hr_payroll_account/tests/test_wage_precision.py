@@ -1074,6 +1074,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
                 self.assertEqual(payslip._il_worker_profile(), expected_profile)
                 self.assertIn('GROSS', by_code)
                 self.assertIn('NET', by_code)
+                self.assertNotIn('IL_PAYMENTS', by_code)
                 self.assertNotIn('IL_NET_TO_PAY', by_code)
                 self.assertNotIn('IL_WAGE_ROUNDING', by_code)
 

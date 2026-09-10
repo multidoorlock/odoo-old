@@ -73,10 +73,41 @@ class HrEmployee(models.Model):
 class AccountBatchPayment(models.Model):
     _inherit = 'account.batch.payment'
 
+    il_grouped_payment_view_id = fields.Integer(
+        compute='_compute_il_grouped_payment_view_id')
+
+    def _compute_il_grouped_payment_view_id(self):
+        view_id = self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_payment_il_batch_grouped_list'
+        ).id
+        for batch in self:
+            batch.il_grouped_payment_view_id = view_id
+
     il_payment_cycle_type_ids = fields.Many2many(
         'il.payment.cycle.type', 'il_batch_payment_cycle_type_rel',
         'batch_payment_id', 'cycle_type_id', string='סוגי מחזור תשלום',
         copy=False)
+
+    def action_il_open_grouped_payments(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('תשלומים'),
+            'res_model': 'account.payment',
+            'view_mode': 'list,form',
+            'views': [(
+                self.env.ref(
+                    'l10n_il_hr_payroll_account.view_account_payment_il_batch_grouped_list'
+                ).id,
+                'list',
+            ), (False, 'form')],
+            'domain': [('batch_payment_id', '=', self.id)],
+            'context': {
+                'create': False,
+                'delete': False,
+                'form_view_initial_mode': 'edit',
+            },
+        }
 
     def action_il_create_masav_file(self):
         self.ensure_one()
