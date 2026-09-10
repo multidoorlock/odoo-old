@@ -613,6 +613,31 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             'payment_method_id': method_line.payment_method_id.id,
         })
         reopen_action = wizard.action_next()
+        self.assertEqual(wizard.step, 'selection')
+        self.assertEqual(len(wizard.employee_selection_line_ids), 2)
+        self.assertTrue(all(
+            wizard.employee_selection_line_ids.mapped('selected')))
+        employee_types = {
+            line.employee_id: line.cycle_type_ids
+            for line in wizard.employee_selection_line_ids
+        }
+        self.assertEqual(
+            employee_types[self.employee],
+            first_type | second_type | paid_type | canceled_type,
+        )
+        self.assertEqual(employee_types[other_employee], first_type)
+        other_selection = wizard.employee_selection_line_ids.filtered(
+            lambda line: line.employee_id == other_employee)
+        other_selection.selected = False
+        wizard.action_next()
+        self.assertEqual(wizard.step, 'amounts')
+        self.assertEqual(
+            wizard.employee_line_ids.mapped('employee_id'), self.employee)
+        wizard.action_previous()
+        self.assertEqual(wizard.step, 'selection')
+        other_selection.selected = True
+        reopen_action = wizard.action_next()
+        self.assertEqual(wizard.step, 'amounts')
         self.assertEqual(len(wizard.employee_line_ids), 5)
         self.assertTrue(all(wizard.employee_line_ids.mapped('selected')))
         self.assertEqual(
@@ -625,6 +650,25 @@ class TestEmployeePaymentReconciliation(TransactionCase):
         )
         from lxml import etree
         wizard_arch = etree.fromstring(view['arch'])
+        selection_list = wizard_arch.xpath(
+            "//field[@name='employee_selection_line_ids']/list"
+        )[0]
+        self.assertEqual(selection_list.get('editable'), 'bottom')
+        self.assertEqual(selection_list.get('no_open'), 'True')
+        self.assertEqual(selection_list.get('create'), '0')
+        self.assertEqual(selection_list.get('delete'), '0')
+        selection_fields = {
+            field.get('name'): field
+            for field in selection_list.xpath('./field')
+        }
+        self.assertIn(
+            "'no_open': True",
+            selection_fields['employee_id'].get('options'),
+        )
+        self.assertIn(
+            "'no_open': True",
+            selection_fields['cycle_type_ids'].get('options'),
+        )
         visible_fields = wizard_arch.xpath(
             "//field[@name='employee_line_ids']/list/field"
             "[not(@column_invisible='True')]/@name"

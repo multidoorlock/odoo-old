@@ -4,6 +4,7 @@ access_il_payment_cycle_type_user,il.payment.cycle.type.user,model_il_payment_cy
 access_hr_employee_payment_cycle_type_line_user,hr.employee.payment.cycle.type.line.user,model_hr_employee_payment_cycle_type_line,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_il_payment_cycle_wizard_user,il.payment.cycle.wizard.user,model_il_payment_cycle_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_il_payment_cycle_wizard_line_user,il.payment.cycle.wizard.line.user,model_il_payment_cycle_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_il_payment_cycle_wizard_employee_line_user,il.payment.cycle.wizard.employee.line.user,model_il_payment_cycle_wizard_employee_line,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_account_batch_payment_payroll_user,account.batch.payment.payroll.user,account_batch_payment.model_account_batch_payment,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_il_masav_export_wizard_user,il.masav.export.wizard.user,model_il_masav_export_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_il_masav_export_wizard_line_user,il.masav.export.wizard.line.user,model_il_masav_export_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1

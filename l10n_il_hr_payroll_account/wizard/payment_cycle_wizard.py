@@ -8,7 +8,11 @@ class IlPaymentCycleWizard(models.TransientModel):
     _description = 'Create Payment Cycle'
 
     step = fields.Selection(
-        [('details', 'פרטים'), ('employees', 'עובדים')], default='details')
+        [
+            ('details', 'פרטים'),
+            ('selection', 'בחירת עובדים'),
+            ('amounts', 'סכומים'),
+        ], default='details')
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company)
     cycle_type_ids = fields.Many2many(
@@ -29,6 +33,9 @@ class IlPaymentCycleWizard(models.TransientModel):
         'account.payment.method', compute='_compute_available_payment_method_ids')
     employee_line_ids = fields.One2many(
         'il.payment.cycle.wizard.line', 'wizard_id', string='עובדים רלוונטיים')
+    employee_selection_line_ids = fields.One2many(
+        'il.payment.cycle.wizard.employee.line', 'wizard_id',
+        string='בחירת עובדים')
 
     @api.depends('journal_id')
     def _compute_available_payment_method_ids(self):
@@ -45,6 +52,9 @@ class IlPaymentCycleWizard(models.TransientModel):
 
     def action_next(self):
         self.ensure_one()
+        if self.step == 'selection':
+            return self._action_prepare_amounts()
+
         cycle_types = self.cycle_type_ids.sorted('name')
         if not cycle_types:
             raise UserError(_('יש לבחור לפחות סוג מחזור תשלום אחד.'))
@@ -58,9 +68,38 @@ class IlPaymentCycleWizard(models.TransientModel):
                 'לא נמצאו עובדים שמוגדר להם אחד מסוגי מחזורי התשלום שנבחרו.'
             ))
         values = {
-            'step': 'employees',
+            'step': 'selection',
+            'employee_selection_line_ids': [Command.clear()],
             'employee_line_ids': [Command.clear()],
         }
+        employees = configs.mapped('employee_id').sorted(
+            key=lambda employee: (employee.name or '', employee.id))
+        for sequence, employee in enumerate(employees, start=1):
+            employee_types = configs.filtered(
+                lambda config: config.employee_id == employee
+            ).mapped('cycle_type_id').sorted('name')
+            values['employee_selection_line_ids'].append(Command.create({
+                'sequence': sequence,
+                'selected': True,
+                'employee_id': employee.id,
+                'cycle_type_ids': [Command.set(employee_types.ids)],
+            }))
+        self.write(values)
+        return self._reopen()
+
+    def _action_prepare_amounts(self):
+        self.ensure_one()
+        selected_employees = self.employee_selection_line_ids.filtered(
+            'selected').mapped('employee_id')
+        if not selected_employees:
+            raise ValidationError(_('יש לבחור לפחות עובד אחד.'))
+        configs = self.env['hr.employee.payment.cycle.type.line'].search([
+            ('employee_id', 'in', selected_employees.ids),
+            ('cycle_type_id', 'in', self.cycle_type_ids.ids),
+            ('employee_id.active', '=', True),
+            ('employee_id.company_id', '=', self.company_id.id),
+        ])
+        commands = [Command.clear()]
         ordered_configs = configs.sorted(
             key=lambda line: (
                 line.employee_id.name or '', line.cycle_type_id.name or '',
@@ -70,7 +109,7 @@ class IlPaymentCycleWizard(models.TransientModel):
         for sequence, config in enumerate(ordered_configs, start=1):
             employee = config.employee_id
             bank = employee.primary_bank_account_id or employee.bank_account_ids[:1]
-            values['employee_line_ids'].append(Command.create({
+            commands.append(Command.create({
                 'sequence': sequence,
                 'selected': True,
                 'employee_id': employee.id,
@@ -78,12 +117,15 @@ class IlPaymentCycleWizard(models.TransientModel):
                 'amount': config.amount,
                 'partner_bank_id': bank.id,
             }))
-        self.write(values)
+        self.write({
+            'step': 'amounts',
+            'employee_line_ids': commands,
+        })
         return self._reopen()
 
     def action_previous(self):
         self.ensure_one()
-        self.step = 'details'
+        self.step = 'selection' if self.step == 'amounts' else 'details'
         return self._reopen()
 
     def _reopen(self):
@@ -210,3 +252,19 @@ class IlPaymentCycleWizardLine(models.TransientModel):
         domain="[('partner_id', '=', employee_partner_id)]")
     amount = fields.Monetary(
         string='סכום', required=True, currency_field='currency_id')
+
+
+class IlPaymentCycleWizardEmployeeLine(models.TransientModel):
+    _name = 'il.payment.cycle.wizard.employee.line'
+    _description = 'Payment Cycle Employee Selection'
+    _order = 'sequence, id'
+
+    wizard_id = fields.Many2one(
+        'il.payment.cycle.wizard', required=True, ondelete='cascade')
+    sequence = fields.Integer(default=1, readonly=True)
+    selected = fields.Boolean(string='נבחר', default=True)
+    employee_id = fields.Many2one(
+        'hr.employee', string='עובד', required=True, readonly=True)
+    cycle_type_ids = fields.Many2many(
+        'il.payment.cycle.type', 'il_cycle_wizard_employee_type_rel',
+        'line_id', 'cycle_type_id', string='סוגים', readonly=True)
