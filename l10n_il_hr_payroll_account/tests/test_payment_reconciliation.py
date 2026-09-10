@@ -2,7 +2,7 @@ from datetime import date
 
 from odoo import Command, fields
 from odoo.exceptions import ValidationError
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import TransactionCase, new_test_user, tagged
 
 
 @tagged('post_install', '-at_install', 'l10n_il_hr_payroll_account_payment_reconciliation')
@@ -125,6 +125,20 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             "//header/button[@name='action_post']")
         self.assertTrue(confirm_buttons)
         self.assertEqual(confirm_buttons[0].get('invisible'), "state != 'draft'")
+
+    def test_accounting_user_can_unlink_unrelated_reconciliation(self):
+        accounting_user = new_test_user(
+            self.env,
+            login='reconciliation-accounting-only',
+            groups='account.group_account_user',
+        )
+        self.assertFalse(accounting_user.has_group(
+            'hr_payroll.group_hr_payroll_user'))
+        # Even an empty native operation used to fail because our hook tried
+        # to search payroll split lines with the caller's access rights.
+        self.env['account.partial.reconcile'].with_user(
+            accounting_user
+        ).browse().unlink()
 
     def test_payment_creates_one_full_two_line_journal_entry(self):
         payment = self._payment(12000.0)
