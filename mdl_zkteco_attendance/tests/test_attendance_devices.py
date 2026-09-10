@@ -142,6 +142,36 @@ class TestAttendanceDevices(TransactionCase):
         events.invalidate_recordset(["event_datetime"])
         self.assertEqual(events[-1].event_datetime, new_check_out)
 
+    def test_technical_absence_skips_an_overlapping_open_attendance(self):
+        check_in = fields.Datetime.to_datetime("2026-09-08 21:00:00")
+        existing = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": check_in,
+        })
+
+        technical = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": check_in + timedelta(hours=3),
+            "check_out": check_in + timedelta(hours=3, seconds=1),
+            "in_mode": "technical",
+            "out_mode": "technical",
+        })
+
+        self.assertFalse(technical)
+        self.assertEqual(
+            self.env["hr.attendance"].search_count([
+                ("employee_id", "=", self.employee.id),
+            ]),
+            1,
+        )
+        self.assertEqual(existing.check_in, check_in)
+
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self.env["hr.attendance"].create({
+                "employee_id": self.employee.id,
+                "check_in": check_in + timedelta(hours=4),
+            })
+
     def test_manual_attendance_reuses_matching_raw_event(self):
         check_in = fields.Datetime.now() - timedelta(hours=2)
         raw_event = self._pending_event(check_in, "in", "reuse-manual")

@@ -50,6 +50,15 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             'schedule_pay': 'monthly',
         })
 
+    def test_salary_structure_exposes_compatible_company_field(self):
+        structure = self.monthly_structure.with_company(self.company)
+        result = structure.search_read(
+            [('id', '=', structure.id)],
+            ['company_id'],
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['company_id'][0], self.company.id)
+
     def _payslip_with_posted_net(self, amount):
         slip = self.env['hr.payslip'].create({
             'name': 'Residual Test Payslip',
