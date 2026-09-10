@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import Command, api, models
+from odoo import Command, api, fields, models
 
 
 # Accounts are looked up by code first and then by their exact translated
@@ -67,6 +67,26 @@ IL_RULE_ACCOUNT_MAP = {
 
 class HrPayrollStructure(models.Model):
     _inherit = 'hr.payroll.structure'
+
+    # Odoo 19 structures are shared records and no longer expose the
+    # ``company_id`` field used by older clients/views.  Keep a read-only,
+    # context-aware compatibility value so a stale or external search_read
+    # cannot crash the request.  The company-dependent salary journal remains
+    # the authoritative source when one is configured.
+    company_id = fields.Many2one(
+        'res.company',
+        string='Company',
+        compute='_compute_il_compat_company_id',
+        readonly=True,
+    )
+
+    @api.depends_context('company')
+    @api.depends('journal_id')
+    def _compute_il_compat_company_id(self):
+        for structure in self:
+            structure.company_id = (
+                structure.journal_id.company_id or structure.env.company
+            )
 
     @api.model
     def _il_ensure_payroll_accounting_configuration(self, overwrite=False):

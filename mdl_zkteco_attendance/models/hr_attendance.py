@@ -6,6 +6,39 @@ from odoo import api, fields, models
 class HrAttendance(models.Model):
     _inherit = "hr.attendance"
 
+    @api.model
+    def _filter_conflicting_technical_absence_vals(self, vals_list):
+        """Skip only absence placeholders that overlap real attendance.
+
+        Odoo's absence cron creates all technical rows in one batch.  One
+        employee with an open or overlapping attendance would otherwise make
+        the native validity constraint roll back the complete cron job.
+        Ordinary attendance creation must keep raising the native validation
+        error, so the protection is deliberately limited to rows whose input
+        and output modes are both ``technical``.
+        """
+        safe_vals_list = []
+        for vals in vals_list:
+            check_in = fields.Datetime.to_datetime(vals.get("check_in"))
+            check_out = fields.Datetime.to_datetime(vals.get("check_out"))
+            is_absence_placeholder = (
+                vals.get("in_mode") == "technical"
+                and vals.get("out_mode") == "technical"
+                and vals.get("employee_id")
+                and check_in
+                and check_out
+            )
+            if is_absence_placeholder and self.search_count([
+                ("employee_id", "=", vals["employee_id"]),
+                ("check_in", "<", check_out),
+                "|",
+                ("check_out", "=", False),
+                ("check_out", ">", check_in),
+            ], limit=1):
+                continue
+            safe_vals_list.append(vals)
+        return safe_vals_list
+
     def _attendance_event_source(self):
         self.ensure_one()
         company = self.employee_id.company_id or self.env.company
@@ -126,6 +159,9 @@ class HrAttendance(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = self._filter_conflicting_technical_absence_vals(vals_list)
+        if not vals_list:
+            return self.browse()
         attendances = super().create(vals_list)
         attendances._ensure_attendance_device_events()
         return attendances
