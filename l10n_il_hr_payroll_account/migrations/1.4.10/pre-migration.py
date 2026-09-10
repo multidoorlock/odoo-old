@@ -8,6 +8,15 @@ def migrate(cr, version):
         ) ON COMMIT DROP
     """)
     cr.execute("""
+        SELECT 1
+          FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'account_payment'
+           AND column_name = 'il_spread_type'
+    """)
+    if not cr.fetchone():
+        return
+    cr.execute("""
         INSERT INTO il_legacy_per_payslip_payment (payment_id)
         SELECT id
           FROM account_payment
