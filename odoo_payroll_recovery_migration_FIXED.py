@@ -2040,15 +2040,15 @@ if not APPLY:
 else:
     try:
         # ---------------------------------------------------------------------
-        # STEP 1 - Restore historical spread types and target split rows.
+        # STEP 1 - Restore only historical spread types.
+        #          IMPORTANT: split rows are restored AFTER payslip accounting is
+        #          rebuilt, so action_payslip_done() cannot auto-allocate payments
+        #          to the wrong historical payslip.
         # ---------------------------------------------------------------------
-        info('STEP 1/4: restoring payment spread types and split rows...')
+        info('STEP 1/4: restoring historical payment spread types...')
         for idx, payment in enumerate(payments, 1):
             old_spread = PAYMENT_SNAPSHOT[payment.id][6]
             if payment.il_spread_type != old_spread:
-                # With no existing reconciliation this is safe. If switching to
-                # 'none' creates Odoo's default one-line split, the next block
-                # verifies/reuses it rather than duplicating it.
                 payment.with_context(
                     il_skip_spread_total_check=True,
                     il_skip_draft_reconciliation_check=True,
@@ -2056,58 +2056,73 @@ else:
             if idx % 100 == 0:
                 info(f'  spread types checked/restored: {idx}/{len(payments)}')
 
-        current_by_key = {
-            (line.payment_id.id, line.sequence): line
-            for line in Split.search([('payment_id', 'in', payment_ids)])
-        }
-        for idx, spec in enumerate(TARGET_SPLITS, 1):
-            key = (spec['payment_id'], spec['sequence'])
-            line = current_by_key.get(key)
-            if line:
-                if money(line.amount) != money(spec['amount']):
-                    fail(f'Existing split key {key} has amount {money(line.amount)}, target is {money(spec["amount"])}.')
-            else:
-                line = Split.with_context(
-                    il_system_split_create=True,
-                    il_skip_spread_total_check=True,
-                    il_skip_draft_reconciliation_check=True,
-                ).create({
-                    'payment_id': spec['payment_id'],
-                    'sequence': spec['sequence'],
-                    'amount': float(spec['amount']),
-                })
-                current_by_key[key] = line
-            if idx % 100 == 0:
-                info(f'  split rows restored/verified: {idx}/{len(TARGET_SPLITS)}')
-
-        # Ensure there are no additional split rows and every payment is fully distributed.
-        target_lines = Split.search([('payment_id', 'in', payment_ids)])
-        if len(target_lines) != TARGET_SPLIT_ROWS:
-            fail(f'After split restoration there are {len(target_lines)} rows, expected {TARGET_SPLIT_ROWS}.')
-        payments._check_il_spread_complete()
+        # Remove any one-line splits that may have been auto-created while a
+        # payment was temporarily switched to spread_type='none'.  We intentionally
+        # keep the split table empty until every historical payslip JE is rebuilt.
+        auto_splits = Split.search([('payment_id', 'in', payment_ids)])
+        if auto_splits:
+            auto_splits.with_context(
+                il_system_split_unlink=True,
+                il_skip_spread_total_check=True,
+                il_skip_draft_reconciliation_check=True,
+            ).unlink()
+        if Split.search_count([('payment_id', 'in', payment_ids)]):
+            fail('Could not keep split table empty before payslip accounting rebuild.')
 
         # ---------------------------------------------------------------------
-        # STEP 2 - Replace only the known empty Draft payslip moves, then build
-        #          accounting from EXISTING payslip lines. NO compute_sheet().
+        # STEP 2 - Rebuild/post the 81 payslip journal entries from EXISTING
+        #          hr.payslip.line rows.  NO compute_sheet(), NO attendance/input
+        #          recomputation, and NO payment allocation at this stage.
+        #
+        # All historical payslips were already state='paid' but their moves were
+        # empty Draft placeholders.  Native payroll accounting creation only runs
+        # through the approval workflow, so inside this ONE transaction we:
+        #   1) remove only the known empty Draft placeholder move,
+        #   2) set state='draft' with SQL (avoids action_payslip_draft recompute/
+        #      accounting cleanup side effects),
+        #   3) call action_payslip_done(), which consumes EXISTING salary lines,
+        #      creates the JE and posts it through the custom workflow.
+        # Split rows do not exist yet, so the approval hook has nothing to
+        # reconcile and cannot change the historical allocation mapping.
         # ---------------------------------------------------------------------
-        info('STEP 2/4: building and posting payslip journal entries from existing salary lines...')
+        info('STEP 2/4: rebuilding/posting payslip JEs from existing salary lines...')
         for idx, slip in enumerate(payslips.sorted(key=lambda s: s.id), 1):
-            if slip.move_id and slip.move_id.state == 'draft' and not slip.move_id.line_ids:
-                # Existing custom helper only removes stale accounting entries;
-                # it does NOT recompute salary lines or change payslip amounts.
+            original_state = PAYSLIP_SNAPSHOT[slip.id][0] if isinstance(PAYSLIP_SNAPSHOT[slip.id][0], str) else 'paid'
+            # The migration snapshot expects every payslip to have been paid.
+            if slip.state != 'paid':
+                fail(f'Payslip {slip.id}: expected pre-migration state paid, found {slip.state}.')
+
+            if slip.move_id:
+                if slip.move_id.state != 'draft' or slip.move_id.line_ids:
+                    fail(
+                        f'Payslip {slip.id}: expected only an empty Draft placeholder move; '
+                        f'found move {slip.move_id.id} state={slip.move_id.state} '
+                        f'lines={len(slip.move_id.line_ids)}.'
+                    )
                 slip._il_reset_accounting_entries_for_recompute()
 
-            if not slip.move_id:
-                # Native hr_payroll_account accounting builder. It consumes the
-                # existing hr.payslip.line records and their current Salary Rule
-                # debit/credit account mapping. It does not call compute_sheet().
-                slip._action_create_account_move()
+            if slip.move_id:
+                fail(f'Payslip {slip.id}: empty placeholder move could not be removed.')
+
+            # Temporary migration-only state transition.  We deliberately do not
+            # use action_payslip_draft(), because that helper is intended for a
+            # user-driven recompute workflow and is unnecessary here.
+            env.cr.execute('UPDATE hr_payslip SET state = %s WHERE id = %s', ('draft', slip.id))
+            slip.invalidate_recordset(['state', 'move_id'])
+            if slip.state != 'draft':
+                fail(f'Payslip {slip.id}: could not enter temporary draft state.')
+
+            # IMPORTANT: action_payslip_done() is used only to build accounting
+            # from the salary lines already stored on the payslip.  We NEVER call
+            # compute_sheet() in this recovery.
+            slip.action_payslip_done()
+            slip.invalidate_recordset(['state', 'move_id'])
 
             if not slip.move_id or not slip.move_id.line_ids:
-                fail(f'Payslip {slip.id}: accounting move was not built.')
+                fail(f'Payslip {slip.id}: accounting move was not built by approval workflow.')
+            if slip.move_id.state != 'posted':
+                fail(f'Payslip {slip.id}: JE {slip.move_id.id} is not posted after approval.')
 
-            # The custom workflow expects one independently identifiable NET
-            # payable line per payslip, on the configured Employee Payment debit account.
             payable = slip._il_salary_payable_lines()
             if len(payable) != 1:
                 fail(f'Payslip {slip.id}: expected exactly one salary payable line, found {len(payable)}.')
@@ -2117,44 +2132,93 @@ else:
                     f'does not equal backup NET {PAYSLIP_SNAPSHOT[slip.id][4]}.'
                 )
 
-            slip._il_post_accounting_entries_on_approval()
-            if slip.move_id.state != 'posted':
-                fail(f'Payslip {slip.id}: JE {slip.move_id.id} is not posted after posting step.')
-            if slip.state != 'paid':
-                fail(f'Payslip {slip.id}: business state changed from paid to {slip.state}.')
+            # No split rows existed during approval, therefore the payslip should
+            # now be validated/open rather than settled.  Do not force paid yet;
+            # historical reconciliations are restored in STEP 4.
+            if slip.state not in ('validated', 'paid'):
+                fail(f'Payslip {slip.id}: unexpected state after JE rebuild: {slip.state}.')
             if idx % 20 == 0:
-                info(f'  payslip JEs built/posted: {idx}/{len(payslips)}')
+                info(f'  payslip JEs rebuilt/posted: {idx}/{len(payslips)}')
 
         # ---------------------------------------------------------------------
-        # STEP 3 - Generate the missing JEs for the 452 already-paid Employee
-        #          Payments WITHOUT recreating them and WITHOUT changing their
-        #          final state. Writing the same state='paid' invokes Odoo 19's
-        #          native missing-move generation path; current custom move-line
-        #          preparation supplies the configured employee-payment accounts.
+        # STEP 2B - Restore the exact historical split distribution only AFTER
+        #           payslip accounting exists.  This prevents the approval hook
+        #           from auto-consuming splits according to current FIFO rules.
         # ---------------------------------------------------------------------
-        info('STEP 3/4: building and posting journal entries for 452 paid Employee Payments...')
+        info('STEP 2B/4: restoring historical split rows...')
+        current_by_key = {
+            (line.payment_id.id, line.sequence): line
+            for line in Split.search([('payment_id', 'in', payment_ids)])
+        }
+        if current_by_key:
+            fail('Unexpected split rows exist before historical split restoration.')
+
+        for idx, spec in enumerate(TARGET_SPLITS, 1):
+            key = (spec['payment_id'], spec['sequence'])
+            line = Split.with_context(
+                il_system_split_create=True,
+                il_skip_spread_total_check=True,
+                il_skip_draft_reconciliation_check=True,
+            ).create({
+                'payment_id': spec['payment_id'],
+                'sequence': spec['sequence'],
+                'amount': float(spec['amount']),
+            })
+            current_by_key[key] = line
+            if idx % 100 == 0:
+                info(f'  split rows restored: {idx}/{len(TARGET_SPLITS)}')
+
+        target_lines = Split.search([('payment_id', 'in', payment_ids)])
+        if len(target_lines) != TARGET_SPLIT_ROWS:
+            fail(f'After split restoration there are {len(target_lines)} rows, expected {TARGET_SPLIT_ROWS}.')
+        payments._check_il_spread_complete()
+
+        # ---------------------------------------------------------------------
+        # STEP 3 - Build/post JEs for the 452 historical paid Employee Payments
+        #          through CURRENT account.payment business logic.
+        #
+        # The records themselves are preserved.  We temporarily move only the
+        # already-paid/no-move records to Draft with SQL inside this transaction,
+        # then call action_post() -> action_validate().  This makes Odoo create
+        # the payment move with the CURRENT configured debit/credit accounts.
+        # Canceled payments are never touched and never receive a JE.
+        # ---------------------------------------------------------------------
+        info('STEP 3/4: building/posting journal entries for 452 paid Employee Payments...')
         paid_payments._il_check_employee_payment_accounts()
         paid_payments._compute_outstanding_account_id()
         paid_payments._compute_destination_account_id()
 
-        for payment in paid_payments:
+        for idx, payment in enumerate(paid_payments.sorted(key=lambda p: p.id), 1):
             if payment.outstanding_account_id != credit_account:
                 fail(f'Payment {payment.id}: outstanding account is not the configured Employee Payment credit account.')
             if payment.destination_account_id != debit_account:
                 fail(f'Payment {payment.id}: destination account is not the configured Employee Payment debit account.')
 
-        missing_moves = paid_payments.filtered(lambda p: not p.move_id)
-        if missing_moves:
-            # Odoo 19 account.payment.write generates a missing JE when a payment
-            # is written to in_process/paid without move_id. Because the records
-            # are already paid, writing the same final state preserves business history.
-            missing_moves.write({'state': 'paid'})
+            if payment.move_id:
+                if payment.move_id.state != 'posted':
+                    fail(f'Payment {payment.id}: existing move {payment.move_id.id} is not posted.')
+            else:
+                if payment.state != 'paid':
+                    fail(f'Payment {payment.id}: expected paid before JE rebuild, found {payment.state}.')
 
-        for idx, payment in enumerate(paid_payments.sorted(key=lambda p: p.id), 1):
-            if payment.state != 'paid':
-                fail(f'Payment {payment.id}: final state is {payment.state}, expected paid.')
-            if not payment.move_id or payment.move_id.state != 'posted':
-                fail(f'Payment {payment.id}: missing posted journal entry after generation.')
+                # Migration-only temporary state.  No Payment is recreated.
+                env.cr.execute('UPDATE account_payment SET state = %s WHERE id = %s', ('draft', payment.id))
+                payment.invalidate_recordset(['state', 'move_id'])
+                if payment.state != 'draft':
+                    fail(f'Payment {payment.id}: could not enter temporary draft state.')
+
+                payment.action_post()
+                payment.invalidate_recordset(['state', 'move_id'])
+                if payment.state != 'in_process':
+                    fail(f'Payment {payment.id}: action_post ended in {payment.state}, expected in_process.')
+                if not payment.move_id or payment.move_id.state != 'posted':
+                    fail(f'Payment {payment.id}: action_post did not create a posted JE.')
+
+                payment.action_validate()
+                payment.invalidate_recordset(['state', 'move_id'])
+                if payment.state != 'paid':
+                    fail(f'Payment {payment.id}: action_validate ended in {payment.state}, expected paid.')
+
             company_amount = money(payment.currency_id._convert(
                 payment.amount, company.currency_id, company, payment.date
             ))
@@ -2178,7 +2242,6 @@ else:
             if idx % 100 == 0:
                 info(f'  payment JEs built/verified: {idx}/{len(paid_payments)}')
 
-        # Canceled payments remain canceled and receive no accounting move.
         for payment in canceled_payments:
             if payment.state != 'canceled' or payment.move_id:
                 fail(f'Canceled payment {payment.id} was changed unexpectedly.')
@@ -2219,6 +2282,17 @@ else:
                 )
             if idx % 50 == 0:
                 info(f'  reconciliations created/verified: {idx}/{len(applied_specs)}')
+
+        # Restore the original historical business state of all payslips WITHOUT
+        # replaying paid-state side effects (salary-attachment payment hooks, etc.).
+        # Their accounting/reconciliation state is already authoritative now.
+        env.cr.execute(
+            'UPDATE hr_payslip SET state = %s WHERE id = ANY(%s)',
+            ('paid', payslip_ids),
+        )
+        payslips.invalidate_recordset(['state'])
+        if any(slip.state != 'paid' for slip in payslips):
+            fail('Could not restore all historical payslips to state=paid.')
 
         # ---------------------------------------------------------------------
         # FINAL AUDIT - no commit occurs unless every assertion below passes.
