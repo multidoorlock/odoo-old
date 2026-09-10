@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mdl_blocked_variant_preview_list_view" model="ir.ui.view">
+        <field name="name">mdl.blocked.variant.preview.list</field>
+        <field name="model">mdl.blocked.variant.preview</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <field name="final_sku" string="מק״ט סופי"/>
+                <field name="final_name" string="שם פריט סופי"/>
+                <field name="attribute_values" string="ערכי מאפיינים"/>
+                <field name="product_tmpl_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+</odoo>

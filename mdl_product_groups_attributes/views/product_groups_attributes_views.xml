@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mdl_product_attribute_value_form_view" model="ir.ui.view">
+        <field name="name">product.attribute.value.form.mdl.catalog</field>
+        <field name="model">product.attribute.value</field>
+        <field name="priority" eval="99"/>
+        <field name="arch" type="xml">
+            <form string="ערך מאפיין" create="0" delete="0">
+                <sheet>
+                    <widget name="web_ribbon"
+                            title="בארכיון"
+                            bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <group>
+                        <group>
+                            <field name="name" string="טקסט ברירת מחדל"/>
+                            <field name="attribute_id"
+                                   string="מאפיין"
+                                   readonly="1"/>
+                            <field name="sequence" string="סדר"/>
+                        </group>
+                        <group>
+                            <field name="mdl_sku_component"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mdl_product_attribute_form_view" model="ir.ui.view">
+        <field name="name">product.attribute.form.mdl.catalog</field>
+        <field name="model">product.attribute</field>
+        <field name="inherit_id" ref="product.product_attribute_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="after">
+                <field name="mdl_sku_component" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="mdl_product_template_attribute_value_form_view" model="ir.ui.view">
+        <field name="name">product.template.attribute.value.form.mdl.catalog</field>
+        <field name="model">product.template.attribute.value</field>
+        <field name="inherit_id" ref="product.product_template_attribute_value_view_form"/>
+        <field name="arch" type="xml">
+            <field name="price_extra" position="after">
+                <field name="mdl_catalog_managed" invisible="1"/>
+                <field name="mdl_name_component_override" invisible="1"/>
+                <field name="mdl_sku_component_override" invisible="1"/>
+                <label for="mdl_name_component_value"
+                       invisible="not mdl_catalog_managed"/>
+                <div class="o_row" invisible="not mdl_catalog_managed">
+                    <field name="mdl_name_component_value" nolabel="1"/>
+                    <button name="action_mdl_reset_name_component"
+                            type="object"
+                            icon="fa-undo"
+                            title="בטל את שינוי הטקסט וחזור לערך של Odoo"
+                            class="btn-link p-0"
+                            invisible="not mdl_name_component_override"/>
+                </div>
+                <label for="mdl_sku_component_value"
+                       invisible="not mdl_catalog_managed"/>
+                <div class="o_row" invisible="not mdl_catalog_managed">
+                    <field name="mdl_sku_component_value" nolabel="1"/>
+                    <button name="action_mdl_reset_sku_component"
+                            type="object"
+                            icon="fa-undo"
+                            title="בטל את שינוי המק״ט וחזור לערך המקור"
+                            class="btn-link p-0"
+                            invisible="not mdl_sku_component_override"/>
+                </div>
+            </field>
+        </field>
+    </record>
+
+    <record id="mdl_product_template_attribute_value_list_view" model="ir.ui.view">
+        <field name="name">product.template.attribute.value.list.mdl.catalog</field>
+        <field name="model">product.template.attribute.value</field>
+        <field name="inherit_id" ref="product.product_template_attribute_value_view_tree"/>
+        <field name="active" eval="False"/>
+        <field name="arch" type="xml">
+            <field name="name" position="attributes">
+                <attribute name="string">ערך המאפיין</attribute>
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="name" position="after">
+                <field name="mdl_name_component_override" column_invisible="True"/>
+                <field name="mdl_sku_component_override" column_invisible="True"/>
+                <field name="mdl_name_component_value"
+                       string="טקסט בקבוצה"
+                       decoration-muted="not mdl_name_component_override"/>
+                <button name="action_mdl_reset_name_component"
+                        type="object"
+                        icon="fa-undo"
+                        title="בטל את שינוי הטקסט וחזור לערך של Odoo"
+                        class="btn-link p-0"
+                        invisible="not mdl_name_component_override"/>
+                <field name="mdl_sku_component_value"
+                       string="מק״ט בקבוצה"
+                       decoration-muted="not mdl_sku_component_override"/>
+                <button name="action_mdl_reset_sku_component"
+                        type="object"
+                        icon="fa-undo"
+                        title="בטל את שינוי המק״ט וחזור לערך המקור"
+                        class="btn-link p-0"
+                        invisible="not mdl_sku_component_override"/>
+            </field>
+            <field name="html_color" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </field>
+            <field name="image" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </field>
+            <field name="price_extra" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="mdl_catalog_combination_rule_list_view" model="ir.ui.view">
+        <field name="name">product.template.attribute.exclusion.list.mdl.catalog</field>
+        <field name="model">product.template.attribute.exclusion</field>
+        <field name="priority" eval="99"/>
+        <field name="arch" type="xml">
+            <list string="כללי שילובים">
+                <field name="product_tmpl_id" column_invisible="True"/>
+                <field name="mdl_is_catalog_condition" column_invisible="True"/>
+                <field name="mdl_rule_type" string="מה לעשות"/>
+                <field name="mdl_combination_value_ids"
+                       string="כאשר נבחרים הערכים"
+                       widget="many2many_tags"
+                       options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mdl_catalog_combination_rule_form_view" model="ir.ui.view">
+        <field name="name">product.template.attribute.exclusion.form.mdl.catalog</field>
+        <field name="model">product.template.attribute.exclusion</field>
+        <field name="priority" eval="99"/>
+        <field name="arch" type="xml">
+            <form string="כלל שילוב">
+                <sheet>
+                    <field name="mdl_is_catalog_condition" invisible="1"/>
+                    <group>
+                        <field name="product_tmpl_id"
+                               string="קבוצת פריטים"
+                               readonly="1"
+                               options="{'no_open': True}"/>
+                        <field name="mdl_rule_type"
+                               string="מה לעשות"
+                               widget="radio"
+                               options="{'horizontal': True}"/>
+                    </group>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="mdl_rule_type != 'forbidden'">
+                        כל פריט שמכיל יחד את כל הערכים שתבחר כאן ייחסם.
+                    </div>
+                    <div class="alert alert-info" role="alert"
+                         invisible="mdl_rule_type != 'allowed'">
+                        רק פריטים שמכילים יחד את כל הערכים שתבחר כאן יורשו.
+                        ברגע שקיים כלל מסוג זה, כל שילוב שאינו מתאים לפחות
+                        לכלל „אפשר רק” אחד ייחסם.
+                    </div>
+                    <group string="תנאי הכלל">
+                        <field name="mdl_combination_value_ids"
+                               string="כאשר נבחרים הערכים"
+                               widget="many2many_tags"
+                               required="1"
+                               domain="[('product_tmpl_id', '=', product_tmpl_id), ('ptav_active', '=', True)]"
+                               options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                    </group>
+                    <div class="text-muted">
+                        בחר ערך אחד לפחות משני מאפיינים שונים. לדוגמה:
+                        „דגם: חלון” יחד עם „צבע: כתום”.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mdl_product_template_form_view" model="ir.ui.view">
+        <field name="name">product.template.form.mdl.native.catalog</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='default_code']"
+                   position="attributes">
+                <attribute name="invisible">mdl_catalog_managed or product_variant_count &gt; 1</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']"
+                   position="before">
+                <field name="mdl_group_name_override" invisible="1"/>
+                <field name="mdl_group_sku_override" invisible="1"/>
+                <field name="mdl_model_name_override" invisible="1"/>
+                <field name="mdl_model_sku_override" invisible="1"/>
+                <field name="mdl_native_name_override" invisible="1"/>
+                <field name="mdl_copy_requires_new_sku" invisible="1"/>
+                <field name="mdl_model_as_attribute" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']/list/field[@name='value_ids']"
+                   position="after">
+                <field name="mdl_variant_creation_mode"
+                       optional="hide"
+                       column_invisible="not parent.mdl_catalog_managed"/>
+                <field name="mdl_name_suffix"
+                       optional="show"
+                       column_invisible="not parent.mdl_catalog_managed"/>
+                <field name="mdl_is_model_attribute" column_invisible="True"/>
+            </xpath>
+
+            <xpath expr="//page[@name='variants']/field[@name='attribute_line_ids']"
+                   position="after">
+                <group string="ניהול והגדרת קבוצת הפריטים">
+                    <group>
+                        <field name="mdl_catalog_managed"/>
+                        <field name="categ_id"
+                               string="קטגוריית מוצר"
+                               invisible="not mdl_catalog_managed"/>
+                        <field name="mdl_group_default_name"
+                               string="שם קבוצת הפריטים"
+                               invisible="not mdl_catalog_managed"/>
+                        <field name="mdl_group_default_sku"
+                               string="מק״ט קבוצת הפריטים"
+                               invisible="not mdl_catalog_managed"/>
+                    </group>
+                    <group>
+                        <div class="text-muted"
+                             invisible="mdl_catalog_managed">
+                            הפעל את ניהול הקבוצה כדי ליצור שמות ומק״טים סופיים מערכי המאפיינים.
+                        </div>
+                        <div class="text-muted"
+                             invisible="not mdl_catalog_managed">
+                            מה עושים: בוחרים קטגוריית מוצר, בודקים את שם הקבוצה ואת מק״ט הקבוצה, ואז מגדירים בטבלת המאפיינים את הערכים והסדר שלהם. כל ערך מאפיין מופיע בשם הסופי ורכיב המק״ט שלו מצורף למק״ט הסופי.
+                        </div>
+                        <div class="text-muted"
+                             invisible="not mdl_catalog_managed">
+                            בחירת קטגוריה מעתיקה אוטומטית את שם הקטגוריה ואת רכיב המק״ט שלה. דגם מנוהל כערך מאפיין רגיל.
+                        </div>
+                        <div class="alert alert-warning mb-0"
+                             role="alert"
+                             invisible="not mdl_copy_requires_new_sku">
+                            זו קבוצה מועתקת. יש להגדיר מק״ט קבוצה חדש לפני יצירת מק״טים לפריטים.
+                        </div>
+                    </group>
+                </group>
+
+                <group string="מצב הפריטים"
+                       invisible="not mdl_catalog_managed">
+                    <div class="d-flex flex-wrap gap-2" colspan="2">
+                        <button name="action_mdl_open_active_variants"
+                                type="object"
+                                icon="fa-check-circle"
+                                class="oe_stat_button">
+                            <field name="mdl_active_variant_count"
+                                   string="פריטים פעילים"
+                                   widget="statinfo"/>
+                        </button>
+                        <button name="action_mdl_open_archived_variants"
+                                type="object"
+                                icon="fa-archive"
+                                class="oe_stat_button">
+                            <field name="mdl_archived_variant_count"
+                                   string="פריטים בארכיון"
+                                   widget="statinfo"/>
+                        </button>
+                        <button name="action_mdl_open_blocked_rules"
+                                type="object"
+                                icon="fa-ban"
+                                class="oe_stat_button">
+                            <field name="mdl_blocked_variant_count"
+                                   string="שילובים חסומים"
+                                   widget="statinfo"/>
+                        </button>
+                    </div>
+                </group>
+
+                <separator string="ערכי מאפיינים בקבוצה"
+                           invisible="not mdl_catalog_managed"/>
+                <field name="mdl_attribute_value_ids"
+                       nolabel="1"
+                       invisible="not mdl_catalog_managed">
+                    <list editable="bottom"
+                          create="0"
+                          delete="0"
+                          default_order="attribute_line_id, product_attribute_value_id, id">
+                        <field name="product_tmpl_id" column_invisible="True"/>
+                        <field name="attribute_id" column_invisible="True"/>
+                        <field name="attribute_line_id"
+                               column_invisible="True"/>
+                        <field name="product_attribute_value_id"
+                               string="ערך המאפיין"
+                               readonly="1"
+                               context="{'form_view_ref': 'mdl_product_groups_attributes.mdl_product_attribute_value_form_view'}"
+                               options="{'no_create': True, 'no_create_edit': True}"/>
+                        <field name="mdl_name_component_value"
+                               string="טקסט בקבוצה"
+                               decoration-muted="not mdl_name_component_override"/>
+                        <field name="mdl_name_component_override"
+                               column_invisible="True"/>
+                        <field name="mdl_sku_component_override"
+                               column_invisible="True"/>
+                        <button name="action_mdl_reset_name_component"
+                                type="object"
+                                icon="fa-undo"
+                                title="בטל את שינוי הטקסט וחזור לערך של Odoo"
+                                class="btn-link p-0"
+                                invisible="not mdl_name_component_override"/>
+                        <field name="mdl_sku_component_value"
+                               string="מק״ט בקבוצה"
+                               decoration-muted="not mdl_sku_component_override"/>
+                        <button name="action_mdl_reset_sku_component"
+                                type="object"
+                                icon="fa-undo"
+                                title="בטל את שינוי המק״ט וחזור לערך המקור"
+                                class="btn-link p-0"
+                                invisible="not mdl_sku_component_override"/>
+                    </list>
+                </field>
+
+                <separator string="כללי שילובים"
+                           invisible="not mdl_catalog_managed"/>
+                <div class="text-muted"
+                     invisible="not mdl_catalog_managed">
+                    „חסום את השילוב” מונע את הערכים שנבחרו יחד.
+                    „אפשר רק את השילוב” יוצר רשימת שילובים מורשים וחוסם
+                    את כל השאר.
+                </div>
+                <field name="mdl_exclusion_ids"
+                       nolabel="1"
+                       invisible="not mdl_catalog_managed"
+                       domain="[('mdl_is_catalog_condition', '=', True)]"
+                       context="{
+                           'default_mdl_is_catalog_condition': True,
+                           'default_mdl_rule_type': 'forbidden',
+                           'form_view_ref': 'mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view'
+                       }">
+                    <list editable="bottom">
+                        <field name="product_tmpl_id"
+                               column_invisible="True"/>
+                        <field name="mdl_is_catalog_condition"
+                               column_invisible="True"/>
+                        <field name="mdl_rule_type" string="מה לעשות"/>
+                        <field name="mdl_combination_value_ids"
+                               string="כאשר נבחרים הערכים"
+                               widget="many2many_tags"
+                               required="1"
+                               domain="[('product_tmpl_id', '=', product_tmpl_id), ('ptav_active', '=', True)]"
+                               options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                    </list>
+                    <form string="כלל שילוב">
+                        <sheet>
+                            <field name="mdl_is_catalog_condition" invisible="1"/>
+                            <field name="product_tmpl_id" invisible="1"/>
+                            <group>
+                                <field name="mdl_rule_type"
+                                       string="מה לעשות"
+                                       widget="radio"
+                                       options="{'horizontal': True}"/>
+                            </group>
+                            <div class="alert alert-warning" role="alert"
+                                 invisible="mdl_rule_type != 'forbidden'">
+                                כל פריט שמכיל יחד את כל הערכים שתבחר כאן ייחסם.
+                            </div>
+                            <div class="alert alert-info" role="alert"
+                                 invisible="mdl_rule_type != 'allowed'">
+                                רק פריטים שמכילים יחד את כל הערכים שתבחר כאן יורשו.
+                                כל שילוב אחר ייחסם אם אינו מתאים לכלל „אפשר רק” אחר.
+                            </div>
+                            <group string="תנאי הכלל">
+                                <field name="mdl_combination_value_ids"
+                                       string="כאשר נבחרים הערכים"
+                                       widget="many2many_tags"
+                                       required="1"
+                                       domain="[('product_tmpl_id', '=', product_tmpl_id), ('ptav_active', '=', True)]"
+                                       options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                            </group>
+                        </sheet>
+                    </form>
+                </field>
+            </xpath>
+
+        </field>
+    </record>
+
+    <record id="mdl_product_template_list_view" model="ir.ui.view">
+        <field name="name">product.template.list.mdl.catalog</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="name" position="before">
+                <field name="mdl_catalog_managed" column_invisible="True"/>
+            </field>
+            <field name="default_code" position="attributes">
+                <attribute name="invisible">mdl_catalog_managed</attribute>
+            </field>
+            <field name="name" position="after">
+                <field name="mdl_model_value_summary"
+                       string="דגמים"
+                       optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="mdl_product_product_list_view" model="ir.ui.view">
+        <field name="name">product.product.list.mdl.catalog</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_product_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="name" position="replace">
+                <field name="mdl_variant_list_name"
+                       string="שם הפריט"
+                       readonly="1"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="mdl_product_product_form_final_name" model="ir.ui.view">
+        <field name="name">product.product.form.mdl.final.name</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('oe_title')]/label[@for='name']"
+                   position="replace">
+                <label for="mdl_generated_name"
+                       string="שם הפריט"
+                       invisible="not mdl_generated_name"/>
+                <label for="name"
+                       string="שם הפריט"
+                       invisible="mdl_generated_name"/>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]//field[@name='name']"
+                   position="replace">
+                <field name="mdl_generated_name"
+                       class="text-break"
+                       readonly="1"
+                       invisible="not mdl_generated_name"/>
+                <field name="name"
+                       class="text-break"
+                       options="{'line_breaks': False}"
+                       widget="text"
+                       invisible="mdl_generated_name"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="נתונים טכניים"
+                      name="mdl_technical_data"
+                      invisible="not mdl_generated_name">
+                    <group>
+                        <group string="מידות ומשקל">
+                            <field name="mdl_length_cm"/>
+                            <field name="mdl_width_cm"/>
+                            <field name="mdl_height_cm"/>
+                            <field name="weight" string="משקל"/>
+                            <field name="volume" string="נפח"/>
+                        </group>
+                        <group string="נתוני מערכת">
+                            <field name="mdl_max_protected_area_m2"/>
+                            <field name="mdl_installation_type"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        הנתונים בלשונית זו שייכים לפריט ואינם יוצרים
+                        שילובים חדשים. קיבולת, חברה ודגם מערכת מנוהלים
+                        בלשונית המאפיינים של תבנית המוצר.
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="mdl_product_variant_easy_form_final_name" model="ir.ui.view">
+        <field name="name">product.product.easy.form.mdl.final.name</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_variant_easy_edit_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('oe_title')]/label[@for='name']"
+                   position="replace">
+                <label for="mdl_generated_name"
+                       string="שם הפריט"
+                       invisible="not mdl_generated_name"/>
+                <label for="name"
+                       string="שם הפריט"
+                       invisible="mdl_generated_name"/>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]/h1/field[@name='name']"
+                   position="replace">
+                <field name="mdl_generated_name"
+                       readonly="1"
+                       invisible="not mdl_generated_name"/>
+                <field name="name"
+                       readonly="1"
+                       invisible="mdl_generated_name"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="mdl_product_product_search_view" model="ir.ui.view">
+        <field name="name">product.product.search.mdl.catalog</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_search_form_view"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="mdl_generated_name" string="שם הפריט"/>
+                <field name="mdl_max_protected_area_m2"/>
+                <field name="mdl_installation_type"/>
+            </field>
+        </field>
+    </record>
+</odoo>
+
