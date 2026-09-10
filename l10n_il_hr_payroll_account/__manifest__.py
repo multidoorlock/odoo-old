@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Israel - Payroll With Accounting',
-    'version': '1.4.26',
+    'version': '1.4.27',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
     'summary': 'חוקי שכר ישראליים, התאמות שכר ותשלומי עובדים ישירים',
