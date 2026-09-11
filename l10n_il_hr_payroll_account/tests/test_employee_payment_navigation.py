@@ -146,7 +146,7 @@ class TestEmployeePaymentNavigation(TransactionCase):
 
         html, _ = self.env['ir.actions.report']._render_qweb_html(
             'l10n_il_hr_payroll_account.action_report_batch_employee_payments',
-            res_ids=batch.ids)
+            batch.ids)
         self.assertIn(self.employee.name.encode(), html)
         self.assertIn(self.other.name.encode(), html)
         self.assertIn(b'Employee payment report test', html)

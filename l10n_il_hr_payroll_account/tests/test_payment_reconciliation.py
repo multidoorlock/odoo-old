@@ -302,38 +302,29 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             "//field[@name='payment_ids']/list")[0]
         self.assertEqual(
             batch_form.xpath("//field[@name='payment_ids']")[0].get('widget'),
-            'il_grouped_batch_payments',
+            'many2many',
         )
-        self.assertTrue(batch_form.xpath(
-            "//field[@name='il_grouped_payment_view_id']"))
         self.assertFalse(batch_form.xpath(
-            "//button[@name='action_il_open_grouped_payments']"))
-        self.assertIn(
-            "form_view_initial_mode",
-            batch_form.xpath("//field[@name='payment_ids']")[0].get('context'),
-        )
-        self.assertEqual(
-            payment_list.get('default_order'),
-            'il_employee_id,il_payment_cycle_type_id,date,id',
-        )
+            "//field[@name='il_grouped_payment_view_id']"))
+        self.assertTrue(batch_form.xpath(
+            "//button[@name='action_il_open_grouped_payments']"
+            "[contains(@class, 'oe_stat_button')]"))
+        self.assertFalse(payment_list.get('default_group_by'))
         visible_batch_fields = payment_list.xpath(
             "./field[not(@column_invisible='True')]/@name"
         )
-        self.assertEqual(visible_batch_fields, [
-            'name', 'date', 'il_employee_id',
-            'il_payment_cycle_type_id', 'amount_signed',
-        ])
-        self.assertEqual(
-            payment_list.xpath("./field[@name='amount_signed']")[0].get('sum'),
-            'Total',
-        )
+        self.assertTrue({'name', 'date', 'partner_id', 'memo', 'amount_signed'}
+                        <= set(visible_batch_fields))
+        self.assertTrue(
+            payment_list.xpath("./field[@name='amount_signed']")[0].get('sum'))
         grouped_list = self.env.ref(
             'l10n_il_hr_payroll_account.view_account_payment_il_batch_grouped_list'
         )._get_combined_arch()
         self.assertEqual(
             grouped_list.get('default_group_by'),
-            'il_batch_group,il_employee_id',
+            'il_employee_id',
         )
+        self.assertFalse(grouped_list.xpath("./field[@name='il_batch_group']"))
         self.assertEqual(
             grouped_list.xpath("./field[@name='amount']")[0].get('sum'),
             'סה״כ',

@@ -132,14 +132,15 @@ class TestPayrollReconciliationEditor(TransactionCase):
         self._add(wizard, payment, slip, 1000)
         wizard.action_apply()
         original_partial = slip._il_reconciliations()
-        original_splits = payment.il_split_line_ids.read(['amount', 'reconcile_id', 'sequence'])
+        original_splits = payment.il_split_line_ids.sorted('id').read(
+            ['amount', 'reconcile_id', 'sequence'])
         for amount in (2500, 3500):
             wizard = self._editor(payment=payment)
             wizard.line_ids.amount = amount
             with self.assertRaises(ValidationError):
                 wizard.action_apply()
             self.assertEqual(slip._il_reconciliations(), original_partial)
-            self.assertEqual(payment.il_split_line_ids.read(
+            self.assertEqual(payment.il_split_line_ids.sorted('id').read(
                 ['amount', 'reconcile_id', 'sequence']), original_splits)
             self.assertEqual(slip.il_net_amount_to_pay, 1000)
 

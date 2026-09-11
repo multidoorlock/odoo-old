@@ -17,13 +17,29 @@
                 <t t-call="web.external_layout">
                     <t t-set="report_data" t-value="o._il_employee_payment_report_data()"/>
                     <div class="page" dir="rtl">
+                        <style>
+                            .il_batch_employee_report { width: 100%; border-collapse: collapse; }
+                            .il_batch_employee_report th, .il_batch_employee_report td {
+                                padding: 4px !important;
+                                vertical-align: top;
+                            }
+                            .il_batch_employee_report .il_employee_group {
+                                page-break-inside: avoid;
+                            }
+                            .il_batch_employee_report .il_ltr {
+                                direction: ltr;
+                                unicode-bidi: embed;
+                                display: inline-block;
+                                white-space: nowrap;
+                            }
+                        </style>
                         <h2>תשלומים לעובדים — <span t-field="o.name"/></h2>
                         <p>
-                            <strong>תאריך אצווה: </strong><span t-field="o.date"/>
+                            <strong>תאריך אצווה: </strong><span t-field="o.date" dir="ltr" style="display: inline-block;"/>
                             <span class="mx-3">|</span>
                             <strong>מספר תשלומים: </strong><span t-out="report_data['payment_count']"/>
                         </p>
-                        <table class="table table-sm">
+                        <table class="table table-sm il_batch_employee_report" cellpadding="4">
                             <thead style="display: table-header-group;">
                                 <tr>
                                     <th>עובד / תשלום</th>
@@ -34,32 +50,33 @@
                                     <th class="text-end">סכום</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <t t-foreach="report_data['groups']" t-as="group">
+                            <tbody t-foreach="report_data['groups']" t-as="group"
+                                   class="il_employee_group" style="page-break-inside: avoid;">
                                     <tr class="fw-bold bg-light" style="page-break-after: avoid;">
                                         <td colspan="6"><span t-out="group['name']"/></td>
                                     </tr>
                                     <tr t-foreach="group['payments']" t-as="payment">
-                                        <td><span t-field="payment.name"/></td>
-                                        <td><span t-field="payment.date"/></td>
+                                        <td><span t-field="payment.name" class="il_ltr" dir="ltr"/></td>
+                                        <td><span t-field="payment.date" class="il_ltr" dir="ltr"/></td>
                                         <td><span t-field="payment.il_payment_cycle_type_id"/></td>
                                         <td style="overflow-wrap: break-word;"><span t-field="payment.memo"/></td>
                                         <td><span t-field="payment.state"/></td>
-                                        <td class="text-end"><span t-field="payment.amount"/></td>
+                                        <td class="text-end"><span t-field="payment.amount" class="il_ltr" dir="ltr"/></td>
                                     </tr>
                                     <tr class="fw-bold" style="page-break-before: avoid;">
                                         <td colspan="5">סה״כ לעובד — <span t-out="group['name']"/></td>
                                         <td class="text-end">
-                                            <span t-out="group['amount']" t-options="{'widget': 'monetary', 'display_currency': group['currency']}"/>
+                                            <span t-out="group['amount']" class="il_ltr" dir="ltr"
+                                                  t-options="{'widget': 'monetary', 'display_currency': group['currency']}"/>
                                         </td>
                                     </tr>
-                                </t>
                             </tbody>
                             <tfoot style="display: table-row-group;">
                                 <tr t-foreach="report_data['totals']" t-as="total" class="fw-bold">
                                     <td colspan="5">סה״כ תשלומים — <span t-out="total['currency'].name"/></td>
                                     <td class="text-end">
-                                        <span t-out="total['amount']" t-options="{'widget': 'monetary', 'display_currency': total['currency']}"/>
+                                        <span t-out="total['amount']" class="il_ltr" dir="ltr"
+                                              t-options="{'widget': 'monetary', 'display_currency': total['currency']}"/>
                                     </td>
                                 </tr>
                             </tfoot>

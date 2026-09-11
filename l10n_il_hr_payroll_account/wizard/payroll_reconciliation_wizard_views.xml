@@ -12,7 +12,7 @@
                 <field name="available_payment_ids" invisible="1"/>
                 <field name="available_payslip_ids" invisible="1"/>
                 <group>
-                    <field name="employee_id" readonly="1"/>
+                    <field name="employee_id" string="עובד" readonly="1"/>
                 </group>
                 <div class="alert alert-info" role="alert">
                     הוסף שורה, שנה סכום או הסר שורה כדי לשנות את הקיזוז בלבד.
