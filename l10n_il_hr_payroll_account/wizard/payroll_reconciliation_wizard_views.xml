@@ -4,9 +4,10 @@
         <field name="name">il.payroll.reconciliation.wizard.form</field>
         <field name="model">il.payroll.reconciliation.wizard</field>
         <field name="arch" type="xml">
-            <form string="ניהול התאמות">
+            <form string="תשלומים מקושרים">
                 <field name="source_payment_id" invisible="1"/>
                 <field name="source_payslip_id" invisible="1"/>
+                <field name="add_only" invisible="1"/>
                 <field name="company_id" invisible="1"/>
                 <field name="currency_id" invisible="1"/>
                 <field name="available_payment_ids" invisible="1"/>
@@ -14,32 +15,38 @@
                 <group>
                     <field name="employee_id" string="עובד" readonly="1"/>
                 </group>
-                <div class="alert alert-info" role="alert">
+                <div class="alert alert-info" role="alert" invisible="add_only">
                     הוסף שורה, שנה סכום או הסר שורה כדי לשנות את הקיזוז בלבד.
                     סכומי התשלום והתלוש נשארים כפי שנרשמו.
-                    שמירה מאפשרת תיקון בהמשך; אישור סופי נועל את ההתאמות המוצגות כאן.
+                </div>
+                <div class="alert alert-info" role="alert" invisible="not add_only">
+                    בחר תשלום עם יתרה פתוחה ואת הסכום שיקושר לתלוש.
+                    תשלומים שכבר מקושרים לתלוש מופיעים ברשימת התשלומים המקושרים.
                 </div>
                 <field name="line_ids" nolabel="1"
                        context="{'default_payment_id': source_payment_id, 'default_payslip_id': source_payslip_id}">
                     <list editable="bottom">
                         <field name="currency_id" column_invisible="True"/>
-                        <field name="is_finalized" readonly="1"/>
-                        <field name="payment_id" readonly="is_finalized or parent.source_payment_id"
+                        <field name="is_existing" column_invisible="True"/>
+                        <field name="payment_id" readonly="is_existing or parent.source_payment_id"
                                domain="[('id', 'in', parent.available_payment_ids)]"
                                options="{'no_create': True, 'no_open': True}"/>
                         <field name="memo" optional="show" readonly="1"/>
                         <field name="payment_amount" optional="hide" readonly="1"/>
-                        <field name="payslip_id" readonly="is_finalized or parent.source_payslip_id"
+                        <field name="payment_available_amount" readonly="1"/>
+                        <field name="payslip_id" readonly="is_existing or parent.source_payslip_id"
+                               column_invisible="parent.source_payslip_id"
                                domain="[('id', 'in', parent.available_payslip_ids)]"
                                options="{'no_create': True, 'no_open': True}"/>
-                        <field name="payslip_remaining" optional="show" readonly="1"/>
-                        <field name="amount" readonly="is_finalized" sum="סה״כ התאמות"/>
+                        <field name="payslip_remaining" optional="hide" readonly="1"/>
+                        <field name="amount" sum="סה״כ מקושר לתלוש"/>
                     </list>
                 </field>
                 <footer>
-                    <button name="action_apply" type="object" string="שמירת התאמות" class="btn-primary"/>
-                    <button name="action_finalize" type="object" string="אישור סופי"
-                            confirm="לאחר אישור סופי לא ניתן יהיה לשנות או להסיר את ההתאמות המוצגות. יתרת הפריסה תישאר זמינה לתלושים הבאים."/>
+                    <button name="action_apply" type="object" string="שמירת שינויים"
+                            class="btn-primary" invisible="add_only"/>
+                    <button name="action_apply" type="object" string="קישור לתלוש"
+                            class="btn-primary" invisible="not add_only"/>
                     <button special="cancel" string="ביטול" class="btn-secondary"/>
                 </footer>
             </form>

@@ -11,6 +11,7 @@ class IlPayrollReconciliationWizard(models.TransientModel):
 
     source_payment_id = fields.Many2one('account.payment', readonly=True)
     source_payslip_id = fields.Many2one('hr.payslip', readonly=True)
+    add_only = fields.Boolean(readonly=True, default=False)
     employee_id = fields.Many2one('hr.employee', compute='_compute_scope')
     company_id = fields.Many2one('res.company', compute='_compute_scope')
     currency_id = fields.Many2one('res.currency', compute='_compute_scope')
@@ -20,8 +21,9 @@ class IlPayrollReconciliationWizard(models.TransientModel):
         'hr.payslip', compute='_compute_candidates')
     line_ids = fields.One2many(
         'il.payroll.reconciliation.wizard.line', 'wizard_id',
-        string='התאמות בין תשלומים לתלושים')
+        string='תשלומים מקושרים')
     snapshot = fields.Text(readonly=True)
+    original_row_pairs = fields.Json(readonly=True, default=dict)
 
     @api.depends('source_payment_id', 'source_payslip_id')
     def _compute_scope(self):
@@ -34,17 +36,53 @@ class IlPayrollReconciliationWizard(models.TransientModel):
                 if wizard.source_payment_id
                 else wizard.source_payslip_id.employee_id)
 
-    @api.depends('employee_id', 'company_id', 'currency_id')
+    @api.model
+    def _eligible_payments(self, payslip):
+        """New links use the real payable-side residual, never payment state.
+
+        A payment linked to another payslip remains eligible while it has an
+        open debit balance. Already linked payments are edited in their
+        existing rows instead of being offered for another link to this slip.
+        """
+        payslip.ensure_one()
+        payslip.check_access('read')
+        employee = payslip.employee_id
+        company = payslip.company_id
+        if not employee or not employee.work_contact_id:
+            return self.env['account.payment']
+        account = company.il_employee_payment_debit_account_id
+        items = self.env['account.move.line'].search([
+            ('company_id', '=', company.id),
+            ('partner_id', '=', employee.work_contact_id.id),
+            ('account_id', '=', account.id),
+            ('currency_id', '=', payslip.currency_id.id),
+            ('parent_state', '=', 'posted'),
+            ('payment_id', '!=', False),
+            ('balance', '>', 0),
+            ('amount_residual', '>', 0),
+        ])
+        linked = self.env['account.partial.reconcile'].search([
+            ('credit_move_id.il_payslip_id', '=', payslip.id),
+            ('debit_move_id.payment_id', '!=', False),
+        ]).debit_move_id.payment_id
+        payments = items.payment_id - linked
+        return payments.filtered(lambda payment:
+            payment.company_id == company
+            and payment.currency_id == payslip.currency_id
+            and payment._il_employee() == employee
+            and payment._il_uses_employee_payment_accounting()
+            and payment.move_id.state == 'posted'
+            and payslip.currency_id.compare_amounts(sum(
+                items.filtered(lambda line: line.payment_id == payment).mapped(
+                    'amount_residual_currency')), 0.0) > 0)
+
+    @api.depends('employee_id', 'company_id', 'currency_id', 'source_payslip_id')
     def _compute_candidates(self):
         for wizard in self:
-            wizard.available_payment_ids = self.env['account.payment'].search([
-                ('company_id', '=', wizard.company_id.id),
-                ('partner_id', '=', wizard.employee_id.work_contact_id.id),
-                ('payment_type', '=', 'outbound'),
-                ('partner_type', '=', 'supplier'),
-                ('currency_id', '=', wizard.currency_id.id),
-                ('move_id.state', '=', 'posted'),
-            ])
+            if wizard.source_payslip_id:
+                wizard.available_payment_ids = wizard._eligible_payments(wizard.source_payslip_id)
+            else:
+                wizard.available_payment_ids = wizard.source_payment_id
             wizard.available_payslip_ids = self.env['hr.payslip'].search([
                 ('company_id', '=', wizard.company_id.id),
                 ('employee_id', '=', wizard.employee_id.id),
@@ -55,14 +93,16 @@ class IlPayrollReconciliationWizard(models.TransientModel):
     def _check_source(self):
         self.ensure_one()
         if bool(self.source_payment_id) == bool(self.source_payslip_id):
-            raise ValidationError(_('יש לפתוח את ניהול ההתאמות מתשלום או מתלוש אחד.'))
+            raise ValidationError(_('יש לפתוח את התשלומים המקושרים ממסמך מקור אחד.'))
+        if self.add_only and not self.source_payslip_id:
+            raise ValidationError(_('יש לפתוח הוספת תשלומים מתוך תלוש.'))
         source = self.source_payment_id or self.source_payslip_id
         source.check_access('read')
         if not self.employee_id:
             raise ValidationError(_('המסמך חייב להיות מקושר לעובד.'))
         if not source.move_id or source.move_id.state != 'posted':
             raise ValidationError(_(
-                'התאמה חשבונאית אפשרית לאחר רישום פקודת היומן. '
+                'ניתן לקשר תשלום לתלוש לאחר רישום פקודת היומן. '
                 'אין צורך להחזיר את התשלום או התלוש לטיוטה.'))
         if self.source_payment_id and not source._il_uses_employee_payment_accounting():
             raise ValidationError(_('ניהול זה מיועד לתשלומים יוצאים לעובדים.'))
@@ -90,7 +130,7 @@ class IlPayrollReconciliationWizard(models.TransientModel):
         values = {
             'partials': [(p.id, p.amount, p.debit_amount_currency,
                           p.credit_amount_currency, p.debit_move_id.id,
-                          p.credit_move_id.id, p.il_payroll_finalized) for p in partials],
+                          p.credit_move_id.id) for p in partials],
             'payments': [(p.id, p.amount, p.currency_id.id, p.partner_id.id,
                           p.company_id.id, p.move_id.id, str(p.date),
                           p.il_spread_type) for p in payments.sorted('id')],
@@ -110,6 +150,8 @@ class IlPayrollReconciliationWizard(models.TransientModel):
         return json.dumps(values, sort_keys=True, separators=(',', ':'))
 
     def _initial_rows(self):
+        if self.add_only:
+            return []
         grouped = {}
         for partial in self._scope_partials():
             payment = partial.debit_move_id.payment_id
@@ -126,7 +168,8 @@ class IlPayrollReconciliationWizard(models.TransientModel):
         # The original snapshot and rows are generated on the server. A stale
         # browser cannot supply its own baseline to overwrite a newer match.
         cleaned = [{key: value for key, value in vals.items()
-                    if key not in ('snapshot', 'line_ids')} for vals in vals_list]
+                    if key not in ('snapshot', 'line_ids', 'original_row_pairs')}
+                   for vals in vals_list]
         wizards = super().create(cleaned)
         for wizard in wizards:
             wizard._check_source()
@@ -134,22 +177,29 @@ class IlPayrollReconciliationWizard(models.TransientModel):
                 'snapshot': wizard._fingerprint(),
                 'line_ids': wizard._initial_rows(),
             })
+            super(IlPayrollReconciliationWizard, wizard).write({
+                'original_row_pairs': {
+                    str(line.id): [line.payment_id.id, line.payslip_id.id]
+                    for line in wizard.line_ids},
+            })
         return wizards
 
     def write(self, vals):
-        if {'source_payment_id', 'source_payslip_id', 'snapshot'} & vals.keys():
+        if {'source_payment_id', 'source_payslip_id', 'snapshot',
+                'original_row_pairs', 'add_only'} & vals.keys():
             raise ValidationError(_('יש לפתוח חלון חדש כדי לשנות את מסמך המקור.'))
         return super().write(vals)
 
     @api.model
-    def _action_open(self, payment=None, payslip=None):
+    def _action_open(self, payment=None, payslip=None, add_only=False):
         wizard = self.create({
             'source_payment_id': payment.id if payment else False,
             'source_payslip_id': payslip.id if payslip else False,
+            'add_only': add_only,
         })
         return {
             'type': 'ir.actions.act_window',
-            'name': _('ניהול התאמות'),
+            'name': _('קישור תשלום לתלוש') if add_only else _('תשלומים מקושרים'),
             'res_model': self._name, 'res_id': wizard.id,
             'view_mode': 'form', 'target': 'new',
             'views': [(self.env.ref(
@@ -162,15 +212,15 @@ class IlPayrollReconciliationWizard(models.TransientModel):
         payment.check_access('read')
         slip.check_access('read')
         if self.source_payment_id and payment != self.source_payment_id:
-            raise ValidationError(_('בחלון זה ניתן להתאים רק את תשלום המקור.'))
+            raise ValidationError(_('בחלון זה ניתן לקשר רק את תשלום המקור.'))
         if self.source_payslip_id and slip != self.source_payslip_id:
-            raise ValidationError(_('בחלון זה ניתן להתאים רק את תלוש המקור.'))
+            raise ValidationError(_('בחלון זה ניתן לקשר רק לתלוש המקור.'))
         if (payment.company_id != self.company_id
                 or slip.company_id != self.company_id
                 or payment._il_employee() != self.employee_id
                 or slip.employee_id != self.employee_id
                 or payment.partner_id != self.employee_id.work_contact_id):
-            raise ValidationError(_('ניתן להתאים רק תשלום ותלוש של אותו עובד ובאותה חברה.'))
+            raise ValidationError(_('ניתן לקשר רק תשלום ותלוש של אותו עובד ובאותה חברה.'))
         if (payment.currency_id != self.currency_id
                 or slip.currency_id != self.currency_id):
             raise ValidationError(_('התשלום והתלוש חייבים להיות באותו מטבע.'))
@@ -179,7 +229,7 @@ class IlPayrollReconciliationWizard(models.TransientModel):
         moves = payment.move_id | slip.move_id
         if (not payment.move_id or not slip.move_id
                 or any(move.state != 'posted' for move in moves)):
-            raise ValidationError(_('שתי פקודות היומן חייבות להיות רשומות לפני ההתאמה.'))
+            raise ValidationError(_('שתי פקודות היומן חייבות להיות רשומות לפני הקישור.'))
         if check_editable:
             moves._il_check_reconciliation_editable()
         account = self.company_id.il_employee_payment_debit_account_id
@@ -221,15 +271,6 @@ class IlPayrollReconciliationWizard(models.TransientModel):
         with self.env.cr.savepoint():
             return self._apply_allocations()
 
-    def action_finalize(self):
-        self.ensure_one()
-        with self.env.cr.savepoint():
-            result = self._apply_allocations()
-            self._scope_partials().filtered(
-                lambda partial: not partial.il_payroll_finalized,
-            ).write({'il_payroll_finalized': True})
-            return result
-
     def _apply_allocations(self):
         self._check_source()
         old = self._scope_partials()
@@ -238,23 +279,32 @@ class IlPayrollReconciliationWizard(models.TransientModel):
         self._lock_records(payments, slips)
         if self._fingerprint() != self.snapshot:
             raise UserError(_(
-                'ההתאמות, היתרות או הפריסה השתנו מאז פתיחת החלון. '
-                'סגור ופתח את ניהול ההתאמות מחדש.'))
-        requested = {}
-        for line in self.line_ids:
-            self._check_pair(line.payment_id, line.payslip_id, check_editable=False)
-            if self.currency_id.compare_amounts(line.amount, 0) <= 0:
-                raise ValidationError(_('סכום התאמה חייב להיות חיובי; להסרה מחק את השורה.'))
-            key = (line.payment_id.id, line.payslip_id.id)
-            if key in requested:
-                raise ValidationError(_('יש לרכז כל זוג של תשלום ותלוש בשורה אחת.'))
-            requested[key] = line.amount
-
+                'התשלומים המקושרים, היתרות או הפריסה השתנו מאז פתיחת החלון. '
+                'סגור ופתח את התשלומים המקושרים מחדש.'))
         grouped = {}
         for partial in self._scope_partials():
             key = (partial.debit_move_id.payment_id.id,
                    partial.credit_move_id.il_payslip_id.id)
             grouped[key] = grouped.get(key, self.env['account.partial.reconcile']) | partial
+        requested = ({key: sum(partials.mapped('debit_amount_currency'))
+                      for key, partials in grouped.items()} if self.add_only else {})
+        for line in self.line_ids:
+            self._check_pair(line.payment_id, line.payslip_id, check_editable=False)
+            if self.currency_id.compare_amounts(line.amount, 0) <= 0:
+                raise ValidationError(_('הסכום המקושר חייב להיות חיובי; להסרה מחק את השורה.'))
+            key = (line.payment_id.id, line.payslip_id.id)
+            original_pair = (self.original_row_pairs or {}).get(str(line.id))
+            if original_pair:
+                if list(key) != original_pair:
+                    raise ValidationError(_('להחלפת תשלום מקושר, הסר את השורה והוסף תשלום חדש.'))
+            elif (key in grouped
+                    or line.payment_id not in self._eligible_payments(line.payslip_id)):
+                raise ValidationError(_(
+                    'אפשר להוסיף רק תשלום עם יתרה פתוחה שאינו מקושר כבר לתלוש זה. '
+                    'לשינוי תשלום קיים ערוך את השורה שלו.'))
+            if key in requested:
+                raise ValidationError(_('יש לרכז כל זוג של תשלום ותלוש בשורה אחת.'))
+            requested[key] = line.amount
         changed = {key for key in set(grouped) | set(requested)
                    if self.currency_id.compare_amounts(
                        sum(grouped.get(key, self.env['account.partial.reconcile']).mapped(
@@ -306,18 +356,33 @@ class IlPayrollReconciliationWizardLine(models.TransientModel):
     payment_id = fields.Many2one('account.payment', string='תשלום', required=True)
     payslip_id = fields.Many2one('hr.payslip', string='תלוש', required=True)
     memo = fields.Char(related='payment_id.memo', string='פתק')
-    amount = fields.Monetary(string='סכום להתאמה', required=True)
+    amount = fields.Monetary(string='סכום מקושר לתלוש', required=True)
     currency_id = fields.Many2one(related='wizard_id.currency_id')
     payment_amount = fields.Monetary(related='payment_id.amount', string='סכום התשלום')
+    payment_available_amount = fields.Monetary(
+        string='יתרה זמינה לסגירה', compute='_compute_payment_available_amount')
     payslip_remaining = fields.Monetary(
         related='payslip_id.il_net_amount_to_pay', string='יתרת התלוש כעת')
-    is_finalized = fields.Boolean(string='אושר סופית', compute='_compute_finalized')
+    is_existing = fields.Boolean(compute='_compute_existing')
 
-    @api.depends('payment_id', 'payslip_id')
-    def _compute_finalized(self):
+    @api.depends('payment_id.move_id.line_ids.amount_residual_currency',
+                 'payment_id.move_id.state',
+                 'payment_id.company_id.il_employee_payment_debit_account_id')
+    def _compute_payment_available_amount(self):
         for line in self:
-            line.is_finalized = bool(self.env['account.partial.reconcile'].search_count([
-                ('debit_move_id.payment_id', '=', line.payment_id.id),
-                ('credit_move_id.il_payslip_id', '=', line.payslip_id.id),
-                ('il_payroll_finalized', '=', True),
-            ], limit=1)) if line.payment_id and line.payslip_id else False
+            payment = line.payment_id
+            if not payment:
+                line.payment_available_amount = 0.0
+                continue
+            account = payment.company_id.il_employee_payment_debit_account_id
+            items = payment.move_id.line_ids.filtered(lambda item:
+                item.parent_state == 'posted' and item.account_id == account
+                and item.partner_id == payment.partner_id
+                and item.currency_id == payment.currency_id and item.balance > 0)
+            line.payment_available_amount = max(
+                payment.currency_id.round(sum(items.mapped('amount_residual_currency'))), 0.0)
+
+    @api.depends('wizard_id.original_row_pairs')
+    def _compute_existing(self):
+        for line in self:
+            line.is_existing = str(line._origin.id) in (line.wizard_id.original_row_pairs or {})

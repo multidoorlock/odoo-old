@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo import api, fields, models
 
 
 class AccountMove(models.Model):
@@ -31,9 +30,9 @@ class AccountPartialReconcile(models.Model):
     _inherit = 'account.partial.reconcile'
 
     il_payroll_finalized = fields.Boolean(
-        string='התאמה סופית', default=False, copy=False, readonly=True,
-        help='Final approval locks this payment-to-payslip allocation only. '
-             'Other installments remain available for later payslips.')
+        string='Legacy payroll approval marker', default=False, copy=False,
+        readonly=True, help='Retained for upgrade compatibility only. '
+                            'This field does not restrict reconciliation.')
 
     il_payment_id = fields.Many2one(
         related='debit_move_id.payment_id', string='Employee Payment',
@@ -61,22 +60,18 @@ class AccountPartialReconcile(models.Model):
     def _il_check_allocation_editable(self):
         self._il_lock_allocation_partials()
         for partial in self:
-            if partial.il_payroll_finalized:
-                raise UserError(_(
-                    'התאמה זו אושרה סופית ולא ניתן להסיר אותה או לשנות את סכומה.'))
             self._il_allocation_moves(
                 partial.debit_move_id, partial.credit_move_id,
             )._il_check_reconciliation_editable()
 
     def _il_lock_allocation_partials(self):
-        """Serialize final approval with native edits and deletions as well."""
-        allocations = self.filtered(lambda partial:
-            partial.il_payroll_finalized or self._il_allocation_moves(
+        """Serialize native payroll link edits and deletions."""
+        allocations = self.filtered(lambda partial: self._il_allocation_moves(
                 partial.debit_move_id, partial.credit_move_id))
         if not allocations:
             return
         # Match the editor's payment -> payslip -> journal-item -> partial
-        # order, including native unlink/finalize entry points.
+        # order, including native unlink/write entry points.
         items = allocations.debit_move_id | allocations.credit_move_id
         for table, records in [
             ('account_payment', items.payment_id),
@@ -96,7 +91,7 @@ class AccountPartialReconcile(models.Model):
             [tuple(allocations.ids)],
         )
         allocations.invalidate_recordset([
-            'il_payroll_finalized', 'debit_move_id', 'credit_move_id',
+            'debit_move_id', 'credit_move_id',
         ])
 
     @api.model_create_multi
@@ -106,25 +101,12 @@ class AccountPartialReconcile(models.Model):
                 self.env['account.move.line'].browse(vals.get('debit_move_id')),
                 self.env['account.move.line'].browse(vals.get('credit_move_id')),
             )
-            if vals.get('il_payroll_finalized') and not moves:
-                raise UserError(_('אישור זה מיועד להתאמה בין תשלום עובד לתלוש.'))
             moves._il_check_reconciliation_editable()
         partials = super().create(vals_list)
         partials._il_payslips_to_sync().sudo()._il_sync_paid_state_from_balance()
         return partials
 
     def write(self, vals):
-        if 'il_payroll_finalized' in vals:
-            self._il_lock_allocation_partials()
-            if not vals['il_payroll_finalized'] and self.filtered('il_payroll_finalized'):
-                raise UserError(_('לא ניתן לבטל אישור סופי של התאמה.'))
-            if vals['il_payroll_finalized']:
-                for partial in self:
-                    moves = self._il_allocation_moves(
-                        partial.debit_move_id, partial.credit_move_id)
-                    if not moves:
-                        raise UserError(_('אישור זה מיועד להתאמה בין תשלום עובד לתלוש.'))
-                    moves._il_check_reconciliation_editable()
         if {'amount', 'debit_amount_currency', 'credit_amount_currency',
                 'debit_move_id', 'credit_move_id'} & vals.keys():
             self._il_check_allocation_editable()

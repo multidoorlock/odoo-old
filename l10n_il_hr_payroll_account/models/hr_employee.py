@@ -93,11 +93,16 @@ class HrEmployee(models.Model):
             raise UserError(_('לא מוגדר בחברה חשבון יתרות עובדים.'))
         action = self.env['ir.actions.actions']._for_xml_id(
             'account.action_account_moves_all')
+        view = self.env.ref(
+            'l10n_il_hr_payroll_account.view_employee_payroll_ledger_list')
         action.update({
             'name': _('יתרה ותנועות שכר — %s', self.name),
             'domain': self._il_payroll_ledger_domain(),
-            # Native journal items include matched and unmatched entries.
-            # Removing the Posted search filter also exposes draft entries.
-            'context': {'search_default_posted': 1},
+            'view_id': view.id,
+            'views': [(view.id, 'list')] + [
+                pair for pair in action['views'] if pair[1] != 'list'],
+            # Both native filters are removable: clearing Unreconciled shows
+            # settled entries too; clearing Posted additionally shows drafts.
+            'context': {'search_default_posted': 1, 'search_default_unreconciled': 1},
         })
         return action

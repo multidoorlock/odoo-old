@@ -1,7 +1,9 @@
 from datetime import date
+from lxml import etree
 
 from odoo import Command
 from odoo.tests.common import TransactionCase, tagged
+from odoo.tools.safe_eval import safe_eval
 
 
 @tagged('post_install', '-at_install', 'l10n_il_employee_payment_navigation')
@@ -43,7 +45,7 @@ class TestEmployeePaymentNavigation(TransactionCase):
         cls.employee = cls.employees[0]
         cls.other = cls.employees[1]
 
-    def _payment(self, employee, amount):
+    def _payment(self, employee, amount, currency=None):
         return self.env['account.payment'].with_context(il_employee_payment=True).create({
             'partner_id': employee.work_contact_id.id,
             'company_id': self.company.id,
@@ -52,6 +54,7 @@ class TestEmployeePaymentNavigation(TransactionCase):
             'journal_id': self.journal.id,
             'date': date(2026, 9, 1),
             'amount': amount,
+            'currency_id': (currency or self.company.currency_id).id,
             'memo': 'Employee payment report test',
         })
 
@@ -90,7 +93,25 @@ class TestEmployeePaymentNavigation(TransactionCase):
         self.assertEqual(lines.account_id, self.payable)
         self.assertEqual(lines.partner_id, self.employee.work_contact_id)
         self.assertEqual(lines.move_id, salary | draft | payment.move_id)
-        self.assertEqual(action['context'], {'search_default_posted': 1})
+        self.assertEqual(action['context'], {
+            'search_default_posted': 1, 'search_default_unreconciled': 1})
+        ledger_view = self.env['ir.ui.view'].browse(action['views'][0][0])
+        self.assertEqual(ledger_view.inherit_id, self.env.ref('account.view_move_line_tree'))
+        residual_column = ledger_view._get_combined_arch().xpath(
+            "//field[@name='amount_residual']")[0]
+        self.assertEqual(residual_column.get('optional'), 'show')
+
+        (salary | payment.move_id).line_ids.filtered(
+            lambda line: line.account_id == self.payable).reconcile()
+        search = self.env.ref('account.view_account_move_line_filter')._get_combined_arch()
+        remaining_filter = search.xpath("//filter[@name='unreconciled']")[0]
+        open_lines = self.env['account.move.line'].search(
+            action['domain'] + [('parent_state', '=', 'posted')]
+            + safe_eval(remaining_filter.get('domain')))
+        self.assertEqual(open_lines.move_id, salary)
+        all_lines = self.env['account.move.line'].search(action['domain'])
+        self.assertIn(payment.move_id, all_lines.move_id)
+        self.assertIn(draft, all_lines.move_id)
 
         advance = self._payment(self.employee, 800)
         advance.action_post()
@@ -134,19 +155,50 @@ class TestEmployeePaymentNavigation(TransactionCase):
         self.assertEqual(
             set(self.env['account.payment'].search(action['domain']).ids),
             set(batch.payment_ids.ids))
-        self.assertIn('pivot', action['view_mode'])
+        general = self.env['ir.actions.actions']._for_xml_id(
+            'l10n_il_hr_payroll_account.il_action_employee_payments')
+        self.assertEqual(action['id'], general['id'])
+        self.assertEqual(action['views'], general['views'])
+        self.assertEqual(action['view_mode'], general['view_mode'])
+        self.assertNotIn('search_default_il_filter_employee', action['context'])
 
         form = self.env.ref('account_batch_payment.view_batch_payment_form')._get_combined_arch()
         self.assertEqual(form.xpath("//field[@name='payment_ids']")[0].get('widget'), 'many2many')
-        list_arch = self.env.ref(
+        retired_list = self.env.ref(
             'l10n_il_hr_payroll_account.view_account_payment_il_batch_grouped_list'
-        )._get_combined_arch()
-        self.assertFalse(list_arch.xpath("//field[@name='il_batch_group']"))
-        self.assertEqual(list_arch.get('default_group_by'), 'il_employee_id')
+        )
+        self.assertFalse(retired_list.active)
 
         html, _ = self.env['ir.actions.report']._render_qweb_html(
             'l10n_il_hr_payroll_account.action_report_batch_employee_payments',
             batch.ids)
         self.assertIn(self.employee.name.encode(), html)
         self.assertIn(self.other.name.encode(), html)
-        self.assertIn(b'Employee payment report test', html)
+        self.assertNotIn(b'Employee payment report test', html)
+        table = etree.HTML(html).xpath(
+            "//table[contains(@class, 'il_batch_employee_summary')]")[0]
+        self.assertEqual(len(table.xpath('./thead/tr/th')), 2)
+        self.assertEqual(len(table.xpath('./tbody/tr')), 2)
+        self.assertTrue(all(len(row.xpath('./td')) == 2 for row in table.xpath('./tbody/tr')))
+        self.assertEqual(len(table.xpath('./tfoot/tr')), 1)
+
+    def test_report_keeps_multiple_currencies_in_one_employee_row(self):
+        other_currency = self.env.ref('base.USD')
+        if other_currency == self.company.currency_id:
+            other_currency = self.env.ref('base.EUR')
+        other_currency.active = True
+        first = self._payment(self.employee, 100)
+        second = self._payment(self.employee, 50, currency=other_currency)
+        # Exercise the report aggregator independently of a bank's currency
+        # restrictions: never collapse unlike currencies into one number.
+        batch = self.env['account.batch.payment'].new({
+            'payment_ids': [Command.set((first | second).ids)],
+        })
+        data = batch._il_employee_payment_report_data()
+        self.assertEqual(len(data['employees']), 1)
+        self.assertEqual(len(data['employees'][0]['amounts']), 2)
+        self.assertEqual({item['currency'].id: item['amount']
+                          for item in data['employees'][0]['amounts']}, {
+            self.company.currency_id.id: 100,
+            other_currency.id: 50,
+        })

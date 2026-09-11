@@ -35,7 +35,7 @@
               sequence="30"/>
 
     <menuitem id="menu_il_payment_cycle_types"
-              name="סוגי מחזורי תשלומים"
+              name="סוגי מחזורי תשלומי אצווה"
               parent="menu_il_payments_root"
               action="action_il_payment_cycle_types"
               sequence="40"/>

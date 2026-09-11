@@ -1,0 +1,166 @@
+from datetime import date
+
+from odoo.exceptions import UserError, ValidationError
+from odoo.tests.common import TransactionCase, tagged
+
+from . import test_payment_reconciliation as payment_fixtures
+
+
+@tagged('post_install', '-at_install', 'l10n_il_hr_payroll_account_payslip_payment_list')
+class TestPayslipPaymentList(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env.company
+        cls.env['hr.payroll.structure']._il_ensure_payroll_accounting_configuration(overwrite=True)
+        cls.payable = cls.company.il_employee_payment_debit_account_id
+        cls.outstanding = cls.company.il_employee_payment_credit_account_id
+        cls.expense = cls.env['account.account'].search([
+            ('company_ids', 'in', cls.company.id), ('account_type', '=', 'expense')], limit=1)
+        cls.bank_journal = cls.env['account.journal'].search([
+            ('company_id', '=', cls.company.id), ('type', 'in', ('bank', 'cash'))], limit=1)
+        cls.general_journal = cls.env['account.journal'].search([
+            ('company_id', '=', cls.company.id), ('type', '=', 'general')], limit=1)
+        cls.monthly_type = cls.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_type_il')
+        cls.monthly_structure = cls.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_il')
+        cls.monthly_structure.journal_id = cls.general_journal
+        if not cls.general_journal.default_account_id:
+            cls.general_journal.default_account_id = cls.expense
+        cls.employee = cls.env['hr.employee'].create({
+            'name': 'Payslip Payment List Employee', 'company_id': cls.company.id,
+            'contract_date_start': date(2026, 1, 1), 'date_version': date(2026, 1, 1),
+            'mdl_wage_type': 'mdl_monthly', 'structure_type_id': cls.monthly_type.id,
+            'il_salary_structure_id': cls.monthly_structure.id, 'schedule_pay': 'monthly',
+        })
+
+    _payment = payment_fixtures.TestEmployeePaymentReconciliation._payment
+    _payslip_with_posted_net = payment_fixtures.TestEmployeePaymentReconciliation._payslip_with_posted_net
+
+    def _linked(self):
+        payment = self._payment(1000.0)
+        slip = self._payslip_with_posted_net(1500.0)
+        payment.il_split_line_ids._il_reconcile_with_payslip(slip)
+        return payment.with_context(il_payslip_id=slip.id), slip
+
+    def _edit(self, payment, amount, token=None):
+        payment.write({
+            'il_payslip_linked_amount': amount,
+            'il_payslip_link_write_token': token or payment.il_payslip_link_snapshot,
+        })
+
+    def test_inline_amount_changes_only_payslip_link(self):
+        payment, slip = self._linked()
+        payment_values = (payment.amount, payment.date, payment.partner_id,
+                          payment.move_id, payment.move_id.line_ids.mapped('balance'))
+        salary_values = slip.line_ids.mapped('total')
+        self.assertEqual(payment.il_payslip_linked_amount, 1000.0)
+        self._edit(payment, 400.0)
+        self.assertEqual(payment.il_payslip_linked_amount, 400.0)
+        self.assertEqual(payment.il_remaining_amount, 600.0)
+        self.assertEqual(slip.il_net_amount_to_pay, 1100.0)
+        self.assertEqual((payment.amount, payment.date, payment.partner_id,
+                          payment.move_id, payment.move_id.line_ids.mapped('balance')), payment_values)
+        self.assertEqual(slip.line_ids.mapped('total'), salary_values)
+
+    def test_stale_inline_amount_cannot_overwrite_a_newer_link(self):
+        payment, slip = self._linked()
+        old_token = payment.il_payslip_link_snapshot
+        self._edit(payment, 600.0, old_token)
+        with self.assertRaises(UserError), self.cr.savepoint():
+            self._edit(payment, 400.0, old_token)
+        self.assertEqual(payment.il_payslip_linked_amount, 600.0)
+        self.assertEqual(slip.il_net_amount_to_pay, 900.0)
+
+    def test_inline_edit_requires_source_and_token_and_rejects_financial_payload(self):
+        payment, slip = self._linked()
+        token = payment.il_payslip_link_snapshot
+        with self.assertRaises(UserError), self.cr.savepoint():
+            payment.write({'il_payslip_linked_amount': 400.0})
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            payment.write({'il_payslip_linked_amount': 400.0,
+                           'il_payslip_link_write_token': token, 'amount': 400.0})
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self._edit(payment.with_context(il_payslip_id=False), 400.0, token)
+        self.assertEqual(payment.amount, 1000.0)
+        self.assertEqual(slip.il_net_amount_to_pay, 500.0)
+
+    def test_inline_zero_and_over_allocation_leave_existing_link_intact(self):
+        payment, slip = self._linked()
+        old_partial = payment.il_split_line_ids.reconcile_id
+        for amount in (0.0, -1.0, 1001.0):
+            with self.assertRaises(ValidationError), self.cr.savepoint():
+                self._edit(payment, amount)
+        self.assertEqual(payment.il_split_line_ids.reconcile_id, old_partial)
+        self.assertEqual(payment.il_payslip_linked_amount, 1000.0)
+
+    def test_row_removal_keeps_payment_and_refreshes_live_domain(self):
+        payment, slip = self._linked()
+        action = slip.action_il_open_payments()
+        self.assertIn(payment, self.env['account.payment'].search(action['domain']))
+        result = payment.with_context(
+            il_payslip_link_expected=payment.il_payslip_link_snapshot,
+        ).action_il_remove_from_payslip()
+        self.assertEqual(result['tag'], 'reload')
+        self.assertTrue(payment.exists())
+        self.assertEqual(payment.amount, 1000.0)
+        self.assertEqual(payment.move_id.state, 'posted')
+        self.assertEqual(slip.il_net_amount_to_pay, 1500.0)
+        self.assertNotIn(payment, self.env['account.payment'].search(action['domain']))
+
+    def test_another_payment_row_does_not_stale_an_unchanged_row(self):
+        first, slip = self._linked()
+        second = self._payment(200.0).with_context(il_payslip_id=slip.id)
+        second.il_split_line_ids._il_reconcile_with_payslip(slip)
+        second_token = second.il_payslip_link_snapshot
+        self._edit(first, 600.0)
+        self._edit(second, 100.0, second_token)
+        self.assertEqual(first.il_payslip_linked_amount, 600.0)
+        self.assertEqual(second.il_payslip_linked_amount, 100.0)
+        self.assertEqual(slip.il_net_amount_to_pay, 800.0)
+
+    def test_add_payment_header_opens_empty_add_only_dialog(self):
+        payment, slip = self._linked()
+        action = self.env['account.payment'].with_context(
+            il_payslip_id=slip.id).action_il_add_payslip_payment()
+        wizard = self.env[action['res_model']].browse(action['res_id'])
+        self.assertTrue(wizard.add_only)
+        self.assertEqual(wizard.source_payslip_id, slip)
+        self.assertFalse(wizard.line_ids)
+        self.assertNotIn(payment, wizard.available_payment_ids)
+
+    def test_payslip_action_drops_unrelated_grouping_context(self):
+        slip = self._payslip_with_posted_net(1500.0)
+        action = slip.with_context(group_by='employee_id', search_default_old_filter=1).action_il_open_payments()
+        self.assertEqual(action['name'], 'תשלומים מקושרים')
+        self.assertNotIn('group_by', action['context'])
+        self.assertNotIn('search_default_old_filter', action['context'])
+        self.assertIn('הוסף תשלום', action['help'])
+
+    def test_inline_context_cannot_change_a_different_payslip(self):
+        payment, original_slip = self._linked()
+        other_slip = self._payslip_with_posted_net(1500.0)
+        with self.assertRaises(UserError), self.cr.savepoint():
+            self._edit(payment.with_context(il_payslip_id=other_slip.id),
+                       400.0, payment.il_payslip_link_snapshot)
+        self.assertEqual(original_slip.il_net_amount_to_pay, 500.0)
+        self.assertEqual(other_slip.il_net_amount_to_pay, 1500.0)
+
+    def test_payslip_list_exposes_only_link_editing_and_hr_labels(self):
+        view = self.env.ref('l10n_il_hr_payroll_account.view_account_payment_list_payslip_links')
+        arch = view._get_combined_arch()
+        self.assertEqual(arch.get('editable'), 'bottom')
+        self.assertEqual(arch.get('create'), '0')
+        self.assertEqual(arch.get('delete'), '0')
+        self.assertEqual(arch.xpath('./header/button/@name'), ['action_il_add_payslip_payment'])
+        self.assertTrue(arch.xpath("./button[@name='action_il_remove_from_payslip']"))
+        visible = arch.xpath("./field[not(@column_invisible='True')]")
+        editable = [field.get('name') for field in visible if field.get('readonly') != '1']
+        self.assertEqual(editable, ['il_payslip_linked_amount'])
+        self.assertTrue(arch.xpath("./field[@name='amount']"))
+        self.assertFalse(arch.xpath("./field[@name='amount_company_currency_signed']"))
+        payment_form = self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_payment_form_employee')._get_combined_arch()
+        self.assertFalse(payment_form.xpath("//button[@name='action_il_manage_reconciliation']"))
+        self.assertTrue(payment_form.xpath("//field[@name='il_linked_payslip_id']"))
+        self.assertFalse(payment_form.xpath("//field[@name='reconcile_id']"))

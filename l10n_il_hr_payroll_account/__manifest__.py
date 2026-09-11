@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Israel - Payroll With Accounting',
-    'version': '1.4.29',
+    'version': '1.4.30',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
     'summary': 'חוקי שכר ישראליים, התאמות שכר ותשלומי עובדים ישירים',
@@ -42,6 +42,7 @@
     ],
     'assets': {
         'web.assets_backend': [
+            'l10n_il_hr_payroll_account/static/src/components/payslip_link_amount/payslip_link_amount.js',
             'l10n_il_hr_payroll_account/static/src/components/quick_split_lines/quick_split_lines.js',
             'l10n_il_hr_payroll_account/static/src/components/quick_split_lines/quick_split_lines.xml',
             'l10n_il_hr_payroll_account/static/src/components/payrun_card/payrun_card.xml',

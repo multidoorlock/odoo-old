@@ -23,9 +23,9 @@ class AccountPayment(models.Model):
     il_split_line_ids = fields.One2many(
         'account.payment.split.line', 'payment_id', string='פריסת תשלום', copy=True)
     il_applied_amount = fields.Monetary(
-        string='סכום שקוזז', compute='_compute_il_spread_amounts', store=True)
+        string='סכום שנסגר בתלושים', compute='_compute_il_spread_amounts', store=True)
     il_remaining_amount = fields.Monetary(
-        string='יתרה להתאמה', compute='_compute_il_spread_amounts', store=True)
+        string='יתרה לסגירה', compute='_compute_il_spread_amounts', store=True)
     il_planned_amount = fields.Monetary(
         string='סכום מתוכנן', compute='_compute_il_spread_amounts', store=True)
     il_currency_rounding = fields.Float(

@@ -199,23 +199,31 @@ class HrPayslip(models.Model):
 
     def action_il_open_payments(self):
         self.ensure_one()
+        action = self.env['ir.actions.actions']._for_xml_id(
+            'l10n_il_hr_payroll_account.il_action_employee_payments')
+        list_view = self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_payment_list_payslip_links')
+        form_view = self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_payment_form_employee')
         return {
-            'type': 'ir.actions.act_window',
-            'name': 'תשלומים',
-            'res_model': 'account.payment',
+            **action,
+            'name': 'תשלומים מקושרים',
+            'help': '<p>אין לתלוש תשלומים מקושרים. השתמש בהוסף תשלום כדי לקשר תשלום קיים עם יתרה.</p>',
             'view_mode': 'list,form',
-            'views': [(self.env.ref(
-                'l10n_il_hr_payroll_account.view_account_payment_list_employee').id,
-                'list'), (self.env.ref(
-                    'l10n_il_hr_payroll_account.view_account_payment_form_employee').id,
-                    'form')],
-            'domain': [('id', 'in', self._il_affecting_payments().ids)],
+            'views': [(list_view.id, 'list'), (form_view.id, 'form')],
+            'view_id': list_view.id,
+            # A live domain also removes a row after unlinking and includes
+            # new links after the add-payment dialog closes.
+            'domain': [
+                ('move_id.line_ids.matched_credit_ids.credit_move_id.il_payslip_id', '=', self.id),
+            ],
             'context': {
                 'create': False,
                 'edit': True,
                 'delete': False,
                 'il_employee_payment': True,
                 'il_payslip_id': self.id,
+                'il_payslip_link_list': True,
             },
         }
 

@@ -4,3 +4,4 @@ from . import test_wage_precision
 from . import test_split_editor
 from . import test_employee_payment_navigation
 from . import test_reconciliation_editor
+from . import test_payslip_payment_list

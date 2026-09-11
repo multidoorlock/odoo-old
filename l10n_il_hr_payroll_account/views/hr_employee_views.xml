@@ -68,7 +68,7 @@
                 </group>
             </group>
             <notebook position="inside">
-                <page string="סוגי מחזורי תשלום" name="il_payment_cycle_types">
+                <page string="סוגי מחזורי תשלומי אצווה" name="il_payment_cycle_types">
                     <field name="il_payment_cycle_type_line_ids" context="{'default_employee_id': id}">
                         <list editable="bottom">
                             <field name="cycle_type_id"/>
@@ -78,6 +78,20 @@
                     </field>
                 </page>
             </notebook>
+        </field>
+    </record>
+
+    <!-- Native journal items, with the existing residual column visible. -->
+    <record id="view_employee_payroll_ledger_list" model="ir.ui.view">
+        <field name="name">account.move.line.employee.payroll.ledger.list</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_tree"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <field name="amount_residual" position="attributes">
+                <attribute name="optional">show</attribute>
+                <attribute name="string">יתרה לסגירה</attribute>
+            </field>
         </field>
     </record>
 </odoo>

@@ -21,7 +21,9 @@ class AccountPaymentSplitLine(models.Model):
         'account.move.line', copy=False, readonly=True, ondelete='set null',
         help='Temporary accounting target retained while a payment is edited in draft.')
     is_applied = fields.Boolean(
-        string='קוזז', compute='_compute_is_applied', store=True)
+        string='סגור בתלוש', compute='_compute_is_applied', store=True)
+    il_linked_payslip_id = fields.Many2one(
+        'hr.payslip', string='תלוש מקושר', compute='_compute_linked_payslip')
     company_id = fields.Many2one(
         related='payment_id.company_id', store=True, readonly=True)
     employee_id = fields.Many2one(
@@ -39,6 +41,14 @@ class AccountPaymentSplitLine(models.Model):
     def _compute_is_applied(self):
         for line in self:
             line.is_applied = bool(line.reconcile_id)
+
+    @api.depends('reconcile_id.credit_move_id.il_payslip_id',
+                 'reconcile_id.debit_move_id.il_payslip_id')
+    def _compute_linked_payslip(self):
+        for line in self:
+            line.il_linked_payslip_id = (
+                line.reconcile_id.credit_move_id.il_payslip_id
+                or line.reconcile_id.debit_move_id.il_payslip_id)
 
     @api.depends('payment_id.partner_id', 'payment_id.company_id')
     def _compute_employee(self):

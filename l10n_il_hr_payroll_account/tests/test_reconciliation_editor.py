@@ -41,10 +41,11 @@ class TestPayrollReconciliationEditor(TransactionCase):
     _payment = payment_fixtures.TestEmployeePaymentReconciliation._payment
     _payslip_with_posted_net = payment_fixtures.TestEmployeePaymentReconciliation._payslip_with_posted_net
 
-    def _editor(self, payment=None, slip=None):
+    def _editor(self, payment=None, slip=None, add_only=False):
         return self.env['il.payroll.reconciliation.wizard'].create({
             'source_payment_id': payment.id if payment else False,
             'source_payslip_id': slip.id if slip else False,
+            'add_only': add_only,
         })
 
     def _add(self, wizard, payment, slip, amount):
@@ -144,34 +145,112 @@ class TestPayrollReconciliationEditor(TransactionCase):
                 ['amount', 'reconcile_id', 'sequence']), original_splits)
             self.assertEqual(slip.il_net_amount_to_pay, 1000)
 
-    def test_final_approval_locks_only_existing_salary_allocations(self):
+    def test_existing_links_remain_editable_and_legacy_approval_is_inert(self):
         payment = self._payment(3000.0)
         bank_partial = self._settle(payment)
         first, second = self._payslip_with_posted_net(1000), self._payslip_with_posted_net(1000)
         wizard = self._editor(slip=first)
         self._add(wizard, payment, first, 1000)
-        wizard.action_finalize()
-        finalized = first._il_reconciliations()
-        self.assertTrue(finalized.il_payroll_finalized)
-        self.assertFalse(bank_partial.il_payroll_finalized)
-        for vals in ({'amount': 500}, {'il_payroll_finalized': False}):
-            with self.assertRaises(UserError):
-                finalized.write(vals)
-        with self.assertRaises(UserError):
-            finalized.unlink()
+        wizard.action_apply()
+        original = first._il_reconciliations()
+        original.write({'il_payroll_finalized': True})
         wizard = self._editor(slip=first)
-        wizard.line_ids.unlink()
-        with self.assertRaises(UserError):
-            wizard.action_apply()
-        self.assertEqual(first._il_reconciliations(), finalized)
+        wizard.line_ids.amount = 600
+        wizard.action_apply()
+        self.assertFalse(original.exists())
+        self.assertEqual(first.il_net_amount_to_pay, 400)
+        wizard = self._editor(slip=first)
+        wizard.line_ids.amount = 1000
+        wizard.action_apply()
+        current = first._il_reconciliations()
+        self.assertEqual(first.il_net_amount_to_pay, 0)
 
         wizard = self._editor(payment=payment)
         self._add(wizard, payment, second, 1000)
         wizard.action_apply()
-        self.assertEqual(first._il_reconciliations(), finalized)
-        self.assertFalse(second._il_reconciliations().il_payroll_finalized)
+        self.assertEqual(first._il_reconciliations(), current)
         self.assertEqual(payment.il_remaining_amount, 1000)
         self.assertEqual(payment.state, 'paid')
+        current.write({'il_payroll_finalized': True})
+        current.unlink()
+        self.assertEqual(first.il_net_amount_to_pay, 1000)
+        self.assertEqual(payment.il_remaining_amount, 2000)
+        self.assertEqual(bank_partial.exists(), bank_partial)
+
+    def test_add_candidates_use_open_balance_and_exclude_only_current_payslip_links(self):
+        current, other = self._payslip_with_posted_net(5000), self._payslip_with_posted_net(5000)
+        already_current, partly_other = self._payment(3000), self._payment(3000)
+        exhausted, available, draft = self._payment(1000), self._payment(1000), self._payment(1000, post=False)
+        for payment, slip, amount in [
+            (already_current, current, 1000),
+            (partly_other, other, 1000),
+            (exhausted, other, 1000),
+        ]:
+            editor = self._editor(slip=slip, add_only=True)
+            self._add(editor, payment, slip, amount)
+            editor.action_apply()
+        wizard = self._editor(slip=current, add_only=True)
+        self.assertFalse(wizard.line_ids)
+        self.assertNotIn(already_current, wizard.available_payment_ids)
+        self.assertNotIn(exhausted, wizard.available_payment_ids)
+        self.assertNotIn(draft, wizard.available_payment_ids)
+        self.assertIn(partly_other, wizard.available_payment_ids)
+        self.assertIn(available, wizard.available_payment_ids)
+        old_current = current._il_reconciliations()
+        self._add(wizard, partly_other, current, 500)
+        self.assertEqual(wizard.line_ids.payment_available_amount, 2000)
+        wizard.action_apply()
+        self.assertEqual(old_current.exists(), old_current)
+        self.assertIn(old_current, current._il_reconciliations())
+        self.assertEqual(partly_other.il_applied_amount, 1500)
+
+    def test_add_only_rejects_already_linked_payment_and_preserves_existing_rows(self):
+        payment = self._payment(3000)
+        slip = self._payslip_with_posted_net(3000)
+        editor = self._editor(slip=slip, add_only=True)
+        self._add(editor, payment, slip, 1000)
+        editor.action_apply()
+        original = slip._il_reconciliations()
+        duplicate = self._editor(slip=slip, add_only=True)
+        self._add(duplicate, payment, slip, 500)
+        with self.assertRaises(ValidationError):
+            duplicate.action_apply()
+        self.assertEqual(slip._il_reconciliations(), original)
+        self.assertEqual(payment.il_applied_amount, 1000)
+        # A new proposal cannot impersonate the existing row after deleting it.
+        replacement = self._editor(slip=slip)
+        replacement.line_ids.unlink()
+        self._add(replacement, payment, slip, 500)
+        with self.assertRaises(ValidationError):
+            replacement.action_apply()
+        self.assertEqual(slip._il_reconciliations(), original)
+
+    def test_add_rechecks_payment_balance_consumed_by_another_payslip(self):
+        payment = self._payment(1000)
+        current, other = self._payslip_with_posted_net(1000), self._payslip_with_posted_net(1000)
+        pending = self._editor(slip=current, add_only=True)
+        self.assertIn(payment, pending.available_payment_ids)
+        self._add(pending, payment, current, 1000)
+        concurrent = self._editor(slip=other, add_only=True)
+        self._add(concurrent, payment, other, 1000)
+        concurrent.action_apply()
+        with self.assertRaises(ValidationError):
+            pending.action_apply()
+        self.assertFalse(current._il_reconciliations())
+        self.assertEqual(other.il_net_amount_to_pay, 0)
+
+    def test_fully_allocated_existing_link_is_editable_but_not_a_new_candidate(self):
+        payment = self._payment(1000)
+        slip = self._payslip_with_posted_net(1000)
+        payment.il_split_line_ids._il_reconcile_with_payslip(slip)
+        editor = self._editor(slip=slip)
+        self.assertNotIn(payment, editor.available_payment_ids)
+        self.assertEqual(editor.line_ids.payment_id, payment)
+        editor.line_ids.amount = 500
+        editor.action_apply()
+        self.assertEqual(slip.il_net_amount_to_pay, 500)
+        self.assertEqual(payment.il_remaining_amount, 500)
+        self.assertEqual(payment.il_split_line_ids.filtered('reconcile_id').il_linked_payslip_id, slip)
 
     def test_stale_editor_cannot_overwrite_new_match_or_schedule(self):
         payment = self._payment(3000)
@@ -251,6 +330,21 @@ class TestPayrollReconciliationEditor(TransactionCase):
         with self.assertRaises(UserError):
             wizard.action_apply()
         self.assertFalse(payment.il_split_line_ids.reconcile_id)
+
+    def test_accounting_period_lock_prevents_existing_link_changes_and_native_removal(self):
+        payment = self._payment(1000)
+        slip = self._payslip_with_posted_net(1000)
+        payment.il_split_line_ids._il_reconcile_with_payslip(slip)
+        partial = slip._il_reconciliations()
+        editor = self._editor(slip=slip)
+        editor.line_ids.amount = 500
+        self.company.write({'hard_lock_date': date(2026, 8, 1)})
+        with self.assertRaises(UserError):
+            editor.action_apply()
+        with self.assertRaises(UserError):
+            partial.unlink()
+        self.assertEqual(slip._il_reconciliations(), partial)
+        self.assertEqual(slip.il_net_amount_to_pay, 0)
 
     def test_posted_payment_is_matchable_without_using_payment_approval_state(self):
         payment = self._payment(1000)

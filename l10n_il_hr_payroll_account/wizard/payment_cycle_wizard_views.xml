@@ -10,7 +10,7 @@
                 <field name="available_payment_method_ids" invisible="1"/>
                 <group invisible="step != 'details'">
                     <field name="name"/>
-                    <field name="cycle_type_ids" string="סוג" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="cycle_type_ids" string="סוגי מחזורי תשלומי אצווה" widget="many2many_tags" options="{'no_create': True}"/>
                     <field name="date"/>
                     <field name="batch_type"/>
                     <field name="journal_id"/>
