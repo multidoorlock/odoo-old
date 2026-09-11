@@ -88,6 +88,9 @@ class AccountPaymentSplitLine(models.Model):
         return lines
 
     def write(self, vals):
+        if {'amount', 'payment_id', 'reconcile_id',
+                'il_pending_payslip_move_line_id'} & vals.keys():
+            self.mapped('reconcile_id')._il_check_allocation_editable()
         if 'amount' in vals and self.filtered(
                 lambda line: line.reconcile_id
                 and line.payment_id.state != 'draft'):

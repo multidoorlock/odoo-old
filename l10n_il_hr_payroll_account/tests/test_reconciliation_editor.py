@@ -232,6 +232,16 @@ class TestPayrollReconciliationEditor(TransactionCase):
         wizard.action_apply()
         self.assertEqual(slip._il_reconciliations(), partial)
 
+    def test_accounting_period_lock_prevents_new_payroll_allocation(self):
+        payment = self._payment(1000)
+        slip = self._payslip_with_posted_net(1000)
+        wizard = self._editor(payment=payment)
+        self._add(wizard, payment, slip, 1000)
+        self.company.write({'hard_lock_date': date(2026, 8, 1)})
+        with self.assertRaises(UserError):
+            wizard.action_apply()
+        self.assertFalse(payment.il_split_line_ids.reconcile_id)
+
     def test_posted_payment_is_matchable_without_using_payment_approval_state(self):
         payment = self._payment(1000)
         payment.state = 'draft'
