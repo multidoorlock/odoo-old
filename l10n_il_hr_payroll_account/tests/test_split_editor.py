@@ -42,8 +42,8 @@ class TestEmployeePaymentSplitEditor(TransactionCase):
             'name': 'Split Editor Employee',
             'company_id': cls.company.id,
             'contract_date_start': date(2026, 1, 1),
-        })
-        cls.employee.version_id.write({
+            'date_version': date(2026, 1, 1),
+            'mdl_wage_type': 'mdl_monthly',
             'structure_type_id': cls.monthly_type.id,
             'il_salary_structure_id': cls.monthly_structure.id,
             'schedule_pay': 'monthly',

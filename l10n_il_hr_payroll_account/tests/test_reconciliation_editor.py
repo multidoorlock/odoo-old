@@ -31,8 +31,8 @@ class TestPayrollReconciliationEditor(TransactionCase):
         cls.employee = cls.env['hr.employee'].create({
             'name': 'Allocation Editor Employee', 'company_id': cls.company.id,
             'contract_date_start': date(2026, 1, 1),
-        })
-        cls.employee.version_id.write({
+            'date_version': date(2026, 1, 1),
+            'mdl_wage_type': 'mdl_monthly',
             'structure_type_id': cls.monthly_type.id,
             'il_salary_structure_id': cls.monthly_structure.id,
             'schedule_pay': 'monthly',
@@ -202,7 +202,16 @@ class TestPayrollReconciliationEditor(TransactionCase):
     def test_wrong_employee_and_duplicate_pair_are_rejected(self):
         payment = self._payment(1000)
         slip = self._payslip_with_posted_net(1000)
-        other = self.env['hr.employee'].create({'name': 'Other allocation employee'})
+        other = self.env['hr.employee'].create({
+            'name': 'Other allocation employee',
+            'company_id': self.company.id,
+            'contract_date_start': date(2026, 1, 1),
+            'date_version': date(2026, 1, 1),
+            'mdl_wage_type': 'mdl_monthly',
+            'structure_type_id': self.monthly_type.id,
+            'il_salary_structure_id': self.monthly_structure.id,
+            'schedule_pay': 'monthly',
+        })
         other_slip = self._payslip_with_posted_net(1000)
         other_slip.employee_id = other
         wizard = self._editor(payment=payment)

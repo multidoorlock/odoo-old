@@ -23,9 +23,22 @@ class TestEmployeePaymentNavigation(TransactionCase):
         cls.expense = cls.env['account.account'].search([
             ('company_ids', 'in', cls.company.id), ('account_type', '=', 'expense'),
         ], limit=1)
+        monthly_type = cls.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_type_il')
+        monthly_structure = cls.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il')
         cls.employees = cls.env['hr.employee'].create([
-            {'name': 'Navigation Employee A', 'company_id': cls.company.id},
-            {'name': 'Navigation Employee B', 'company_id': cls.company.id},
+            {
+                'name': name,
+                'company_id': cls.company.id,
+                'contract_date_start': date(2026, 1, 1),
+                'date_version': date(2026, 1, 1),
+                'mdl_wage_type': 'mdl_monthly',
+                'structure_type_id': monthly_type.id,
+                'il_salary_structure_id': monthly_structure.id,
+                'schedule_pay': 'monthly',
+            }
+            for name in ('Navigation Employee A', 'Navigation Employee B')
         ])
         cls.employee = cls.employees[0]
         cls.other = cls.employees[1]

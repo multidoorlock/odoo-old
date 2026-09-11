@@ -39,12 +39,10 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             'name': 'Residual Payment Employee',
             'company_id': cls.company.id,
             'contract_date_start': date(2026, 1, 1),
-        })
-        # hr.employee creates its initial hr.version before all proxied
-        # payroll fields are settled. Configure both matching fields directly
-        # on that version so the consistency constraint never sees a
-        # half-updated Employee/Israeli combination.
-        cls.employee.version_id.write({
+            'date_version': date(2026, 1, 1),
+            # Supply the matching wage/category/structure during creation:
+            # hr.version validates before a later employee write can run.
+            'mdl_wage_type': 'mdl_monthly',
             'structure_type_id': cls.monthly_type.id,
             'il_salary_structure_id': cls.monthly_structure.id,
             'schedule_pay': 'monthly',
@@ -569,8 +567,8 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             'name': 'Second Cycle Employee',
             'company_id': self.company.id,
             'contract_date_start': date(2026, 1, 1),
-        })
-        other_employee.version_id.write({
+            'date_version': date(2026, 1, 1),
+            'mdl_wage_type': 'mdl_monthly',
             'structure_type_id': self.monthly_type.id,
             'il_salary_structure_id': self.monthly_structure.id,
             'schedule_pay': 'monthly',
