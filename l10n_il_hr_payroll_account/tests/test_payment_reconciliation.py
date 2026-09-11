@@ -333,13 +333,17 @@ class TestEmployeePaymentReconciliation(TransactionCase):
         payment_action = payslip.action_il_open_payments()
         self.assertTrue(payment_action['context']['edit'])
         self.assertEqual(payment_action['context']['il_payslip_id'], payslip.id)
-        self.assertEqual(
-            payment_action['context']['form_view_initial_mode'], 'edit')
+        self.assertNotIn('form_view_initial_mode', payment_action['context'])
         payment_list = self.env.ref(
             'l10n_il_hr_payroll_account.view_account_payment_list_employee'
         )._get_combined_arch()
         self.assertFalse(payment_list.xpath("//field[@name='company_id']"))
         self.assertFalse(payment_list.xpath("//field[@name='amount_signed']"))
+        memo_fields = payment_list.xpath("./field[@name='memo']")
+        self.assertEqual(len(memo_fields), 1)
+        self.assertEqual(memo_fields[0].get('optional'), 'show')
+        self.assertFalse(payment_list.xpath("./field[@name='journal_id']"))
+        self.assertFalse(payment_list.xpath("./field[@name='payment_method_line_id']"))
         currency_fields = payment_list.xpath("//field[@name='currency_id']")
         self.assertTrue(currency_fields)
         self.assertTrue(all(
