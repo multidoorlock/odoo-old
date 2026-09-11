@@ -28,17 +28,13 @@
                 <button string="שלם" name="action_il_register_payment" type="object"
                         class="oe_highlight"
                         invisible="state not in ('validated', 'paid') or il_net_amount_to_pay &lt;= 0"/>
+                <button string="ניהול התאמות" name="action_il_manage_reconciliation"
+                        type="object" invisible="not move_id"/>
             </button>
             <div name="button_box" position="inside">
                 <button type="object" class="oe_stat_button" name="action_il_open_payments"
                         icon="fa-money" invisible="il_payment_count == 0">
                     <field name="il_payment_count" widget="statinfo" string="תשלומים"/>
-                </button>
-                <button type="object" class="oe_stat_button"
-                        name="action_il_open_reconciliations" icon="fa-link"
-                        invisible="il_reconcile_count == 0">
-                    <field name="il_reconcile_count" widget="statinfo"
-                           string="התאמות"/>
                 </button>
             </div>
             <field name="line_ids" position="attributes">

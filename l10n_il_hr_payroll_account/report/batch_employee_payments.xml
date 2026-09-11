@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_batch_employee_payments" model="ir.actions.report">
+        <field name="name">תשלומים לעובדים לפי אצווה</field>
+        <field name="model">account.batch.payment</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">l10n_il_hr_payroll_account.report_batch_employee_payments</field>
+        <field name="report_file">l10n_il_hr_payroll_account.report_batch_employee_payments</field>
+        <field name="binding_model_id" ref="account_batch_payment.model_account_batch_payment"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Employee Payments - %s' % (object.name or '')</field>
+    </record>
+
+    <template id="report_batch_employee_payments">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <t t-set="report_data" t-value="o._il_employee_payment_report_data()"/>
+                    <div class="page" dir="rtl">
+                        <h2>תשלומים לעובדים — <span t-field="o.name"/></h2>
+                        <p>
+                            <strong>תאריך אצווה: </strong><span t-field="o.date"/>
+                            <span class="mx-3">|</span>
+                            <strong>מספר תשלומים: </strong><span t-out="report_data['payment_count']"/>
+                        </p>
+                        <table class="table table-sm">
+                            <thead style="display: table-header-group;">
+                                <tr>
+                                    <th>עובד / תשלום</th>
+                                    <th>תאריך</th>
+                                    <th>סוג</th>
+                                    <th>פתק</th>
+                                    <th>מצב</th>
+                                    <th class="text-end">סכום</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="report_data['groups']" t-as="group">
+                                    <tr class="fw-bold bg-light" style="page-break-after: avoid;">
+                                        <td colspan="6"><span t-out="group['name']"/></td>
+                                    </tr>
+                                    <tr t-foreach="group['payments']" t-as="payment">
+                                        <td><span t-field="payment.name"/></td>
+                                        <td><span t-field="payment.date"/></td>
+                                        <td><span t-field="payment.il_payment_cycle_type_id"/></td>
+                                        <td style="overflow-wrap: break-word;"><span t-field="payment.memo"/></td>
+                                        <td><span t-field="payment.state"/></td>
+                                        <td class="text-end"><span t-field="payment.amount"/></td>
+                                    </tr>
+                                    <tr class="fw-bold" style="page-break-before: avoid;">
+                                        <td colspan="5">סה״כ לעובד — <span t-out="group['name']"/></td>
+                                        <td class="text-end">
+                                            <span t-out="group['amount']" t-options="{'widget': 'monetary', 'display_currency': group['currency']}"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot style="display: table-row-group;">
+                                <tr t-foreach="report_data['totals']" t-as="total" class="fw-bold">
+                                    <td colspan="5">סה״כ תשלומים — <span t-out="total['currency'].name"/></td>
+                                    <td class="text-end">
+                                        <span t-out="total['amount']" t-options="{'widget': 'monetary', 'display_currency': total['currency']}"/>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

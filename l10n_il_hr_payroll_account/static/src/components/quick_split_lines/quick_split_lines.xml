@@ -13,27 +13,44 @@
         <Dialog title="'יצירה מהירה'" size="'md'">
             <div class="mb-4 fw-bold">
                 סכום התשלום:
-                <t t-esc="props.amount"/>
+                <t t-esc="props.paymentAmount"/>
                 <t t-if="props.currencyName"> <t t-esc="props.currencyName"/></t>
             </div>
-            <div class="row g-3">
+            <p>
+                שורות קיימות: <t t-esc="props.existingCount"/>,
+                בסכום <t t-esc="props.existingAmount"/>.
+                יתרה לפריסה: <strong t-esc="props.amount"/>.
+            </p>
+            <div t-if="props.amount &lt;= 0" class="alert alert-info">
+                אין יתרה פנויה להוספת שורות. ניתן לערוך את השורות הקיימות בטבלה.
+            </div>
+            <div t-else="" class="row g-3">
                 <div class="col-6">
-                    <label class="form-label">כמות שורות</label>
-                    <input type="number" min="1" step="1" class="form-control"
+                    <label class="form-label">כמות שורות חדשות</label>
+                    <input type="number" min="1" max="1000" step="1" class="form-control"
+                           t-att-disabled="state.busy"
                            t-att-value="state.quantity" t-on-input="onQuantityInput"/>
                 </div>
                 <div class="col-6">
                     <label class="form-label">סכום לשורה</label>
                     <input type="number" min="0" t-att-step="rounding" class="form-control"
+                           t-att-disabled="state.busy"
                            t-att-value="state.lineAmount" t-on-input="onAmountInput"/>
                 </div>
             </div>
+            <p t-if="amounts and lastAmount !== Number(state.lineAmount)" class="text-muted mt-3 mb-0">
+                סכום השורה האחרונה: <t t-esc="lastAmount"/>.
+            </p>
             <div t-if="state.error" class="alert alert-danger mt-3 mb-0" role="alert">
                 <t t-esc="state.error"/>
             </div>
             <t t-set-slot="footer">
-                <button type="button" class="btn btn-secondary" t-on-click="props.close">ביטול</button>
-                <button type="button" class="btn btn-primary" t-on-click="confirm">יצירה</button>
+                <button type="button" class="btn btn-secondary" t-att-disabled="state.busy" t-on-click="props.close">ביטול</button>
+                <button type="button" class="btn btn-primary"
+                        t-att-disabled="state.busy or props.amount &lt;= 0" t-on-click="confirm">
+                    <t t-if="state.busy">מוסיף שורות…</t>
+                    <t t-else="">יצירה</t>
+                </button>
             </t>
         </Dialog>
     </t>

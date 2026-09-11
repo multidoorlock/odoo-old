@@ -133,7 +133,7 @@ class IlPaymentCycleWizard(models.TransientModel):
             'l10n_il_hr_payroll_account.view_il_payment_cycle_wizard_form')
         return {
             'type': 'ir.actions.act_window',
-            'name': 'יצירת מחזור תשלומים',
+            'name': 'יצירת תשלום אצווה',
             'res_model': self._name,
             'res_id': self.id,
             'view_mode': 'form',
@@ -223,7 +223,7 @@ class IlPaymentCycleWizard(models.TransientModel):
             payments_by_state['canceled'].action_cancel()
         return {
             'type': 'ir.actions.act_window',
-            'name': 'מחזור תשלומים',
+            'name': 'תשלום אצווה',
             'res_model': 'account.batch.payment',
             'res_id': batch.id,
             'view_mode': 'form',

@@ -29,7 +29,7 @@
               sequence="20"/>
 
     <menuitem id="menu_il_payment_cycles"
-              name="מחזורי תשלומים"
+              name="תשלומי אצווה"
               parent="menu_il_payments_root"
               action="action_il_payment_cycles"
               sequence="30"/>

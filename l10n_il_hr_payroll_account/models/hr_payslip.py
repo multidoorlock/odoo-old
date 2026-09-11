@@ -216,7 +216,6 @@ class HrPayslip(models.Model):
                 'delete': False,
                 'il_employee_payment': True,
                 'il_payslip_id': self.id,
-                'form_view_initial_mode': 'edit',
             },
         }
 

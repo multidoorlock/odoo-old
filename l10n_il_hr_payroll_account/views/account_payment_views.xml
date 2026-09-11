@@ -21,6 +21,11 @@
             <button name="action_validate" position="attributes">
                 <attribute name="invisible">state != 'in_process' or (move_id and not il_is_employee_payment and not context.get('il_employee_payment'))</attribute>
             </button>
+            <xpath expr="//header" position="inside">
+                <button name="action_il_manage_reconciliation" type="object"
+                        string="ניהול התאמות"
+                        invisible="not il_is_employee_payment or not move_id"/>
+            </xpath>
 
             <field name="payment_type" position="attributes">
                 <attribute name="invisible">il_is_employee_payment or context.get('il_employee_payment')</attribute>
@@ -158,6 +163,11 @@
             </list>
             <field name="partner_id" position="attributes">
                 <attribute name="string">עובד / שותף</attribute>
+            </field>
+            <field name="journal_id" position="replace"/>
+            <field name="payment_method_line_id" position="replace"/>
+            <field name="name" position="after">
+                <field name="memo" string="פתק" optional="show"/>
             </field>
             <xpath expr="//field[@name='company_id']" position="replace"/>
             <xpath expr="//field[@name='amount_signed' and @groups='!base.group_multi_currency']"

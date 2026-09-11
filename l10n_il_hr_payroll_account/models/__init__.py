@@ -16,3 +16,5 @@ from . import hr_rule_parameter
 from . import hr_payslip_run
 from . import payment_cycle
 from . import res_partner_bank
+from . import payroll_reconciliation_actions
+from . import hr_employee

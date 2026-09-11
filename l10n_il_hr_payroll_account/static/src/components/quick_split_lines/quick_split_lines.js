@@ -4,8 +4,26 @@ import { Component, useState } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
+import { x2ManyCommands } from "@web/core/orm_service";
 import { useService } from "@web/core/utils/hooks";
 import { X2ManyField, x2ManyField } from "@web/views/fields/x2many/x2many_field";
+
+
+export function quickSplitAmounts(remaining, quantity, lineAmount, rounding = 0.01) {
+    const totalUnits = Math.round(remaining / rounding);
+    const lineUnits = Math.round(lineAmount / rounding);
+    if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 1000 ||
+        !Number.isFinite(lineAmount) || lineUnits <= 0 || totalUnits <= 0 ||
+        Math.abs(lineAmount - lineUnits * rounding) > 1e-9) {
+        return null;
+    }
+    const lastUnits = totalUnits - lineUnits * (quantity - 1);
+    if (lastUnits <= 0 || lastUnits > lineUnits + Math.ceil(quantity / 2)) {
+        return null;
+    }
+    return Array.from({ length: quantity }, (_, index) =>
+        Number(((index === quantity - 1 ? lastUnits : lineUnits) * rounding).toFixed(12)));
+}
 
 
 export class QuickSplitDialog extends Component {
@@ -13,6 +31,9 @@ export class QuickSplitDialog extends Component {
     static components = { Dialog };
     static props = {
         amount: Number,
+        paymentAmount: Number,
+        existingCount: Number,
+        existingAmount: Number,
         rounding: Number,
         currencyName: String,
         createLines: Function,
@@ -20,7 +41,7 @@ export class QuickSplitDialog extends Component {
     };
 
     setup() {
-        this.state = useState({ quantity: "", lineAmount: "", error: "" });
+        this.state = useState({ quantity: "", lineAmount: "", error: "", busy: false });
     }
 
     get rounding() {
@@ -28,11 +49,11 @@ export class QuickSplitDialog extends Component {
     }
 
     roundCurrency(value) {
-        return Math.round((value + Number.EPSILON) / this.rounding) * this.rounding;
+        return Number((Math.round((value + Number.EPSILON) / this.rounding) * this.rounding).toFixed(12));
     }
 
     onQuantityInput(event) {
-        const quantity = Number.parseInt(event.target.value, 10);
+        const quantity = Number(event.target.value);
         this.state.quantity = event.target.value;
         this.state.error = "";
         this.state.lineAmount = Number.isInteger(quantity) && quantity > 0
@@ -51,31 +72,43 @@ export class QuickSplitDialog extends Component {
         const totalUnits = Math.round(this.props.amount / this.rounding);
         const lineUnits = Math.round(lineAmount / this.rounding);
         const isCurrencyExact = Math.abs(lineAmount - lineUnits * this.rounding) < 1e-9;
-        if (isCurrencyExact && lineUnits > 0 && totalUnits % lineUnits === 0) {
-            this.state.quantity = String(totalUnits / lineUnits);
+        if (isCurrencyExact && lineUnits > 0 && lineUnits <= totalUnits) {
+            this.state.quantity = String(Math.ceil(totalUnits / lineUnits));
         }
     }
 
+    get amounts() {
+        return quickSplitAmounts(
+            this.props.amount, Number(this.state.quantity),
+            Number(this.state.lineAmount), this.rounding);
+    }
+
+    get lastAmount() {
+        return this.amounts?.at(-1);
+    }
+
     async confirm() {
-        const quantity = Number.parseInt(this.state.quantity, 10);
-        const lineAmount = Number(this.state.lineAmount);
-        const totalUnits = Math.round(this.props.amount / this.rounding);
-        const lineUnits = Math.round(lineAmount / this.rounding);
-        const isCurrencyExact = Math.abs(lineAmount - lineUnits * this.rounding) < 1e-9;
-        if (!Number.isInteger(quantity) || quantity <= 0 || !(lineAmount > 0)) {
-            this.state.error = _t("Quantity and amount per line must be greater than zero.");
+        if (this.state.busy) {
             return;
         }
-        if (!isCurrencyExact || quantity * lineUnits !== totalUnits) {
+        const amounts = this.amounts;
+        if (!amounts) {
             this.state.error = _t(
-                "The split lines total must equal the payment amount. Make sure quantity multiplied by amount per line equals %s %s.",
+                "Enter a whole number of new lines (1–1000) and a positive amount that fits the unallocated balance of %s %s. The last line includes the remainder.",
                 this.props.amount,
                 this.props.currencyName
             );
             return;
         }
-        await this.props.createLines(quantity, lineUnits * this.rounding);
-        this.props.close();
+        this.state.busy = true;
+        try {
+            await this.props.createLines(amounts);
+            this.props.close();
+        } catch (error) {
+            this.state.error = error.message || _t("The lines could not be added.");
+        } finally {
+            this.state.busy = false;
+        }
     }
 }
 
@@ -89,14 +122,29 @@ export class QuickSplitLinesField extends X2ManyField {
     }
 
     get showQuickCreate() {
-        return !this.props.record.resId && this.props.record.data.il_spread_type === "planned";
+        return !this.props.readonly && this.props.record.data.il_spread_type === "planned";
     }
 
-    openQuickCreate() {
+    async openQuickCreate() {
+        const list = this.props.record.data[this.props.name];
+        if (!(await list.leaveEditMode({ validate: true }))) {
+            return;
+        }
+        // Include saved rows on other pages and all unsaved edits. A displayed
+        // page alone is not the full planned amount.
+        await list.load({ offset: 0, limit: Math.max(list.count, 1) });
         const currency = this.props.record.data.currency_id;
+        const rounding = this.props.record.data.il_currency_rounding || 0.01;
+        const paymentAmount = this.props.record.data.amount || 0;
+        const existingAmount = list.records.reduce(
+            (sum, record) => sum + (Number(record.data.amount) || 0), 0);
+        const amount = Math.round((paymentAmount - existingAmount) / rounding) * rounding;
         this.dialog.add(QuickSplitDialog, {
-            amount: this.props.record.data.amount || 0,
-            rounding: this.props.record.data.il_currency_rounding || 0.01,
+            amount,
+            paymentAmount,
+            existingCount: list.count,
+            existingAmount,
+            rounding,
             currencyName: currency?.display_name || currency?.name || "",
             createLines: this.createQuickLines.bind(this),
         });
@@ -109,28 +157,39 @@ export class QuickSplitLinesField extends X2ManyField {
     }
 
     async resequenceClientLines() {
-        const records = this.props.record.data[this.props.name].records;
-        for (let index = 0; index < records.length; index++) {
-            if (Number(records[index].data.sequence) !== index + 1) {
-                await records[index].update({ sequence: index + 1 });
-            }
+        const list = this.props.record.data[this.props.name];
+        const commands = list.records.flatMap((record, index) => {
+            const sequence = list.offset + index + 1;
+            return Number(record.data.sequence) === sequence ? [] : [[
+                x2ManyCommands.UPDATE, record.resId || record._virtualId, { sequence },
+            ]];
+        });
+        if (commands.length) {
+            await list.applyCommands(commands);
         }
     }
 
-    async createQuickLines(quantity, amount) {
+    async createQuickLines(amounts) {
         const list = this.props.record.data[this.props.name];
+        const rounding = this.props.record.data.il_currency_rounding || 0.01;
+        const existingAmount = list.records.reduce(
+            (sum, record) => sum + (Number(record.data.amount) || 0), 0);
+        const remainingUnits = Math.round(
+            ((this.props.record.data.amount || 0) - existingAmount) / rounding);
+        const proposedUnits = amounts.reduce(
+            (sum, amount) => sum + Math.round(amount / rounding), 0);
+        if (remainingUnits <= 0 || remainingUnits !== proposedUnits ||
+            amounts.some((amount) => !Number.isFinite(amount) || amount <= 0)) {
+            throw new Error(_t("The unallocated balance changed. Reopen quick creation."));
+        }
         const existingSequences = list.records
             .map((record) => Number(record.data.sequence) || 0);
-        let sequence = existingSequences.length ? Math.max(...existingSequences) + 1 : 1;
-        for (let index = 0; index < quantity; index++) {
-            const record = await list.addNewRecord({
-                mode: "edit",
-                position: "bottom",
-                context: this.props.record.context,
-            });
-            await record.update({ sequence: sequence++, amount });
-        }
-        await this.resequenceClientLines();
+        const firstSequence = existingSequences.length ? Math.max(...existingSequences) + 1 : 1;
+        // Native batch commands create every row before one parent onchange;
+        // the user never sees rows being inserted and recalculated one by one.
+        await list.applyCommands(amounts.map((amount, index) => [
+            x2ManyCommands.CREATE, 0, { sequence: firstSequence + index, amount },
+        ]));
     }
 }
 

@@ -4,7 +4,7 @@
         <field name="name">il.payment.cycle.wizard.form</field>
         <field name="model">il.payment.cycle.wizard</field>
         <field name="arch" type="xml">
-            <form string="יצירת מחזור תשלומים">
+            <form string="יצירת תשלום אצווה">
                 <field name="step" invisible="1"/>
                 <field name="company_id" invisible="1"/>
                 <field name="available_payment_method_ids" invisible="1"/>
@@ -54,7 +54,7 @@
     </record>
 
     <record id="action_il_payment_cycle_wizard" model="ir.actions.act_window">
-        <field name="name">יצירת מחזור תשלומים</field>
+        <field name="name">יצירת תשלום אצווה</field>
         <field name="res_model">il.payment.cycle.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
