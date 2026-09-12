@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Israel - Payroll With Accounting',
-    'version': '1.4.38',
+    'version': '1.4.39',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
     'summary': 'חוקי שכר ישראליים, התאמות שכר ותשלומי עובדים ישירים',
@@ -32,11 +32,12 @@
         'views/account_partial_reconcile_views.xml',
         'wizard/payroll_reconciliation_wizard_views.xml',
         'views/hr_payslip_views.xml',
-        'views/hr_payslip_run_views.xml',
         'wizard/payslip_run_payment_wizard_views.xml',
         'wizard/payment_cycle_wizard_views.xml',
         'wizard/masav_export_wizard_views.xml',
         'views/payment_cycle_views.xml',
+        # Replace legacy batch arches before validating the new batch sibling.
+        'views/hr_payslip_run_views.xml',
         'views/payroll_batch_payment_selection_views.xml',
         'views/hr_attendance_overtime_rule_views.xml',
         'views/menus.xml',

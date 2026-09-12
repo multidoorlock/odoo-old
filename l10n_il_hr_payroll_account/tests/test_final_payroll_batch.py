@@ -1,3 +1,4 @@
+import ast
 from datetime import date
 from unittest.mock import patch
 
@@ -5,8 +6,58 @@ from lxml import etree
 from odoo import Command
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase, new_test_user, tagged
+from odoo.tools import convert_file, file_open
 
 from . import test_payment_reconciliation as fixtures
+
+
+@tagged('post_install', '-at_install', 'il_final_payroll_batch')
+class TestLegacyPayrollBatchViewUpgrade(TransactionCase):
+    def test_legacy_batch_form_is_replaced_before_new_sibling_is_validated(self):
+        """Replay the native update path that failed upgrading from 1.4.28.
+
+        A valid final registry alone misses this failure: Odoo validates all
+        batch-form siblings while importing the new payslip-run origin view.
+        Restore the retired field from the old sibling without asking the new
+        model to accept it, then load the affected files in manifest order.
+        """
+        module = 'l10n_il_hr_payroll_account'
+        env = self.env(context=dict(self.env.context, lang='en_US'))
+        legacy = env.ref(module + '.view_batch_payment_form_il_cycle')
+        self.assertNotIn('il_grouped_payment_view_id', env['account.batch.payment']._fields)
+        old_arch = '''<data>
+            <field name="batch_type" position="after">
+                <field name="il_grouped_payment_view_id" invisible="1"/>
+            </field>
+        </data>'''
+        env.cr.execute(
+            "UPDATE ir_ui_view SET arch_db = jsonb_build_object('en_US', %s::text) WHERE id = %s",
+            [old_arch, legacy.id])
+        env.invalidate_all()
+        env.registry.clear_cache()
+        with self.assertRaisesRegex(ValidationError, 'il_grouped_payment_view_id'), env.cr.savepoint():
+            legacy._check_xml()
+
+        with file_open(module + '/__manifest__.py', 'r') as source:
+            manifest = ast.literal_eval(source.read())
+        affected_files = {'views/payment_cycle_views.xml', 'views/hr_payslip_run_views.xml'}
+        sequence = [path for path in manifest['data'] if path in affected_files]
+        self.assertEqual(set(sequence), affected_files)
+        documents = ('account.payment', 'account.batch.payment', 'hr.payslip',
+                     'account.move', 'account.partial.reconcile')
+        before = {model: env[model].search_count([]) for model in documents}
+        for path in sequence:
+            convert_file(env, module, path, {}, mode='update', noupdate=False)
+
+        legacy = env.ref(module + '.view_batch_payment_form_il_cycle')
+        self.assertNotIn('il_grouped_payment_view_id', legacy.arch_db)
+        legacy._check_xml()
+        origin = env.ref(module + '.view_batch_payment_form_payslip_run_origin')
+        origin._check_xml()
+        arch = origin._get_combined_arch()
+        self.assertTrue(arch.xpath("//field[@name='il_payslip_run_id']"))
+        self.assertFalse(arch.xpath("//field[@name='il_grouped_payment_view_id']"))
+        self.assertEqual({model: env[model].search_count([]) for model in documents}, before)
 
 
 @tagged('post_install', '-at_install', 'il_final_payroll_batch')
