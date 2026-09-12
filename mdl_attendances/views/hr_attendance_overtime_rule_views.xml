@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_attendance_overtime_rule_shift_quantity_form" model="ir.ui.view">
+        <field name="name">hr.attendance.overtime.rule.shift.quantity.form</field>
+        <field name="model">hr.attendance.overtime.rule</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_overtime_rule_view_form"/>
+        <field name="arch" type="xml">
+            <field name="employer_tolerance" position="before">
+                <field name="mdl_shift_rounding_threshold_minutes"
+                       invisible="base_off != 'quantity' or quantity_period != 'shift'"/>
+            </field>
+            <field name="expected_hours_from_contract" position="attributes">
+                <attribute name="readonly">base_off == 'quantity' and quantity_period == 'shift'</attribute>
+            </field>
+        </field>
+    </record>
+</odoo>

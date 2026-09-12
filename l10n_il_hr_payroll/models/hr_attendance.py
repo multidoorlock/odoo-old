@@ -9,12 +9,28 @@ class HrAttendance(models.Model):
     _inherit = 'hr.attendance'
 
     def _update_overtime(self, attendance_domain=None):
+        if hasattr(self, '_mdl_whole_shift_attendance_domain'):
+            domain = attendance_domain or self._get_overtimes_to_update_domain()
+            candidates = (self.exists() | self.search(domain)).filtered('check_out')
+            if any(
+                    rule.base_off == 'quantity' and rule.quantity_period == 'shift'
+                    for attendance in candidates
+                    for rule in attendance.employee_id.sudo()._get_version(
+                        attendance._get_localized_times()[0]).ruleset_id.rule_ids):
+                # Native regeneration includes neighboring overnight punches.
+                # Use exactly that effective domain in the outer payroll layer
+                # too, so a neighboring additional day cannot regain overtime.
+                attendance_domain = self._mdl_whole_shift_attendance_domain(domain)
         result = super()._update_overtime(attendance_domain=attendance_domain)
         if not self.env.context.get('install_demo'):
             affected = self.filtered('check_out')
             if attendance_domain:
                 affected |= self.search(attendance_domain).filtered('check_out')
             affected._mdl_remove_additional_day_overtimes()
+            if hasattr(affected, '_mdl_sync_shift_overtime_marks'):
+                # Additional-day classification runs after native overtime.
+                # Refresh only its visual tail, retaining the source partition.
+                affected._mdl_sync_shift_overtime_marks()
         return result
 
     def _mdl_remove_additional_day_overtimes(self):

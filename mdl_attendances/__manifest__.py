@@ -1,6 +1,6 @@
 {
     "name": "Multi Doorlock - Attendances",
-    "version": "19.0.1.1.6",
+    "version": "19.0.1.1.8",
     "category": "Human Resources/Attendances",
     "summary": "Split attendances into effective work and non-work intervals",
     "author": "MDL",
@@ -12,6 +12,7 @@
         "views/hr_attendance_segment_rule_views.xml",
         "views/hr_attendance_views.xml",
         "views/hr_version_views.xml",
+        "views/hr_attendance_overtime_rule_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

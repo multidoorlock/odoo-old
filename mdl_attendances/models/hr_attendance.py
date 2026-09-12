@@ -5,6 +5,7 @@ import pytz
 from dateutil.rrule import rrule, DAILY
 
 from odoo import api, fields, models, _
+from odoo.fields import Domain
 from odoo.exceptions import ValidationError
 from odoo.tools.intervals import Intervals
 
@@ -16,8 +17,128 @@ class HrAttendance(models.Model):
         "hr.attendance.segment", "attendance_id", string="Attendance Segments", copy=False)
     presence_hours = fields.Float(
         string="Presence Hours", compute="_compute_presence_hours", store=True, readonly=True)
+    mdl_pending_overtime_hours = fields.Float(
+        string='Hours to Approve', compute='_compute_mdl_pending_overtime_hours',
+        store=True, readonly=True, aggregator='sum',
+        help='Approval hours from overtime lines that are still awaiting approval, '
+             'including the whole-shift rounding policy.',
+    )
     timeline_start_label = fields.Char(compute="_compute_timeline_labels")
     timeline_stop_label = fields.Char(compute="_compute_timeline_labels")
+
+    @api.depends('employee_id', 'check_in', 'check_out')
+    def _compute_mdl_pending_overtime_hours(self):
+        # Native links are computed by employee and check-in, not a stored
+        # inverse relation. Query them freshly after line creation/removal.
+        pending = self._linked_overtimes().filtered(lambda line: line.status == 'to_approve')
+        by_attendance = pending.grouped(lambda line: (line.employee_id.id, line.time_start))
+        for attendance in self:
+            lines = by_attendance.get((attendance.employee_id.id, attendance.check_in), pending.browse())
+            attendance.mdl_pending_overtime_hours = sum(lines.mapped('manual_duration'))
+
+    def _mdl_whole_shift_attendance_domain(self, attendance_domain):
+        """Include every source punch when an overnight workday is affected."""
+        domains = [attendance_domain]
+        seen = set()
+        for attendance in (self.exists() | self.search(attendance_domain)).filtered('check_out'):
+            start = attendance._get_localized_times()[0]
+            version = attendance.employee_id.sudo()._get_version(start)
+            if not any(rule.base_off == 'quantity' and rule.quantity_period == 'shift'
+                       for rule in version.ruleset_id.rule_ids):
+                continue
+            key = (attendance.employee_id.id, start.date())
+            if key in seen:
+                continue
+            seen.add(key)
+            tz = pytz.timezone(version._get_tz())
+            lower = tz.localize(datetime.combine(start.date(), time.min)).astimezone(pytz.utc).replace(tzinfo=None)
+            upper = tz.localize(datetime.combine(start.date() + timedelta(days=1), time.min)).astimezone(pytz.utc).replace(tzinfo=None)
+            domains.append(Domain.AND([
+                Domain('employee_id', '=', attendance.employee_id.id),
+                Domain('check_in', '>=', lower), Domain('check_in', '<', upper),
+            ]))
+        return Domain.OR(domains)
+
+    def _update_overtime(self, attendance_domain=None):
+        domain = attendance_domain or self._get_overtimes_to_update_domain()
+        domain = self._mdl_whole_shift_attendance_domain(domain)
+        line_model = self.env['hr.attendance.overtime.line']
+        overtime_domain = self._get_overtime_domain_from_attendance_domain(domain)
+        previous = line_model.search(overtime_domain)
+        restore_default = set()
+        for key, lines in previous.grouped(lambda line: (line.employee_id.id, line.date)).items():
+            if (lines.company_id.attendance_overtime_validation != 'by_manager'
+                    and any(line.mdl_auto_approval_hours > 0 for line in lines)
+                    and all(line.status == 'approved' and not line._mdl_has_manual_duration_override()
+                            for line in lines)):
+                restore_default.add(key)
+        result = super()._update_overtime(attendance_domain=domain)
+        if restore_default:
+            # Native regeneration sees rounded manual_duration != raw duration
+            # as a human edit. Restore only the automatic company's default;
+            # manager decisions and genuine manual changes keep native behavior.
+            line_model.search(overtime_domain).filtered(
+                lambda line: (line.employee_id.id, line.date) in restore_default
+                and line.company_id.attendance_overtime_validation != 'by_manager'
+                and line.mdl_auto_approval_hours > 0
+                and any(line.rule_ids.mapped('mdl_shift_rounding_threshold_minutes'))
+                and not line._mdl_has_manual_duration_override()
+            ).write({'status': 'approved'})
+        (self.exists() | self.search(domain))._mdl_sync_shift_overtime_marks()
+        return result
+
+    def _mdl_sync_shift_overtime_marks(self):
+        """Refresh only the visual overtime tail of existing effective work.
+
+        This callback runs after attendance overtime regeneration, never after
+        direct overtime-line repair. Keep every existing work/non-work boundary
+        and its manual/source metadata; only introduce an overtime split when
+        the new tail starts inside a work segment.
+        """
+        Segment = self.env['hr.attendance.segment'].with_context(
+            segment_generation=True, segment_boundary_sync=True)
+        for attendance in self.filtered('check_out'):
+            version = attendance.employee_id.sudo()._get_version(attendance._get_localized_times()[0])
+            if not any(rule.base_off == 'quantity' and rule.quantity_period == 'shift'
+                       for rule in version.ruleset_id.rule_ids):
+                continue
+            segments = attendance.segment_ids.sorted('time_start')
+            if (not segments or segments[0].time_start != attendance.check_in
+                    or segments[-1].time_stop != attendance.check_out):
+                # During a native attendance boundary write, the segmentation
+                # layer has not yet rebuilt its partition. Its next callback
+                # will reach this method with the new complete partition.
+                continue
+            intervals = [{
+                'start': segment.time_start, 'stop': segment.time_stop,
+                'is_work': segment.is_work, 'is_overtime': False,
+                'rule_id': segment.rule_id.id, 'name': segment.name,
+                'source_segment': segment,
+            } for segment in segments]
+            raw_hours = sum(attendance._linked_overtimes().mapped('duration'))
+            desired = attendance._apply_native_overtime(intervals, max(raw_hours, 0.0))
+            by_source = defaultdict(list)
+            for item in desired:
+                by_source[item['source_segment']].append(item)
+            for source, items in by_source.items():
+                original_name = source.name
+                for index, item in enumerate(items):
+                    values = {
+                        'time_start': item['start'], 'time_stop': item['stop'],
+                        'is_overtime': bool(item.get('is_overtime')),
+                    }
+                    if index:
+                        Segment.create({
+                            **values, 'attendance_id': attendance.id,
+                            'is_work': source.is_work, 'rule_id': source.rule_id.id,
+                            'manual_override': source.manual_override,
+                            'name': original_name,
+                        })
+                    else:
+                        changes = {name: value for name, value in values.items() if source[name] != value}
+                        if changes:
+                            source.with_context(segment_generation=True, segment_boundary_sync=True).write(changes)
+            attendance._validate_segment_coverage()
 
     @api.depends("check_in", "check_out")
     def _compute_presence_hours(self):
