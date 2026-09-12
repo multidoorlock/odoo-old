@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Israel - Payroll With Accounting',
-    'version': '1.4.35',
+    'version': '1.4.36',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
     'summary': 'חוקי שכר ישראליים, התאמות שכר ותשלומי עובדים ישירים',
@@ -36,6 +36,7 @@
         'wizard/payment_cycle_wizard_views.xml',
         'wizard/masav_export_wizard_views.xml',
         'views/payment_cycle_views.xml',
+        'views/payroll_batch_payment_selection_views.xml',
         'views/hr_attendance_overtime_rule_views.xml',
         'views/menus.xml',
         'views/employee_accounting_navigation.xml',
@@ -45,6 +46,8 @@
     'assets': {
         'web.assets_backend': [
             'l10n_il_hr_payroll_account/static/src/components/payslip_link_amount/payslip_link_amount.js',
+            'l10n_il_hr_payroll_account/static/src/components/payslip_allocation_list/payslip_allocation_list.js',
+            'l10n_il_hr_payroll_account/static/src/components/payslip_allocation_list/payslip_allocation_list.xml',
             'l10n_il_hr_payroll_account/static/src/components/quick_split_lines/quick_split_lines.js',
             'l10n_il_hr_payroll_account/static/src/components/quick_split_lines/quick_split_lines.xml',
             'l10n_il_hr_payroll_account/static/src/components/payrun_card/payrun_card.xml',

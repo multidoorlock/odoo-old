@@ -181,6 +181,11 @@ class TestPayslipPaymentUI(TransactionCase):
                          ['action_il_add_payslip_payment', 'action_il_remove_payslip_links'])
         self.assertEqual(arch.get('edit'), '1')
         self.assertEqual(arch.get('editable'), 'bottom')
+        self.assertEqual(arch.get('js_class'), 'il_payslip_allocation_autosave_list')
+        self.assertEqual(arch.get('open_form_view'), '1')
+        self.assertIn((self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_payment_form_employee').id, 'form'),
+            self.linked_action['views'])
         self.assertTrue(self.linked_action['context']['edit'])
         self.assertFalse(arch.xpath("./field[@name='il_recognition_available_amount']"))
         self.assertEqual(arch.xpath('./field[@sum]/@name'), ['il_payslip_linked_amount'])
@@ -218,7 +223,7 @@ class TestPayslipPaymentUI(TransactionCase):
         candidate_action = self.Payment.action_il_add_payslip_payment()
         self.assertEqual(candidate_action['target'], 'new')
         self.assertEqual(candidate_action['res_model'], 'account.payment')
-        self.assertEqual(candidate_action['view_mode'], 'list')
+        self.assertEqual(candidate_action['view_mode'], 'list,form')
         self.assertEqual(candidate_action['context']['dialog_size'], 'extra-large')
         self.assertEqual(candidate_action['context']['il_payslip_id'], self.slip.id)
         candidates = self._web_list(candidate_action)['records']
@@ -229,6 +234,13 @@ class TestPayslipPaymentUI(TransactionCase):
             candidate_action['views'], {'toolbar': True})['views']['list']
         arch = etree.fromstring(rendered['arch'])
         self.assertEqual(arch.xpath('./header/button/@name'), ['action_il_select_payslip_payments'])
+        self.assertEqual(arch.get('js_class'), 'il_payslip_allocation_autosave_list')
+        self.assertEqual(arch.get('open_form_view'), '1')
+        self.assertEqual(arch.xpath("./field[@name='il_payslip_candidate_amount']/@widget"),
+                         ['il_payslip_candidate_amount'])
+        self.assertIn((self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_payment_form_employee').id, 'form'),
+            candidate_action['views'])
         self.assertFalse(rendered['toolbar'].get('action'))
         for name in ('date', 'partner_id', 'memo', 'amount', 'il_recognition_available_amount'):
             self.assertTrue(arch.xpath("./field[@name='%s']" % name))

@@ -9,5 +9,7 @@ from . import test_employee_accounting_navigation
 from . import test_hebrew_ui_translations
 from . import test_hr_navigation_ui_ux
 from . import test_payslip_payment_ui
+from . import test_employee_batch_payment_selection
 from . import test_payslip_payment_toolbar
 from . import test_payslip_payment_candidates
+from . import test_payroll_link_coalescing

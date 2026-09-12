@@ -200,6 +200,8 @@
                 <attribute name="create">0</attribute>
                 <attribute name="delete">0</attribute>
                 <attribute name="multi_edit">0</attribute>
+                <attribute name="js_class">il_payslip_allocation_autosave_list</attribute>
+                <attribute name="open_form_view">1</attribute>
             </list>
             <xpath expr="//header" position="replace">
                 <header>
@@ -269,7 +271,7 @@
             </xpath>
             <field name="il_payslip_linked_amount" position="replace">
                 <field name="il_payslip_candidate_amount" string="סכום לקישור"
-                       widget="monetary" readonly="0" sum="סה״כ לקישור"/>
+                       widget="il_payslip_candidate_amount" readonly="0" sum="סה״כ לקישור"/>
                 <field name="il_recognition_available_amount" string="יתרה זמינה לקישור"
                        widget="monetary" readonly="1"/>
             </field>

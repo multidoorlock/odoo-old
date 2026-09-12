@@ -182,10 +182,11 @@ class AccountPayment(models.Model):
         candidates = self.env['il.payroll.reconciliation.wizard']._eligible_payments(slip)
         return {
             'type': 'ir.actions.act_window', 'name': _('תשלומים זמינים לקישור לתלוש'),
-            'res_model': 'account.payment', 'view_mode': 'list', 'target': 'new',
+            'res_model': 'account.payment', 'view_mode': 'list,form', 'target': 'new',
             'views': [(self.env.ref(
                 'l10n_il_hr_payroll_account.view_account_payment_list_payslip_candidates'
-            ).id, 'list')],
+            ).id, 'list'), (self.env.ref(
+                'l10n_il_hr_payroll_account.view_account_payment_form_employee').id, 'form')],
             'search_view_id': (self.env.ref(
                 'l10n_il_hr_payroll_account.view_account_payment_search_employee').id, ''),
             'domain': [('id', 'in', candidates.ids)],

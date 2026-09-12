@@ -4,8 +4,15 @@ import { useEffect } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { MonetaryField, monetaryField } from "@web/views/fields/monetary/monetary_field";
 
+/** Save through Odoo's normal input hook when the amount loses focus or tabs. */
+export class PayslipAutosaveMonetaryField extends MonetaryField {
+    get inputOptions() {
+        return { ...super.inputOptions, shouldSave: () => true };
+    }
+}
+
 /** Native monetary input with an optimistic concurrency token for this row. */
-export class PayslipLinkAmountField extends MonetaryField {
+export class PayslipLinkAmountField extends PayslipAutosaveMonetaryField {
     setup() {
         super.setup();
         this.editSnapshot = null;
@@ -45,4 +52,9 @@ export class PayslipLinkAmountField extends MonetaryField {
 registry.category("fields").add("il_payslip_link_amount", {
     ...monetaryField,
     component: PayslipLinkAmountField,
+});
+
+registry.category("fields").add("il_payslip_candidate_amount", {
+    ...monetaryField,
+    component: PayslipAutosaveMonetaryField,
 });

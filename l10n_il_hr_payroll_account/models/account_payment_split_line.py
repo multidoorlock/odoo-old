@@ -312,6 +312,38 @@ class AccountPaymentSplitLine(models.Model):
             remaining = currency.round(remaining - allocated)
         return chunks
 
+    def _il_coalesce_recognition_chunks(self, expected_amount):
+        """One allocation to one payslip consumes one open logical chunk.
+
+        The caller has already reserved the amount under accounting locks.
+        Coalesce only those open chunks: applied links, pending targets and
+        the unallocated future schedule remain outside this recordset.
+        """
+        if not self:
+            return self
+        self.flush_recordset(['payment_id', 'amount', 'reconcile_id', 'il_pending_payslip_move_line_id'])
+        self.env.cr.execute(
+            'SELECT id FROM account_payment_split_line WHERE id IN %s ORDER BY id FOR UPDATE',
+            [tuple(self.ids)])
+        self.invalidate_recordset(['payment_id', 'amount', 'reconcile_id', 'il_pending_payslip_move_line_id'])
+        payment = self.payment_id
+        payment.ensure_one()
+        if self.filtered(lambda line: line.reconcile_id or line.il_pending_payslip_move_line_id):
+            raise ValidationError(_('ניתן לאחד רק פעימות פנויות המיועדות לאותה סגירה בתלוש.'))
+        amount = payment.currency_id.round(sum(self.mapped('amount')))
+        if payment.currency_id.compare_amounts(amount, expected_amount):
+            raise ValidationError(_('סכומי הפריסה השתנו במהלך הפעולה. יש לרענן ולנסות שוב.'))
+        first = self.sorted(lambda line: (line.sequence, line.id))[:1]
+        if len(self) == 1:
+            return first
+        (self - first).with_context(
+            il_system_split_unlink=True, il_skip_spread_total_check=True,
+        ).unlink()
+        first.with_context(
+            il_sync_from_payment=True, il_skip_spread_total_check=True,
+        ).write({'amount': amount})
+        return first
+
     @api.model
     def _il_adopt_native_allocations(self, payment):
         """Attach schedule metadata to matches made by native Accounting."""

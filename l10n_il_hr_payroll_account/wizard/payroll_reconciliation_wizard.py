@@ -271,7 +271,22 @@ class IlPayrollReconciliationWizard(models.TransientModel):
         with self.env.cr.savepoint():
             return self._apply_allocations()
 
-    def _apply_allocations(self):
+    def _il_rebuild_duplicate_link(self, payment):
+        """Explicit repair of one duplicate logical pair, under normal locks.
+
+        It is intentionally private and not a global native-reconciliation
+        hook. Currency conversions or different journal-item pairs are not
+        safe candidates for this cosmetic consolidation.
+        """
+        self.ensure_one()
+        payment.ensure_one()
+        if not self.source_payslip_id or self.add_only:
+            raise ValidationError(_('יש לפתוח סגירות מתוך התלוש לצורך איחוד קישור כפול.'))
+        with self.env.cr.savepoint():
+            return self._apply_allocations(
+                rebuild_pairs={(payment.id, self.source_payslip_id.id)})
+
+    def _apply_allocations(self, rebuild_pairs=()):
         self._check_source()
         old = self._scope_partials()
         payments = old.debit_move_id.payment_id | self.line_ids.payment_id | self.source_payment_id
@@ -309,6 +324,27 @@ class IlPayrollReconciliationWizard(models.TransientModel):
                    if self.currency_id.compare_amounts(
                        sum(grouped.get(key, self.env['account.partial.reconcile']).mapped(
                            'debit_amount_currency')), requested.get(key, 0.0))}
+        for key in rebuild_pairs:
+            pair = grouped.get(key, self.env['account.partial.reconcile'])
+            if len(pair) <= 1:
+                continue
+            payment = pair.debit_move_id.payment_id
+            company_currency = payment.company_id.currency_id
+            if (len(pair.debit_move_id) != 1 or len(pair.credit_move_id) != 1
+                    or payment.currency_id != company_currency
+                    or pair.debit_move_id.currency_id != company_currency
+                    or pair.credit_move_id.currency_id != company_currency
+                    or ('exchange_move_id' in pair._fields and pair.mapped('exchange_move_id'))
+                    or ('exchange_move_id' in pair.full_reconcile_id._fields
+                        and pair.full_reconcile_id.mapped('exchange_move_id'))
+                    or any(company_currency.compare_amounts(part.amount, part.debit_amount_currency)
+                           or company_currency.compare_amounts(part.amount, part.credit_amount_currency)
+                           for part in pair)
+                    or company_currency.compare_amounts(
+                        sum(pair.mapped('debit_amount_currency')), requested.get(key, 0.0))):
+                raise ValidationError(_(
+                    'אין לאחד אוטומטית התאמות במטבעות שונים או בין שורות יומן שונות.'))
+            changed.add(key)
         if not changed:
             return {'type': 'ir.actions.act_window_close'}
         changed_payments = self.env['account.payment'].browse(sorted({key[0] for key in changed}))
@@ -336,8 +372,7 @@ class IlPayrollReconciliationWizard(models.TransientModel):
             slip = self.env['hr.payslip'].browse(slip_id)
             chunks = self.env['account.payment.split.line']._il_take_open_amount(
                 payment, amount)
-            for chunk in chunks:
-                chunk._il_reconcile_with_payslip(slip)
+            chunks._il_coalesce_recognition_chunks(amount)._il_reconcile_with_payslip(slip)
         changed_payments._il_resequence_split_lines()
         changed_payments._check_il_spread_complete()
         changed_payments.il_split_line_ids._check_business_rules()
