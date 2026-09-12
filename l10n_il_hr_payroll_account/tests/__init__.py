@@ -15,3 +15,4 @@ from . import test_payslip_payment_candidates
 from . import test_payroll_link_coalescing
 from . import test_final_payroll_batch
 from . import test_payroll_wage_labels
+from . import test_payroll_parameter_preservation

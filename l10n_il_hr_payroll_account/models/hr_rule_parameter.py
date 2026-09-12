@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import api, models
+from odoo import _, api, models
+from odoo.exceptions import ValidationError
 
 
 class HrRuleParameter(models.Model):
@@ -7,7 +8,12 @@ class HrRuleParameter(models.Model):
 
     @api.model
     def _il_rebuild_2026_parameters(self):
-        """Replace obsolete empty Israeli parameters with effective 2026 values."""
+        """Seed missing 2026 defaults without replacing configured history.
+
+        Parameter codes are globally unique in native Odoo. Existing values
+        remain authoritative, including future versions and customized codes
+        or countries. Only an empty Israeli parameter needs its initial value.
+        """
         values = {
             'IL_TAX_BRACKET_1_LIMIT': 7010, 'IL_TAX_BRACKET_1_RATE': 10,
             'IL_TAX_BRACKET_2_LIMIT': 10060, 'IL_TAX_BRACKET_2_RATE': 14,
@@ -39,10 +45,26 @@ class HrRuleParameter(models.Model):
             'IL_PAL_EQUALIZATION_AGRICULTURE_RATE': 0,
         }
         country = self.env.ref('base.il')
-        self.search([('country_id', '=', country.id)]).unlink()
+        existing = self.with_context(active_test=False).search([
+            ('code', 'in', list(values)),
+        ])
+        by_code = {}
+        for parameter in existing:
+            if parameter.code in by_code:
+                # Native Odoo enforces unique(code). Do not choose a record
+                # or delete history if a damaged/custom database violates it.
+                raise ValidationError(_(
+                    'נמצאו כמה פרמטרי שכר עם הקוד %s. יש לבדוק את ההגדרות לפני העדכון.',
+                    parameter.code))
+            by_code[parameter.code] = parameter
         Value = self.env['hr.rule.parameter.value']
         for code, value in values.items():
-            parameter = self.create({'name': code, 'code': code, 'country_id': country.id})
+            parameter = by_code.get(code)
+            if parameter:
+                if parameter.parameter_version_ids or parameter.country_id != country:
+                    continue
+            else:
+                parameter = self.create({'name': code, 'code': code, 'country_id': country.id})
             Value.create({
                 'rule_parameter_id': parameter.id,
                 'date_from': '2026-01-01',
