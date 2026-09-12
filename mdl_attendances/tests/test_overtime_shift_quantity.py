@@ -238,6 +238,24 @@ class TestOvertimeShiftQuantity(TransactionCase):
         self.assertAlmostEqual(sum(value['duration'] for value in values
                                    if value.get('work_entry_type_id') == additional_type.id), 9)
 
+    def test_neighboring_additional_day_stays_separate_after_overnight_update(self):
+        additional_type = self.env.ref('l10n_il_hr_payroll.work_entry_type_additional_day', raise_if_not_found=False)
+        if not additional_type:
+            self.skipTest('Additional-day payroll classification is not installed')
+        worker = self._employee()
+        thursday = self._attendances([(16, 30)], day=date(2026, 7, 9), employee=worker)
+        friday = self._attendances([(7, 18)], day=date(2026, 7, 10), employee=worker)
+        self._assert_hours(friday, 11, 0)
+        for _ in range(2):
+            thursday._update_overtime()
+            self._assert_hours(thursday, 14, 5)
+            self._assert_hours(friday, 11, 0)
+            self.assertFalse(friday.segment_ids.filtered('is_overtime'))
+            values = worker.version_id._mdl_get_normalized_work_entry_vals(
+                self._utc(date(2026, 7, 10), 0), self._utc(date(2026, 7, 11), 0) - timedelta(microseconds=1))
+            self.assertAlmostEqual(sum(value['duration'] for value in values
+                                       if value.get('work_entry_type_id') == additional_type.id), 9)
+
     def test_configuration_rejects_ambiguous_periods_and_rounding_rates(self):
         for values in ({'expected_hours_from_contract': True},
                        {'mdl_shift_rounding_threshold_minutes': 60},
