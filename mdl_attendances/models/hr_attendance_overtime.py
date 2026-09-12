@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.tools.float_utils import float_compare
 
 
@@ -15,3 +15,27 @@ class HrAttendanceOvertimeLine(models.Model):
         self.ensure_one()
         baseline = self.mdl_auto_approval_hours if self.mdl_auto_approval_hours > 0 else self.duration
         return float_compare(self.manual_duration, baseline, precision_digits=4) != 0
+
+    def _mdl_schedule_pending_hours(self, attendances):
+        self.env.add_to_compute(attendances._fields['mdl_pending_overtime_hours'], attendances)
+
+    @api.model_create_multi
+    def create(self, values_list):
+        lines = super().create(values_list)
+        lines._mdl_schedule_pending_hours(lines._linked_attendances())
+        return lines
+
+    def write(self, values):
+        affects_pending = any(name in values for name in (
+            'manual_duration', 'duration', 'status', 'employee_id', 'time_start'))
+        attendances = self._linked_attendances() if affects_pending else self.env['hr.attendance']
+        result = super().write(values)
+        if affects_pending:
+            self._mdl_schedule_pending_hours(attendances | self._linked_attendances())
+        return result
+
+    def unlink(self):
+        attendances = self._linked_attendances()
+        result = super().unlink()
+        self._mdl_schedule_pending_hours(attendances)
+        return result

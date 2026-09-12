@@ -70,3 +70,39 @@ msgstr "עיגול מחייב כלל משמרת שלמה וסף בין דקה א
 #: code:addons/mdl_attendances/models/hr_attendance_overtime_rule.py:0
 msgid "A ruleset with whole-shift rounding must contain exactly one rule."
 msgstr "קבוצת כללים עם עיגול למשמרת שלמה חייבת לכלול כלל אחד בלבד."
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance__mdl_pending_overtime_hours
+msgid "Hours to Approve"
+msgstr "שעות לאישור"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,help:mdl_attendances.field_hr_attendance__mdl_pending_overtime_hours
+msgid "Approval hours from overtime lines that are still awaiting approval, including the whole-shift rounding policy."
+msgstr "השעות משורות השעות הנוספות שעדיין ממתינות לאישור, כולל העיגול שנקבע למשמרת שלמה."
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_management_pending_hours
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_view_form_segments
+msgid "Actual Overtime Hours"
+msgstr "שעות נוספות בפועל"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_management_pending_hours
+msgid "Approved Overtime Hours"
+msgstr "שעות נוספות שאושרו"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_management_pending_hours
+msgid "Total Hours to Approve"
+msgstr "סה״כ שעות לאישור"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_view_form_segments
+msgid "Hours for Approval / Payment"
+msgstr "שעות לאישור / לתשלום"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_view_form_segments
+msgid "Total Hours for Approval / Payment"
+msgstr "סה״כ שעות לאישור / לתשלום"

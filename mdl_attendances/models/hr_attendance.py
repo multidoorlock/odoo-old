@@ -17,8 +17,24 @@ class HrAttendance(models.Model):
         "hr.attendance.segment", "attendance_id", string="Attendance Segments", copy=False)
     presence_hours = fields.Float(
         string="Presence Hours", compute="_compute_presence_hours", store=True, readonly=True)
+    mdl_pending_overtime_hours = fields.Float(
+        string='Hours to Approve', compute='_compute_mdl_pending_overtime_hours',
+        store=True, readonly=True, aggregator='sum',
+        help='Approval hours from overtime lines that are still awaiting approval, '
+             'including the whole-shift rounding policy.',
+    )
     timeline_start_label = fields.Char(compute="_compute_timeline_labels")
     timeline_stop_label = fields.Char(compute="_compute_timeline_labels")
+
+    @api.depends('employee_id', 'check_in', 'check_out')
+    def _compute_mdl_pending_overtime_hours(self):
+        # Native links are computed by employee and check-in, not a stored
+        # inverse relation. Query them freshly after line creation/removal.
+        pending = self._linked_overtimes().filtered(lambda line: line.status == 'to_approve')
+        by_attendance = pending.grouped(lambda line: (line.employee_id.id, line.time_start))
+        for attendance in self:
+            lines = by_attendance.get((attendance.employee_id.id, attendance.check_in), pending.browse())
+            attendance.mdl_pending_overtime_hours = sum(lines.mapped('manual_duration'))
 
     def _mdl_whole_shift_attendance_domain(self, attendance_domain):
         """Include every source punch when an overnight workday is affected."""

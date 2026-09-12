@@ -1,6 +1,7 @@
 from datetime import date, datetime, time, timedelta
 
 import pytz
+from lxml import etree
 
 from odoo import Command
 from odoo.exceptions import ValidationError
@@ -212,3 +213,42 @@ class TestOvertimeShiftQuantity(TransactionCase):
         self.rule.mdl_shift_rounding_threshold_minutes = 40
         with self.assertRaises(ValidationError), self.cr.savepoint():
             self.rule.copy({'name': 'Ambiguous second rounded rate'})
+
+    def test_management_shows_pending_rounded_hours_then_approved_hours(self):
+        self.rule.mdl_shift_rounding_threshold_minutes = 40
+        attendance = self._attendances([(7, 17 + 40 / 60)])
+        lines = self._assert_hours(attendance, 10 + 40 / 60, 1.6667, 2)
+        self.assertEqual(attendance.mdl_pending_overtime_hours, 2)
+        self.assertEqual(attendance.validated_overtime_hours, 0)
+        self.assertEqual(self.env['hr.attendance']._read_group(
+            [('id', '=', attendance.id)], [], ['mdl_pending_overtime_hours:sum']), [(2.0,)])
+        lines.manual_duration = 1.5
+        self.assertEqual(attendance.mdl_pending_overtime_hours, 1.5)
+        lines.manual_duration = 2
+        attendance.action_approve_overtime()
+        self.assertEqual(attendance.mdl_pending_overtime_hours, 0)
+        self.assertEqual(attendance.validated_overtime_hours, 2)
+        self.assertAlmostEqual(attendance.overtime_hours, 1.6667, places=4)
+        attendance._update_overtime()
+        self.assertEqual(attendance.mdl_pending_overtime_hours, 2)
+        attendance.linked_overtime_ids.unlink()
+        self.assertEqual(attendance.mdl_pending_overtime_hours, 0)
+
+        field = attendance._fields['mdl_pending_overtime_hours']
+        self.assertTrue(field.store and field.readonly)
+        self.assertEqual(field.aggregator, 'sum')
+        model = self.env['hr.attendance'].with_context(lang='en_US')
+        arch = etree.fromstring(model.get_view(
+            view_id=self.env.ref('hr_attendance.view_attendance_tree_management').id,
+            view_type='list')['arch'])
+        pending = arch.xpath("//field[@name='mdl_pending_overtime_hours']")
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0].get('sum'), 'Total Hours to Approve')
+        self.assertEqual(pending[0].get('widget'), 'float_time')
+        self.assertEqual(arch.xpath("//field[@name='overtime_hours']")[0].get('string'), 'Actual Overtime Hours')
+        form = etree.fromstring(model.get_view(
+            view_id=self.env.ref('hr_attendance.hr_attendance_view_form').id,
+            view_type='form')['arch'])
+        manual = form.xpath("//field[@name='linked_overtime_ids']/list/field[@name='manual_duration']")[0]
+        self.assertEqual(manual.get('string'), 'Hours for Approval / Payment')
+        self.assertIn(manual.get('column_invisible'), ('0', 'False', None))
