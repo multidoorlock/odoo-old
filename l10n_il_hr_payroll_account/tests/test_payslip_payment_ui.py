@@ -1,21 +1,23 @@
-import json
 from datetime import date
-from pathlib import Path
 from unittest import SkipTest
 
+from lxml import etree
+
 from odoo import Command
-from odoo.tests.common import HttpCase, new_test_user, tagged
+from odoo.exceptions import UserError, ValidationError
+from odoo.tests.common import TransactionCase, new_test_user, tagged
 
 from . import test_payment_reconciliation as payment_fixtures
 from . import test_reconciliation_editor as reconciliation_fixtures
 
 
-@tagged('post_install', '-at_install', 'il_payroll_frontend_simulation')
-class TestPayslipPaymentUI(HttpCase):
-    """Actual native web client + real RPC on HttpCase rollback cursors.
+@tagged('post_install', '-at_install', 'il_payroll_frontend_simulation', 'il_payroll_ui_simulation')
+class TestPayslipPaymentUI(TransactionCase):
+    """Code simulation of native web-client RPC contracts and workflows.
 
-    This uses Odoo's headless Chrome driver, never Edge, saved sessions or
-    existing financial records. No test creates or commits production data.
+    Calls the same web_read, onchange, web_save, list and export methods used
+    by the client on fresh rollback fixtures. Does not claim DOM/browser
+    coverage and does not launch Chromium or Edge.
     """
 
     @classmethod
@@ -102,31 +104,189 @@ class TestPayslipPaymentUI(HttpCase):
                 'amount', 'debit_move_id', 'credit_move_id']),
         }
 
-    def _simulate(self, scenario):
+    _list_spec = {
+        'id': {}, 'name': {}, 'date': {}, 'memo': {}, 'partner_id': {},
+        'amount': {}, 'il_payslip_linked_amount': {}, 'il_recognition_available_amount': {},
+    }
+    _dialog_spec = {
+        'id': {}, 'operation': {}, 'source_payslip_id': {}, 'payslip_remaining': {},
+        'total_amount': {}, 'line_ids': {'fields': {
+            'id': {}, 'payment_id': {}, 'payment_date': {}, 'memo': {},
+            'payment_amount': {}, 'available_amount': {}, 'current_amount': {}, 'amount': {},
+        }},
+    }
+
+    def _start_client(self):
         self._fixture()
-        settings = {'scenario': scenario, 'slipId': self.slip.id, 'alphaId': self.alpha.id,
-                    'companyId': self.company.id}
-        code = 'window.payrollSimulation = ' + json.dumps(settings) + ';\n'
-        code += Path(__file__).with_name('payslip_payment_ui.js').read_text(encoding='utf-8')
-        self.browser_js(
-            '/odoo/action-%s' % self.ui_action.id, code,
-            ready="document.querySelector('.o_list_view .o_data_row')",
-            login=self.browser_user.login, timeout=180)
+        self.client = self.env(user=self.browser_user.id, context={
+            'allowed_company_ids': self.company.ids, 'lang': 'he_IL',
+            'no_reset_password': True, 'tracking_disable': True,
+        })
+        self.linked_action = self.slip.with_env(self.client).action_il_open_payments()
+        self.Payment = self.client['account.payment'].with_context(**self.linked_action['context'])
+
+    def _web_list(self, action=None, extra_domain=None, **kwargs):
+        action = action or self.linked_action
+        return self.client['account.payment'].with_context(**action['context']).web_search_read(
+            action['domain'] + (extra_domain or []), self._list_spec, order='id', **kwargs)
+
+    def _open_dialog(self, operation, payments):
+        methods = {'edit': 'action_il_change_recognized_amount',
+                   'remove': 'action_il_remove_payslip_links',
+                   'add': 'action_il_select_payslip_payments'}
+        action = getattr(self.Payment.browse(payments.ids), methods[operation])()
+        wizard = self.client[action['res_model']].browse(action['res_id']).with_context(**action['context'])
+        view = wizard.get_views(action['views'])['views']['form']
+        arch = etree.fromstring(view['arch'])
+        rows = arch.xpath("//field[@name='line_ids']/list")[0]
+        self.assertEqual(rows.get('create'), '0')
+        self.assertEqual(rows.get('delete'), '0')
+        self.assertTrue(arch.xpath("//button[@special='cancel']"))
+        data = wizard.web_read(self._dialog_spec)[0]
+        self.assertEqual(data['source_payslip_id'], self.slip.id)
+        self.assertEqual({line['payment_id'] for line in data['line_ids']}, set(payments.ids))
+        return wizard
+
+    def _web_amounts(self, wizard, amounts, save=True):
+        data = wizard.web_read(self._dialog_spec)[0]
+        commands = [Command.update(line['id'], {'amount': amounts[line['payment_id']]})
+                    for line in data['line_ids'] if line['payment_id'] in amounts]
+        # First simulate an unsaved form change. onchange must not alter any
+        # original amount or persisted native allocation.
+        onchange = wizard.onchange({
+            'source_payslip_id': self.slip.id, 'operation': wizard.operation,
+            'line_ids': commands,
+        }, ['line_ids'], self._dialog_spec)
+        self.assertIn('value', onchange)
+        if save:
+            saved = wizard.web_save({'line_ids': commands}, self._dialog_spec)[0]
+            for line in saved['line_ids']:
+                if line['payment_id'] in amounts:
+                    self.assertEqual(line['amount'], amounts[line['payment_id']])
+            self.assertEqual(saved['total_amount'], sum(line['amount'] for line in saved['line_ids']))
+            return saved
+        return onchange
+
+    def _assert_financial_preservation(self):
         self.env.invalidate_all()
         self.assertEqual(self._financial_values(), self.baseline)
 
     def test_selected_edit_cancel_cap_and_stale_form_recovery(self):
-        self._simulate('edit_recovery')
+        self._start_client()
+        rendered = self.Payment.get_views(self.linked_action['views'], {'toolbar': True})['views']['list']
+        arch = etree.fromstring(rendered['arch'])
+        self.assertEqual(arch.xpath('./header/button/@name'), ['action_il_add_payslip_payment'])
+        self.assertFalse(arch.xpath('./button'))
+        self.assertEqual(arch.get('edit'), '0')
+        columns = arch.xpath('./field/@name')
+        self.assertEqual(columns[columns.index('amount') + 1], 'il_payslip_linked_amount')
+        toolbar_names = {action['name'] for action in rendered['toolbar']['action']}
+        self.assertEqual(toolbar_names, {'שינוי סכום להכרה', 'הסרת קישור מהתלוש'})
+
+        canceled = self._open_dialog('edit', self.alpha)
+        self._web_amounts(canceled, {self.alpha.id: 500.0}, save=False)
+        self.assertEqual(canceled.web_read(self._dialog_spec)[0]['line_ids'][0]['amount'], 1000.0)
+        self.assertEqual(self.alpha.il_applied_amount, 1000.0)
+
+        editor = self._open_dialog('edit', self.alpha)
+        self._web_amounts(editor, {self.alpha.id: 600.0})
+        self.assertEqual(self.alpha.il_applied_amount, 1000.0)
+        action = editor.action_apply()
+        displayed = self._web_list(action)['records']
+        self.assertEqual(next(row['il_payslip_linked_amount'] for row in displayed
+                              if row['id'] == self.alpha.id), 600.0)
+
+        recoverable = self._open_dialog('edit', self.alpha)
+        self._web_amounts(recoverable, {self.alpha.id: 3001.0})
+        with self.assertRaises(ValidationError):
+            recoverable.action_apply()
+        self.assertEqual(recoverable.web_read(self._dialog_spec)[0]['line_ids'][0]['amount'], 3001.0)
+        self.assertEqual(self.alpha.il_applied_amount, 600.0)
+        # Correct the amount in the retained form and save without reopening.
+        self._web_amounts(recoverable, {self.alpha.id: 900.0})
+        recoverable.action_apply()
+        self.assertEqual(self.alpha.il_applied_amount, 900.0)
+
+        stale = self._open_dialog('edit', self.alpha)
+        self._web_amounts(stale, {self.alpha.id: 550.0})
+        payment = self.Payment.browse(self.alpha.id)
+        token = payment.web_read({'il_payslip_link_snapshot': {}})[0]['il_payslip_link_snapshot']
+        payment.web_save({'il_payslip_linked_amount': 650.0,
+                          'il_payslip_link_write_token': token}, self._list_spec)
+        with self.assertRaises(UserError):
+            stale.action_apply()
+        self.assertEqual(stale.web_read(self._dialog_spec)[0]['line_ids'][0]['amount'], 550.0)
         self.assertEqual(self.alpha.il_applied_amount, 650.0)
         self.assertEqual(self.beta.il_applied_amount, 200.0)
+        self._assert_financial_preservation()
 
     def test_multi_selection_remove_and_native_candidate_add(self):
-        self._simulate('multi_add_remove')
+        self._start_client()
+        candidate_action = self.Payment.action_il_add_payslip_payment()
+        candidates = self._web_list(candidate_action)['records']
+        self.assertEqual({row['id'] for row in candidates}, {self.gamma.id, self.delta.id})
+        self.assertEqual(next(row['il_recognition_available_amount'] for row in candidates
+                              if row['id'] == self.delta.id), 600.0)
+        rendered = self.Payment.with_context(**candidate_action['context']).get_views(
+            candidate_action['views'], {'toolbar': True})['views']['list']
+        arch = etree.fromstring(rendered['arch'])
+        self.assertEqual(arch.xpath('./header/button/@name'), ['action_il_select_payslip_payments'])
+        self.assertFalse(rendered['toolbar'].get('action'))
+        for name in ('date', 'partner_id', 'memo', 'amount', 'il_recognition_available_amount'):
+            self.assertTrue(arch.xpath("./field[@name='%s']" % name))
+        canceled = self._open_dialog('add', self.gamma)
+        self._web_amounts(canceled, {self.gamma.id: 300.0})
+        self.assertFalse(self.gamma.il_applied_amount)
+        self.assertEqual(len(self._web_list()['records']), 2)
+
+        removal = self._open_dialog('remove', self.alpha | self.beta)
+        self.assertEqual(len(removal.web_read(self._dialog_spec)[0]['line_ids']), 2)
+        # Cancel by dropping the dialog without its mutation action.
+        self.assertEqual(len(self._web_list()['records']), 2)
+        removal = self._open_dialog('remove', self.alpha | self.beta)
+        returned = removal.action_apply()
+        self.assertFalse(self._web_list(returned)['records'])
+        self.assertEqual(self.alpha.state, 'paid')
+        candidate_action = self.Payment.action_il_add_payslip_payment()
+        candidates = self._web_list(candidate_action)['records']
+        self.assertEqual(next(row['il_recognition_available_amount'] for row in candidates
+                              if row['id'] == self.alpha.id), 3000.0)
+        addition = self._open_dialog('add', self.alpha | self.beta)
+        self._web_amounts(addition, {self.alpha.id: 1000.0, self.beta.id: 200.0})
+        returned = addition.action_apply()
+        self.assertEqual({row['id']: row['il_payslip_linked_amount']
+                          for row in self._web_list(returned)['records']},
+                         {self.alpha.id: 1000.0, self.beta.id: 200.0})
         self.assertEqual(self.alpha.il_applied_amount, 1000.0)
         self.assertEqual(self.beta.il_applied_amount, 200.0)
         self.assertFalse(self.gamma.il_applied_amount)
+        self._assert_financial_preservation()
 
     def test_native_filter_export_and_back_navigation(self):
-        self._simulate('filter_export_back')
+        self._start_client()
+        original_domain = list(self.linked_action['domain'])
+        first_page = self._web_list(limit=1, offset=0)
+        second_page = self._web_list(limit=1, offset=1)
+        self.assertEqual(first_page['length'], 2)
+        self.assertNotEqual(first_page['records'][0]['id'], second_page['records'][0]['id'])
+        filtered = self._web_list(extra_domain=[('memo', 'ilike', 'UI-ALPHA')])['records']
+        self.assertEqual([row['id'] for row in filtered], self.alpha.ids)
+        exported = self.Payment.browse([row['id'] for row in filtered]).export_data([
+            'memo', 'amount', 'il_payslip_linked_amount'])['datas']
+        self.assertEqual(exported, [['UI-ALPHA', 3000.0, 1000.0]])
+        candidate_action = self.Payment.action_il_add_payslip_payment()
+        candidate = self._web_list(candidate_action, [('memo', 'ilike', 'UI-DELTA')])['records']
+        self.assertEqual([row['id'] for row in candidate], self.delta.ids)
+        available_export = self.Payment.browse(self.delta.id).export_data([
+            'amount', 'il_recognition_available_amount'])['datas']
+        self.assertEqual(available_export, [[1000.0, 600.0]])
+        # Returning to the original action restores its source domain; a
+        # candidate search cannot change which links belong to this payslip.
+        self.assertEqual(self.linked_action['domain'], original_domain)
+        self.assertEqual({row['id'] for row in self._web_list()['records']},
+                         {self.alpha.id, self.beta.id})
+        outside = self.client['ir.actions.actions'].get_bindings('account.payment').get('action', [])
+        self.assertFalse({'שינוי סכום להכרה', 'הסרת קישור מהתלוש'} & {item['name'] for item in outside})
         self.assertEqual(self.alpha.il_applied_amount, 1000.0)
         self.assertEqual(self.beta.il_applied_amount, 200.0)
+        self._assert_financial_preservation()
