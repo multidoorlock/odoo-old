@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Israel - Payroll With Accounting',
-    'version': '1.4.36',
+    'version': '1.4.37',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
     'summary': 'חוקי שכר ישראליים, התאמות שכר ותשלומי עובדים ישירים',
@@ -33,6 +33,7 @@
         'wizard/payroll_reconciliation_wizard_views.xml',
         'views/hr_payslip_views.xml',
         'views/hr_payslip_run_views.xml',
+        'wizard/payslip_run_payment_wizard_views.xml',
         'wizard/payment_cycle_wizard_views.xml',
         'wizard/masav_export_wizard_views.xml',
         'views/payment_cycle_views.xml',

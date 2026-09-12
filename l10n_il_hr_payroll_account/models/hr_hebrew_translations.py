@@ -11,13 +11,19 @@ from odoo.tools.translate import TranslationImporter, code_translations, transla
 
 LANG = 'he_IL'
 DATA_PATH = 'l10n_il_hr_payroll_account/i18n/hr_ui_he.json'
-NAMED_MODELS = frozenset({'hr.leave.type', 'hr.work.entry.type'})
+NAMED_MODELS = frozenset({'hr.leave.type', 'hr.work.entry.type', 'hr.salary.rule'})
 
 
 @lru_cache(maxsize=1)
 def _hebrew_ui_data():
     with file_open(DATA_PATH, mode='r') as source:
         return json.load(source)
+
+
+def _can_replace_hebrew_term(source, current, target):
+    """Upgrade only an explicitly renamed old label, preserving custom text."""
+    return (current in (None, '', source)
+            or _hebrew_ui_data().get('terminology_replacements', {}).get(current) == target)
 
 
 class IrModuleModule(models.Model):
@@ -47,7 +53,7 @@ class IrModuleModule(models.Model):
                 native = code_translations.get_python_translations(module, LANG)
                 messages = dict(native)
                 for source, value in terms.items():
-                    if messages.get(source) in (None, '', source):
+                    if _can_replace_hebrew_term(source, messages.get(source), value):
                         messages[source] = value
                         added += 1
                 code_translations.python_translations[(module, LANG)] = type(native)(messages)
@@ -65,11 +71,13 @@ class IrModuleModule(models.Model):
         _hebrew_ui_data.cache_clear()
         importer = TranslationImporter(self.env.cr, verbose=False)
         source_values = {}
+        target_values = {}
         for path in _hebrew_ui_data()['po_files']:
             with file_open(path, mode='rb') as source:
                 importer.load(source, 'po', LANG)
                 source.seek(0)
                 for row in translation_file_reader(source, fileformat='po'):
+                    target_values[(row['name'], row['module'] + '.' + row['imd_name'], row['src'])] = row['value']
                     if row['type'] == 'model':
                         source_values[(row['name'], row['module'] + '.' + row['imd_name'])] = row['src']
 
@@ -81,8 +89,10 @@ class IrModuleModule(models.Model):
                     record = self.env.ref(xmlid, raise_if_not_found=False)
                     values = record._fields[field_name]._get_stored_translations(record) if record else {}
                     source = source_values.get((model + ',' + field_name, xmlid))
+                    target = target_values.get((model + ',' + field_name, xmlid, source))
                     if (not values or values.get('en_US') != source
-                            or values.get('_he_IL', values.get(LANG)) not in (None, '', source)):
+                            or not _can_replace_hebrew_term(
+                                source, values.get('_he_IL', values.get(LANG)), target)):
                         records.pop(xmlid)
                     else:
                         model_count += 1
@@ -104,7 +114,9 @@ class IrModuleModule(models.Model):
                         LANG: values.get('_he_IL', values.get(LANG, source)),
                     })
                     for term in list(terms):
-                        if term not in existing or existing[term].get(LANG, term) != term:
+                        target = target_values.get((model + ',' + field_name, xmlid, term))
+                        if term not in existing or not _can_replace_hebrew_term(
+                                term, existing[term].get(LANG, term), target):
                             terms.pop(term)
                         else:
                             term_count += 1
@@ -128,7 +140,8 @@ class IrModuleModule(models.Model):
                 values = record._fields['name']._get_stored_translations(record) or {}
                 if values.get('en_US') != entry['source']:
                     continue
-                if values.get('_he_IL', values.get(LANG)) not in (None, '', entry['source']):
+                if not _can_replace_hebrew_term(
+                        entry['source'], values.get('_he_IL', values.get(LANG)), entry['translation']):
                     continue
                 record.update_field_translations('name', {LANG: entry['translation']})
                 named_count += 1
@@ -153,7 +166,7 @@ class IrHttp(models.AbstractModel):
             current = translations.get(module, {})
             messages = {item['id']: item['string'] for item in current.get('messages', [])}
             for source, value in additions[module].items():
-                if messages.get(source) in (None, '', source):
+                if _can_replace_hebrew_term(source, messages.get(source), value):
                     messages[source] = value
             # Do not modify objects returned by native translation caches.
             result[module] = dict(current, messages=[
@@ -196,4 +209,19 @@ class HrPayrollNote(models.Model):
                 # This is a response-only display substitution. The saved
                 # English default and every user-edited note remain unchanged.
                 values['note'] = translated
+        return result
+
+
+class HrPayslipLine(models.Model):
+    _inherit = 'hr.payslip.line'
+
+    def web_read(self, specification):
+        result = super().web_read(specification)
+        if self.env.lang != LANG or 'name' not in specification:
+            return result
+        # Native line names are snapshots and are not translatable. Change
+        # only exact standard labels in Hebrew responses, never stored lines.
+        replacements = _hebrew_ui_data().get('payslip_line_labels', {})
+        for values in result:
+            values['name'] = replacements.get(values.get('name'), values.get('name'))
         return result

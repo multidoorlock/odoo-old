@@ -56,7 +56,7 @@ msgstr "יש להפעיל אפשרות זו כדי לפצל את תנועות ה
 #. module: hr_payroll_account
 #: model:ir.model.fields,field_description:hr_payroll_account.field_hr_salary_rule__not_computed_in_net
 msgid "Excluded from Net"
-msgstr "אינו נכלל בנטו"
+msgstr "אינו נכלל בשכר נטו"
 
 #. module: hr_payroll_account
 #: model_terms:ir.ui.view,arch_db:hr_payroll_account.hr_payslip_run_view_kanban

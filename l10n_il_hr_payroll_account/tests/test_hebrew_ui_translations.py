@@ -133,6 +133,7 @@ class TestHebrewHrUiTranslations(TransactionCase):
             'ir.ui.view', 'ir.ui.menu', 'ir.actions.act_window', 'ir.actions.client',
             'ir.actions.report', 'ir.model.fields', 'ir.model.fields.selection',
             'hr.payroll.dashboard.warning', 'hr.leave.type', 'hr.work.entry.type',
+            'hr.salary.rule', 'hr.salary.rule.category',
         }
         pattern = re.compile(r'(?<!%)%(?!%)(?:\([^)]+\))?[#0+\-]*\d*(?:\.\d+)?[diouxXeEfFgGcrs]')
         rows = []

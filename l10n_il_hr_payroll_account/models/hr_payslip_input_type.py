@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
 
@@ -67,6 +67,6 @@ class HrPayslipInputType(models.Model):
                     input_type.il_severance_applicable,
                     input_type.il_study_fund_applicable,
                     input_type.il_equalization_levy_applicable]):
-                raise ValidationError(
+                raise ValidationError(_(
                     'סוג התאמה בטיפול "השפעה ישירה על הנטו" אינו יכול להשפיע '
-                    'על בסיסי מס או הפרשות — יש לכבות את כל דגלי הבסיסים.')
+                    'על בסיסי מס או הפרשות — יש לכבות את כל דגלי הבסיסים.'))

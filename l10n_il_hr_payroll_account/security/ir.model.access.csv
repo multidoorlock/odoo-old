@@ -15,3 +15,5 @@ access_il_payslip_payment_selection_wizard,il.payslip.payment.selection.wizard,m
 access_il_payslip_payment_selection_wizard_line,il.payslip.payment.selection.wizard.line,model_il_payslip_payment_selection_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_il_payslip_payment_candidate_session,il.payslip.payment.candidate.session,model_il_payslip_payment_candidate_session,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_il_payslip_payment_candidate_line,il.payslip.payment.candidate.line,model_il_payslip_payment_candidate_line,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_il_payslip_run_payment_wizard,il.payslip.run.payment.wizard,model_il_payslip_run_payment_wizard,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_il_payslip_run_payment_wizard_line,il.payslip.run.payment.wizard.line,model_il_payslip_run_payment_wizard_line,hr_payroll.group_hr_payroll_user,1,1,1,1

@@ -155,12 +155,12 @@ msgstr "<span>עלות מעסיק</span>"
 #. module: hr_payroll
 #: model_terms:ir.ui.view,arch_db:hr_payroll.hr_payslip_run_view_kanban
 msgid "<span>gross</span>"
-msgstr "<span>ברוטו</span>"
+msgstr "<span>שכר ברוטו</span>"
 
 #. module: hr_payroll
 #: model_terms:ir.ui.view,arch_db:hr_payroll.hr_payslip_run_view_kanban
 msgid "<span>net</span>"
-msgstr "<span>נטו</span>"
+msgstr "<span>שכר נטו</span>"
 
 #. module: hr_payroll
 #: model_terms:ir.ui.view,arch_db:hr_payroll.report_payslip
@@ -667,7 +667,7 @@ msgstr "קובץ PDF שנוצר"
 #. module: hr_payroll
 #: model:ir.model.fields,field_description:hr_payroll.field_hr_payslip_run__gross_sum
 msgid "Gross Sum"
-msgstr "סכום ברוטו"
+msgstr "סכום שכר ברוטו"
 
 #. module: hr_payroll
 #: model:ir.model.fields,field_description:hr_payroll.field_hr_salary_attachment__has_done_payslip
@@ -687,7 +687,7 @@ msgstr "קיימות בעיות"
 #. module: hr_payroll
 #: model:ir.model.fields,field_description:hr_payroll.field_hr_payslip__has_negative_net_to_report
 msgid "Has Negative Net To Report"
-msgstr "קיים נטו שלילי לדיווח"
+msgstr "קיים שכר נטו שלילי לדיווח"
 
 #. module: hr_payroll
 #: model:ir.model.fields,field_description:hr_payroll.field_hr_salary_attachment__has_similar_attachment
@@ -878,22 +878,22 @@ msgstr "השם שיופיע בתלוש. לדוגמה: ״בונוס סוף שנה
 #. module: hr_payroll
 #: model:ir.model.fields,field_description:hr_payroll.field_hr_payslip__negative_net_to_report_display
 msgid "Negative Net To Report Display"
-msgstr "תצוגת נטו שלילי לדיווח"
+msgstr "תצוגת שכר נטו שלילי לדיווח"
 
 #. module: hr_payroll
 #: model:ir.model.fields,field_description:hr_payroll.field_hr_payslip__negative_net_to_report_message
 msgid "Negative Net To Report Message"
-msgstr "הודעת נטו שלילי לדיווח"
+msgstr "הודעת שכר נטו שלילי לדיווח"
 
 #. module: hr_payroll
 #: model_terms:ir.ui.view,arch_db:hr_payroll.hr_payslip_view_kanban
 msgid "Net -"
-msgstr "נטו -"
+msgstr "שכר נטו -"
 
 #. module: hr_payroll
 #: model:ir.model.fields,field_description:hr_payroll.field_hr_payslip_run__net_sum
 msgid "Net Sum"
-msgstr "סכום נטו"
+msgstr "סכום שכר נטו"
 
 #. module: hr_payroll
 #: model:ir.actions.act_window,name:hr_payroll.action_hr_payslip_run_create
@@ -1182,7 +1182,7 @@ msgstr "תלושים עם בעיות"
 #. module: hr_payroll
 #: model:hr.payroll.dashboard.warning,name:hr_payroll.hr_payroll_dashboard_warning_payslips_negative_net
 msgid "Payslips With Negative NET"
-msgstr "תלושים עם נטו שלילי"
+msgstr "תלושים עם שכר נטו שלילי"
 
 #. module: hr_payroll
 #: model:hr.payroll.dashboard.warning,name:hr_payroll.hr_payroll_dashboard_warning_payslip_overdue
@@ -1570,7 +1570,7 @@ msgstr "הקבצים לא יפורסמו בפורטל העובד אם יישום
 #: model_terms:ir.ui.view,arch_db:hr_payroll.report_light_payslip
 #: model_terms:ir.ui.view,arch_db:hr_payroll.report_payslip
 msgid "The net amount will be recovered from the first positive remuneration established after this."
-msgstr "סכום הנטו יקוזז מהתשלום החיובי הראשון שיחושב לאחר מכן."
+msgstr "סכום שכר הנטו יקוזז מהתשלום החיובי הראשון שיחושב לאחר מכן."
 
 #. module: hr_payroll
 #: model_terms:ir.ui.view,arch_db:hr_payroll.hr_salary_rule_form
@@ -1788,7 +1788,7 @@ msgstr "לדוגמה: עובד ללא חוזה"
 #. module: hr_payroll
 #: model_terms:ir.ui.view,arch_db:hr_payroll.hr_salary_rule_form
 msgid "e.g. Net"
-msgstr "לדוגמה: נטו"
+msgstr "לדוגמה: שכר נטו"
 
 #. module: hr_payroll
 #: model_terms:ir.ui.view,arch_db:hr_payroll.hr_salary_rule_form

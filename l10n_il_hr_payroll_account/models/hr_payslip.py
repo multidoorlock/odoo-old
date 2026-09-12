@@ -424,9 +424,9 @@ class HrPayslip(models.Model):
             iterations += 1
         if sign * (net_at(high) - target_net) < 0:
             self._il_set_regular_attendance_amount(0.0)
-            raise ValidationError(
+            raise ValidationError(_(
                 'לא ניתן לגלם את שכר הנוכחות ליעד הנטו המבוקש. '
-                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
+                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.'))
         best = high
         for _unused in range(100):
             mid = (low + high) / 2
@@ -487,9 +487,9 @@ class HrPayslip(models.Model):
             iterations += 1
         if sign * (net_at(high) - target_net) < 0:
             self._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
-            raise ValidationError(
+            raise ValidationError(_(
                 'לא ניתן לגלם את גמול היום הנוסף ליעד הנטו המבוקש. '
-                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
+                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.'))
         best = high
         for _unused in range(100):
             mid = (low + high) / 2
@@ -545,9 +545,9 @@ class HrPayslip(models.Model):
                     iterations += 1
                 if sign * (net_at(high) - target_net) < 0:
                     line.amount = 0.0
-                    raise ValidationError(
+                    raise ValidationError(_(
                         'לא ניתן לגלם את רכיב השכר ליעד הנטו המבוקש. '
-                        'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
+                        'יש לבדוק את חוקי השכר והפרמטרים הפעילים.'))
                 # חיפוש בינארי דטרמיניסטי עד דיוק עיגול המטבע.
                 best = high
                 for _unused in range(100):
@@ -695,9 +695,9 @@ class HrPayslip(models.Model):
         for slip in self:
             currency = slip.currency_id or slip.company_id.currency_id
             if currency.compare_amounts(slip.il_net_amount_to_pay, 0.0) < 0:
-                raise ValidationError(
+                raise ValidationError(_(
                     'הסכום הכולל של התשלומים המקושרים לתלוש אינו יכול '
-                    'להיות גבוה מהנטו של התלוש.')
+                    'להיות גבוה מהנטו של התלוש.'))
         return True
 
     # ==================================================================
