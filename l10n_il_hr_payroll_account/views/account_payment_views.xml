@@ -209,12 +209,41 @@
                             string="הוסף תשלום" display="always"/>
                 </header>
             </xpath>
-            <xpath expr="//list/field" position="attributes">
+            <!-- Inherited-view locators update only their first match. Keep
+                 each document column explicitly read-only in this editor. -->
+            <field name="company_currency_id" position="attributes">
                 <attribute name="readonly">1</attribute>
-            </xpath>
+            </field>
+            <field name="available_payment_method_line_ids" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="currency_id" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="date" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="name" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="memo" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="partner_id" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="batch_payment_id" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="amount" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="state" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
             <field name="il_relevant_installment_number" position="replace"/>
             <field name="il_relevant_installment_amount" position="replace">
-                <field name="il_payslip_link_snapshot" column_invisible="True"/>
+                <field name="il_payslip_link_snapshot" readonly="1" column_invisible="True"/>
                 <field name="il_payslip_link_write_token" readonly="0" column_invisible="True"/>
                 <field name="il_payslip_linked_amount" string="סכום בתלוש"
                        widget="il_payslip_link_amount" readonly="0" sum="סה״כ בתלוש"/>
