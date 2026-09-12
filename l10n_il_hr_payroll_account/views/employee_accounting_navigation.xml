@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Scope browsing actions only: journal items and reconciliation retain
+         the native accounting visibility and access rules. -->
+    <record id="account.action_account_payments_payable" model="ir.actions.act_window">
+        <field name="domain">[('partner_type', '=', 'supplier'), ('il_is_employee_payment', '=', False)]</field>
+    </record>
+    <record id="account_batch_payment.action_batch_payment_out" model="ir.actions.act_window">
+        <field name="domain">[('batch_type', '=', 'outbound'), ('il_is_employee_batch', '=', False)]</field>
+    </record>
+    <record id="action_il_accounting_employee_payments" model="ir.actions.act_window">
+        <field name="name">Employee Payments</field>
+        <field name="res_model">account.payment</field>
+        <field name="view_mode">list,form,graph,activity</field>
+        <field name="view_id" ref="view_account_payment_list_employee"/>
+        <field name="search_view_id" ref="account.view_account_payment_search"/>
+        <field name="domain">[('il_is_employee_payment', '=', True)]</field>
+        <field name="context">{'il_employee_payment': True, 'default_payment_type': 'outbound', 'default_partner_type': 'supplier'}</field>
+    </record>
+    <record id="action_il_accounting_employee_payments_list" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_account_payment_list_employee"/>
+        <field name="act_window_id" ref="action_il_accounting_employee_payments"/>
+    </record>
+    <record id="action_il_accounting_employee_payments_form" model="ir.actions.act_window.view">
+        <field name="sequence">10</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_account_payment_form_employee"/>
+        <field name="act_window_id" ref="action_il_accounting_employee_payments"/>
+    </record>
+    <record id="action_il_accounting_employee_batches" model="ir.actions.act_window">
+        <field name="name">Employee Batch Payments</field>
+        <field name="res_model">account.batch.payment</field>
+        <field name="view_mode">list,form,kanban,activity</field>
+        <field name="domain">[('il_is_employee_batch', '=', True)]</field>
+        <field name="context">{'default_batch_type': 'outbound'}</field>
+    </record>
+    <record id="action_il_payment_cycles" model="ir.actions.act_window">
+        <field name="domain">[('il_is_employee_batch', '=', True)]</field>
+    </record>
+    <menuitem id="menu_il_accounting_employees" name="Employees"
+              parent="account.menu_finance" sequence="5"
+              groups="hr_payroll.group_hr_payroll_user"/>
+    <menuitem id="menu_il_accounting_employee_payments" name="Employee Payments"
+              parent="menu_il_accounting_employees" sequence="10"
+              action="action_il_accounting_employee_payments"/>
+    <menuitem id="menu_il_accounting_employee_batches" name="Employee Batch Payments"
+              parent="menu_il_accounting_employees" sequence="20"
+              action="action_il_accounting_employee_batches"/>
+    <menuitem id="menu_il_accounting_employee_payslips" name="Employee Payslips"
+              parent="menu_il_accounting_employees" sequence="30"
+              action="hr_payroll.action_view_hr_payslip_month_form"/>
+    <function model="account.batch.payment" name="_il_place_accounting_employee_menu"/>
+</odoo>

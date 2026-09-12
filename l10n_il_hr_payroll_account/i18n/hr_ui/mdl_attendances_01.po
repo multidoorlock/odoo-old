@@ -1,0 +1,353 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "<span class=\"fw-bold\" invisible=\"base_off != 'timing' or timing_type not in ['work_days', 'non_work_days']\">Between</span>"
+msgstr "<span class=\"fw-bold\" invisible=\"base_off != 'timing' or timing_type not in ['work_days', 'non_work_days']\">בין</span>"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "<span colspan=\"2\" class=\"mb-3 fw-bold\">\n                                    Choose whether matching time is effective worked time.\n                                </span>"
+msgstr "<span colspan=\"2\" class=\"mb-3 fw-bold\">\n                                    בחר אם הזמן התואם נחשב לזמן עבודה בפועל.\n                                </span>"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "Action"
+msgstr "פעולה"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_ruleset__active
+msgid "Active"
+msgstr "פעיל"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__attendance_id
+msgid "Attendance"
+msgstr "נוכחות"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_view_form_segments
+msgid "Attendance Segment"
+msgstr "מקטע נוכחות"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_employee__segment_ruleset_id
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_ruleset_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_employee_view_form_segment_ruleset
+msgid "Attendance Segmentation Ruleset"
+msgstr "מערכת כללים לחלוקת נוכחות"
+
+#. module: mdl_attendances
+#: model:ir.actions.act_window,name:mdl_attendances.hr_attendance_segment_ruleset_action
+#: model:ir.ui.menu,name:mdl_attendances.menu_hr_attendance_segment_rulesets
+msgid "Attendance Segmentation Rulesets"
+msgstr "מערכות כללים לחלוקת נוכחות"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance__segment_ids
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_view_form_segments
+msgid "Attendance Segments"
+msgstr "מקטעי נוכחות"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__base_off
+msgid "Base Off"
+msgstr "בסיס החישוב"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__company_id
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_ruleset__company_id
+msgid "Company"
+msgstr "חברה"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "Condition"
+msgstr "מצב"
+
+#. module: mdl_attendances
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment_rule__quantity_period__day
+msgid "Day"
+msgstr "יום"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "Definition"
+msgstr "הגדרה"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__description
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_ruleset__description
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "Description"
+msgstr "תיאור"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__duration
+msgid "Duration"
+msgstr "משך זמן"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "Duration to exceed:"
+msgstr "משך שמעבר לו:"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__employee_tolerance
+msgid "Employee Tolerance"
+msgstr "טווח סבילות לטובת העובד"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__employer_tolerance
+msgid "Employer Tolerance"
+msgstr "טווח סבילות לטובת המעסיק"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__expected_hours_from_contract
+msgid "Expected Hours From Contract"
+msgstr "שעות צפויות לפי החוזה"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,help:mdl_attendances.field_hr_attendance_segment_rule__employer_tolerance
+msgid "For quantity rules, excess at or below this threshold is ignored. For non-work timing rules, a check-out up to this duration after the end of the window extends non-work time through check-out; a later check-out leaves time after the window as work."
+msgstr "בכללי כמות, חריגה עד לסף זה (כולל) אינה נלקחת בחשבון. בכללי תזמון שאינם זמן עבודה, יציאה עד פרק זמן זה אחרי סוף החלון מאריכה את הזמן שאינו עבודה עד היציאה; יציאה מאוחרת יותר משאירה את הזמן שאחרי החלון כזמן עבודה."
+
+#. module: mdl_attendances
+#: model:ir.model.fields,help:mdl_attendances.field_hr_attendance_segment_rule__employee_tolerance
+msgid "For quantity rules, this many excess hours remain effective work time after the employer threshold is crossed. For non-work timing rules, an employee who checks in less than this duration before the end of the window is treated as working from check-in."
+msgstr "בכללי כמות, מספר זה של שעות חריגה ממשיך להיחשב כזמן עבודה בפועל לאחר חציית סף המעסיק. בכללי תזמון שאינם זמן עבודה, עובד שנכנס פחות מפרק זמן זה לפני סוף החלון נחשב כעובד מרגע הכניסה."
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__timing_start
+msgid "From"
+msgstr "מ"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__hover_label
+msgid "Hover Label"
+msgstr "תווית במעבר עכבר"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "If the employee works"
+msgstr "אם העובד עובד"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "If the worked hours on a"
+msgstr "אם שעות העבודה ב־"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__name
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__name
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_ruleset__name
+msgid "Name"
+msgstr "שם"
+
+#. module: mdl_attendances
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment__segment_type__non_work
+msgid "Non-Work"
+msgstr "זמן שאינו עבודה"
+
+#. module: mdl_attendances
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment_rule__timing_type__non_work_days
+msgid "On any non-working day"
+msgstr "בכל יום שאינו יום עבודה"
+
+#. module: mdl_attendances
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment_rule__timing_type__work_days
+msgid "On any working day"
+msgstr "בכל יום עבודה"
+
+#. module: mdl_attendances
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment_rule__timing_type__schedule
+msgid "Outside of a specific schedule"
+msgstr "מחוץ ללוח עבודה מסוים"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__is_overtime
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment__segment_type__overtime
+msgid "Overtime"
+msgstr "שעות נוספות"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance__presence_hours
+msgid "Presence Hours"
+msgstr "שעות נוכחות"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_view_form_segments
+msgid "Presence Time"
+msgstr "משך נוכחות"
+
+#. module: mdl_attendances
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment_rule__base_off__quantity
+msgid "Quantity"
+msgstr "כמות"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__quantity_period
+msgid "Quantity Period"
+msgstr "תקופת הכמות"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_ruleset_view_form
+msgid "Regenerate Segments"
+msgstr "יצירת מקטעים מחדש"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__rule_id
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_ruleset__rule_ids
+msgid "Rule"
+msgstr "כלל"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "Rule Name"
+msgstr "שם כלל"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_ruleset_view_form
+msgid "Ruleset description..."
+msgstr "תיאור מערכת הכללים..."
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__resource_calendar_id
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "Schedule"
+msgstr "תיזמון"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__segment_type
+msgid "Segment Type"
+msgstr "סוג מקטע"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "Segmentation Rule"
+msgstr "כלל חלוקה למקטעים"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_ruleset_view_form
+msgid "Segmentation Rules"
+msgstr "כללי חלוקה למקטעים"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_employee_view_form_segment_ruleset
+msgid "Select rules that define effective worked intervals."
+msgstr "בחר כללים המגדירים את פרקי הזמן הנחשבים לעבודה בפועל."
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__sequence
+msgid "Sequence"
+msgstr "רצף"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "The rule is based on"
+msgstr "הכלל מבוסס על"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__time_start
+msgid "Time Start"
+msgstr "שעת התחלה"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__time_stop
+msgid "Time Stop"
+msgstr "שעת סיום"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance__timeline_start_label
+msgid "Timeline Start Label"
+msgstr "תווית התחלה בציר הזמן"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance__timeline_stop_label
+msgid "Timeline Stop Label"
+msgstr "תווית סיום בציר הזמן"
+
+#. module: mdl_attendances
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment_rule__base_off__timing
+msgid "Timing"
+msgstr "תזמון"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__timing_type
+msgid "Timing Type"
+msgstr "סוג תזמון"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__timing_stop
+msgid "To"
+msgstr "ל"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__expected_hours
+msgid "Usual Work Hours"
+msgstr "שעות עבודה רגילות"
+
+#. module: mdl_attendances
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment_rule__timing_type__leave
+msgid "When employee is off"
+msgstr "כאשר העובד נעדר"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__width_percent
+msgid "Width Percent"
+msgstr "רוחב באחוזים"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "With a tolerance in favor of the employee of"
+msgstr "עם סבילות לטובת העובד של"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "With a tolerance in favor of the employer of"
+msgstr "עם סבילות לטובת המעסיק של"
+
+#. module: mdl_attendances
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment__is_work
+#: model:ir.model.fields,field_description:mdl_attendances.field_hr_attendance_segment_rule__is_work
+#: model:ir.model.fields.selection,name:mdl_attendances.selection__hr_attendance_segment__segment_type__work
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "Work"
+msgstr "עבודה"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "and"
+msgstr "וגם"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "differs"
+msgstr "שונה"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "e.g. Night break"
+msgstr "לדוגמה: הפסקת לילה"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "from a specific duration"
+msgstr "החל ממשך מסוים"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "from the amount defined on the contract"
+msgstr "מהסכום המוגדר בחוזה"
+
+#. module: mdl_attendances
+#: model_terms:ir.ui.view,arch_db:mdl_attendances.hr_attendance_segment_rule_view_form
+msgid "hours"
+msgstr "שעות"

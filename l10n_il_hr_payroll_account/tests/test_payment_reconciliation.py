@@ -39,12 +39,10 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             'name': 'Residual Payment Employee',
             'company_id': cls.company.id,
             'contract_date_start': date(2026, 1, 1),
-        })
-        # hr.employee creates its initial hr.version before all proxied
-        # payroll fields are settled. Configure both matching fields directly
-        # on that version so the consistency constraint never sees a
-        # half-updated Employee/Israeli combination.
-        cls.employee.version_id.write({
+            'date_version': date(2026, 1, 1),
+            # Supply the matching wage/category/structure during creation:
+            # hr.version validates before a later employee write can run.
+            'mdl_wage_type': 'mdl_monthly',
             'structure_type_id': cls.monthly_type.id,
             'il_salary_structure_id': cls.monthly_structure.id,
             'schedule_pay': 'monthly',
@@ -137,7 +135,7 @@ class TestEmployeePaymentReconciliation(TransactionCase):
 
     def test_accounting_user_can_unlink_unrelated_reconciliation(self):
         accounting_user = new_test_user(
-            self.env,
+            self.env(context=dict(self.env.context, no_reset_password=True)),
             login='reconciliation-accounting-only',
             groups='account.group_account_user',
         )
@@ -283,13 +281,17 @@ class TestEmployeePaymentReconciliation(TransactionCase):
         self.assertTrue(architecture.xpath("//field[@name='il_split_line_ids']"))
         self.assertTrue(architecture.xpath("//field[@name='il_spread_type']"))
         self.assertTrue(architecture.xpath("//page[@name='il_payroll']"))
-        self.assertTrue(architecture.xpath("//field[@name='reconcile_id']"))
+        self.assertTrue(architecture.xpath("//field[@name='il_linked_payslip_id']"))
+        self.assertFalse(architecture.xpath("//field[@name='reconcile_id']"))
+        self.assertFalse(architecture.xpath("//button[@name='action_il_manage_reconciliation']"))
 
         payslip_form = self.env.ref(
             'l10n_il_hr_payroll_account.view_hr_payslip_form'
         )._get_combined_arch()
         self.assertFalse(payslip_form.xpath(
             "//button[@name='action_il_handle_payments']"))
+        self.assertFalse(payslip_form.xpath(
+            "//button[@name='action_il_manage_reconciliation']"))
         summary_fields = payslip_form.xpath(
             "//page[@name='il_summary']//field/@name")
         self.assertEqual(summary_fields, [
@@ -304,53 +306,43 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             "//field[@name='payment_ids']/list")[0]
         self.assertEqual(
             batch_form.xpath("//field[@name='payment_ids']")[0].get('widget'),
-            'il_grouped_batch_payments',
+            'many2many',
         )
-        self.assertTrue(batch_form.xpath(
-            "//field[@name='il_grouped_payment_view_id']"))
         self.assertFalse(batch_form.xpath(
-            "//button[@name='action_il_open_grouped_payments']"))
-        self.assertIn(
-            "form_view_initial_mode",
-            batch_form.xpath("//field[@name='payment_ids']")[0].get('context'),
-        )
-        self.assertEqual(
-            payment_list.get('default_order'),
-            'il_employee_id,il_payment_cycle_type_id,date,id',
-        )
+            "//field[@name='il_grouped_payment_view_id']"))
+        self.assertTrue(batch_form.xpath(
+            "//button[@name='action_il_open_grouped_payments']"
+            "[contains(@class, 'oe_stat_button')]"))
+        self.assertFalse(payment_list.get('default_group_by'))
         visible_batch_fields = payment_list.xpath(
             "./field[not(@column_invisible='True')]/@name"
         )
-        self.assertEqual(visible_batch_fields, [
-            'name', 'date', 'il_employee_id',
-            'il_payment_cycle_type_id', 'amount_signed',
-        ])
-        self.assertEqual(
-            payment_list.xpath("./field[@name='amount_signed']")[0].get('sum'),
-            'Total',
-        )
-        grouped_list = self.env.ref(
-            'l10n_il_hr_payroll_account.view_account_payment_il_batch_grouped_list'
-        )._get_combined_arch()
-        self.assertEqual(
-            grouped_list.get('default_group_by'),
-            'il_batch_group,il_employee_id',
-        )
-        self.assertEqual(
-            grouped_list.xpath("./field[@name='amount']")[0].get('sum'),
-            'סה״כ',
-        )
+        self.assertTrue({'name', 'date', 'partner_id', 'memo', 'amount_signed'}
+                        <= set(visible_batch_fields))
+        self.assertTrue(
+            payment_list.xpath("./field[@name='amount_signed']")[0].get('sum'))
         payslip = self._payslip_with_posted_net(100.0)
         payment_action = payslip.action_il_open_payments()
+        self.assertEqual(payment_action['name'], 'תשלומים מקושרים')
         self.assertTrue(payment_action['context']['edit'])
         self.assertEqual(payment_action['context']['il_payslip_id'], payslip.id)
-        self.assertEqual(
-            payment_action['context']['form_view_initial_mode'], 'edit')
+        self.assertNotIn('form_view_initial_mode', payment_action['context'])
+        self.assertEqual(payment_action['views'][0], (
+            self.env.ref('l10n_il_hr_payroll_account.view_account_payment_list_payslip_links').id,
+            'list',
+        ))
         payment_list = self.env.ref(
             'l10n_il_hr_payroll_account.view_account_payment_list_employee'
         )._get_combined_arch()
         self.assertFalse(payment_list.xpath("//field[@name='company_id']"))
         self.assertFalse(payment_list.xpath("//field[@name='amount_signed']"))
+        self.assertFalse(payment_list.xpath("//field[@name='amount_company_currency_signed']"))
+        self.assertTrue(payment_list.xpath("//field[@name='amount'][@sum]"))
+        memo_fields = payment_list.xpath("./field[@name='memo']")
+        self.assertEqual(len(memo_fields), 1)
+        self.assertEqual(memo_fields[0].get('optional'), 'show')
+        self.assertFalse(payment_list.xpath("./field[@name='journal_id']"))
+        self.assertFalse(payment_list.xpath("./field[@name='payment_method_line_id']"))
         currency_fields = payment_list.xpath("//field[@name='currency_id']")
         self.assertTrue(currency_fields)
         self.assertTrue(all(
@@ -569,8 +561,8 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             'name': 'Second Cycle Employee',
             'company_id': self.company.id,
             'contract_date_start': date(2026, 1, 1),
-        })
-        other_employee.version_id.write({
+            'date_version': date(2026, 1, 1),
+            'mdl_wage_type': 'mdl_monthly',
             'structure_type_id': self.monthly_type.id,
             'il_salary_structure_id': self.monthly_structure.id,
             'schedule_pay': 'monthly',

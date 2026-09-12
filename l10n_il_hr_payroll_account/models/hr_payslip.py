@@ -199,24 +199,31 @@ class HrPayslip(models.Model):
 
     def action_il_open_payments(self):
         self.ensure_one()
+        action = self.env['ir.actions.actions']._for_xml_id(
+            'l10n_il_hr_payroll_account.il_action_employee_payments')
+        list_view = self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_payment_list_payslip_links')
+        form_view = self.env.ref(
+            'l10n_il_hr_payroll_account.view_account_payment_form_employee')
         return {
-            'type': 'ir.actions.act_window',
-            'name': 'תשלומים',
-            'res_model': 'account.payment',
+            **action,
+            'name': 'תשלומים מקושרים',
+            'help': '<p>הוסף תשלום קיים או שנה את הסכום המשויך בשורה; השינוי נשמר ביציאה מהשדה. לפתיחת התשלום לחץ על כפתור הצפייה שבשורה. להסרת קישור סמן תשלומים ולחץ הסרת קישור מהתלוש.</p>',
             'view_mode': 'list,form',
-            'views': [(self.env.ref(
-                'l10n_il_hr_payroll_account.view_account_payment_list_employee').id,
-                'list'), (self.env.ref(
-                    'l10n_il_hr_payroll_account.view_account_payment_form_employee').id,
-                    'form')],
-            'domain': [('id', 'in', self._il_affecting_payments().ids)],
+            'views': [(list_view.id, 'list'), (form_view.id, 'form')],
+            'view_id': list_view.id,
+            # A live domain also removes a row after unlinking and includes
+            # new links after the add-payment dialog closes.
+            'domain': [
+                ('move_id.line_ids.matched_credit_ids.credit_move_id.il_payslip_id', '=', self.id),
+            ],
             'context': {
                 'create': False,
                 'edit': True,
                 'delete': False,
                 'il_employee_payment': True,
                 'il_payslip_id': self.id,
-                'form_view_initial_mode': 'edit',
+                'il_payslip_link_list': True,
             },
         }
 
@@ -417,9 +424,9 @@ class HrPayslip(models.Model):
             iterations += 1
         if sign * (net_at(high) - target_net) < 0:
             self._il_set_regular_attendance_amount(0.0)
-            raise ValidationError(
+            raise ValidationError(_(
                 'לא ניתן לגלם את שכר הנוכחות ליעד הנטו המבוקש. '
-                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
+                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.'))
         best = high
         for _unused in range(100):
             mid = (low + high) / 2
@@ -480,9 +487,9 @@ class HrPayslip(models.Model):
             iterations += 1
         if sign * (net_at(high) - target_net) < 0:
             self._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
-            raise ValidationError(
+            raise ValidationError(_(
                 'לא ניתן לגלם את גמול היום הנוסף ליעד הנטו המבוקש. '
-                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
+                'יש לבדוק את חוקי השכר והפרמטרים הפעילים.'))
         best = high
         for _unused in range(100):
             mid = (low + high) / 2
@@ -538,9 +545,9 @@ class HrPayslip(models.Model):
                     iterations += 1
                 if sign * (net_at(high) - target_net) < 0:
                     line.amount = 0.0
-                    raise ValidationError(
+                    raise ValidationError(_(
                         'לא ניתן לגלם את רכיב השכר ליעד הנטו המבוקש. '
-                        'יש לבדוק את חוקי השכר והפרמטרים הפעילים.')
+                        'יש לבדוק את חוקי השכר והפרמטרים הפעילים.'))
                 # חיפוש בינארי דטרמיניסטי עד דיוק עיגול המטבע.
                 best = high
                 for _unused in range(100):
@@ -688,9 +695,9 @@ class HrPayslip(models.Model):
         for slip in self:
             currency = slip.currency_id or slip.company_id.currency_id
             if currency.compare_amounts(slip.il_net_amount_to_pay, 0.0) < 0:
-                raise ValidationError(
+                raise ValidationError(_(
                     'הסכום הכולל של התשלומים המקושרים לתלוש אינו יכול '
-                    'להיות גבוה מהנטו של התלוש.')
+                    'להיות גבוה מהנטו של התלוש.'))
         return True
 
     # ==================================================================

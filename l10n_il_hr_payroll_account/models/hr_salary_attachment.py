@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
 IL_SNAPSHOT_FIELDS = [
@@ -128,6 +128,6 @@ class HrSalaryAttachment(models.Model):
         for attachment in self:
             if (attachment.il_net_adjustment_treatment == 'direct_net'
                     and attachment.il_effect_type != 'net'):
-                raise ValidationError(
+                raise ValidationError(_(
                     'סוג ההתאמה "%s" מוגדר עם השפעה ישירה על הנטו — לא ניתן '
-                    'לבחור עבורו סוג השפעה "ברוטו".' % attachment.other_input_type_id.name)
+                    'לבחור עבורו סוג השפעה "ברוטו".', attachment.other_input_type_id.name))

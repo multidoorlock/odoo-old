@@ -21,7 +21,9 @@ class AccountPaymentSplitLine(models.Model):
         'account.move.line', copy=False, readonly=True, ondelete='set null',
         help='Temporary accounting target retained while a payment is edited in draft.')
     is_applied = fields.Boolean(
-        string='קוזז', compute='_compute_is_applied', store=True)
+        string='סגור בתלוש', compute='_compute_is_applied', store=True)
+    il_linked_payslip_id = fields.Many2one(
+        'hr.payslip', string='תלוש מקושר', compute='_compute_linked_payslip')
     company_id = fields.Many2one(
         related='payment_id.company_id', store=True, readonly=True)
     employee_id = fields.Many2one(
@@ -39,6 +41,14 @@ class AccountPaymentSplitLine(models.Model):
     def _compute_is_applied(self):
         for line in self:
             line.is_applied = bool(line.reconcile_id)
+
+    @api.depends('reconcile_id.credit_move_id.il_payslip_id',
+                 'reconcile_id.debit_move_id.il_payslip_id')
+    def _compute_linked_payslip(self):
+        for line in self:
+            line.il_linked_payslip_id = (
+                line.reconcile_id.credit_move_id.il_payslip_id
+                or line.reconcile_id.debit_move_id.il_payslip_id)
 
     @api.depends('payment_id.partner_id', 'payment_id.company_id')
     def _compute_employee(self):
@@ -88,6 +98,9 @@ class AccountPaymentSplitLine(models.Model):
         return lines
 
     def write(self, vals):
+        if {'amount', 'payment_id', 'reconcile_id',
+                'il_pending_payslip_move_line_id'} & vals.keys():
+            self.mapped('reconcile_id')._il_check_allocation_editable()
         if 'amount' in vals and self.filtered(
                 lambda line: line.reconcile_id
                 and line.payment_id.state != 'draft'):
@@ -156,8 +169,8 @@ class AccountPaymentSplitLine(models.Model):
         if self.reconcile_id:
             raise ValidationError(_('פעימה זו כבר קוזזה.'))
         payment = self.payment_id
-        if payment.state not in ('in_process', 'paid'):
-            raise ValidationError(_('ניתן להתאים רק תשלום במצב בביצוע או שולם.'))
+        if not payment.move_id or payment.move_id.state != 'posted':
+            raise ValidationError(_('יש לרשום את פקודת היומן של התשלום לפני ההתאמה.'))
         if not payslip.move_id or payslip.move_id.state != 'posted':
             raise ValidationError(_(
                 'ניתן לטפל בתשלומים רק לאחר רישום פקודת היומן של התלוש.'))
@@ -165,6 +178,7 @@ class AccountPaymentSplitLine(models.Model):
             raise ValidationError(_('התשלום והתלוש חייבים להשתייך לאותה חברה.'))
         if payment._il_employee() != payslip.employee_id:
             raise ValidationError(_('התשלום והתלוש חייבים להשתייך לאותו עובד.'))
+        (payment.move_id | payslip.move_id)._il_check_reconciliation_editable()
 
         self.env.cr.execute(
             'SELECT id FROM account_payment_split_line WHERE id = %s FOR UPDATE',
@@ -187,6 +201,13 @@ class AccountPaymentSplitLine(models.Model):
         if len(payment_line) != 1 or len(payslip_line) != 1:
             raise ValidationError(_(
                 'נדרשות שורת תשלום פתוחה אחת ושורת NET פתוחה אחת לצורך ההתאמה.'))
+        if (payment_line.account_id != payslip_line.account_id
+                or payment_line.partner_id != payslip_line.partner_id
+                or payment_line.partner_id != payment.partner_id
+                or payment_line.currency_id != payslip_line.currency_id
+                or payment.currency_id != payslip.currency_id):
+            raise ValidationError(_(
+                'שורות התשלום והתלוש חייבות להיות באותו חשבון, איש קשר ומטבע.'))
 
         self.env.cr.execute(
             'SELECT id FROM account_move_line WHERE id IN %s FOR UPDATE',
@@ -249,6 +270,117 @@ class AccountPaymentSplitLine(models.Model):
             il_skip_spread_total_check=True,
         ).reconcile_id = reconciliation.id
         return reconciliation
+
+    @api.model
+    def _il_take_open_amount(self, payment, amount):
+        """Take an allocation from open installments without changing payment.
+
+        A partial installment leaves its unallocated remainder immediately
+        after it. Existing applied installments and later scheduled amounts
+        retain their identity and order.
+        """
+        payment.ensure_one()
+        currency = payment.currency_id
+        if currency.compare_amounts(amount, 0) <= 0:
+            raise ValidationError(_('סכום התאמה חייב להיות גדול מאפס.'))
+        opened = payment.il_split_line_ids.filtered(
+            lambda line: not line.reconcile_id
+            and not line.il_pending_payslip_move_line_id).sorted(
+                lambda line: (line.sequence, line.id))
+        if currency.compare_amounts(amount, sum(opened.mapped('amount'))) > 0:
+            raise ValidationError(_('סכום ההתאמה גבוה מיתרת הפריסה הפנויה של התשלום.'))
+        chunks = self.browse()
+        remaining = currency.round(amount)
+        for line in opened:
+            if currency.is_zero(remaining):
+                break
+            allocated = min(line.amount, remaining)
+            if currency.compare_amounts(allocated, line.amount) < 0:
+                remainder = currency.round(line.amount - allocated)
+                line.with_context(
+                    il_sync_from_payment=True,
+                    il_skip_spread_total_check=True,
+                ).write({'amount': allocated})
+                self.with_context(
+                    il_system_split_create=True,
+                    il_skip_spread_total_check=True,
+                ).create({
+                    'payment_id': payment.id, 'amount': remainder,
+                    'sequence': line.sequence,
+                })
+            chunks |= line
+            remaining = currency.round(remaining - allocated)
+        return chunks
+
+    def _il_coalesce_recognition_chunks(self, expected_amount):
+        """One allocation to one payslip consumes one open logical chunk.
+
+        The caller has already reserved the amount under accounting locks.
+        Coalesce only those open chunks: applied links, pending targets and
+        the unallocated future schedule remain outside this recordset.
+        """
+        if not self:
+            return self
+        self.flush_recordset(['payment_id', 'amount', 'reconcile_id', 'il_pending_payslip_move_line_id'])
+        self.env.cr.execute(
+            'SELECT id FROM account_payment_split_line WHERE id IN %s ORDER BY id FOR UPDATE',
+            [tuple(self.ids)])
+        self.invalidate_recordset(['payment_id', 'amount', 'reconcile_id', 'il_pending_payslip_move_line_id'])
+        payment = self.payment_id
+        payment.ensure_one()
+        if self.filtered(lambda line: line.reconcile_id or line.il_pending_payslip_move_line_id):
+            raise ValidationError(_('ניתן לאחד רק פעימות פנויות המיועדות לאותה סגירה בתלוש.'))
+        amount = payment.currency_id.round(sum(self.mapped('amount')))
+        if payment.currency_id.compare_amounts(amount, expected_amount):
+            raise ValidationError(_('סכומי הפריסה השתנו במהלך הפעולה. יש לרענן ולנסות שוב.'))
+        first = self.sorted(lambda line: (line.sequence, line.id))[:1]
+        if len(self) == 1:
+            return first
+        (self - first).with_context(
+            il_system_split_unlink=True, il_skip_spread_total_check=True,
+        ).unlink()
+        first.with_context(
+            il_sync_from_payment=True, il_skip_spread_total_check=True,
+        ).write({'amount': amount})
+        return first
+
+    @api.model
+    def _il_adopt_native_allocations(self, payment):
+        """Attach schedule metadata to matches made by native Accounting."""
+        payment.ensure_one()
+        account = payment.company_id.il_employee_payment_debit_account_id
+        partials = payment.move_id.line_ids.filtered(
+            lambda line: line.account_id == account
+        ).matched_credit_ids.filtered(lambda partial: partial.credit_move_id.il_payslip_id)
+        linked = payment.il_split_line_ids.reconcile_id
+        for partial in (partials - linked).sorted('id'):
+            debit, credit = partial.debit_move_id, partial.credit_move_id
+            if (debit.payment_id != payment
+                    or debit.account_id != credit.account_id
+                    or debit.partner_id != credit.partner_id
+                    or debit.partner_id != payment.partner_id
+                    or debit.currency_id != credit.currency_id
+                    or debit.currency_id != payment.currency_id
+                    or credit.il_payslip_id.employee_id != payment._il_employee()
+                    or credit.company_id != payment.company_id):
+                raise ValidationError(_(
+                    'נמצאה התאמה קיימת שאינה תואמת לעובד, לחשבון או למטבע התשלום.'))
+            chunks = self._il_take_open_amount(payment, partial.debit_amount_currency)
+            first = chunks[:1]
+            if len(chunks) > 1:
+                (chunks - first).with_context(
+                    il_system_split_unlink=True,
+                    il_skip_spread_total_check=True,
+                ).unlink()
+                first.with_context(
+                    il_sync_from_payment=True,
+                    il_skip_spread_total_check=True,
+                ).write({'amount': partial.debit_amount_currency})
+            first.with_context(
+                il_reconciliation_sync=True,
+                il_skip_spread_total_check=True,
+            ).write({'reconcile_id': partial.id})
+        payment._check_il_spread_complete()
 
     def _check_complete_spread_outside_draft(self):
         if self.env.context.get('il_skip_spread_total_check'):

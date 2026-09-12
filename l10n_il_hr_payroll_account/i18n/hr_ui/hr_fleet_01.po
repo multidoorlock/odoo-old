@@ -1,0 +1,64 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: hr_fleet
+#: model_terms:ir.ui.view,arch_db:hr_fleet.fleet_vehicle_view_form_inherit_hr
+msgid "<span class=\"o_stat_value\">1</span>\n                        <span class=\"o_stat_text\">Employee</span>"
+msgstr "<span class=\"o_stat_value\">1</span>\n                        <span class=\"o_stat_text\">עובד</span>"
+
+#. module: hr_fleet
+#: model_terms:ir.ui.view,arch_db:hr_fleet.view_employee_form
+msgid "Cars History"
+msgstr "היסטוריית רכבים"
+
+#. module: hr_fleet
+#: model_terms:ir.ui.view,arch_db:hr_fleet.hr_departure_wizard_view_form
+msgid "Company Car"
+msgstr "רכב חברה"
+
+#. module: hr_fleet
+#: model_terms:ir.ui.view,arch_db:hr_fleet.view_attachment_kanban_inherit_hr
+msgid "Delete"
+msgstr "מחק"
+
+#. module: hr_fleet
+#: model:ir.model.fields,field_description:hr_fleet.field_fleet_vehicle__driver_employee_id
+#: model:ir.model.fields,field_description:hr_fleet.field_fleet_vehicle_assignation_log__driver_employee_id
+#: model:ir.model.fields,field_description:hr_fleet.field_fleet_vehicle_log_contract__purchaser_employee_id
+#: model:ir.model.fields,field_description:hr_fleet.field_fleet_vehicle_log_services__purchaser_employee_id
+#: model:ir.model.fields,field_description:hr_fleet.field_fleet_vehicle_odometer__driver_employee_id
+#: model_terms:ir.ui.view,arch_db:hr_fleet.fleet_vehicle_log_services_view_form_inherit_hr
+msgid "Driver (Employee)"
+msgstr "נהג (עובד)"
+
+#. module: hr_fleet
+#: model:ir.model.fields.selection,name:hr_fleet.selection__mail_activity_plan_template__responsible_type__fleet_manager
+msgid "Fleet Manager"
+msgstr "מנהל צי רכב"
+
+#. module: hr_fleet
+#: model_terms:ir.ui.view,arch_db:hr_fleet.view_employee_form
+msgid "Fleet Mobility Card"
+msgstr "כרטיס ניידות של צי הרכב"
+
+#. module: hr_fleet
+#: model:ir.model.fields,field_description:hr_fleet.field_fleet_vehicle__future_driver_employee_id
+msgid "Future Driver (Employee)"
+msgstr "נהג עתידי (עובד)"
+
+#. module: hr_fleet
+#: model:ir.model.fields,field_description:hr_fleet.field_fleet_vehicle__mobility_card
+#: model:ir.model.fields,field_description:hr_fleet.field_hr_employee__mobility_card
+msgid "Mobility Card"
+msgstr "כרטיס ניידות"
+
+#. module: hr_fleet
+#: model:ir.model.fields,field_description:hr_fleet.field_hr_departure_wizard__release_campany_car
+msgid "Release Company Car"
+msgstr "שחרור רכב חברה"

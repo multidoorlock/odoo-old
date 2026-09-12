@@ -1,0 +1,189 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_tree
+msgid "# Work Resources"
+msgstr "מספר משאבי עבודה"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "2 Week's Calendar"
+msgstr "לוח עבודה לשבועיים"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "<span class=\"ms-2\">hours/day</span>"
+msgstr "<span class=\"ms-2\">שעות ליום</span>"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "<span class=\"ms-2\">hours/week</span>"
+msgstr "<span class=\"ms-2\">שעות לשבוע</span>"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "<span>hours/week</span>"
+msgstr "<span>שעות לשבוע</span>"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Are you sure you want to switch to a 1-week calendar? All work entries will be lost."
+msgstr "לעבור ללוח עבודה של שבוע אחד? כל כניסות העבודה יאבדו."
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Are you sure you want to switch to a 2-week calendar? All work entries will be lost."
+msgstr "לעבור ללוח עבודה של שבועיים? כל כניסות העבודה יאבדו."
+
+#. module: resource
+#: model:ir.model.fields,help:resource.field_resource_calendar__schedule_type
+msgid "Choose which level of definition you want to define on your Schedule\n- Flexible : Define an amount of hours to work on the week.\n- Fully Fixed : define the days, periods and the start & end time for each period of the day"
+msgstr "בחר את רמת הפירוט של לוח העבודה\n- גמיש: הגדר את מספר שעות העבודה בשבוע.\n- קבוע לחלוטין: הגדר ימים, מקטעים ושעת התחלה וסיום לכל מקטע ביום"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Define Amount of Hours per day"
+msgstr "הגדרת מספר שעות ביום"
+
+#. module: resource
+#: model:ir.model.fields.selection,name:resource.selection__resource_calendar_attendance__day_period__full_day
+msgid "Full Day"
+msgstr "יום מלא"
+
+#. module: resource
+#: model:ir.model.fields,field_description:resource.field_resource_calendar__full_time_required_hours
+msgid "Full Time Equivalent"
+msgstr "שעות למשרה מלאה"
+
+#. module: resource
+#: model:ir.model.fields.selection,name:resource.selection__resource_calendar__schedule_type__fully_fixed
+msgid "Fully Fixed"
+msgstr "קבוע לחלוטין"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_resource_form
+msgid "Fully Flexible"
+msgstr "גמיש לחלוטין"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "If checked, the working schedule will be based on an amount of hours (defined for each day) and not a start & end time anymore.Do you confirm ?"
+msgstr "אם האפשרות מסומנת, לוח העבודה יתבסס על מספר שעות המוגדר לכל יום במקום על שעת התחלה וסיום. לאשר את השינוי?"
+
+#. module: resource
+#: model:ir.model.fields,help:resource.field_resource_calendar_leaves__resource_id
+msgid "If empty, this is a generic time off for the company. If a resource is set, the time off is only for this resource"
+msgstr "אם השדה ריק, זוהי היעדרות כללית של החברה. אם נבחר משאב, ההיעדרות חלה עליו בלבד"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "If unchecked, the working schedule will be based on a defined start and end hours.Do you confirm ?"
+msgstr "אם האפשרות אינה מסומנת, לוח העבודה יתבסס על שעות התחלה וסיום מוגדרות. לאשר את השינוי?"
+
+#. module: resource
+#: model:ir.model.fields,help:resource.field_resource_calendar__full_time_required_hours
+msgid "Number of hours to work on the company schedule to be considered as fulltime."
+msgstr "מספר שעות העבודה בלוח העבודה של החברה הנדרשות למשרה מלאה."
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_search
+msgid "Partial working schedules"
+msgstr "לוחות עבודה למשרה חלקית"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Required Full Time"
+msgstr "שעות נדרשות למשרה מלאה"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_tree
+msgid "Schedule Total Time"
+msgstr "סך השעות בלוח העבודה"
+
+#. module: resource
+#: model:ir.model.fields,field_description:resource.field_resource_calendar__schedule_type
+msgid "Schedule Type"
+msgstr "סוג לוח העבודה"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_leaves_search
+msgid "Search Working Period Time Off"
+msgstr "חיפוש היעדרויות בלוח העבודה"
+
+#. module: resource
+#: model:ir.model.fields,help:resource.field_resource_calendar_attendance__hour_from
+msgid "Start and End time of working.\nA specific value of 24:00 is interpreted as 23:59:59.999999."
+msgstr "שעת התחלה וסיום של העבודה.\nהערך 24:00 מפורש כ־23:59:59.999999."
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_leaves_search
+msgid "Starting Date of Time Off"
+msgstr "תאריך תחילת ההיעדרות"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Switch to 1-week calendar"
+msgstr "מעבר ללוח עבודה של שבוע אחד"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Switch to 2-weeks calendar"
+msgstr "מעבר ללוח עבודה של שבועיים"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Switch to Duration based attendance"
+msgstr "מעבר לנוכחות לפי משך זמן"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Switch to fixed attendance"
+msgstr "מעבר לנוכחות בשעות קבועות"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_leave_form
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_leave_tree
+msgid "Time Off Detail"
+msgstr "פרטי היעדרות"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Week 1 Working Hours"
+msgstr "שעות עבודה בשבוע הראשון"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Week 2 Working Hours"
+msgstr "שעות עבודה בשבוע השני"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "Work Resources"
+msgstr "משאבי עבודה"
+
+#. module: resource
+#: model:ir.model.fields,field_description:resource.field_resource_calendar__work_resources_count
+msgid "Work Resources count"
+msgstr "מספר משאבי עבודה"
+
+#. module: resource
+#: model:ir.model.fields,help:resource.field_resource_calendar__work_time_rate
+msgid "Work time rate versus full time working schedule, should be between 0 and 100 %."
+msgstr "אחוז זמן העבודה ביחס ללוח עבודה במשרה מלאה; הערך חייב להיות בין 0 ל־100 %."
+
+#. module: resource
+#: model:ir.model.fields,field_description:resource.field_resource_calendar__attendance_ids_1st_week
+msgid "Working Time 1st Week"
+msgstr "זמן עבודה בשבוע הראשון"
+
+#. module: resource
+#: model:ir.model.fields,field_description:resource.field_resource_calendar__attendance_ids_2nd_week
+msgid "Working Time 2nd Week"
+msgstr "זמן עבודה בשבוע השני"

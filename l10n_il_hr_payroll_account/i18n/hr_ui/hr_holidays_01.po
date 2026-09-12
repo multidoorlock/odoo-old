@@ -1,0 +1,1430 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.resource_calendar_view_tree
+msgid "# Public Holidays"
+msgstr "מספר ימי חג"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid ": the"
+msgstr ": ה־"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form
+msgid "<i class=\"fa fa-long-arrow-right mx-2\" aria-label=\"Arrow icon\" title=\"Arrow\" invisible=\"allocation_type == 'accrual' or state != 'confirm'\"/>"
+msgstr "<i class=\"fa fa-long-arrow-right mx-2\" aria-label=\"סמל חץ\" title=\"חץ\" invisible=\"allocation_type == 'accrual' or state != 'confirm'\"/>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_generate_multi_wizard_view_form
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form_manager
+msgid "<i class=\"fa fa-long-arrow-right mx-2\" aria-label=\"Arrow icon\" title=\"Arrow\" invisible=\"allocation_type == 'accrual'\"/>"
+msgstr "<i class=\"fa fa-long-arrow-right mx-2\" aria-label=\"סמל חץ\" title=\"חץ\" invisible=\"allocation_type == 'accrual'\"/>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_activity
+msgid "<i class=\"fa fa-long-arrow-right\" title=\"to\"/>"
+msgstr "<i class=\"fa fa-long-arrow-right\" title=\"אל\"/>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_generate_multi_wizard_view_form
+msgid "<span class=\"ml8\" invisible=\"request_unit == 'hour'\">Days</span>\n                            <span class=\"ml8\" invisible=\"request_unit != 'hour'\">Hours</span>"
+msgstr "<span class=\"ml8\" invisible=\"request_unit == 'hour'\">ימים</span>\n                            <span class=\"ml8\" invisible=\"request_unit != 'hour'\">שעות</span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form
+msgid "<span class=\"ml8\" invisible=\"type_request_unit == 'hour'\">Days</span>\n                                <span class=\"ml8\" invisible=\"type_request_unit != 'hour'\">Hours</span>"
+msgstr "<span class=\"ml8\" invisible=\"type_request_unit == 'hour'\">ימים</span>\n                                <span class=\"ml8\" invisible=\"type_request_unit != 'hour'\">שעות</span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "<span class=\"mx-2\" invisible=\"request_unit == 'hour'\">days</span>\n                                        <span class=\"mx-2\" invisible=\"request_unit != 'hour'\">hours</span>"
+msgstr "<span class=\"mx-2\" invisible=\"request_unit == 'hour'\">ימים</span>\n                                        <span class=\"mx-2\" invisible=\"request_unit != 'hour'\">שעות</span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "<span class=\"mx-2\">up to</span>"
+msgstr "<span class=\"mx-2\">עד</span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_employee_public_form_view_inherit
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_employee_form_leave_inherit
+msgid "<span class=\"o_stat_text\">\n                            Time Off\n                        </span>"
+msgstr "<span class=\"o_stat_text\">\n                            חופשות\n                        </span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "<span class=\"o_stat_text\">Accruals</span>"
+msgstr "<span class=\"o_stat_text\">צבירות</span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_kanban
+msgid "<span>\n                                                        Current balance\n                                                    </span>"
+msgstr "<span>\n                                                        יתרה נוכחית\n                                                    </span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_kanban
+msgid "<span>\n                                                    Current balance\n                                                </span>"
+msgstr "<span>\n                                                    יתרה נוכחית\n                                                </span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form
+msgid "<span>The allocated days cannot be used, because the allocation is set to finish in the past.</span>"
+msgstr "<span>לא ניתן להשתמש בימים שהוקצו, משום שמועד סיום ההקצאה כבר חלף.</span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_form
+msgid "<span>The employee has a different timezone than yours! Here dates and times are displayed in the employee's work timezone</span>\n                                ("
+msgstr "<span>אזור הזמן של העובד שונה משלך! התאריכים והשעות כאן מוצגים באזור הזמן של מקום העבודה של העובד</span>\n                                ("
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee__show_leaves
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee_public__show_leaves
+msgid "Able to see Remaining Time Off"
+msgstr "יכול לצפות ביתרת החופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_department__absence_of_today
+msgid "Absence by Today"
+msgstr "נעדר היום"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_department_view_kanban
+msgid "Absent Employee(s), Whose time off requests are either confirmed or validated on today"
+msgstr "עובדים נעדרים שבקשות החופשה שלהם אושרו להיום"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_ch_swissdec_accident_lt
+msgid "Accident leave"
+msgstr "חופשה עקב תאונה"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_allocation__allocation_type__accrual
+msgid "Accrual Allocation"
+msgstr "הקצאת צבירה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "Accrual Level"
+msgstr "מדרגת צבירה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "Accrual Level Options"
+msgstr "אפשרויות מדרגת צבירה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__accrual_plan_id
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation_generate_multi_wizard__accrual_plan_id
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_search
+msgid "Accrual Plan"
+msgstr "תוכנית צבירה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "Accrual will stop until next carry-over date if accrued time's reach"
+msgstr "הצבירה תיעצר עד למועד ההעברה הבא אם היתרה שנצברה תגיע ל־"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__accrual_count
+msgid "Accruals count"
+msgstr "מספר צבירות"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_leave_allocation_filter
+msgid "Active Allocations"
+msgstr "הקצאות פעילות"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "After a year, unused time off will be :"
+msgstr "לאחר שנה, חופשה שלא נוצלה:"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_accrual_plan__transition_mode__end_of_accrual
+msgid "After this accrual's period"
+msgstr "לאחר תקופת הצבירה הזו"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.resource_calendar_leaves_tree_inherit
+msgid "All Schedules"
+msgstr "כל לוחות העבודה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_generate_multi_wizard_view_form
+msgid "Allocate Time Off"
+msgstr "הקצאת חופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__duration_display
+msgid "Allocated (Days/Hours)"
+msgstr "הוקצה (ימים/שעות)"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_holiday_status_normal_tree
+msgid "Allocation Approval"
+msgstr "אישור הקצאה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee__allocation_display
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee_public__allocation_display
+msgid "Allocation Display"
+msgstr "תצוגת ההקצאה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation_generate_multi_wizard__allocation_mode
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_generate_multi_wizard__allocation_mode
+msgid "Allocation Mode"
+msgstr "אופן ההקצאה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee__allocation_remaining_display
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee_public__allocation_remaining_display
+msgid "Allocation Remaining Display"
+msgstr "תצוגת יתרת ההקצאה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_accrual_level__week_day
+msgid "Allocation on"
+msgstr "הקצאה ב־"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_department__allocation_to_approve_count
+msgid "Allocation to Approve"
+msgstr "הקצאה לאישור"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__employee_requests
+msgid "Allow Employee Requests"
+msgstr "אפשר בקשות עובדים"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__allow_request_on_top
+msgid "Allow Request on Top"
+msgstr "אפשר בקשה נוספת"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_allocation_generate_multi_wizard__allocation_mode
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_generate_multi_wizard__allocation_mode
+msgid "Allow to create requests in batchs:\n- By Employee: for a specific employee\n- By Company: all employees of the specified company\n- By Department: all employees of the specified department\n- By Employee Tag: all employees of the specific employee group category"
+msgstr "מאפשר יצירת בקשות באצווה:\n- לפי עובד: עבור עובד מסוים\n- לפי חברה: כל עובדי החברה שנבחרה\n- לפי מחלקה: כל עובדי המחלקה שנבחרה\n- לפי תגית עובד: כל העובדים בקטגוריית הקבוצה שנבחרה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__already_accrued
+msgid "Already Accrued"
+msgstr "כבר נצבר"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.report_holidayssummary
+msgid "Analyze from"
+msgstr "ניתוח החל מ־"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_holidays_filter_report
+msgid "Approved Requests"
+msgstr "בקשות שאושרו"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form_dashboard
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form_manager_dashboard
+msgid "Ask for"
+msgstr "בקשת"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_accrual_level__milestone_date__creation
+msgid "At allocation creation"
+msgstr "בעת יצירת ההקצאה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_employee_view_search
+msgid "At work"
+msgstr "בעבודה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__virtual_remaining_leaves
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__virtual_remaining_leaves
+msgid "Available Time Off"
+msgstr "חופשה זמינה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_form
+msgid "Back to Approval"
+msgstr "חזרה לאישור"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_allocation_generate_multi_wizard__allocation_type__accrual
+msgid "Based on Accrual Plan"
+msgstr "לפי תוכנית צבירה"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_holidays_summary_employee__holiday_type__both
+msgid "Both Approved and Confirmed"
+msgstr "באישור ובאימות"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_small_unemployment_birth
+msgid "Brief Holiday (Birth)"
+msgstr "חופשה קצרה עקב לידה"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_allocation_generate_multi_wizard__allocation_mode__category
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_generate_multi_wizard__allocation_mode__category
+msgid "By Employee Tag"
+msgstr "לפי תגית עובד"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__can_refuse
+msgid "Can Refuse"
+msgstr "יכול לדחות"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__can_validate
+msgid "Can Validate"
+msgstr "יכול לאשר"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "Cap Options"
+msgstr "אפשרויות תקרה"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_accrual_level__action_with_unused_accruals__all
+msgid "Carried over"
+msgstr "הועבר מתקופה קודמת"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__carried_over_days_expiration_date
+msgid "Carried over days expiration date"
+msgstr "תאריך פקיעת תוקף הימים שהועברו"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "Carry Over Options"
+msgstr "אפשרויות העברת יתרה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__maximum_leave
+msgid "Choose a cap for this accrual."
+msgstr "בחירת תקרה לצבירה זו."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__responsible_ids
+msgid "Choose the Time Off Officers who will be notified to approve allocation or Time Off Request. If empty, nobody will be notified"
+msgstr "בחירת אחראי החופשות שיקבלו הודעה לאישור הקצאה או בקשת חופשה. אם השדה ריק, לא תישלח הודעה לאיש"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.leave_type_compensatory_days
+msgid "Compensatory Days"
+msgstr "ימי מנוחה כפיצוי"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "Count as"
+msgstr "ייחשב כ־"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "Count of allocations for this time off type (approved or waiting for approbation) with a validity period starting this year."
+msgstr "מספר ההקצאות לסוג חופשה זה (מאושרות או ממתינות לאישור) שתקופת התוקף שלהן מתחילה השנה."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "Count of plans linked to this time off type."
+msgstr "מספר התוכניות המקושרות לסוג חופשה זה."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "Count of time off requests for this time off type (approved or waiting for approbation) with a start date in the current year."
+msgstr "מספר בקשות החופשה לסוג חופשה זה (מאושרות או ממתינות לאישור) שתאריך תחילתן חל בשנה הנוכחית."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "Create a milestone"
+msgstr "יצירת אבן דרך"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_credit_time
+msgid "Credit Time"
+msgstr "הפחתת היקף עבודה (קרדיט זמן)"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee__current_leave_state
+msgid "Current Time Off Status"
+msgstr "מצב חופשה נוכחי"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee__current_leave_id
+msgid "Current Time Off Type"
+msgstr "סוג חופשה נוכחי"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_accrual_plan__carryover_date__other
+msgid "Custom date"
+msgstr "תאריך מותאם"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__dashboard_warning_message
+msgid "Dashboard Warning Message"
+msgstr "הודעת אזהרה בלוח הבקרה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__request_date_to_period
+msgid "Date Period End"
+msgstr "תאריך סיום התקופה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_eg_leave_type_death
+msgid "Death Leave"
+msgstr "חופשת אבל"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "Define a balance cap?"
+msgstr "להגדיר תקרת יתרה?"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "Define a carry over validity?"
+msgstr "להגדיר תוקף ליתרה שהועברה?"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "Define a yearly cap?"
+msgstr "להגדיר תקרה שנתית?"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__max_allowed_negative
+msgid "Define the maximum level of negative days this kind of time off can reach. Value must be at least 1."
+msgstr "הגדרת מספר הימים המרבי שבו ניתן לרדת ליתרה שלילית בסוג חופשה זה. הערך חייב להיות לפחות 1."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_report_calendar_view_search
+msgid "Department search"
+msgstr "חיפוש מחלקה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__name_validity
+msgid "Description with validity"
+msgstr "תיאור כולל תוקף"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_mx_leave_type_disability_due_to_illness_imss
+msgid "Disability due to illness (IMSS)"
+msgstr "אי־כושר עקב מחלה (IMSS)"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__create_calendar_meeting
+msgid "Display Time Off in Calendar"
+msgstr "הצגת חופשה ביומן"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "Do you need a carry-over of the accrued days from one year to another?"
+msgstr "האם להעביר ימים שנצברו משנה לשנה?"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__leave_type_request_unit
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation_generate_multi_wizard__request_unit
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__request_unit
+msgid "Duration Type"
+msgstr "סוג משך"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_allocation__number_of_days
+msgid "Duration in days. Reference field to use when necessary."
+msgstr "משך בימים. שדה עזר לשימוש לפי הצורך."
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__elligible_for_accrual_rate
+msgid "Eligible for Accrual Rate"
+msgstr "זכאי לשיעור צבירה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_emergency
+msgid "Emergency Leave"
+msgstr "חופשת חירום"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_kanban
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_kanban
+msgid "Employee's image"
+msgstr "תמונת העובד"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_european
+msgid "European Time Off"
+msgstr "חופשה אירופית"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__employee_requests
+msgid "Extra Days Requests Allowed: User can request an allocation for himself.\n\n        Not Allowed: User cannot request an allocation."
+msgstr "בקשות לימים נוספים מותרות: המשתמש יכול לבקש הקצאה עבור עצמו.\n\n        לא מותרות: המשתמש אינו יכול לבקש הקצאה."
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_extra_legal
+msgid "Extra Legal Time Off"
+msgstr "חופשה נוספת מעבר לזכאות החוקית"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.holiday_status_eto
+msgid "Extra Time Off"
+msgstr "חופשה נוספת"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_allocation__duration_display
+msgid "Field allowing to see the allocation duration in days or hours depending on the type_request_unit"
+msgstr "שדה המציג את משך ההקצאה בימים או בשעות בהתאם לשדה type_request_unit"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_allocation__number_of_days_display
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_allocation__number_of_hours_display
+msgid "For an Accrual Allocation, this field contains the theorical amount of time given to the employee, due to a previous start date, on the first run of the plan. This can be manually edited."
+msgstr "בהקצאת צבירה, שדה זה מכיל את כמות הזמן התאורטית הניתנת לעובד בהרצה הראשונה של התוכנית בשל תאריך התחלה מוקדם יותר. ניתן לערוך את הערך ידנית."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_form
+msgid "For your reference, the equivalent times in your timezone are displayed below."
+msgstr "לנוחותך, השעות המקבילות באזור הזמן שלך מוצגות למטה."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_generate_multi_wizard_view_form
+msgid "Generate Time Off"
+msgstr "יצירת חופשה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_generate_multi_wizard_view_form
+msgid "Generate time off allocations for multiple employees"
+msgstr "יצירת הקצאות חופשה למספר עובדים"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_generate_multi_wizard_view_form
+msgid "Generate time off for multiple employees"
+msgstr "יצירת חופשות למספר עובדים"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__group_days_leave
+msgid "Group Time Off"
+msgstr "חופשה קבוצתית"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_annual_leave
+msgid "HK Annual Leaves"
+msgstr "חופשה שנתית — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_compassionate_leave
+msgid "HK Compassionate Leaves"
+msgstr "חופשה עקב נסיבות משפחתיות קשות — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_compensation_leave
+msgid "HK Compensation Leaves"
+msgstr "חופשה כפיצוי — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_examination_leave
+msgid "HK Examination Leaves"
+msgstr "חופשת בחינות — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_marriage_leave
+msgid "HK Marriage Leaves"
+msgstr "חופשת נישואין — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_maternity_leave
+msgid "HK Maternity Leaves"
+msgstr "חופשת לידה — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_maternity_leave_80
+msgid "HK Maternity Leaves 80%"
+msgstr "חופשת לידה בשיעור 80% — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_paternity_leave
+msgid "HK Paternity Leaves"
+msgstr "חופשת אבהות — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_paternity_leave_80
+msgid "HK Paternity Leaves 80%"
+msgstr "חופשת אבהות בשיעור 80% — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_sick_leave
+msgid "HK Sick Leaves"
+msgstr "חופשת מחלה — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_sick_leave_80
+msgid "HK Sick Leaves 80%"
+msgstr "חופשת מחלה בשיעור 80% — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_hk_leave_type_unpaid_leave
+msgid "HK Unpaid Leaves"
+msgstr "חופשה ללא תשלום — הונג קונג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_eg_leave_type_hajj
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_hajj
+msgid "Hajj Leave"
+msgstr "חופשת חג׳"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__request_unit_half
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_allocation__type_request_unit__half_day
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_type__request_unit__half_day
+msgid "Half-Day"
+msgstr "חצי יום"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__is_hatched
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_report_calendar__is_hatched
+msgid "Hatched"
+msgstr "מקווקו"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__hide_on_dashboard
+msgid "Hide On Dashboard"
+msgstr "הסתרה בלוח הבקרה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_employee_type_report__holiday_status
+msgid "Holiday Status"
+msgstr "מצב חופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__request_hour_from
+msgid "Hour from"
+msgstr "משעה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__request_hour_to
+msgid "Hour to"
+msgstr "עד שעה"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_accrual_level__added_value_type__hour
+msgid "Hour(s)"
+msgstr "שעות"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "How much time can be carried over :"
+msgstr "כמה זמן ניתן להעביר:"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_id_leave_type_annual_leave
+msgid "ID Annual Leaves"
+msgstr "חופשה שנתית — אינדונזיה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_id_leave_type_bereavement_leave
+msgid "ID Bereavement Leaves"
+msgstr "חופשת אבל — אינדונזיה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_id_leave_type_marriage_leave
+msgid "ID Marriage Leaves"
+msgstr "חופשת נישואין — אינדונזיה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_id_leave_type_maternity_leave
+msgid "ID Maternity Leaves"
+msgstr "חופשת לידה — אינדונזיה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_id_leave_type_paternity_leave
+msgid "ID Paternity Leaves"
+msgstr "חופשת אבהות — אינדונזיה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_id_leave_type_sick_leave
+msgid "ID Sick Leaves"
+msgstr "חופשת מחלה — אינדונזיה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_id_leave_type_unpaid_leave
+msgid "ID Unpaid Leaves"
+msgstr "חופשה ללא תשלום — אינדונזיה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_iddah
+msgid "Iddah Leave"
+msgstr "חופשת עִדָּה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__elligible_for_accrual_rate
+msgid "If checked, this time off type will be taken into account for accruals computation."
+msgstr "אם מסומן, סוג חופשה זה יובא בחשבון בחישוב הצבירה."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__allow_request_on_top
+msgid "If checked, users can request another leave on top of the ones of this type."
+msgstr "אם מסומן, משתמשים יכולים לבקש חופשה נוספת במקביל לחופשה מסוג זה."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__allows_negative
+msgid "If checked, users request can exceed the allocated days and balance can go in negative."
+msgstr "אם מסומן, בקשות המשתמשים יכולות לחרוג ממספר הימים שהוקצו והיתרה יכולה להיות שלילית."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__active
+msgid "If the active field is set to false, it will allow you to hide the time off type without removing it."
+msgstr "ביטול הסימון בשדה פעיל מאפשר להסתיר את סוג החופשה בלי למחוק אותו."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__create_calendar_meeting
+msgid "If this field is checked, every leave request of this type will have a corresponding entry in the calendar application. There will be no entry if this stays unchecked."
+msgstr "אם מסומן, כל בקשת חופשה מסוג זה תיצור אירוע מתאים ביישום היומן. אם לא מסומן, לא ייווצר אירוע."
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__include_public_holidays_in_duration
+msgid "Ignore Public Holidays"
+msgstr "התעלמות מימי חג"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_ch_swissdec_illness_lt
+msgid "Illness leave"
+msgstr "חופשת מחלה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_ch_swissdec_interruption_of_work_lt
+msgid "Interruption of Work"
+msgstr "הפסקת עבודה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__is_name_custom
+msgid "Is Name Custom"
+msgstr "שם מותאם"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__is_officer
+msgid "Is Officer"
+msgstr "אחראי"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "It is based on worked time?"
+msgstr "האם מבוסס על זמן עבודה?"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__leave_type_increases_duration
+msgid "Leave Type Increases Duration"
+msgstr "סוג חופשה שמגדיל את המשך"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_mandatory_day_view_search
+msgid "Mandatory Day"
+msgstr "יום נוכחות חובה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_eg_leave_type_marriage
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_marriage
+msgid "Marriage Leave"
+msgstr "חופשת נישואין"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_mx_leave_type_maternity_imss
+msgid "Maternity (IMSS)"
+msgstr "לידה (IMSS)"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_ch_swissdec_maternity_lt
+msgid "Maternity / Paternity leave"
+msgstr "חופשת לידה / אבהות"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_eg_leave_type_maternity
+#: model:hr.leave.type,name:hr_holidays.l10n_jo_leave_type_maternity
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_maternity
+msgid "Maternity Leave"
+msgstr "חופשת לידה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_maternity
+#: model:hr.leave.type,name:hr_holidays.l10n_sk_leave_type_maternity
+msgid "Maternity Time Off"
+msgstr "חופשת לידה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__max_leaves
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__max_leaves
+msgid "Max Leaves"
+msgstr "מכסת חופשה מרבית"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__max_leaves
+msgid "Maximum Allowed"
+msgstr "מרבי מותר"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__max_allowed_negative
+msgid "Maximum Excess Amount"
+msgstr "סכום חריגה מרבי"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_ch_swissdec_military_lt
+msgid "Military leave"
+msgstr "חופשה לשירות צבאי"
+
+#. module: hr_holidays
+#: model:ir.actions.act_window,name:hr_holidays.action_hr_leave_generate_multi_wizard
+msgid "Multiple Requests"
+msgstr "בקשות מרובות"
+
+#. module: hr_holidays
+#: model:ir.actions.act_window,name:hr_holidays.action_hr_leave_allocation_generate_multi_wizard
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_kanban
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_tree
+msgid "New Group Allocation"
+msgstr "הקצאה קבוצתית חדשה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_kanban
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_tree
+msgid "New Group Time Off"
+msgstr "חופשה קבוצתית חדשה"
+
+#. module: hr_holidays
+#: model:ir.actions.act_window,name:hr_holidays.hr_leave_allocation_action_form
+msgid "New allocation"
+msgstr "הקצאה חדשה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_form
+msgid "No description provided"
+msgstr "לא הוזן תיאור"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "No milestones on the plan yet. Let's create a new one"
+msgstr "עדיין אין אבני דרך בתוכנית. ניצור אבן דרך חדשה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "No, always consider the entire accrual period (whole calendar days)."
+msgstr "לא, תמיד יש להביא בחשבון את כל תקופת הצבירה (ימים קלנדריים מלאים)."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "Nobody to notify"
+msgstr "אין נמענים להודעה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__hide_on_dashboard
+msgid "Non-visible allocations can still be selected when taking a leave, but will simply not be displayed on the leave dashboard."
+msgstr "ניתן לבחור הקצאות מוסתרות בעת בקשת חופשה, אך הן לא יוצגו בלוח בקרת החופשות."
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_type__allocation_validation_type__no_validation
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_type__leave_validation_type__no_validation
+msgid "None needed"
+msgstr "לא נדרש"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__responsible_ids
+msgid "Notify HR"
+msgstr "הודעה למשאבי אנוש"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave__number_of_days
+msgid "Number of days of the time off request. Used in the calculation."
+msgstr "מספר ימי החופשה המבוקשים. משמש בחישוב."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave__number_of_hours
+msgid "Number of hours of the time off request. Used in the calculation."
+msgstr "מספר שעות החופשה המבוקשות. משמש בחישוב."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_report_calendar_view_search
+msgid "Off Today"
+msgstr "בחופשה היום"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_employee_view_search
+msgid "On Time Off"
+msgstr "בחופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_employee__hr_icon_display__presence_holiday_absent
+msgid "On leave"
+msgstr "בחופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_plan__is_based_on_worked_time
+msgid "Only excludes requests where the time off type is set as unpaid kind of."
+msgstr "מחריג רק בקשות שסוג החופשה שלהן מוגדר כחופשה ללא תשלום."
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_pl_leave_type_sick_leave
+msgid "PL Sick Leaves 80% "
+msgstr "חופשת מחלה בשיעור 80% — פולין "
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_eg_leave_type_paid_sick_time_off
+msgid "Paid Sick time off"
+msgstr "חופשת מחלה בתשלום"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_jo_leave_type_paternity
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_paternity
+msgid "Paternity Leave"
+msgstr "חופשת אבהות"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_jo_leave_type_pilgrimage
+msgid "Pilgrimage Leave"
+msgstr "חופשת עלייה לרגל"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_employee__hr_icon_display__presence_holiday_present
+msgid "Present but on leave"
+msgstr "נוכח אך בחופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__include_public_holidays_in_duration
+msgid "Public holidays should be counted in the leave duration when applying for leaves"
+msgstr "ימי חג ייכללו במשך החופשה בעת הגשת בקשת חופשה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_recovery
+msgid "Recovery Bank Holiday"
+msgstr "יום מנוחה חלופי לחג"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_employee_public_form_view_inherit
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_employee_form_leave_inherit
+msgid "Remaining leaves"
+msgstr "יתרת חופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__request_date_to
+msgid "Request End Date"
+msgstr "תאריך סיום הבקשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__request_date_from
+msgid "Request Start Date"
+msgstr "תאריך תחילת הבקשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_report__leave_type
+msgid "Request Type"
+msgstr "סוג בקשה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "Require Supporting Document"
+msgstr "נדרש מסמך תומך"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_generate_multi_wizard_view_form
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form
+msgid "Run until"
+msgstr "הפעלה עד"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_holidays_filter
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_holidays_filter_report
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_search_hr_holidays_employee_type_report
+msgid "Search Time Off"
+msgstr "חיפוש חופשות"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_holidays_status_filter
+msgid "Search Time Off Type"
+msgstr "חיפוש סוג חופשה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_leave_allocation_filter
+msgid "Search allocations"
+msgstr "חיפוש הקצאות"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_holidays_summary_employee__holiday_type
+msgid "Select Time Off Type"
+msgstr "בחירת סוג חופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_allocation__validation_type
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__allocation_validation_type
+msgid "Select the level of approval needed in case of request by employee\n            #     - No validation needed: The employee's request is automatically approved.\n            #     - Approved by Time Off Officer: The employee's request need to be manually approved\n            #       by the Time Off Officer, Employee's Approver or both."
+msgstr "יש לבחור את רמת האישור הנדרשת לבקשת עובד.\n            #     - ללא צורך באישור: בקשת העובד מאושרת אוטומטית.\n            #     - אישור אחראי חופשות: הבקשה מחייבת אישור ידני\n            #       של אחראי החופשות, המאשר של העובד או שניהם."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_employee__leave_manager_id
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_report_calendar__leave_manager_id
+msgid "Select the user responsible for approving \"Time Off\" of this employee.\nIf empty, the approval is done by an Administrator or Approver (determined in settings/users)."
+msgstr "יש לבחור את המשתמש שאחראי לאישור החופשות של עובד זה.\nאם השדה ריק, האישור מתבצע בידי מנהל מערכת או מאשר, לפי ההגדרה בהגדרות/משתמשים."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__postpone_max_days
+msgid "Set a maximum of accruals an allocation keeps at the end of the year."
+msgstr "הגדרת תקרת הצבירה שההקצאה תשמור בסוף השנה."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "Set the employee accrual frequency :"
+msgstr "הגדרת תדירות הצבירה לעובד:"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_holidays_filter
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_leave_allocation_filter
+msgid "Show all records whose next activity date is past"
+msgstr "הצגת כל הרשומות שמועד הפעילות הבאה שלהן עבר"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_sick_leave_100
+msgid "Sick Leave (100% Paid)"
+msgstr "חופשת מחלה בתשלום מלא (100%)"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_eg_leave_type_sick_leave_75
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_sick_leave_75
+msgid "Sick Leave (75% Paid)"
+msgstr "חופשת מחלה בתשלום של 75%"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_eg_leave_type_sick_leave_unpaid
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_sick_leave_0
+msgid "Sick Leave (UnPaid)"
+msgstr "חופשת מחלה ללא תשלום"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_jo_leave_type_unpaid_sick
+msgid "Sick Leave (Unpaid)"
+msgstr "חופשת מחלה ללא תשלום"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_ae_leave_type_sick_leave_0
+msgid "Sick Leave 0%"
+msgstr "חופשת מחלה 0%"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_ae_leave_type_sick_leave_50
+msgid "Sick Leave 50%"
+msgstr "חופשת מחלה 50%"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_sick_leave_without_certificate
+msgid "Sick Leave Without Certificate"
+msgstr "חופשת מחלה ללא אישור רפואי"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.leave_type_sick_time_off
+msgid "Sick Time Off"
+msgstr "חופשת מחלה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_small_unemployment
+msgid "Small Unemployment"
+msgstr "חופשה קצרה בנסיבות אישיות"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__request_unit_hours
+msgid "Specific Time"
+msgstr "זמן מסוים"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_strike
+msgid "Strike"
+msgstr "שביתה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__is_striked
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_report_calendar__is_striked
+msgid "Striked"
+msgstr "קו חוצה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_jo_leave_type_study
+#: model:hr.leave.type,name:hr_holidays.l10n_sa_leave_type_study
+msgid "Study Leave"
+msgstr "חופשת לימודים"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__supported_attachment_ids_count
+msgid "Supported Attachment Ids Count"
+msgstr "מספר קבצים מצורפים תומכים"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__support_document
+msgid "Supporting Document"
+msgstr "מסמך תומך"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "Switch employees to the new accrual level:"
+msgstr "העברת עובדים לרמת הצבירה החדשה:"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__start_count
+msgid "The accrual starts after a defined period from the allocation start date. This field defines the number of days, months or years after which accrual is used."
+msgstr "הצבירה מתחילה לאחר פרק זמן מוגדר ממועד תחילת ההקצאה. שדה זה קובע את מספר הימים, החודשים או השנים שלאחריהם מתחילה הצבירה."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave__color
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__color
+msgid "The color selected here will be used in every screen with the time off type."
+msgstr "הצבע שנבחר כאן יופיע בכל מסך המציג את סוג החופשה."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "The days carried over will be effective for"
+msgstr "הימים שיועברו יהיו בתוקף למשך"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__time_type
+msgid "The distinction between working time (ex. Attendance) and absence (ex. Training) will be used in the computation of Accrual's plan rate."
+msgstr "ההבחנה בין זמן עבודה (למשל נוכחות) לבין היעדרות (למשל הדרכה) תשמש לחישוב שיעור הצבירה בתוכנית."
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__expiring_carryover_days
+msgid "The number of carried over days that will expire on carried_over_days_expiration_date"
+msgstr "מספר הימים שהועברו ותוקפם יפוג בתאריך carried_over_days_expiration_date"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "The plan will be on hold if the balance reach"
+msgstr "התוכנית תושהה כאשר היתרה תגיע ל־"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_allocation__state
+msgid "The status is 'To Approve', when an allocation request is created.\nThe status is 'Refused', when an allocation request is refused by manager.\nThe status is 'Approved', when an allocation request is approved by manager."
+msgstr "הסטטוס הוא 'לאישור' כאשר נוצרת בקשת הקצאה.\nהסטטוס הוא 'נדחתה' כאשר המנהל דוחה את הבקשה.\nהסטטוס הוא 'אושרה' כאשר המנהל מאשר את הבקשה."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__sequence
+msgid "The type with the smallest sequence is the default value in time off request"
+msgstr "הסוג שמספר הסדר שלו הוא הקטן ביותר משמש כברירת המחדל בבקשת חופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__accrual_validity_type
+msgid "This field defines the unit of time after which the accrual ends."
+msgstr "שדה זה קובע את יחידת הזמן שלאחריה מסתיימת הצבירה."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__start_type
+msgid "This field defines the unit of time after which the accrual starts."
+msgstr "שדה זה קובע את יחידת הזמן שלאחריה מתחילה הצבירה."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "This milestone will be reached :"
+msgstr "אבן דרך זו תושג:"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__leaves_taken
+msgid "This value is given by the sum of all time off requests with a negative value."
+msgstr "ערך זה הוא סכום כל בקשות החופשה בעלות ערך שלילי."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_type__max_leaves
+msgid "This value is given by the sum of all time off requests with a positive value."
+msgstr "ערך זה הוא סכום כל בקשות החופשה בעלות ערך חיובי."
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee__leave_manager_id
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_report_calendar__leave_manager_id
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_employee_view_search
+msgid "Time Off Approver"
+msgstr "מאשר חופשות"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_resource_calendar__associated_leaves_count
+msgid "Time Off Count"
+msgstr "מספר חופשות"
+
+#. module: hr_holidays
+#: model:ir.actions.act_window,name:hr_holidays.action_hr_holidays_summary_employee
+#: model:ir.actions.report,name:hr_holidays.action_report_holidayssummary
+#: model_terms:ir.ui.view,arch_db:hr_holidays.report_holidayssummary
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_holiday_graph
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_holiday_list
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_holiday_pivot
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_holidays_summary_employee
+msgid "Time Off Summary"
+msgstr "סיכום חופשות"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__leave_validation_type
+msgid "Time Off Validation"
+msgstr "אישור חופשה"
+
+#. module: hr_holidays
+#: model:ir.actions.act_window,name:hr_holidays.action_hr_available_holidays_report
+msgid "Time Off by Employee"
+msgstr "חופשות לפי עובד"
+
+#. module: hr_holidays
+#: model:ir.actions.act_window,name:hr_holidays.action_hr_leave_report
+msgid "Time Off by Type"
+msgstr "חופשות לפי סוג"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_leave_allocation_filter
+msgid "Time Off of Your Team Member"
+msgstr "חופשה של חבר צוות"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_department__leave_to_approve_count
+msgid "Time Off to Approve"
+msgstr "חופשות לאישור"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_holidays_filter_report
+msgid "Time off"
+msgstr "חופשה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_type__leaves_taken
+msgid "Time off Already Taken"
+msgstr "חופשה שכבר נוצלה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_report_graph
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_report_pivot
+msgid "Time off Summary"
+msgstr "סיכום חופשות"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_holidays_filter
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_leave_allocation_filter
+msgid "Time off of people you are manager of"
+msgstr "חופשות של עובדים שבניהולך"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "Time off type"
+msgstr "סוג חופשה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_leave_allocation_filter
+msgid "To Approve or Approved Allocations"
+msgstr "הקצאות לאישור או מאושרות"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_employee__leave_date_to
+msgid "To Date"
+msgstr "עד תאריך"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_training
+msgid "Training Time Off"
+msgstr "חופשת הכשרה"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_accrual_level__frequency__bimonthly
+msgid "Twice a month"
+msgstr "פעמיים בחודש"
+
+#. module: hr_holidays
+#: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_accrual_level__frequency__biyearly
+msgid "Twice a year"
+msgstr "פעמיים בשנה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__type_request_unit
+msgid "Type Request Unit"
+msgstr "יחידת הבקשה לפי סוג"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__tz
+msgid "Tz"
+msgstr "אזור זמן"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_lu_leave_type_situational_unemployment
+msgid "Unemployment (Weather / Situational)"
+msgstr "אבטלה עקב מזג אוויר או נסיבות"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_ch_swissdec_unpaid_lt
+msgid "Unpaid leave"
+msgstr "חופשה ללא תשלום"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_unpredictable
+msgid "Unpredictable Reason"
+msgstr "סיבה בלתי צפויה"
+
+#. module: hr_holidays
+#: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation__validation_type
+msgid "Validation Type"
+msgstr "סוג אישור"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_tree
+#: model_terms:ir.ui.view,arch_db:hr_holidays.view_hr_leave_allocation_filter
+msgid "Validity Start"
+msgstr "תחילת תוקף"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_tree
+msgid "Validity Stop"
+msgstr "סיום תוקף"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_report_calendar_view_search
+msgid "Waiting for Approval"
+msgstr "ממתין לאישור"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "When do you want the accrued time left to be carried-over?"
+msgstr "מתי להעביר את יתרת הצבירה לתקופה הבאה?"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__action_with_unused_accruals
+msgid "When the Carry-Over Time is reached, according to Plan's setting, select what you want to happen with the unused time off: Lost (time will be reset to zero), Carried over (accrued time carried over to the next period.)"
+msgstr "בתאריך העברת היתרה, לפי הגדרת התוכנית, יש לבחור מה יקרה לחופשה שלא נוצלה: מחיקה ואיפוס היתרה, או העברת הצבירה לתקופה הבאה."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__cap_accrued_time
+msgid "When the field is checked the balance of an allocation using this accrual plan will never exceed the specified amount."
+msgstr "כאשר האפשרות מסומנת, יתרת ההקצאה בתוכנית צבירה זו לעולם לא תעלה על הסכום שנקבע."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__cap_accrued_time_yearly
+msgid "When the field is checked the total amount accrued each year will be capped at the specified amount"
+msgstr "כאשר האפשרות מסומנת, סך הצבירה השנתית יוגבל לסכום שנקבע"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "When the time is accrued?"
+msgstr "מתי נצברת הזכאות?"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_holidays_cancel_leave_form
+msgid "Why do you want to cancel this approved time off ?"
+msgstr "מדוע ברצונך לבטל חופשה שאושרה?"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_be_leave_type_work_accident
+msgid "Work Accident Time Off"
+msgstr "חופשה עקב תאונת עבודה"
+
+#. module: hr_holidays
+#: model:hr.leave.type,name:hr_holidays.l10n_mx_leave_type_work_risk_imss
+msgid "Work risk (IMSS)"
+msgstr "פגיעה בעבודה (IMSS)"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "Yes, consider the worked hours, excluding any time off taken during that period."
+msgstr "כן, יש להביא בחשבון את שעות העבודה, ללא חופשות שנוצלו בתקופה זו."
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__accrual_validity_count
+msgid "You can define a period of time where the days carried over will be available"
+msgstr "ניתן להגדיר את התקופה שבה יהיה אפשר לנצל את הימים שהועברו"
+
+#. module: hr_holidays
+#: model:ir.model.fields,help:hr_holidays.field_hr_leave_accrual_level__carryover_options
+msgid "You can limit the accrued time carried over for the next period."
+msgstr "ניתן להגביל את הצבירה שמועברת לתקופה הבאה."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_form
+msgid "Your Timezone"
+msgstr "אזור הזמן שלך"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "and the"
+msgstr "וה־"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_report_calendar_view_form
+msgid "dates"
+msgstr "תאריכים"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_generate_multi_wizard_view_form
+msgid "e.g. Extra recuperation, Company unavailability, ..."
+msgstr "לדוגמה: ימי מנוחה נוספים, סגירת החברה, ..."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.resource_calendar_leaves_tree_inherit
+msgid "e.g. New Year's Day"
+msgstr "לדוגמה: ראש השנה האזרחית"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "e.g. Seniority Plan, PTO, RTT, ..."
+msgstr "לדוגמה: תוכנית ותק, חופשה בתשלום, ימי מנוחה, ..."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form_manager
+msgid "e.g. Time Off type (From validity start to validity end / no limit)"
+msgstr "לדוגמה: סוג חופשה (מתחילת התוקף עד סיומו / ללא הגבלה)"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.edit_holiday_status_form
+msgid "e.g. Yearly Vacation"
+msgstr "לדוגמה: חופשה שנתית"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "from the start of allocation"
+msgstr "מתחילת ההקצאה"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "of available time."
+msgstr "מהזמן הזמין."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.report_holidayssummary
+msgid "of the"
+msgstr "של ה־"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "of the month"
+msgstr "בחודש"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "of the month."
+msgstr "בחודש."
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "on the"
+msgstr "ב־"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "select a day"
+msgstr "בחירת יום"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_plan_view_form
+msgid "select a month"
+msgstr "בחירת חודש"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_accrual_level_view_form
+msgid "select a weekday"
+msgstr "בחירת יום בשבוע"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_report_calendar_view_search
+msgid "validate"
+msgstr "אישור"

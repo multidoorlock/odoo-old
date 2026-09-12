@@ -7,6 +7,30 @@
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_il_open_work_contact" type="object"
+                        class="oe_stat_button" icon="fa-address-card-o"
+                        invisible="not work_contact_id" groups="hr.group_hr_user">
+                    <div class="o_stat_info"><span class="o_stat_text">איש קשר</span></div>
+                </button>
+                <button name="action_il_open_payments" type="object"
+                        class="oe_stat_button" icon="fa-money"
+                        groups="hr_payroll.group_hr_payroll_user">
+                    <field name="il_payment_count" widget="statinfo" string="תשלומים"/>
+                </button>
+                <button name="action_il_open_payroll_ledger" type="object"
+                        class="oe_stat_button" icon="fa-book"
+                        groups="account.group_account_readonly">
+                    <div class="o_stat_info">
+                        <span class="o_stat_value">
+                            <field name="il_payroll_balance" widget="monetary"
+                                   options="{'currency_field': 'il_payroll_currency_id'}"/>
+                        </span>
+                        <span class="o_stat_text">יתרה לפירעון</span>
+                    </div>
+                    <field name="il_payroll_currency_id" invisible="1"/>
+                </button>
+            </xpath>
             <field name="structure_type_id" position="after">
                 <field name="il_salary_structure_id"
                        domain="[('type_id', '=', structure_type_id)]"
@@ -44,7 +68,7 @@
                 </group>
             </group>
             <notebook position="inside">
-                <page string="סוגי מחזורי תשלום" name="il_payment_cycle_types">
+                <page string="סוגי מחזורי תשלומי אצווה" name="il_payment_cycle_types">
                     <field name="il_payment_cycle_type_line_ids" context="{'default_employee_id': id}">
                         <list editable="bottom">
                             <field name="cycle_type_id"/>
@@ -54,6 +78,20 @@
                     </field>
                 </page>
             </notebook>
+        </field>
+    </record>
+
+    <!-- Native journal items, with the existing residual column visible. -->
+    <record id="view_employee_payroll_ledger_list" model="ir.ui.view">
+        <field name="name">account.move.line.employee.payroll.ledger.list</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_tree"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <field name="amount_residual" position="attributes">
+                <attribute name="optional">show</attribute>
+                <attribute name="string">יתרה לסגירה</attribute>
+            </field>
         </field>
     </record>
 </odoo>

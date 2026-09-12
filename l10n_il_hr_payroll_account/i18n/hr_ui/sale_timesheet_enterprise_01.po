@@ -1,0 +1,58 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: sale_timesheet_enterprise
+#: model_terms:ir.ui.view,arch_db:sale_timesheet_enterprise.view_employee_form
+msgid "<span class=\"m-14 w-100\">per month</span>"
+msgstr "<span class=\"m-14 w-100\">לחודש</span>"
+
+#. module: sale_timesheet_enterprise
+#: model:ir.model.fields,field_description:sale_timesheet_enterprise.field_res_config_settings__timesheet_show_rates
+msgid "Billing Rate Indicators"
+msgstr "מדדי שעות לחיוב"
+
+#. module: sale_timesheet_enterprise
+#: model:ir.model.fields,field_description:sale_timesheet_enterprise.field_res_config_settings__timesheet_show_leaderboard
+msgid "Billing Rate Leaderboard"
+msgstr "דירוג שעות לחיוב"
+
+#. module: sale_timesheet_enterprise
+#: model_terms:ir.ui.view,arch_db:sale_timesheet_enterprise.sale_timesheet_employee_list_inherit
+msgid "Monthly Billing Time Target"
+msgstr "יעד חודשי לשעות לחיוב"
+
+#. module: sale_timesheet_enterprise
+#: model:ir.model.fields,help:sale_timesheet_enterprise.field_res_config_settings__timesheet_show_rates
+msgid "Show the billing indicators on My Timesheets view"
+msgstr "הצגת מדדי השעות לחיוב בתצוגת דיווחי השעות שלי"
+
+#. module: sale_timesheet_enterprise
+#: model:ir.model.fields,help:sale_timesheet_enterprise.field_res_config_settings__timesheet_show_leaderboard
+msgid "Show the leaderboard on My Timesheets view"
+msgstr "הצגת הדירוג בתצוגת דיווחי השעות שלי"
+
+#. module: sale_timesheet_enterprise
+#: model:ir.model.fields,help:sale_timesheet_enterprise.field_project_task__portal_effective_hours
+msgid "Time spent on this task, excluding its sub-tasks."
+msgstr "הזמן שהושקע במשימה זו, ללא משימות המשנה שלה."
+
+#. module: sale_timesheet_enterprise
+#: model:ir.model.fields,help:sale_timesheet_enterprise.field_project_task__portal_total_hours_spent
+msgid "Time spent on this task, including its sub-tasks."
+msgstr "הזמן שהושקע במשימה זו, כולל משימות המשנה שלה."
+
+#. module: sale_timesheet_enterprise
+#: model_terms:ir.ui.view,arch_db:sale_timesheet_enterprise.sale_timesheet_employee_list_inherit
+msgid "Timesheet Approver"
+msgstr "מאשר דיווחי שעות"
+
+#. module: sale_timesheet_enterprise
+#: model:ir.model.fields,help:sale_timesheet_enterprise.field_res_config_settings__invoiced_timesheet
+msgid "With the 'all recorded timesheets' option, all timesheets will be invoiced without distinction, even if they haven't been validated. Additionally, all timesheets will be accessible in your customers' portal. \nWhen you choose the 'validated timesheets only' option, only the validated timesheets will be invoiced and appear in your customers' portal."
+msgstr "באפשרות ״כל דיווחי השעות שנרשמו״, כל דיווחי השעות יחויבו בחשבונית ללא הבחנה, גם אם טרם אושרו. בנוסף, כל דיווחי השעות יהיו נגישים בפורטל הלקוחות. \nבאפשרות ״דיווחי שעות מאושרים בלבד״, רק דיווחי השעות שאושרו יחויבו בחשבונית ויופיעו בפורטל הלקוחות."

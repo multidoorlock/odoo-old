@@ -35,12 +35,8 @@ class TestMasavExport(TransactionCase):
             'company_id': cls.company.id,
             'identification_id': '123456789',
             'contract_date_start': date(2026, 1, 1),
-        })
-        # Employee creation builds the initial version in stages. Configure
-        # both matching payroll fields together after that version exists, so
-        # the production consistency constraint never sees a half-written
-        # Employee/Israeli combination.
-        cls.employee.version_id.write({
+            'date_version': date(2026, 1, 1),
+            'mdl_wage_type': 'mdl_monthly',
             'structure_type_id': cls.monthly_type.id,
             'il_salary_structure_id': cls.monthly_structure.id,
             'schedule_pay': 'monthly',

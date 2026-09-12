@@ -23,9 +23,9 @@ class AccountPayment(models.Model):
     il_split_line_ids = fields.One2many(
         'account.payment.split.line', 'payment_id', string='פריסת תשלום', copy=True)
     il_applied_amount = fields.Monetary(
-        string='סכום שקוזז', compute='_compute_il_spread_amounts', store=True)
+        string='סכום שנסגר בתלושים', compute='_compute_il_spread_amounts', store=True)
     il_remaining_amount = fields.Monetary(
-        string='יתרה להתאמה', compute='_compute_il_spread_amounts', store=True)
+        string='יתרה לסגירה', compute='_compute_il_spread_amounts', store=True)
     il_planned_amount = fields.Monetary(
         string='סכום מתוכנן', compute='_compute_il_spread_amounts', store=True)
     il_currency_rounding = fields.Float(
@@ -349,7 +349,52 @@ class AccountPayment(models.Model):
                 self.il_remaining_amount, 0.0) > 0
         )
 
+    def _il_sync_immediate_split_before_post(self):
+        """Repair an immediate draft's free remainder without editing allocations.
+
+        Older payments can have no split after cancellation/reset to draft.
+        Their immediate split is system managed, so confirmation must restore it
+        before checking completeness. Existing reconciled or pending allocations
+        are never resized or deleted by this repair.
+        """
+        Split = self.env['account.payment.split.line'].with_context(
+            il_system_split_create=True,
+            il_system_split_unlink=True,
+            il_sync_from_payment=True,
+            il_skip_spread_total_check=True,
+        )
+        for payment in self.filtered(
+                lambda item: item.state == 'draft'
+                and item.il_spread_type == 'none'
+                and item._il_uses_employee_payment_accounting()):
+            lines = payment.il_split_line_ids.sorted(
+                lambda line: (line.sequence, line.id))
+            currency = payment.currency_id
+            if not currency.compare_amounts(
+                    sum(lines.mapped('amount')), payment.amount):
+                continue
+            protected = lines.filtered(
+                lambda line: line.reconcile_id
+                or line.il_pending_payslip_move_line_id)
+            remaining = currency.round(
+                payment.amount - sum(protected.mapped('amount')))
+            if currency.compare_amounts(remaining, 0.0) < 0:
+                raise ValidationError(_(
+                    'סכום ההתאמות הקיימות גבוה מסכום התשלום. '
+                    'יש לתקן את ההתאמות לפני אישור התשלום.'))
+            free = lines - protected
+            if currency.is_zero(remaining):
+                Split.browse(free.ids).unlink()
+            elif free:
+                # Delete excess free rows first to avoid a transient total
+                # greater than the payment during the amount update.
+                Split.browse(free[1:].ids).unlink()
+                Split.browse(free[:1].ids).write({'amount': remaining})
+            else:
+                Split.create({'payment_id': payment.id, 'amount': remaining})
+
     def action_post(self):
+        self._il_sync_immediate_split_before_post()
         self._check_il_spread_complete()
         self._il_check_employee_payment_accounts()
         draft_employee_payments = self.filtered(

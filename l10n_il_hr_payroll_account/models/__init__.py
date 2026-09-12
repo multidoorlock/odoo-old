@@ -15,4 +15,12 @@ from . import hr_payroll_structure
 from . import hr_rule_parameter
 from . import hr_payslip_run
 from . import payment_cycle
+from . import payroll_batch_payment_selection
 from . import res_partner_bank
+from . import payroll_reconciliation_actions
+from . import payroll_payment_views
+from . import payroll_payment_candidates
+from . import hr_employee
+from . import hr_employee_view
+from . import employee_accounting_navigation
+from . import hr_hebrew_translations

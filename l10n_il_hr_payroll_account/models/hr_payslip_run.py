@@ -1,5 +1,4 @@
-from odoo import models
-from odoo.exceptions import UserError
+from odoo import fields, models
 
 
 class HrPayslipRun(models.Model):
@@ -11,37 +10,13 @@ class HrPayslipRun(models.Model):
         return result
 
     def action_il_pay(self):
-        Payment = self.env['account.payment']
-        created = Payment
-        for run in self:
-            for slip in run.slip_ids.filtered(lambda item: item.state == 'validated'):
-                remaining = slip.il_net_amount_to_pay
-                currency = slip.currency_id or slip.company_id.currency_id
-                if currency.compare_amounts(remaining, 0.0) <= 0:
-                    continue
-                partner = slip.employee_id.work_contact_id
-                if not partner:
-                    raise UserError('לעובד אין איש קשר מקושר ולכן לא ניתן ליצור תשלום.')
-                journal = self.env['account.journal'].search([
-                    ('company_id', '=', slip.company_id.id),
-                    ('type', 'in', ('bank', 'cash')),
-                ], limit=1)
-                if not journal:
-                    raise UserError('לא נמצא יומן בנק או מזומן ליצירת תשלומי השכר.')
-                created |= Payment.with_context(
-                    il_employee_payment=True,
-                ).create({
-                    'partner_id': partner.id,
-                    'company_id': slip.company_id.id,
-                    'payment_type': 'outbound',
-                    'partner_type': 'supplier',
-                    'journal_id': journal.id,
-                    'date': slip.date_to,
-                    'amount': remaining,
-                })
-        if not created:
-            raise UserError('אין יתרת נטו לתשלום באף תלוש מאושר במחזור זה.')
-        action = self.env['ir.actions.actions']._for_xml_id(
-            'l10n_il_hr_payroll_account.il_action_employee_payments')
-        action['domain'] = [('id', 'in', created.ids)]
-        return action
+        self.ensure_one()
+        return self.env['il.payslip.run.payment.wizard']._action_open(self)
+
+
+class AccountBatchPayment(models.Model):
+    _inherit = 'account.batch.payment'
+
+    il_payslip_run_id = fields.Many2one(
+        'hr.payslip.run', string='אצוות תלושים', readonly=True,
+        copy=False, index=True, ondelete='set null', check_company=True)

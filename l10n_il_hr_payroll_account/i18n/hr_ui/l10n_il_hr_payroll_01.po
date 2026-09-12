@@ -1,0 +1,20 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: l10n_il_hr_payroll
+#: model:ir.model.fields,help:l10n_il_hr_payroll.field_hr_employee__hourly_wage
+#: model:ir.model.fields,help:l10n_il_hr_payroll.field_hr_employee__mdl_hourly_wage
+#: model:ir.model.fields,help:l10n_il_hr_payroll.field_hr_version__hourly_wage
+msgid "Employee's hourly gross wage."
+msgstr "שכר ברוטו לשעה של העובד."
+
+#. module: l10n_il_hr_payroll
+#: model:ir.model.fields,help:l10n_il_hr_payroll.field_hr_employee__mdl_monthly_wage
+msgid "Employee's monthly gross wage."
+msgstr "השכר החודשי של העובד."

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_il_payslip_run_payment_wizard_form" model="ir.ui.view">
+        <field name="name">il.payslip.run.payment.wizard.form</field>
+        <field name="model">il.payslip.run.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="וידוא סופי — סגירת שכר" create="0" delete="0">
+                <field name="currency_id" invisible="1"/>
+                <field name="available_payment_method_line_ids" invisible="1"/>
+                <field name="batch_id" invisible="1"/>
+                <div class="alert alert-info" role="status">
+                    בדוק את יתרות השכר ואת הבנק לפני האישור.
+                    האישור ייצור תשלומים בביצוע ואצווה חדשה. אישור העברת הכסף מתבצע בנפרד.
+                </div>
+                <group>
+                    <group>
+                        <field name="run_id" options="{'no_open': True}"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="name" readonly="batch_id"/>
+                        <field name="memo" readonly="batch_id"/>
+                    </group>
+                    <group>
+                        <field name="journal_id" readonly="batch_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="payment_method_line_id" readonly="batch_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="date" readonly="batch_id"/>
+                    </group>
+                </group>
+                <field name="line_ids" readonly="1" nolabel="1">
+                    <list create="0" edit="0" delete="0" limit="200">
+                        <field name="currency_id" column_invisible="True"/>
+                        <field name="employee_id"/>
+                        <field name="payslip_id"/>
+                        <field name="net_wage" sum="סה״כ שכר נטו"/>
+                        <field name="amount" sum="סה״כ לתשלום"/>
+                    </list>
+                </field>
+                <group class="oe_subtotal_footer">
+                    <field name="payslip_count"/>
+                    <field name="total_amount"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" string="יצירת אצווה ואישור תשלומים" type="object" class="btn-primary" invisible="batch_id"/>
+                    <button name="action_confirm" string="פתיחת תשלום האצווה" type="object" class="btn-primary" invisible="not batch_id"/>
+                    <button string="ביטול" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

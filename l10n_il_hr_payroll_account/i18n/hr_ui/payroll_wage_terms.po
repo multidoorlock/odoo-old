@@ -1,0 +1,107 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. module: l10n_il_hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:l10n_il_hr_payroll_account.view_hr_payslip_form
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_payslip_input__il_effect_type__gross
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_salary_attachment__il_effect_type__gross
+#: model:hr.salary.rule,name:l10n_il_hr_payroll_account.hr_salary_rule_il_gross
+msgid "ברוטו"
+msgstr "שכר ברוטו"
+
+#. module: l10n_il_hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:l10n_il_hr_payroll_account.view_hr_payslip_form
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_payslip_input__il_effect_type__net
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_salary_attachment__il_effect_type__net
+#: model:hr.salary.rule,name:l10n_il_hr_payroll_account.hr_salary_rule_il_net
+msgid "נטו"
+msgstr "שכר נטו"
+
+#. module: l10n_il_hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:l10n_il_hr_payroll_account.view_hr_payslip_form
+#: model:hr.salary.rule,name:l10n_il_hr_payroll_account.hr_salary_rule_il_net_to_pay
+msgid "נטו לתשלום"
+msgstr "שכר נטו לתשלום"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_payslip__il_net_amount_to_pay
+msgid "יתרת נטו לתשלום"
+msgstr "יתרת שכר נטו לתשלום"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_payslip_input__il_net_adjustment_treatment__gross_up
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_salary_attachment__il_net_adjustment_treatment__gross_up
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_payslip_input_type__il_net_adjustment_treatment__gross_up
+msgid "גילום נטו"
+msgstr "גילום שכר נטו"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_payslip_input__il_net_adjustment_treatment__direct_net
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_salary_attachment__il_net_adjustment_treatment__direct_net
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll_account.selection__hr_payslip_input_type__il_net_adjustment_treatment__direct_net
+msgid "השפעה ישירה על הנטו"
+msgstr "השפעה ישירה על שכר הנטו"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_payslip_input__il_net_adjustment_treatment
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_salary_attachment__il_net_adjustment_treatment
+msgid "אופן הטיפול בנטו"
+msgstr "אופן הטיפול בשכר נטו"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_payslip_input_type__il_net_adjustment_treatment
+msgid "אופן הטיפול בהתאמת נטו"
+msgstr "אופן הטיפול בהתאמת שכר נטו"
+
+#. module: l10n_il_hr_payroll_account
+#: model:hr.salary.rule,name:l10n_il_hr_payroll_account.hr_salary_rule_il_adjustment_gross
+msgid "התאמות שכר — ברוטו"
+msgstr "התאמות שכר ברוטו"
+
+#. module: l10n_il_hr_payroll_account
+#: model:hr.salary.rule,name:l10n_il_hr_payroll_account.hr_salary_rule_il_adjustment_net_grossup
+msgid "התאמות שכר — נטו"
+msgstr "התאמות שכר נטו"
+
+#. module: l10n_il_hr_payroll
+#: model:ir.model.fields,help:l10n_il_hr_payroll.field_hr_employee__mdl_wage_rate_type
+#: model:ir.model.fields,help:l10n_il_hr_payroll.field_hr_version__mdl_wage_rate_type
+msgid "קובע אם התעריפים המוזנים הם ברוטו או יעד נטו לגילום בתלוש."
+msgstr "קובע אם השכר המוזן הוא שכר ברוטו או יעד שכר נטו לגילום בתלוש."
+
+#. module: l10n_il_hr_payroll
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll.selection__hr_version__mdl_wage_rate_type__gross
+msgid "ברוטו"
+msgstr "שכר ברוטו"
+
+#. module: l10n_il_hr_payroll
+#: model:ir.model.fields.selection,name:l10n_il_hr_payroll.selection__hr_version__mdl_wage_rate_type__net
+msgid "נטו"
+msgstr "שכר נטו"
+
+#. module: hr_payroll
+#: model:ir.model.fields,field_description:hr_payroll.field_hr_payslip__gross_wage
+msgid "Gross Wage"
+msgstr "שכר ברוטו"
+
+#. module: hr_payroll
+#: model:ir.model.fields,field_description:hr_payroll.field_hr_payslip__net_wage
+msgid "Net Wage"
+msgstr "שכר נטו"
+
+#. module: hr_payroll
+#: model:hr.salary.rule.category,name:hr_payroll.NET
+msgid "Net"
+msgstr "שכר נטו"
+
+#. module: hr_payroll
+#: model:hr.salary.rule,name:hr_payroll.default_net_salary
+#: model:hr.salary.rule,name:hr_payroll.hr_payroll_structure_002_net_salary
+#: model:hr.salary.rule,name:hr_payroll.hr_payroll_structure_worker_001_net_salary
+msgid "Net Salary"
+msgstr "שכר נטו"

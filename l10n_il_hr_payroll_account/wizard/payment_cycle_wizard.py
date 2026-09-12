@@ -16,7 +16,7 @@ class IlPaymentCycleWizard(models.TransientModel):
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company)
     cycle_type_ids = fields.Many2many(
-        'il.payment.cycle.type', string='סוגי מחזורי תשלומים', required=True)
+        'il.payment.cycle.type', string='סוגי מחזורי תשלומי אצווה', required=True)
     batch_type = fields.Selection(
         [('outbound', 'יוצא')], string='כיוון', default='outbound',
         required=True, readonly=True)
@@ -57,7 +57,7 @@ class IlPaymentCycleWizard(models.TransientModel):
 
         cycle_types = self.cycle_type_ids.sorted('name')
         if not cycle_types:
-            raise UserError(_('יש לבחור לפחות סוג מחזור תשלום אחד.'))
+            raise UserError(_('יש לבחור לפחות סוג מחזור תשלומי אצווה אחד.'))
         configs = self.env['hr.employee.payment.cycle.type.line'].search([
             ('cycle_type_id', 'in', cycle_types.ids),
             ('employee_id.active', '=', True),
@@ -65,7 +65,7 @@ class IlPaymentCycleWizard(models.TransientModel):
         ])
         if not configs:
             raise UserError(_(
-                'לא נמצאו עובדים שמוגדר להם אחד מסוגי מחזורי התשלום שנבחרו.'
+                'לא נמצאו עובדים שמוגדר להם אחד מסוגי מחזורי תשלומי האצווה שנבחרו.'
             ))
         values = {
             'step': 'selection',
@@ -133,7 +133,7 @@ class IlPaymentCycleWizard(models.TransientModel):
             'l10n_il_hr_payroll_account.view_il_payment_cycle_wizard_form')
         return {
             'type': 'ir.actions.act_window',
-            'name': 'יצירת מחזור תשלומים',
+            'name': 'יצירת תשלום אצווה',
             'res_model': self._name,
             'res_id': self.id,
             'view_mode': 'form',
@@ -223,7 +223,7 @@ class IlPaymentCycleWizard(models.TransientModel):
             payments_by_state['canceled'].action_cancel()
         return {
             'type': 'ir.actions.act_window',
-            'name': 'מחזור תשלומים',
+            'name': 'תשלום אצווה',
             'res_model': 'account.batch.payment',
             'res_id': batch.id,
             'view_mode': 'form',
@@ -242,7 +242,7 @@ class IlPaymentCycleWizardLine(models.TransientModel):
     employee_id = fields.Many2one(
         'hr.employee', string='עובד', required=True, readonly=True)
     cycle_type_id = fields.Many2one(
-        'il.payment.cycle.type', string='סוג', required=True, readonly=True)
+        'il.payment.cycle.type', string='סוג מחזור תשלומי אצווה', required=True, readonly=True)
     employee_partner_id = fields.Many2one(
         'res.partner', related='employee_id.work_contact_id', readonly=True)
     currency_id = fields.Many2one(
@@ -267,4 +267,4 @@ class IlPaymentCycleWizardEmployeeLine(models.TransientModel):
         'hr.employee', string='עובד', required=True, readonly=True)
     cycle_type_ids = fields.Many2many(
         'il.payment.cycle.type', 'il_cycle_wizard_employee_type_rel',
-        'line_id', 'cycle_type_id', string='סוגים', readonly=True)
+        'line_id', 'cycle_type_id', string='סוגי מחזורי תשלומי אצווה', readonly=True)

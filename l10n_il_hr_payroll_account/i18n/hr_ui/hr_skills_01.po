@@ -1,0 +1,205 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.resume_line_view_form
+msgid "<i class=\"fa fa-long-arrow-right mx-2\" aria-label=\"Arrow icon\" title=\"Arrow\"/>"
+msgstr "<i class=\"fa fa-long-arrow-right mx-2\" aria-label=\"סמל חץ\" title=\"חץ\"/>"
+
+#. module: hr_skills
+#: model:ir.model.fields,field_description:hr_skills.field_hr_employee_cv_wizard__can_show_others
+msgid "Can Show Others"
+msgstr "יכול להציג אחרים"
+
+#. module: hr_skills
+#: model:ir.model.fields,field_description:hr_skills.field_hr_employee_cv_wizard__can_show_skills
+msgid "Can Show Skills"
+msgstr "יכול להציג מיומנויות"
+
+#. module: hr_skills
+#: model:ir.model.fields,field_description:hr_skills.field_hr_resume_line__certificate_filename
+msgid "Certificate Filename"
+msgstr "שם קובץ התעודה"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_employee_certification_report_view_list
+msgid "Certification Level"
+msgstr "רמת הסמכה"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_employee_certification_report_view_list
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_employee_certification_report_view_search
+msgid "Certification Type"
+msgstr "סוג הסמכה"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_resume_line_type_tree_view
+msgid "Course?"
+msgstr "קורס?"
+
+#. module: hr_skills
+#: model:ir.model.fields,field_description:hr_skills.field_hr_employee__current_employee_skill_ids
+#: model:ir.model.fields,field_description:hr_skills.field_hr_employee_public__current_employee_skill_ids
+msgid "Current Employee Skill"
+msgstr "מיומנות נוכחית של העובד"
+
+#. module: hr_skills
+#: model:ir.model.fields,field_description:hr_skills.field_hr_job__current_job_skill_ids
+msgid "Current Job Skill"
+msgstr "מיומנות נוכחית של התפקיד"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.report_employee_cv_company
+msgid "Demo Address"
+msgstr "כתובת לדוגמה"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.report_employee_cv_company
+msgid "Demo Company Name"
+msgstr "שם חברה לדוגמה"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_employee_certification_report_view_search
+msgid "Expired Certification"
+msgstr "הסמכה שפג תוקפה"
+
+#. module: hr_skills
+#: model:ir.model.fields,field_description:hr_skills.field_hr_resume_line__external_url
+msgid "External URL"
+msgstr "כתובת חיצונית"
+
+#. module: hr_skills
+#: model:ir.model.fields,help:hr_skills.field_hr_skill_level__default_level
+msgid "If checked, this level will be the default one selected when choosing this skill."
+msgstr "אם מסומן, רמה זו תיבחר כברירת מחדל בעת בחירת מיומנות זו."
+
+#. module: hr_skills
+#: model:ir.ui.menu,name:hr_skills.hr_skill_learning_menu
+msgid "Learning"
+msgstr "למידה"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.report_employee_cv_sidepanel
+msgid "Marc Demo"
+msgstr "מארק דמו"
+
+#. module: hr_skills
+#: model:ir.actions.act_window,name:hr_skills.action_hr_employee_cv_wizard
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_employee_cv_wizard_view_form
+msgid "Print Resume"
+msgstr "הדפסת קורות חיים"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.view_resume_lines_filter
+msgid "Resume Lines"
+msgstr "שורות קורות חיים"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_resume_line_list_view
+msgid "Resume Section"
+msgstr "סעיף בקורות החיים"
+
+#. module: hr_skills
+#: model:ir.actions.act_window,name:hr_skills.hr_resume_type_action
+msgid "Resume Sections"
+msgstr "סעיפים בקורות החיים"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_skill_view_search
+msgid "Search Skill"
+msgstr "חיפוש כישור"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_skill_type_view_search
+msgid "Search Skill Type"
+msgstr "חיפוש סוג כישור"
+
+#. module: hr_skills
+#: model:ir.actions.act_window,name:hr_skills.action_hr_employee_skill_log_department
+msgid "Skill History Report"
+msgstr "דוח היסטוריית כישורים"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_department_view_kanban
+msgid "Skills History"
+msgstr "היסטוריית כישורים"
+
+#. module: hr_skills
+#: model:ir.actions.act_window,name:hr_skills.hr_employee_skill_report_action
+#: model:ir.ui.menu,name:hr_skills.hr_employee_skill_inventory_report_menu
+msgid "Skills Inventory"
+msgstr "מאגר כישורים"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.report_employee_cv_main_panel
+#: model_terms:ir.ui.view,arch_db:hr_skills.report_employee_cv_sidepanel
+msgid "Software Developer"
+msgstr "מפתח תוכנה"
+
+#. module: hr_skills
+#: model:ir.model.fields,field_description:hr_skills.field_hr_skill_level__technical_is_new_default
+msgid "Technical Is New Default"
+msgstr "ברירת מחדל חדשה (טכני)"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.employee_skill_view_form
+msgid "The end date must be after the start date."
+msgstr "תאריך הסיום חייב להיות מאוחר מתאריך ההתחלה."
+
+#. module: hr_skills
+#: model:ir.actions.act_window,name:hr_skills.hr_resume_lines_training_action
+#: model:ir.ui.menu,name:hr_skills.menu_learnings_training_attendances
+msgid "Training Attendances"
+msgstr "נוכחות בהדרכות"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_resume_line_list_view
+msgid "Training Title"
+msgstr "שם ההדרכה"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_employee_skill_view_search
+msgid "Valid certification"
+msgstr "הסמכה בתוקף"
+
+#. module: hr_skills
+#: model:ir.model.fields,field_description:hr_skills.field_hr_employee_skill__valid_from
+msgid "Validity Start"
+msgstr "תחילת תוקף"
+
+#. module: hr_skills
+#: model:ir.model.fields,field_description:hr_skills.field_hr_employee_skill__valid_to
+msgid "Validity Stop"
+msgstr "סיום תוקף"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.hr_employee_skill_type_view_form
+msgid "e.g. Languages"
+msgstr "לדוגמה: שפות"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.resume_line_view_form
+msgid "e.g. Odoo Inc."
+msgstr "לדוגמה: חברת Odoo"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.resume_line_view_form
+msgid "e.g. https://duolingo.com/course/xyz"
+msgstr "לדוגמה: https://duolingo.com/course/xyz"
+
+#. module: hr_skills
+#: model:ir.model.fields,help:hr_skills.field_hr_employee_skill__is_certification
+#: model:ir.model.fields,help:hr_skills.field_hr_skill_type__is_certification
+msgid "if checked the skill type become a certification type"
+msgstr "אם מסומן, סוג המיומנות הופך לסוג הסמכה"
+
+#. module: hr_skills
+#: model_terms:ir.ui.view,arch_db:hr_skills.employee_skill_view_form
+msgid "indefinite"
+msgstr "ללא הגבלת זמן"

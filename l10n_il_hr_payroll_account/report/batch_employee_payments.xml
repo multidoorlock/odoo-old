@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The native layout evaluates its English fallback as an expression,
+         bypassing translation of the fallback text. Keep that behavior for
+         other reports; use translated text only in this employee batch report. -->
+    <template id="report_batch_employee_tax_label">
+        <t t-if="company.country_id.vat_label" t-out="company.country_id.vat_label"/>
+        <t t-else="">Tax ID</t>
+    </template>
+
+    <template id="report_batch_employee_external_layout"
+              inherit_id="web.external_layout_standard">
+        <xpath expr="//t[@t-if='company.vat']/t[@t-esc=&quot;company.country_id.vat_label or 'Tax ID'&quot;]" position="replace">
+            <t t-if="il_batch_employee_report and o and o._name == 'account.batch.payment'"
+               t-call="l10n_il_hr_payroll_account.report_batch_employee_tax_label"/>
+            <t t-else="" t-esc="company.country_id.vat_label or 'Tax ID'">Tax ID</t>
+        </xpath>
+        <xpath expr="//li[@t-else='']/t[@t-esc=&quot;company.country_id.vat_label or 'Tax ID'&quot;]" position="replace">
+            <t t-if="il_batch_employee_report and o and o._name == 'account.batch.payment'"
+               t-call="l10n_il_hr_payroll_account.report_batch_employee_tax_label"/>
+            <t t-else="" t-esc="company.country_id.vat_label or 'Tax ID'">Tax ID</t>
+        </xpath>
+    </template>
+
+    <record id="action_report_batch_employee_payments" model="ir.actions.report">
+        <field name="name">סיכום תשלומים לעובדים לפי אצווה</field>
+        <field name="model">account.batch.payment</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">l10n_il_hr_payroll_account.report_batch_employee_payments</field>
+        <field name="report_file">l10n_il_hr_payroll_account.report_batch_employee_payments</field>
+        <field name="binding_model_id" ref="account_batch_payment.model_account_batch_payment"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Employee Payments - %s' % (object.name or '')</field>
+    </record>
+
+    <template id="report_batch_employee_payments">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <t t-set="il_batch_employee_report" t-value="True"/>
+                    <t t-set="report_data" t-value="o._il_employee_payment_report_data()"/>
+                    <div class="page" dir="rtl">
+                        <style>
+                            .il_batch_employee_summary {
+                                width: 100%; border-collapse: collapse;
+                                table-layout: fixed; font-size: 15px; line-height: 1.1;
+                            }
+                            .il_batch_employee_summary th, .il_batch_employee_summary td {
+                                padding: 3px 6px !important; vertical-align: middle;
+                            }
+                            .il_batch_employee_summary tr { page-break-inside: avoid; }
+                            .il_batch_employee_summary .il_ltr {
+                                direction: ltr; unicode-bidi: embed;
+                                display: inline-block; white-space: nowrap;
+                            }
+                        </style>
+                        <h3 style="margin-bottom: 4px;">סיכום תשלומים לעובדים — <span t-field="o.name"/></h3>
+                        <p style="margin-bottom: 8px; font-size: 12px;">
+                            <strong>תאריך אצווה: </strong><span t-field="o.date" dir="ltr" style="display: inline-block;"/>
+                            <span style="display: inline-block; margin-right: 16px;">
+                                <strong>Employee count: </strong><span class="il_employee_count" t-out="len(o.payment_ids.il_employee_id)"/>
+                            </span>
+                        </p>
+                        <table class="table table-sm il_batch_employee_summary" cellpadding="2">
+                            <colgroup><col style="width: 75%;"/><col style="width: 25%;"/></colgroup>
+                            <thead style="display: table-header-group;">
+                                <tr><th>עובד</th><th class="text-end">סה״כ תשלומים</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="report_data['employees']" t-as="employee">
+                                    <td><span t-out="employee['name']"/></td>
+                                    <td class="text-end">
+                                        <div t-foreach="employee['amounts']" t-as="amount">
+                                            <span t-out="amount['amount']" class="il_ltr" dir="ltr"
+                                                  t-options="{'widget': 'monetary', 'display_currency': amount['currency']}"/>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot style="display: table-row-group;">
+                                <tr class="fw-bold">
+                                    <td>סה״כ</td>
+                                    <td class="text-end">
+                                        <div t-foreach="report_data['totals']" t-as="total">
+                                            <span t-out="total['amount']" class="il_ltr" dir="ltr"
+                                                  t-options="{'widget': 'monetary', 'display_currency': total['currency']}"/>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

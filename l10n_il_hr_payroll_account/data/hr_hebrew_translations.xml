@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Refresh only missing Hebrew translations after all HR views load. -->
+    <function model="ir.module.module" name="_il_import_hr_hebrew_ui_translations"/>
+</odoo>
