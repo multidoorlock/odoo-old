@@ -67,7 +67,6 @@ msgstr "החברה הקשורה ליומן זה"
 
 #. module: l10n_il_hr_payroll_account
 #: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_payment_split_line__currency_id
-#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_employee__il_payroll_currency_id
 #: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_employee_payment_cycle_type_line__currency_id
 #: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_masav_export_wizard_line__currency_id
 #: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard_line__currency_id
@@ -235,3 +234,13 @@ msgstr "מטבע התשלום."
 #: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard_line__employee_partner_id
 msgid "Work Contact"
 msgstr "איש קשר לעבודה"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_payment__il_payslip_candidate_amount
+msgid "Amount to Link"
+msgstr "סכום לקישור"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_employee__il_payroll_currency_id
+msgid "Payroll Balance Currency"
+msgstr "מטבע יתרת שכר"

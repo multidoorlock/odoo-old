@@ -10,7 +10,8 @@ class HrEmployee(models.Model):
         string='תשלומים', compute='_compute_il_payment_count',
         groups='hr_payroll.group_hr_payroll_user')
     il_payroll_currency_id = fields.Many2one(
-        'res.currency', related='company_id.currency_id', readonly=True)
+        'res.currency', string='Payroll Balance Currency',
+        related='company_id.currency_id', readonly=True)
     il_payroll_balance = fields.Monetary(
         string='יתרה לפירעון', currency_field='il_payroll_currency_id',
         compute='_compute_il_payroll_balance',
