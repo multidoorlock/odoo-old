@@ -1,7 +1,7 @@
 # Part of l10n_il_hr_payroll. Israeli payroll configuration layer on top of standard Odoo.
 {
     'name': 'Israel - Payroll',
-    'version': '1.0.19',
+    'version': '1.0.20',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
     'summary': 'שכבת הגדרה נוחה מעל מנגנוני השכר, הנוכחות ורשומות העבודה הסטנדרטיים של Odoo',
@@ -23,7 +23,6 @@
         'views/resource_calendar_views.xml',
         'views/res_config_settings_views.xml',
         'views/hr_work_entry_views.xml',
-        'views/hr_attendance_overtime_rule_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

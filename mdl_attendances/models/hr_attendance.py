@@ -5,6 +5,7 @@ import pytz
 from dateutil.rrule import rrule, DAILY
 
 from odoo import api, fields, models, _
+from odoo.fields import Domain
 from odoo.exceptions import ValidationError
 from odoo.tools.intervals import Intervals
 
@@ -18,6 +19,56 @@ class HrAttendance(models.Model):
         string="Presence Hours", compute="_compute_presence_hours", store=True, readonly=True)
     timeline_start_label = fields.Char(compute="_compute_timeline_labels")
     timeline_stop_label = fields.Char(compute="_compute_timeline_labels")
+
+    def _mdl_whole_shift_attendance_domain(self, attendance_domain):
+        """Include every source punch when an overnight workday is affected."""
+        domains = [attendance_domain]
+        seen = set()
+        for attendance in (self.exists() | self.search(attendance_domain)).filtered('check_out'):
+            start = attendance._get_localized_times()[0]
+            version = attendance.employee_id.sudo()._get_version(start)
+            if not any(rule.base_off == 'quantity' and rule.quantity_period == 'shift'
+                       for rule in version.ruleset_id.rule_ids):
+                continue
+            key = (attendance.employee_id.id, start.date())
+            if key in seen:
+                continue
+            seen.add(key)
+            tz = pytz.timezone(version._get_tz())
+            lower = tz.localize(datetime.combine(start.date(), time.min)).astimezone(pytz.utc).replace(tzinfo=None)
+            upper = tz.localize(datetime.combine(start.date() + timedelta(days=1), time.min)).astimezone(pytz.utc).replace(tzinfo=None)
+            domains.append(Domain.AND([
+                Domain('employee_id', '=', attendance.employee_id.id),
+                Domain('check_in', '>=', lower), Domain('check_in', '<', upper),
+            ]))
+        return Domain.OR(domains)
+
+    def _update_overtime(self, attendance_domain=None):
+        domain = attendance_domain or self._get_overtimes_to_update_domain()
+        domain = self._mdl_whole_shift_attendance_domain(domain)
+        line_model = self.env['hr.attendance.overtime.line']
+        overtime_domain = self._get_overtime_domain_from_attendance_domain(domain)
+        previous = line_model.search(overtime_domain)
+        restore_default = set()
+        for key, lines in previous.grouped(lambda line: (line.employee_id.id, line.date)).items():
+            if (lines.company_id.attendance_overtime_validation != 'by_manager'
+                    and any(line.mdl_auto_approval_hours > 0 for line in lines)
+                    and all(line.status == 'approved' and not line._mdl_has_manual_duration_override()
+                            for line in lines)):
+                restore_default.add(key)
+        result = super()._update_overtime(attendance_domain=domain)
+        if restore_default:
+            # Native regeneration sees rounded manual_duration != raw duration
+            # as a human edit. Restore only the automatic company's default;
+            # manager decisions and genuine manual changes keep native behavior.
+            line_model.search(overtime_domain).filtered(
+                lambda line: (line.employee_id.id, line.date) in restore_default
+                and line.company_id.attendance_overtime_validation != 'by_manager'
+                and line.mdl_auto_approval_hours > 0
+                and any(line.rule_ids.mapped('mdl_shift_rounding_threshold_minutes'))
+                and not line._mdl_has_manual_duration_override()
+            ).write({'status': 'approved'})
+        return result
 
     @api.depends("check_in", "check_out")
     def _compute_presence_hours(self):
