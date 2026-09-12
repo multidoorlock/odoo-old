@@ -196,6 +196,22 @@ class TestHRNavigationUIUX(TransactionCase):
         self.assertFalse([button for button in visible if button.xpath("./field[@name='equipment_count']")])
         self.assertEqual(names.count('action_open_last_month_attendances'), 1)
         self.assertEqual(names[-1], 'action_open_last_month_attendances')
+        # Native Work Entries is intentionally hidden before any entry exists.
+        # Prove both states with a real fixture instead of changing its rule.
+        self.assertFalse(record_values['has_work_entries'])
+        self.assertNotIn('action_open_work_entries', names)
+        self.env['hr.work.entry'].create({
+            'name': 'UI-NAV-WORK-ENTRY', 'employee_id': employee.id,
+            'version_id': employee.version_id.id, 'date': date(2026, 9, 1),
+            'duration': 8,
+            'work_entry_type_id': self.env.ref('hr_work_entry.work_entry_type_attendance').id,
+        })
+        self.env.flush_all()
+        employee.invalidate_recordset(['has_work_entries'])
+        record_values['has_work_entries'] = employee.web_read({'has_work_entries': {}})[0]['has_work_entries']
+        self.assertTrue(record_values['has_work_entries'])
+        names = [button.get('name') for button in buttons
+                 if not safe_eval(button.get('invisible', 'False'), record_values)]
         self.assertLess(names.index('action_open_work_entries'), names.index('action_open_last_month_attendances'))
 
         action = employee.action_il_open_payroll_ledger()
