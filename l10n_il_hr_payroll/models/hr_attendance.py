@@ -15,6 +15,10 @@ class HrAttendance(models.Model):
             if attendance_domain:
                 affected |= self.search(attendance_domain).filtered('check_out')
             affected._mdl_remove_additional_day_overtimes()
+            if hasattr(affected, '_mdl_sync_shift_overtime_marks'):
+                # Additional-day classification runs after native overtime.
+                # Refresh only its visual tail, retaining the source partition.
+                affected._mdl_sync_shift_overtime_marks()
         return result
 
     def _mdl_remove_additional_day_overtimes(self):

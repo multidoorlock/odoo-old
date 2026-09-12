@@ -84,7 +84,61 @@ class HrAttendance(models.Model):
                 and any(line.rule_ids.mapped('mdl_shift_rounding_threshold_minutes'))
                 and not line._mdl_has_manual_duration_override()
             ).write({'status': 'approved'})
+        (self.exists() | self.search(domain))._mdl_sync_shift_overtime_marks()
         return result
+
+    def _mdl_sync_shift_overtime_marks(self):
+        """Refresh only the visual overtime tail of existing effective work.
+
+        This callback runs after attendance overtime regeneration, never after
+        direct overtime-line repair. Keep every existing work/non-work boundary
+        and its manual/source metadata; only introduce an overtime split when
+        the new tail starts inside a work segment.
+        """
+        Segment = self.env['hr.attendance.segment'].with_context(
+            segment_generation=True, segment_boundary_sync=True)
+        for attendance in self.filtered('check_out'):
+            version = attendance.employee_id.sudo()._get_version(attendance._get_localized_times()[0])
+            if not any(rule.base_off == 'quantity' and rule.quantity_period == 'shift'
+                       for rule in version.ruleset_id.rule_ids):
+                continue
+            segments = attendance.segment_ids.sorted('time_start')
+            if (not segments or segments[0].time_start != attendance.check_in
+                    or segments[-1].time_stop != attendance.check_out):
+                # During a native attendance boundary write, the segmentation
+                # layer has not yet rebuilt its partition. Its next callback
+                # will reach this method with the new complete partition.
+                continue
+            intervals = [{
+                'start': segment.time_start, 'stop': segment.time_stop,
+                'is_work': segment.is_work, 'is_overtime': False,
+                'rule_id': segment.rule_id.id, 'name': segment.name,
+                'source_segment': segment,
+            } for segment in segments]
+            raw_hours = sum(attendance._linked_overtimes().mapped('duration'))
+            desired = attendance._apply_native_overtime(intervals, max(raw_hours, 0.0))
+            by_source = defaultdict(list)
+            for item in desired:
+                by_source[item['source_segment']].append(item)
+            for source, items in by_source.items():
+                original_name = source.name
+                for index, item in enumerate(items):
+                    values = {
+                        'time_start': item['start'], 'time_stop': item['stop'],
+                        'is_overtime': bool(item.get('is_overtime')),
+                    }
+                    if index:
+                        Segment.create({
+                            **values, 'attendance_id': attendance.id,
+                            'is_work': source.is_work, 'rule_id': source.rule_id.id,
+                            'manual_override': source.manual_override,
+                            'name': original_name,
+                        })
+                    else:
+                        changes = {name: value for name, value in values.items() if source[name] != value}
+                        if changes:
+                            source.with_context(segment_generation=True, segment_boundary_sync=True).write(changes)
+            attendance._validate_segment_coverage()
 
     @api.depends("check_in", "check_out")
     def _compute_presence_hours(self):

@@ -105,6 +105,38 @@ class TestOvertimeShiftQuantity(TransactionCase):
                 marked = attendances.segment_ids.filtered(lambda segment: segment.is_work and segment.is_overtime)
                 self.assertAlmostEqual(sum(marked.mapped('duration')), overtime, places=4)
 
+    def test_overtime_refresh_preserves_manual_non_work_boundaries(self):
+        attendance = self._attendances([(6, 18)], [(9, 10)])
+        non_work = attendance.segment_ids.filtered(lambda segment: not segment.is_work)
+        following = attendance.segment_ids.filtered(lambda segment: segment.time_start == non_work.time_stop)
+        self.assertEqual(len(non_work), 1)
+        self.assertEqual(len(following), 1)
+        # Simulate an existing accepted manual source definition: extend the
+        # break to 10:30, keeping a complete partition. Regeneration of rules
+        # would incorrectly replace this with the configured 09:00-10:00.
+        boundary = self._utc(self.day, 10.5)
+        non_work.with_context(segment_boundary_sync=True).write({
+            'time_stop': boundary, 'manual_override': True,
+        })
+        following.with_context(segment_boundary_sync=True).write({
+            'time_start': boundary, 'manual_override': True,
+        })
+        protected = non_work.read(['id', 'time_start', 'time_stop', 'is_work', 'rule_id', 'manual_override'])
+        attendance._segments_changed()
+        self._assert_hours(attendance, 10.5, 1.5)
+        self.assertEqual(non_work.read(list(protected[0])), protected)
+        marked = attendance.segment_ids.filtered('is_overtime')
+        self.assertAlmostEqual(sum(marked.mapped('duration')), 1.5)
+        self.assertTrue(all(marked.mapped('is_work')))
+        self.assertEqual(min(marked.mapped('time_start')), self._utc(self.day, 16.5))
+        snapshot = attendance.segment_ids.sorted('id').read([
+            'id', 'time_start', 'time_stop', 'is_work', 'is_overtime', 'rule_id', 'manual_override'])
+        attendance._update_overtime()
+        self.assertEqual(attendance.segment_ids.sorted('id').read(list(snapshot[0])), snapshot)
+        # The historical repair API remains decoupled from timeline mutations.
+        attendance.linked_overtime_ids.unlink()
+        self.assertEqual(attendance.segment_ids.sorted('id').read(list(snapshot[0])), snapshot)
+
     def test_multiple_attendances_share_one_workday(self):
         attendances = self._attendances([(6, 10), (11, 19)], [(7, 8)])
         self._assert_hours(attendances, 11, 2)
@@ -197,6 +229,10 @@ class TestOvertimeShiftQuantity(TransactionCase):
         day = date(2026, 7, 10)
         attendance = self._attendances([(7, 18)], day=day)
         self._assert_hours(attendance, 11, 0)
+        self.assertFalse(attendance.segment_ids.filtered('is_overtime'))
+        attendance._update_overtime()
+        self._assert_hours(attendance, 11, 0)
+        self.assertFalse(attendance.segment_ids.filtered('is_overtime'))
         values = attendance.employee_id.version_id._mdl_get_normalized_work_entry_vals(
             self._utc(day, 0), self._utc(day + timedelta(days=1), 0) - timedelta(microseconds=1))
         self.assertAlmostEqual(sum(value['duration'] for value in values
