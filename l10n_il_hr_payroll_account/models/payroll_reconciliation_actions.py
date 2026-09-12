@@ -182,7 +182,7 @@ class AccountPayment(models.Model):
         candidates = self.env['il.payroll.reconciliation.wizard']._eligible_payments(slip)
         return {
             'type': 'ir.actions.act_window', 'name': _('תשלומים זמינים לקישור לתלוש'),
-            'res_model': 'account.payment', 'view_mode': 'list', 'target': 'current',
+            'res_model': 'account.payment', 'view_mode': 'list', 'target': 'new',
             'views': [(self.env.ref(
                 'l10n_il_hr_payroll_account.view_account_payment_list_payslip_candidates'
             ).id, 'list')],
@@ -194,6 +194,7 @@ class AccountPayment(models.Model):
                 'il_employee_payment': True, 'il_payslip_id': slip.id,
                 'il_payslip_candidate_list': True, 'create': False,
                 'edit': False, 'delete': False,
+                'dialog_size': 'extra-large',
             },
             'help': _('<p class="o_view_nocontent_smiling_face">אין תשלומים זמינים לקישור</p>'
                       '<p>מוצגים תשלומים של העובד עם יתרה להכרה, שאינם מקושרים כבר לתלוש זה.</p>'),
@@ -213,24 +214,39 @@ class IrActionsActions(models.Model):
     _inherit = 'ir.actions.actions'
 
     @api.model
-    def get_bindings(self, model_name):
-        result = super().get_bindings(model_name)
-        if model_name != 'account.payment':
-            return result
-        payroll_actions = {
+    def _il_payslip_payment_action_ids(self):
+        return {
             record.id for xmlid in (
                 'l10n_il_hr_payroll_account.action_payslip_change_recognized_amount',
                 'l10n_il_hr_payroll_account.action_payslip_remove_payment_links',
             ) if (record := self.env.ref(xmlid, raise_if_not_found=False))
         }
-        linked = self.env.context.get('il_payslip_link_list') and self.env.context.get('il_payslip_id')
-        candidates = self.env.context.get('il_payslip_candidate_list') and self.env.context.get('il_payslip_id')
-        # get_bindings returns fresh dictionaries; never modify its cached
-        # _get_bindings data. Accounting entry points retain native actions.
+
+    @api.model
+    def _il_payslip_payment_bindings(self):
+        """Native security-filtered bindings for the dedicated payslip view.
+
+        This private helper deliberately calls the native implementation:
+        ordinary get_bindings excludes these view-specific actions, while
+        native group and model access checks still apply here.
+        """
+        payroll_ids = self._il_payslip_payment_action_ids()
+        native = super().get_bindings('account.payment')
+        return [action for action in native.get('action', [])
+                if action['id'] in payroll_ids]
+
+    @api.model
+    def get_bindings(self, model_name):
+        result = super().get_bindings(model_name)
+        if model_name != 'account.payment':
+            return result
+        payroll_actions = self._il_payslip_payment_action_ids()
+        # Native view_service strips payroll context before cached get_views.
+        # Keep global bindings independent of it; the dedicated view selects
+        # its toolbar by view identity in account.payment.get_views instead.
         result = dict(result)
         result['action'] = [action for action in result.get('action', [])
-                            if (action['id'] in payroll_actions if linked and not candidates
-                                else not candidates and action['id'] not in payroll_actions)]
+                            if action['id'] not in payroll_actions]
         return result
 
 

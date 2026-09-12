@@ -275,12 +275,12 @@ class TestPayslipPaymentList(TransactionCase):
             il_payslip_id=1, il_payslip_link_list=True).get_bindings('account.payment').get('action', [])}
         candidates = Actions.with_context(il_payslip_id=1, il_payslip_candidate_list=True).get_bindings(
             'account.payment').get('action', [])
-        self.assertEqual(linked, expected)
+        self.assertEqual(linked, general)
         self.assertFalse(general & expected)
-        self.assertFalse(candidates)
+        self.assertEqual({action['id'] for action in candidates}, general)
         linked_view = self.env.ref('l10n_il_hr_payroll_account.view_account_payment_list_payslip_links')
-        toolbar = self.env['account.payment'].with_context(
-            il_payslip_id=1, il_payslip_link_list=True).get_views(
+        # Match the actual web view service: payroll action context is stripped.
+        toolbar = self.env['account.payment'].with_context(lang='he_IL').get_views(
                 [(linked_view.id, 'list')], {'toolbar': True})['views']['list']['toolbar']
         self.assertEqual({action['id'] for action in toolbar.get('action', [])}, expected)
         candidate_arch = self.env.ref(
@@ -290,3 +290,43 @@ class TestPayslipPaymentList(TransactionCase):
         self.assertFalse(candidate_arch.xpath("./field[@name='il_payslip_linked_amount']"))
         for name in ('date', 'partner_id', 'memo', 'amount', 'il_recognition_available_amount'):
             self.assertTrue(candidate_arch.xpath("./field[@name='%s']" % name))
+
+    def test_payslip_payment_footers_total_only_unrecognized_balance(self):
+        payment = self._payment(3000.0)
+        linked_slip = self._payslip_with_posted_net(1000.0)
+        (linked_slip._il_salary_payable_lines() | payment._il_recognition_items()).reconcile()
+        linked_payment = payment.with_context(il_payslip_id=linked_slip.id)
+        self.assertEqual(linked_payment.amount, 3000.0)
+        self.assertEqual(linked_payment.il_payslip_linked_amount, 1000.0)
+        self.assertEqual(linked_payment.il_recognition_available_amount, 2000.0)
+
+        # A different payslip sees the same 2,000 remaining as a candidate,
+        # despite the original payment document still having a 3,000 value.
+        candidate_slip = self._payslip_with_posted_net(4000.0)
+        candidates = self.env['il.payroll.reconciliation.wizard']._eligible_payments(candidate_slip)
+        self.assertIn(payment, candidates)
+        prefix = 'l10n_il_hr_payroll_account.'
+        for xmlid, slip in (
+            ('view_account_payment_list_payslip_links', linked_slip),
+            ('view_account_payment_list_payslip_candidates', candidate_slip),
+        ):
+            arch = self.env.ref(prefix + xmlid)._get_combined_arch()
+            summed_fields = arch.xpath('./field[@sum]/@name')
+            self.assertEqual(summed_fields, ['il_recognition_available_amount'])
+            remaining = arch.xpath("./field[@name='il_recognition_available_amount']")[0]
+            self.assertEqual(remaining.get('optional'), 'show')
+            values = payment.with_context(il_payslip_id=slip.id).web_read({
+                'amount': {}, 'il_recognition_available_amount': {},
+            })[0]
+            self.assertEqual(values['amount'], 3000.0)
+            self.assertEqual(sum(values[name] for name in summed_fields), 2000.0)
+
+        linked_arch = self.env.ref(prefix + 'view_account_payment_list_payslip_links')._get_combined_arch()
+        field_names = linked_arch.xpath('./field/@name')
+        self.assertEqual(field_names[field_names.index('amount') + 1], 'il_payslip_linked_amount')
+        # Normal payment and batch navigation retain the native full-payment
+        # totals; the change is confined to the payslip allocation views.
+        normal_arch = self.env.ref(prefix + 'view_account_payment_list_employee')._get_combined_arch()
+        self.assertTrue(normal_arch.xpath("./field[@name='amount']/@sum"))
+        review_arch = self.env.ref(prefix + 'view_il_payslip_payment_selection_wizard')._get_combined_arch()
+        self.assertEqual(review_arch.xpath("//field[@name='line_ids']/list/field[@sum]/@name"), ['amount'])

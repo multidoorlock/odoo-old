@@ -236,6 +236,9 @@
             </field>
             <field name="amount" position="attributes">
                 <attribute name="readonly">1</attribute>
+                <!-- The payment's face value is informative per row. The
+                     payroll footer must total recognition amounts only. -->
+                <attribute name="sum"/>
             </field>
             <field name="state" position="attributes">
                 <attribute name="readonly">1</attribute>
@@ -244,9 +247,10 @@
             <field name="il_relevant_installment_amount" position="replace"/>
             <field name="amount" position="after">
                 <field name="il_payslip_linked_amount" string="סכום להכרה"
-                       widget="monetary" readonly="1" sum="סה״כ להכרה"/>
+                       widget="monetary" readonly="1"/>
                 <field name="il_recognition_available_amount" string="יתרה להכרה"
-                       widget="monetary" readonly="1" optional="hide"/>
+                       widget="monetary" readonly="1" optional="show"
+                       sum="סה״כ יתרה להכרה"/>
             </field>
         </field>
     </record>
