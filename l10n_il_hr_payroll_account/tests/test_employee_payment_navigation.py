@@ -1,4 +1,6 @@
 from datetime import date
+from copy import deepcopy
+from types import SimpleNamespace
 from lxml import etree
 
 from odoo import Command
@@ -272,3 +274,28 @@ class TestEmployeePaymentNavigation(TransactionCase):
             self.company.currency_id.id: 100,
             other_currency.id: 50,
         })
+
+    def test_batch_vat_fallback_is_translated_without_changing_other_reports(self):
+        layout = self.env.ref('web.external_layout_standard')._get_combined_arch()
+        # Render the actual inherited VAT block, including the condition and
+        # unchanged native fallback, without changing company/country records.
+        block = layout.xpath("//t[@t-if='company.vat']")[0]
+        company = SimpleNamespace(vat='123456789', country_id=SimpleNamespace(vat_label=False))
+        for lang, translated in (('en_US', 'Tax ID'), ('he_IL', 'ח.פ / ע.מ')):
+            qweb = self.env['ir.qweb'].with_context(lang=lang)
+            for model, flag, expected in (
+                    ('account.batch.payment', True, translated),
+                    ('account.batch.payment', False, 'Tax ID'),
+                    ('account.move', True, 'Tax ID'),
+                    ('account.move', None, 'Tax ID')):
+                values = {'company': company, 'o': SimpleNamespace(_name=model)}
+                if flag is not None:
+                    values['il_batch_employee_report'] = flag
+                rendered = str(qweb._render(deepcopy(block), values))
+                self.assertIn(expected, rendered)
+            company.country_id.vat_label = 'Configured tax label'
+            rendered = str(qweb._render(deepcopy(block), {
+                'company': company, 'o': SimpleNamespace(_name='account.batch.payment'),
+                'il_batch_employee_report': True}))
+            self.assertIn('Configured tax label', rendered)
+            company.country_id.vat_label = False

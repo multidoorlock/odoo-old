@@ -165,6 +165,11 @@ msgid "Is Existing"
 msgstr "קיים"
 
 #. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payslip_payment_selection_wizard__line_ids
+msgid "Line"
+msgstr "שורה"
+
+#. module: l10n_il_hr_payroll_account
 #: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_salary_attachment__is_refund
 msgid "Negative Value"
 msgstr "ערך שלילי"
@@ -209,6 +214,11 @@ msgstr "תלוש מקור"
 #: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard__step
 msgid "Step"
 msgstr "שלב"
+
+#. module: l10n_il_hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:l10n_il_hr_payroll_account.report_batch_employee_tax_label
+msgid "Tax ID"
+msgstr "ח.פ / ע.מ"
 
 #. module: l10n_il_hr_payroll_account
 #: model:ir.model.fields,help:l10n_il_hr_payroll_account.field_account_partial_reconcile__il_payment_id

@@ -361,5 +361,54 @@
     "Reconciliation": "התאמה",
     "Reconciliations": "התאמות",
     "The accounting entry is shared with other payslips. Return all payslips linked to that entry to draft together.": "פקודת היומן משותפת לתלושים נוספים. יש להחזיר לטיוטה יחד את כל התלושים המקושרים אליה."
+  },
+  "resource": {
+    "%(att)s is a break attendance, You should not have such record on duration based calendar": "%(att)s היא רשומת נוכחות של הפסקה; אין להגדיר רשומה כזו בלוח עבודה המבוסס על משך זמן",
+    "In a calendar with 2 weeks mode, all periods need to be in the sections.": "בלוח עבודה של שבועיים, כל המקטעים חייבים להופיע בתוך מקטעי השבוע המתאימים.",
+    "even": "זוגי",
+    "odd": "אי־זוגי",
+    "The current week (from %(first_day)s to %(last_day)s) corresponds to %(number)s week.": "השבוע הנוכחי (מ־%(first_day)s עד %(last_day)s) הוא שבוע %(number)s.",
+    "Provided datetimes needs to be timezoned": "התאריכים והשעות שסופקו חייבים לכלול אזור זמן",
+    "Monday Lunch": "הפסקת צהריים ביום שני",
+    "Tuesday Lunch": "הפסקת צהריים ביום שלישי",
+    "Wednesday Lunch": "הפסקת צהריים ביום רביעי",
+    "Thursday Lunch": "הפסקת צהריים ביום חמישי",
+    "Friday Lunch": "הפסקת צהריים ביום שישי"
+  },
+  "documents_hr": {
+    "Impossible to delete employee folder or employee 'Contract' folder": "לא ניתן למחוק את תיקיית העובד או את תיקיית החוזה שלו",
+    "Employees - %s": "עובדים - %s",
+    "You must have a contact linked to the employee in order to use Document's features.": "יש לקשר איש קשר לעובד כדי להשתמש בתכונות המסמכים.",
+    "You must configure the HR Employee folder in document settings to use Document's features.": "יש להגדיר את תיקיית העובדים בהגדרות המסמכים כדי להשתמש בתכונות המסמכים.",
+    "You cannot access the employee's folder.": "אין לך גישה לתיקיית העובד."
+  },
+  "timesheet_grid": {
+    "You are not allowed to see timesheets.": "אין לך הרשאה לצפות בדיווחי שעות.",
+    "The timesheets must have the same encoding unit": "דיווחי השעות חייבים להשתמש באותה יחידת דיווח",
+    "The timesheets have successfully been merged.": "דיווחי השעות מוזגו בהצלחה."
+  },
+  "mdl_attendances": {
+    "Overtime": "שעות נוספות",
+    "Work": "עבודה",
+    "A closed attendance must have at least one segment.": "רשומת נוכחות סגורה חייבת לכלול מקטע אחד לפחות.",
+    "Segments must cover the attendance from Check In through Check Out.": "המקטעים חייבים לכסות את כל זמן הנוכחות מהכניסה ועד היציאה.",
+    "Attendance segments cannot contain gaps or overlaps.": "מקטעי נוכחות אינם יכולים לכלול פערים או חפיפות.",
+    "Segment durations must equal the attendance presence time.": "סכום משכי המקטעים חייב להיות שווה למשך הנוכחות.",
+    "Non-Work": "זמן שאינו עבודה",
+    "A segment must have a positive duration.": "משך המקטע חייב להיות גדול מאפס.",
+    "Attendance segments are read-only and are generated from segmentation rules.": "מקטעי נוכחות הם לקריאה בלבד ונוצרים מתוך כללי החלוקה.",
+    "Attendance segments cannot be deleted manually. Regenerate them from the rules.": "לא ניתן למחוק מקטעי נוכחות ידנית. יש ליצור אותם מחדש מתוך הכללים.",
+    "Segments regenerated": "המקטעים נוצרו מחדש",
+    "%(count)s attendances were regenerated.": "%(count)s רשומות נוכחות נוצרו מחדש.",
+    "A quantity rule requires a period.": "כלל כמות מחייב הגדרת תקופה.",
+    "A quantity rule requires a positive usual work duration.": "כלל כמות מחייב משך עבודה רגיל גדול מאפס.",
+    "Tolerances cannot be negative.": "ערכי הסבילות אינם יכולים להיות שליליים.",
+    "A schedule timing rule requires a schedule.": "כלל תזמון לפי לוח עבודה מחייב הגדרת לוח עבודה.",
+    "Two segmentation rules with the same timing condition cannot coexist.": "לא ניתן להגדיר שני כללי חלוקה למקטעים עם אותו תנאי תזמון.",
+    "Timing segmentation rules in the same ruleset cannot overlap.": "כללי תזמון באותה מערכת כללים אינם יכולים לחפוף."
+  },
+  "mdl_zkteco_attendance": {
+    "Entry": "כניסה",
+    "Exit": "יציאה"
   }
 }

@@ -8,6 +8,10 @@ from odoo.tools.translate import code_translations, translation_file_reader
 
 from ..models.hr_hebrew_translations import IrHttp, _hebrew_ui_data
 
+HR_VIEW_CONTRIBUTORS = {
+    'documents_hr', 'mdl_attendances', 'mdl_zkteco_attendance', 'resource',
+    'mrp_workorder', 'sale_timesheet_enterprise', 'timesheet_grid',
+}
 
 @tagged('post_install', '-at_install')
 class TestHebrewHrUiTranslations(TransactionCase):
@@ -64,6 +68,45 @@ class TestHebrewHrUiTranslations(TransactionCase):
         self.assertNotIn('hr_attendance', result)
         self.assertNotIn('hr_payroll', result)
 
+    def test_custom_attendance_field_translates_without_changing_english(self):
+        field = self.env.ref('mdl_attendances.field_hr_attendance__presence_hours', raise_if_not_found=False)
+        if not field:
+            self.skipTest('The optional attendance segmentation addon is not installed.')
+        field = field.with_context(lang='en_US')
+        self.assertEqual(field.field_description, 'Presence Hours')
+        self.assertRegex(field.with_context(lang='he_IL').field_description, '[א-ת]')
+
+    def test_default_payroll_note_is_displayed_in_hebrew_without_storage_changes(self):
+        Note = self.env['hr.payroll.note']
+        english = Note._il_default_onboarding_note('en_US')
+        note = Note.create({'name': 'Note', 'note': english})
+        before = note.read(['name', 'note', 'write_date'])[0]
+        hebrew = note.with_context(lang='he_IL').web_read({'note': {}})[0]['note']
+        self.assertIn('שלום,', hebrew)
+        self.assertNotIn('Hello there,', hebrew)
+        self.assertEqual(note.with_context(lang='en_US').web_read({'note': {}})[0]['note'], english)
+        self.assertEqual(note.read(['name', 'note', 'write_date'])[0], before)
+
+    def test_custom_payroll_note_keeps_its_exact_content(self):
+        Note = self.env['hr.payroll.note']
+        content = Note._il_default_onboarding_note('en_US') + '<p>Our own payroll instructions</p>'
+        note = Note.create({'name': 'Our note', 'note': content})
+        stored = note.note
+        self.assertEqual(note.with_context(lang='he_IL').web_read({'note': {}})[0]['note'], stored)
+        self.assertEqual(note.with_context(lang='he_IL').web_read({'name': {}})[0]['name'], 'Our note')
+        self.assertEqual(note.note, stored)
+
+    def test_new_empty_note_placeholder_is_hebrew_only_without_renaming(self):
+        note = self.env['hr.payroll.note'].create({'name': 'Untitled', 'note': ''})
+        before = note.read(['name', 'note', 'write_date'])[0]
+        self.assertEqual(note.with_context(lang='he_IL').web_read({'name': {}})[0]['name'], 'ללא כותרת')
+        self.assertEqual(note.with_context(lang='en_US').web_read({'name': {}})[0]['name'], 'Untitled')
+        self.assertEqual(note.read(['name', 'note', 'write_date'])[0], before)
+        note.name = 'Custom title'
+        self.assertEqual(note.with_context(lang='he_IL').web_read({'name': {}})[0]['name'], 'Custom title')
+        note.write({'name': 'Untitled', 'note': '<p>User content</p>'})
+        self.assertEqual(note.with_context(lang='he_IL').web_read({'name': {}})[0]['name'], 'Untitled')
+
     def test_python_code_translations_are_hebrew_only_and_preserve_native_cache(self):
         module, source = 'hr_payroll', 'This action is forbidden on validated payslips.'
         english = dict(code_translations.get_python_translations(module, 'en_US'))
@@ -101,14 +144,14 @@ class TestHebrewHrUiTranslations(TransactionCase):
             self.assertIn(row['name'].split(',')[0], allowed)
             self.assertEqual(sorted(pattern.findall(row['src'])), sorted(pattern.findall(row['value'])), row['src'])
         for module, terms in _hebrew_ui_data()['web'].items():
-            self.assertTrue(module.startswith(('hr', 'l10n_il_hr', 'documents_hr', 'spreadsheet_dashboard_hr')))
+            self.assertTrue(module in HR_VIEW_CONTRIBUTORS or module.startswith(('hr', 'l10n_il_hr', 'documents_hr', 'spreadsheet_dashboard_hr')))
             for source, value in terms.items():
                 self.assertEqual(sorted(pattern.findall(source)), sorted(pattern.findall(value)), source)
         for path in _hebrew_ui_data()['python_files']:
             with file_open(path, 'r') as source:
                 modules = json.load(source)
             for module, terms in modules.items():
-                self.assertTrue(module.startswith(('hr', 'l10n_il_hr', 'documents_hr', 'spreadsheet_dashboard_hr')))
+                self.assertTrue(module in HR_VIEW_CONTRIBUTORS or module.startswith(('hr', 'l10n_il_hr', 'documents_hr', 'spreadsheet_dashboard_hr')))
                 for source, value in terms.items():
                     self.assertEqual(sorted(pattern.findall(source)), sorted(pattern.findall(value)), source)
                     self.assertEqual(source.count('%%'), value.count('%%'), source)

@@ -1,6 +1,7 @@
 {
   "language": "he_IL",
   "po_files": [
+    "l10n_il_hr_payroll_account/i18n/hr_ui/documents_hr_01.po",
     "l10n_il_hr_payroll_account/i18n/hr_ui/documents_hr_payroll_01.po",
     "l10n_il_hr_payroll_account/i18n/hr_ui/hr_01.po",
     "l10n_il_hr_payroll_account/i18n/hr_ui/hr_attendance_01.po",
@@ -27,7 +28,13 @@
     "l10n_il_hr_payroll_account/i18n/hr_ui/hr_work_entry_enterprise_01.po",
     "l10n_il_hr_payroll_account/i18n/hr_ui/hr_work_entry_holidays_01.po",
     "l10n_il_hr_payroll_account/i18n/hr_ui/l10n_il_hr_payroll_01.po",
-    "l10n_il_hr_payroll_account/i18n/hr_ui/l10n_il_hr_payroll_account_01.po"
+    "l10n_il_hr_payroll_account/i18n/hr_ui/l10n_il_hr_payroll_account_01.po",
+    "l10n_il_hr_payroll_account/i18n/hr_ui/mdl_attendances_01.po",
+    "l10n_il_hr_payroll_account/i18n/hr_ui/mdl_zkteco_attendance_01.po",
+    "l10n_il_hr_payroll_account/i18n/hr_ui/mrp_workorder_01.po",
+    "l10n_il_hr_payroll_account/i18n/hr_ui/resource_01.po",
+    "l10n_il_hr_payroll_account/i18n/hr_ui/sale_timesheet_enterprise_01.po",
+    "l10n_il_hr_payroll_account/i18n/hr_ui/timesheet_grid_01.po"
   ],
   "web": {
     "hr_attendance": {

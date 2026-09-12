@@ -1,0 +1,39 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: timesheet_grid
+#: model:ir.model.fields,field_description:timesheet_grid.field_res_config_settings__reminder_interval
+msgid "Approver Reminder Frequency"
+msgstr "תדירות תזכורות למאשר"
+
+#. module: timesheet_grid
+#: model:ir.model.fields,field_description:timesheet_grid.field_res_config_settings__reminder_delay
+msgid "Days to Remind Approver"
+msgstr "מספר ימים עד לתזכורת למאשר"
+
+#. module: timesheet_grid
+#: model:ir.model.fields,help:timesheet_grid.field_res_config_settings__reminder_delay
+msgid "Number of days after the end of the week/month after which an automatic email reminder will be sent to timesheet managers that still have timesheets to validate."
+msgstr "מספר הימים לאחר סוף השבוע או החודש שאחריהם תישלח תזכורת אוטומטית בדוא״ל למנהלי דיווחי שעות שעדיין נותרו להם דיווחים לאישור."
+
+#. module: timesheet_grid
+#: model:ir.model.fields,help:timesheet_grid.field_res_config_settings__reminder_user_delay
+msgid "Numbers of days after the end of the week/month after which an automatic email reminder will be sent to timesheet users that still have timesheets to encode (according to their working hours)."
+msgstr "מספר הימים לאחר סוף השבוע או החודש שאחריהם תישלח תזכורת אוטומטית בדוא״ל למשתמשים שעדיין נותרו להם שעות לדיווח, לפי שעות העבודה שלהם."
+
+#. module: timesheet_grid
+#: model:ir.model.fields,help:timesheet_grid.field_hr_employee__timesheet_manager_id
+msgid "Select the user responsible for approving \"Timesheet\" of this employee.\nIf empty, the approval is done by a Timesheets > Administrator or a Timesheets > User: all timesheets (as determined in the users settings)."
+msgstr "בחר את המשתמש האחראי לאישור דיווחי השעות של עובד זה.\nאם השדה ריק, האישור נעשה בידי מנהל דיווחי שעות או משתמש בעל גישה לכל דיווחי השעות, בהתאם להגדרות המשתמשים."
+
+#. module: timesheet_grid
+#: model:ir.model.fields,field_description:timesheet_grid.field_hr_employee__timesheet_manager_id
+#: model_terms:ir.ui.view,arch_db:timesheet_grid.hr_employee_search_view
+msgid "Timesheet Approver"
+msgstr "מאשר דיווחי שעות"

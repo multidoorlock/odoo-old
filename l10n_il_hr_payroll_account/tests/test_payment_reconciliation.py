@@ -324,7 +324,7 @@ class TestEmployeePaymentReconciliation(TransactionCase):
         payslip = self._payslip_with_posted_net(100.0)
         payment_action = payslip.action_il_open_payments()
         self.assertEqual(payment_action['name'], 'תשלומים מקושרים')
-        self.assertTrue(payment_action['context']['edit'])
+        self.assertFalse(payment_action['context']['edit'])
         self.assertEqual(payment_action['context']['il_payslip_id'], payslip.id)
         self.assertNotIn('form_view_initial_mode', payment_action['context'])
         self.assertEqual(payment_action['views'][0], (

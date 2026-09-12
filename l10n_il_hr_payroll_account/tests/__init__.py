@@ -7,3 +7,5 @@ from . import test_reconciliation_editor
 from . import test_payslip_payment_list
 from . import test_employee_accounting_navigation
 from . import test_hebrew_ui_translations
+from . import test_hr_navigation_ui_ux
+from . import test_payslip_payment_ui

@@ -1,5 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- The native layout evaluates its English fallback as an expression,
+         bypassing translation of the fallback text. Keep that behavior for
+         other reports; use translated text only in this employee batch report. -->
+    <template id="report_batch_employee_tax_label">
+        <t t-if="company.country_id.vat_label" t-out="company.country_id.vat_label"/>
+        <t t-else="">Tax ID</t>
+    </template>
+
+    <template id="report_batch_employee_external_layout"
+              inherit_id="web.external_layout_standard">
+        <xpath expr="//t[@t-if='company.vat']/t[@t-esc=&quot;company.country_id.vat_label or 'Tax ID'&quot;]" position="replace">
+            <t t-if="il_batch_employee_report and o and o._name == 'account.batch.payment'"
+               t-call="l10n_il_hr_payroll_account.report_batch_employee_tax_label"/>
+            <t t-else="" t-esc="company.country_id.vat_label or 'Tax ID'">Tax ID</t>
+        </xpath>
+        <xpath expr="//li[@t-else='']/t[@t-esc=&quot;company.country_id.vat_label or 'Tax ID'&quot;]" position="replace">
+            <t t-if="il_batch_employee_report and o and o._name == 'account.batch.payment'"
+               t-call="l10n_il_hr_payroll_account.report_batch_employee_tax_label"/>
+            <t t-else="" t-esc="company.country_id.vat_label or 'Tax ID'">Tax ID</t>
+        </xpath>
+    </template>
+
     <record id="action_report_batch_employee_payments" model="ir.actions.report">
         <field name="name">סיכום תשלומים לעובדים לפי אצווה</field>
         <field name="model">account.batch.payment</field>
@@ -15,6 +37,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
+                    <t t-set="il_batch_employee_report" t-value="True"/>
                     <t t-set="report_data" t-value="o._il_employee_payment_report_data()"/>
                     <div class="page" dir="rtl">
                         <style>

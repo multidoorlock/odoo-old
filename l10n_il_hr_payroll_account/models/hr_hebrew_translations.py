@@ -160,3 +160,40 @@ class IrHttp(models.AbstractModel):
                 {'id': source, 'string': value} for source, value in messages.items()
             ])
         return result, lang_params
+
+
+class HrPayrollNote(models.Model):
+    _inherit = 'hr.payroll.note'
+
+    def _il_default_onboarding_note(self, lang):
+        content = self.env['ir.qweb'].with_context(lang=lang)._render(
+            'hr_payroll.hr_payroll_note_demo_content',
+        )
+        # Native creation sanitizes Html before storing it. Compare the same
+        # representation, not fragments that might also occur in an edited note.
+        return self._fields['note'].convert_to_cache(str(content), self)
+
+    def web_read(self, specification):
+        result = super().web_read(specification)
+        if self.env.lang != LANG:
+            return result
+        # Native createNoteForm hardcodes this placeholder before opening its
+        # title editor. Localize only that empty-note display, not stored names
+        # or titles of notes already containing user content.
+        placeholders = [values['id'] for values in result if values.get('name') == 'Untitled']
+        empty_notes = set(self.browse(placeholders).filtered(lambda note: not note.note).ids)
+        for values in result:
+            if values['id'] in empty_notes:
+                values['name'] = 'ללא כותרת'
+        if 'note' not in specification:
+            return result
+        default = self._il_default_onboarding_note('en_US')
+        translated = None
+        for values in result:
+            if values.get('note') == default:
+                if translated is None:
+                    translated = self._il_default_onboarding_note(LANG)
+                # This is a response-only display substitution. The saved
+                # English default and every user-edited note remain unchanged.
+                values['note'] = translated
+        return result
