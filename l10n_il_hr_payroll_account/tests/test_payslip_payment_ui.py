@@ -109,8 +109,8 @@ class TestPayslipPaymentUI(HttpCase):
         code = 'window.payrollSimulation = ' + json.dumps(settings) + ';\n'
         code += Path(__file__).with_name('payslip_payment_ui.js').read_text(encoding='utf-8')
         self.browser_js(
-            '/odoo/action-%s?debug=assets' % self.ui_action.id, code,
-            ready="document.querySelector('.o_web_client')",
+            '/odoo/action-%s' % self.ui_action.id, code,
+            ready="document.querySelector('.o_list_view .o_data_row')",
             login=self.browser_user.login, timeout=180)
         self.env.invalidate_all()
         self.assertEqual(self._financial_values(), self.baseline)

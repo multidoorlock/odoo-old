@@ -86,7 +86,7 @@ class TestHRNavigationUIUX(HttpCase):
         code = 'window.hrNavigationSimulation = ' + json.dumps(settings) + ';\n'
         code += Path(__file__).with_name('hr_navigation_ui_ux.js').read_text(encoding='utf-8')
         self.browser_js(
-            '/odoo/action-%s?debug=assets' % action.id, code,
+            '/odoo/action-%s' % action.id, code,
             ready="document.querySelector('.o_web_client')",
             login=self.browser_user.login, timeout=180)
         self.env.invalidate_all()
