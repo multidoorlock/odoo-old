@@ -124,7 +124,7 @@ class TestFinalPayrollBatch(TransactionCase):
         after = self._counts()
         self.assertEqual(first.action_confirm()['res_id'], action['res_id'])
         self.assertEqual(self._counts(), after)
-        with self.assertRaises((UserError, ValidationError)), self.cr.savepoint():
+        with self.assertRaises(ValidationError), self.cr.savepoint():
             second.action_confirm()
         self.assertEqual(self._counts(), after)
 
@@ -134,7 +134,7 @@ class TestFinalPayrollBatch(TransactionCase):
         other_payment = self._payment(100.0)
         other_payment.il_split_line_ids._il_reconcile_with_payslip(slip)
         before = self._counts()
-        with self.assertRaises((UserError, ValidationError)), self.cr.savepoint():
+        with self.assertRaises(UserError), self.cr.savepoint():
             wizard.action_confirm()
         self.assertEqual(self._counts(), before)
         self.assertEqual(slip.il_net_amount_to_pay, 400.0)
@@ -145,7 +145,7 @@ class TestFinalPayrollBatch(TransactionCase):
         draft.il_split_line_ids.with_context(il_reconciliation_sync=True).write({
             'il_pending_payslip_move_line_id': slip._il_salary_payable_lines().id})
         before = self._counts()
-        with self.assertRaises((UserError, ValidationError)), self.cr.savepoint():
+        with self.assertRaises(ValidationError), self.cr.savepoint():
             self._open(self._run(slip))
         self.assertEqual(self._counts(), before)
         self.assertEqual(draft.state, 'draft')
@@ -173,11 +173,11 @@ class TestFinalPayrollBatch(TransactionCase):
         run = self._run(self._payslip_with_posted_net(500.0))
         wizard = self._open(run)
         before = self._counts()
-        with self.assertRaises((AccessError, UserError, ValidationError)), self.cr.savepoint():
+        with self.assertRaises(ValidationError), self.cr.savepoint():
             wizard.line_ids.write({'amount': 400.0})
         user = new_test_user(self.env(context=dict(self.env.context, no_reset_password=True)),
             login='final_payroll_accounting_only', groups='base.group_user,account.group_account_manager',
             company_id=self.company.id, company_ids=[Command.set(self.company.ids)])
-        with self.assertRaises((AccessError, UserError)), self.cr.savepoint():
+        with self.assertRaises(AccessError), self.cr.savepoint():
             run.with_user(user).action_il_pay()
         self.assertEqual(self._counts(), before)

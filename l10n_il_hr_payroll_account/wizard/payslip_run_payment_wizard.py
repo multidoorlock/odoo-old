@@ -76,7 +76,7 @@ class IlPayslipRunPaymentWizard(models.TransientModel):
             slip.state in ('validated', 'paid') and slip.move_id.state == 'posted'
             and currency.compare_amounts(slip.il_net_amount_to_pay, 0.0) > 0)
         if not eligible:
-            raise ValidationError(_('לא נמצאו באצווה תלושים מאושרים עם פקודת יומן רשומה ויתרת נטו לתשלום.'))
+            raise ValidationError(_('לא נמצאו באצווה תלושים מאושרים עם פקודת יומן רשומה ויתרת שכר נטו לתשלום.'))
         missing = eligible.filtered(lambda slip: not slip.employee_id.work_contact_id)
         if missing:
             raise ValidationError(_('לעובדים הבאים אין איש קשר מקושר: %s',
