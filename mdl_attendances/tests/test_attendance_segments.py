@@ -125,7 +125,22 @@ class TestAttendanceSegments(TransactionCase):
         self.assertAlmostEqual(attendance.worked_hours, 9.5 + 41 / 60)
 
     def test_timing_uses_company_timezone_not_employee_calendar_timezone(self):
-        self.company.resource_calendar_id.tz = "Asia/Jerusalem"
+        # Native calendar defaults may copy the current company's weekdays.
+        # This overnight scenario specifically needs Friday working and
+        # Saturday off, independent of the database's default working week.
+        self.company.resource_calendar_id.write({
+            "tz": "Asia/Jerusalem",
+            "attendance_ids": [Command.clear()] + [Command.create({
+                "name": "Timezone fixture working day",
+                "dayofweek": weekday,
+                "day_period": "morning",
+                "hour_from": 8.0,
+                "hour_to": 17.0,
+            }) for weekday in ("0", "1", "2", "3", "4")],
+        })
+        weekday_codes = set(self.company.resource_calendar_id.attendance_ids.mapped("dayofweek"))
+        self.assertIn("4", weekday_codes)
+        self.assertNotIn("5", weekday_codes)
         employee_calendar = self.company.resource_calendar_id.copy({
             "name": "Employee calendar in Brussels",
             "tz": "Europe/Brussels",
@@ -260,3 +275,4 @@ class TestAttendanceSegments(TransactionCase):
             second.write({"time_start": first.time_start})
         self.assertEqual(len(attendance.segment_ids), 2)
         attendance._validate_segment_coverage()
+

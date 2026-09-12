@@ -14,7 +14,10 @@ class HrAttendanceOvertimeRule(models.Model):
         filtered = defaultdict(lambda: defaultdict(list))
         for employee, values_by_attendance in result.items():
             for attendance, intervals in values_by_attendance.items():
-                work_intervals = attendance._effective_work_intervals()
+                # Native timing rules return naive employee-local intervals.
+                # Compare in the same timezone, including DST, rather than
+                # intersecting them with the segments' stored UTC boundaries.
+                work_intervals = attendance._effective_work_intervals(localized=True)
                 for start, stop, rules in intervals:
                     for work_start, work_stop, _attendance in work_intervals:
                         overlap_start = max(start, work_start)

@@ -5,4 +5,5 @@ from . import resource_calendar_attendance
 from . import hr_version
 from . import hr_version_work_entry
 from . import hr_attendance
+from . import hr_attendance_overtime_rule
 from . import hr_work_entry
