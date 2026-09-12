@@ -173,7 +173,9 @@ class TestHRNavigationUIUX(TransactionCase):
         variables = {node.id for expression in expressions for node in ast.walk(ast.parse(expression))
                      if isinstance(node, ast.Name)}
         record_values = employee.web_read({name: {} for name in variables if name in employee._fields})[0]
-        record_values.update(context=dict(employee.env.context), uid=self.browser_user.id)
+        record_values.update(
+            context=dict(employee.env.context), uid=self.browser_user.id,
+            allowed_company_ids=employee.env.companies.ids)
         visible = [button for button in buttons
                    if not safe_eval(button.get('invisible', 'False'), record_values)]
         names = [button.get('name') for button in visible]
