@@ -125,6 +125,7 @@ class TestPayslipPaymentList(TransactionCase):
         action = self.env['account.payment'].with_context(
             il_payslip_id=slip.id).action_il_add_payslip_payment()
         self.assertEqual(action['res_model'], 'account.payment')
+        self.assertEqual(action['target'], 'new')
         self.assertEqual(action['views'][0], (self.env.ref(
             'l10n_il_hr_payroll_account.view_account_payment_list_payslip_candidates').id, 'list'))
         candidates = self.env['account.payment'].search(action['domain'])
@@ -153,18 +154,33 @@ class TestPayslipPaymentList(TransactionCase):
     def test_payslip_list_exposes_only_link_editing_and_hr_labels(self):
         view = self.env.ref('l10n_il_hr_payroll_account.view_account_payment_list_payslip_links')
         arch = view._get_combined_arch()
-        self.assertFalse(arch.get('editable'))
-        self.assertEqual(arch.get('edit'), '0')
+        self.assertEqual(arch.get('editable'), 'bottom')
+        self.assertEqual(arch.get('edit'), '1')
         self.assertEqual(arch.get('create'), '0')
         self.assertEqual(arch.get('delete'), '0')
-        self.assertEqual(arch.xpath('./header/button/@name'), ['action_il_add_payslip_payment'])
+        self.assertEqual(arch.get('multi_edit'), '0')
+        self.assertEqual(arch.xpath('./header/button/@name'), [
+            'action_il_add_payslip_payment', 'action_il_remove_payslip_links'])
+        self.assertEqual(arch.xpath(
+            "./header/button[@name='action_il_add_payslip_payment']/@display"), ['always'])
+        self.assertFalse(arch.xpath(
+            "./header/button[@name='action_il_remove_payslip_links']/@display"))
         self.assertFalse(arch.xpath('./button'))
         visible = arch.xpath("./field[not(@column_invisible='True')]")
         editable = [field.get('name') for field in visible if field.get('readonly') != '1']
-        self.assertEqual(editable, [])
+        self.assertEqual(editable, ['il_payslip_linked_amount'])
+        amount = arch.xpath("./field[@name='il_payslip_linked_amount']")[0]
+        self.assertEqual(amount.get('readonly'), '0')
+        self.assertEqual(amount.get('widget'), 'il_payslip_link_amount')
+        self.assertEqual(amount.get('sum'), 'סה״כ משויך לתלוש')
+        for name in ('il_payslip_link_snapshot', 'il_payslip_link_write_token'):
+            self.assertEqual(arch.xpath("./field[@name='%s']/@column_invisible" % name), ['True'])
+        self.assertEqual(arch.xpath(
+            "./field[@name='il_payslip_link_write_token']/@force_save"), ['1'])
+        self.assertFalse(arch.xpath("./field[@name='il_recognition_available_amount']"))
         names = arch.xpath('./field/@name')
         self.assertEqual(names[names.index('amount') + 1], 'il_payslip_linked_amount')
-        self.assertEqual(arch.xpath("./field[@name='il_payslip_linked_amount']/@string"), ['סכום להכרה'])
+        self.assertEqual(arch.xpath("./field[@name='il_payslip_linked_amount']/@string"), ['סכום משויך לתלוש'])
         self.assertTrue(arch.xpath("./field[@name='amount']"))
         self.assertFalse(arch.xpath("./field[@name='amount_company_currency_signed']"))
         payment_form = self.env.ref(
@@ -174,12 +190,10 @@ class TestPayslipPaymentList(TransactionCase):
         self.assertFalse(payment_form.xpath("//field[@name='reconcile_id']"))
 
     def _selection(self, payments, slip, operation):
-        method = {
-            'add': 'action_il_select_payslip_payments',
-            'edit': 'action_il_change_recognized_amount',
-            'remove': 'action_il_remove_payslip_links',
-        }[operation]
-        action = getattr(payments.with_context(il_payslip_id=slip.id), method)()
+        # Retain atomic/stale/period-lock coverage of the reconciliation
+        # service even though the UI now edits inline and adds in one popup.
+        action = self.env['il.payslip.payment.selection.wizard']._action_open(
+            payments.with_context(il_payslip_id=slip.id), operation)
         return self.env[action['res_model']].browse(action['res_id'])
 
     def test_selected_add_reviews_amounts_and_preserves_existing_links(self):
@@ -266,7 +280,7 @@ class TestPayslipPaymentList(TransactionCase):
             wizard.action_apply()
         self.assertEqual(payment._il_payslip_link_partials(), partial)
 
-    def test_payroll_selection_actions_are_scoped_to_linked_list(self):
+    def test_payment_link_lists_use_header_controls_without_actions(self):
         Actions = self.env['ir.actions.actions']
         expected = {self.env.ref('l10n_il_hr_payroll_account.' + name).id for name in (
             'action_payslip_change_recognized_amount', 'action_payslip_remove_payment_links')}
@@ -282,7 +296,9 @@ class TestPayslipPaymentList(TransactionCase):
         # Match the actual web view service: payroll action context is stripped.
         toolbar = self.env['account.payment'].with_context(lang='he_IL').get_views(
                 [(linked_view.id, 'list')], {'toolbar': True})['views']['list']['toolbar']
-        self.assertEqual({action['id'] for action in toolbar.get('action', [])}, expected)
+        self.assertFalse(toolbar.get('action'))
+        self.assertEqual(linked_view._get_combined_arch().xpath('./header/button/@name'), [
+            'action_il_add_payslip_payment', 'action_il_remove_payslip_links'])
         candidate_arch = self.env.ref(
             'l10n_il_hr_payroll_account.view_account_payment_list_payslip_candidates')._get_combined_arch()
         self.assertEqual(candidate_arch.xpath('./header/button/@name'), ['action_il_select_payslip_payments'])
@@ -290,8 +306,15 @@ class TestPayslipPaymentList(TransactionCase):
         self.assertFalse(candidate_arch.xpath("./field[@name='il_payslip_linked_amount']"))
         for name in ('date', 'partner_id', 'memo', 'amount', 'il_recognition_available_amount'):
             self.assertTrue(candidate_arch.xpath("./field[@name='%s']" % name))
+        self.assertEqual(candidate_arch.xpath(
+            "./field[@name='amount']/@readonly"), ['1'])
+        self.assertEqual(candidate_arch.xpath(
+            "./field[@name='il_recognition_available_amount']/@readonly"), ['1'])
+        proposal = candidate_arch.xpath("./field[@name='il_payslip_candidate_amount']")[0]
+        self.assertEqual(proposal.get('readonly'), '0')
+        self.assertTrue(proposal.get('sum'))
 
-    def test_payslip_payment_footers_total_only_unrecognized_balance(self):
+    def test_linked_payment_footer_totals_only_amount_used_by_current_payslip(self):
         payment = self._payment(3000.0)
         linked_slip = self._payslip_with_posted_net(1000.0)
         (linked_slip._il_salary_payable_lines() | payment._il_recognition_items()).reconcile()
@@ -306,24 +329,23 @@ class TestPayslipPaymentList(TransactionCase):
         candidates = self.env['il.payroll.reconciliation.wizard']._eligible_payments(candidate_slip)
         self.assertIn(payment, candidates)
         prefix = 'l10n_il_hr_payroll_account.'
-        for xmlid, slip in (
-            ('view_account_payment_list_payslip_links', linked_slip),
-            ('view_account_payment_list_payslip_candidates', candidate_slip),
-        ):
-            arch = self.env.ref(prefix + xmlid)._get_combined_arch()
-            summed_fields = arch.xpath('./field[@sum]/@name')
-            self.assertEqual(summed_fields, ['il_recognition_available_amount'])
-            remaining = arch.xpath("./field[@name='il_recognition_available_amount']")[0]
-            self.assertEqual(remaining.get('optional'), 'show')
-            values = payment.with_context(il_payslip_id=slip.id).web_read({
-                'amount': {}, 'il_recognition_available_amount': {},
-            })[0]
-            self.assertEqual(values['amount'], 3000.0)
-            self.assertEqual(sum(values[name] for name in summed_fields), 2000.0)
-
         linked_arch = self.env.ref(prefix + 'view_account_payment_list_payslip_links')._get_combined_arch()
+        summed_fields = linked_arch.xpath('./field[@sum]/@name')
+        self.assertEqual(summed_fields, ['il_payslip_linked_amount'])
+        self.assertFalse(linked_arch.xpath("./field[@name='il_recognition_available_amount']"))
+        values = linked_payment.web_read({
+            'amount': {}, 'il_payslip_linked_amount': {}, 'il_recognition_available_amount': {},
+        })[0]
+        self.assertEqual(values['amount'], 3000.0)
+        self.assertEqual(values['il_recognition_available_amount'], 2000.0)
+        self.assertEqual(sum(values[name] for name in summed_fields), 1000.0)
         field_names = linked_arch.xpath('./field/@name')
         self.assertEqual(field_names[field_names.index('amount') + 1], 'il_payslip_linked_amount')
+        candidate_arch = self.env.ref(prefix + 'view_account_payment_list_payslip_candidates')._get_combined_arch()
+        self.assertFalse(candidate_arch.xpath("./field[@name='il_payslip_linked_amount']"))
+        self.assertTrue(candidate_arch.xpath("./field[@name='il_recognition_available_amount']"))
+        self.assertFalse(candidate_arch.xpath("./field[@name='amount']/@sum"))
+        self.assertEqual(candidate_arch.xpath('./field[@sum]/@name'), ['il_payslip_candidate_amount'])
         # Normal payment and batch navigation retain the native full-payment
         # totals; the change is confined to the payslip allocation views.
         normal_arch = self.env.ref(prefix + 'view_account_payment_list_employee')._get_combined_arch()

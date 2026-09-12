@@ -140,7 +140,7 @@ class AccountPayment(models.Model):
                                 for payment in self]:
             if payment.currency_id.compare_amounts(amount, 0.0) <= 0:
                 raise ValidationError(_(
-                    'הסכום להכרה חייב להיות חיובי. להסרה בחר הסרת קישור מהתלוש בתפריט פעולות.'))
+                    'הסכום המשויך חייב להיות חיובי. להסרה סמן את התשלום ולחץ הסרת קישור מהתלוש.'))
             payment._il_update_payslip_link(
                 amount, self.env.context.get('il_payslip_link_expected'))
 
@@ -207,7 +207,8 @@ class AccountPayment(models.Model):
         return self.env['il.payslip.payment.selection.wizard']._action_open(self, 'edit')
 
     def action_il_remove_payslip_links(self):
-        return self.env['il.payslip.payment.selection.wizard']._action_open(self, 'remove')
+        action = self.env['il.payslip.payment.selection.wizard']._action_open(self, 'remove')
+        return self.env[action['res_model']].browse(action['res_id']).action_apply()
 
 
 class IrActionsActions(models.Model):

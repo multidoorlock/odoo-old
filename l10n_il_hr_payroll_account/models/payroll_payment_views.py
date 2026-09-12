@@ -20,16 +20,12 @@ class AccountPayment(models.Model):
                               raise_if_not_found=False)
         candidates = self.env.ref(prefix + 'view_account_payment_list_payslip_candidates',
                                   raise_if_not_found=False)
-        if linked and list_view['id'] == linked.id:
-            actions = self.env['ir.actions.actions']._il_payslip_payment_bindings()
-            actions = [action for action in actions
-                       if 'list' in action.get('binding_view_types', 'list').split(',')]
-        elif candidates and list_view['id'] == candidates.id:
+        if list_view['id'] in {view.id for view in (linked, candidates) if view}:
             actions = []
         else:
             return result
 
-        # Replace only this request's list toolbar. Report bindings, form
-        # toolbars, native Actions execution and group checks stay native.
+        # Allocation editing uses native row Save and a selected header
+        # button. Do not mix payment document actions into this list.
         list_view['toolbar'] = dict(list_view.get('toolbar', {}), action=actions)
         return result

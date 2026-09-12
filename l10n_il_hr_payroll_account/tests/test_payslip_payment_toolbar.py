@@ -8,11 +8,11 @@ from . import test_payment_reconciliation as payment_fixtures
 
 @tagged('post_install', '-at_install', 'il_payslip_payment_toolbar')
 class TestPayslipPaymentToolbar(TransactionCase):
-    """Simulate the native view-service and selected Actions RPC contracts.
+    """Simulate native view-service, inline editing and header-selection RPCs.
 
     The view request intentionally drops arbitrary action context, exactly
-    as web/static/src/views/view_service.js does. Action execution retains
-    the full context and selected IDs, as native ActionMenus.executeAction.
+    as web/static/src/views/view_service.js does. Header execution retains
+    the source action context and selected IDs without relying on Actions.
     """
 
     @classmethod
@@ -80,15 +80,21 @@ class TestPayslipPaymentToolbar(TransactionCase):
     def _action_ids(views):
         return {action['id'] for action in views['list'].get('toolbar', {}).get('action', [])}
 
-    def test_native_filtered_view_context_still_exposes_selected_actions(self):
+    def test_native_filtered_view_context_does_not_expose_link_actions(self):
         context = {'il_payslip_id': 123, 'il_payslip_link_list': True,
                    'allowed_company_ids': self.company.ids, 'create': False}
-        self.assertEqual(self._action_ids(self._client_views(self.linked_view, context)),
-                         self.payroll_action_ids)
-        # No payslip ID is needed for cacheable view metadata. The actual
-        # selected action checks the source payslip at execution time.
-        self.assertEqual(self._action_ids(self._client_views(self.linked_view)),
-                         self.payroll_action_ids)
+        self.assertFalse(self._action_ids(self._client_views(self.linked_view, context)))
+        self.assertFalse(self._action_ids(self._client_views(self.linked_view)))
+        self.assertFalse(self._action_ids(self._client_views(self.candidate_view, context)))
+        # The header itself is cacheable without a payslip ID. It exposes
+        # Add always and Remove only after native row selection.
+        arch = self.linked_view._get_combined_arch()
+        self.assertEqual(arch.xpath('./header/button/@name'), [
+            'action_il_add_payslip_payment', 'action_il_remove_payslip_links'])
+        self.assertEqual(arch.xpath(
+            "./header/button[@name='action_il_add_payslip_payment']/@display"), ['always'])
+        self.assertFalse(arch.xpath(
+            "./header/button[@name='action_il_remove_payslip_links']/@display"))
 
     def test_toolbar_roles_do_not_leak_between_cached_view_request_orders(self):
         baseline = self._client_views(self.normal_view, include_form=True)
@@ -102,8 +108,7 @@ class TestPayslipPaymentToolbar(TransactionCase):
         ):
             for view in order:
                 result = self._client_views(view, include_form=True)
-                expected = (self.payroll_action_ids if view == self.linked_view else
-                            set() if view == self.candidate_view else ordinary_ids)
+                expected = (ordinary_ids if view == self.normal_view else set())
                 self.assertEqual(self._action_ids(result), expected)
                 self.assertEqual(result['form'].get('toolbar'), baseline['form'].get('toolbar'))
                 self.assertEqual(result['list']['toolbar'].get('print'),
@@ -120,26 +125,13 @@ class TestPayslipPaymentToolbar(TransactionCase):
             self.accounting_user)._il_payslip_payment_bindings())
         accounting = self._client_views(self.linked_view, user=self.accounting_user)
         self.assertFalse(self._action_ids(accounting))
-        self.assertEqual(self._action_ids(self._client_views(self.linked_view)), self.payroll_action_ids)
+        self.assertFalse(self._action_ids(self._client_views(self.linked_view)))
 
     def test_toolbar_not_requested_remains_absent(self):
         result = self._client_views(self.linked_view, toolbar=False)
         self.assertNotIn('toolbar', result['list'])
 
-    def _run_selected_action(self, action, payment, source_action):
-        # Native ActionMenus loads bindings with stripped view context, then
-        # merges original action context with the current selection to run.
-        context = dict(source_action['context'], active_id=payment.id,
-                       active_ids=payment.ids, active_model='account.payment',
-                       active_domain=source_action['domain'])
-        returned = action.with_user(self.payroll_user).with_context(context).run()
-        self.assertEqual(returned['target'], 'new')
-        wizard = self.env[returned['res_model']].with_user(self.payroll_user).browse(returned['res_id'])
-        self.assertEqual(wizard.source_payslip_id.id, context['il_payslip_id'])
-        self.assertEqual(wizard.line_ids.payment_id.ids, payment.ids)
-        return wizard
-
-    def test_selected_native_server_actions_change_and_remove_only_the_selected_link(self):
+    def test_inline_edit_and_selected_header_remove_only_the_selected_link(self):
         slip = self._payslip_with_posted_net(2000.0)
         payment = self._payment(1000.0)
         retained = self._payment(300.0)
@@ -147,20 +139,29 @@ class TestPayslipPaymentToolbar(TransactionCase):
             line._il_reconcile_with_payslip(slip)
         source_action = slip.with_user(self.payroll_user).action_il_open_payments()
         toolbar = self._client_views(self.linked_view, source_action['context'])
-        self.assertEqual(self._action_ids(toolbar), self.payroll_action_ids)
+        self.assertFalse(self._action_ids(toolbar))
         financial = (payment.amount, payment.move_id.state,
                      payment.move_id.line_ids.mapped('balance'), slip.line_ids.mapped('total'))
         retained_partial = retained._il_payslip_link_partials()
-        edit = self._run_selected_action(self.edit_action, payment, source_action)
-        self.assertEqual(edit.operation, 'edit')
-        edit.line_ids.amount = 400.0
-        edit.action_apply()
+        selected = payment.with_user(self.payroll_user).with_context(source_action['context'])
+        selected.write({
+            'il_payslip_linked_amount': 400.0,
+            'il_payslip_link_write_token': selected.il_payslip_link_snapshot,
+        })
         self.assertEqual(payment.with_context(il_payslip_id=slip.id).il_payslip_linked_amount, 400.0)
         self.assertEqual(retained._il_payslip_link_partials(), retained_partial)
         self.assertEqual(slip.il_net_amount_to_pay, 1300.0)
-        removal = self._run_selected_action(self.remove_action, payment, source_action)
-        self.assertEqual(removal.operation, 'remove')
-        removal.action_apply()
+        # Native selected header passes IDs directly to the model method;
+        # the result refreshes the linked list without an intermediate form.
+        removal = selected.with_context(
+            active_id=payment.id, active_ids=payment.ids,
+            active_model='account.payment', active_domain=source_action['domain'],
+        ).action_il_remove_payslip_links()
+        self.assertEqual(removal['res_model'], 'account.payment')
+        self.assertEqual(removal.get('target', 'current'), 'current')
+        self.assertEqual(removal['context']['il_payslip_id'], slip.id)
+        self.assertNotIn(payment, self.env['account.payment'].search(removal['domain']))
+        self.assertIn(retained, self.env['account.payment'].search(removal['domain']))
         self.assertFalse(payment._il_payslip_link_partials())
         self.assertEqual(retained._il_payslip_link_partials(), retained_partial)
         self.assertEqual(slip.il_net_amount_to_pay, 1700.0)

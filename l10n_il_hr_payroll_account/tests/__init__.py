@@ -10,3 +10,4 @@ from . import test_hebrew_ui_translations
 from . import test_hr_navigation_ui_ux
 from . import test_payslip_payment_ui
 from . import test_payslip_payment_toolbar
+from . import test_payslip_payment_candidates
