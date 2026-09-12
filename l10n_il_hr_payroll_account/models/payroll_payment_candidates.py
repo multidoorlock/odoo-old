@@ -167,7 +167,7 @@ class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
     il_payslip_candidate_amount = fields.Monetary(
-        string='סכום להכרה', currency_field='currency_id',
+        string='Amount to Link', currency_field='currency_id',
         compute='_compute_il_payslip_candidate_amount', inverse='_inverse_il_payslip_candidate_amount')
 
     @api.model
