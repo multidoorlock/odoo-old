@@ -2,7 +2,7 @@ from datetime import date
 from lxml import etree
 
 from odoo import Command
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import TransactionCase, new_test_user, tagged
 from odoo.tools.safe_eval import safe_eval
 
 
@@ -133,6 +133,74 @@ class TestEmployeePaymentNavigation(TransactionCase):
             self.employee.action_open_payslips()['domain'],
             [('employee_id', '=', self.employee.id)])
 
+    def test_employee_smartbutton_order_keeps_native_actions_and_groups(self):
+        base = self.env.ref('hr.view_employee_form')
+        new_payslip = str(self.env.ref('hr_payroll.action_hr_payslip_new').id)
+        priorities = {
+            'action_il_open_work_contact': 10,
+            'action_open_versions': 20,
+            'action_open_attendance_device_cards': 30,
+            'action_open_payslips': 40,
+            new_payslip: 40,
+            'action_il_open_payments': 50,
+            'action_il_open_payroll_ledger': 60,
+            'action_open_documents': 70,
+            'action_open_work_entries': 90,
+            'action_open_last_month_attendances': 100,
+        }
+        for lang in ('he_IL', 'en_US'):
+            employee = self.env['hr.employee'].with_context(lang=lang)
+            original = base.with_context(lang=lang)._get_combined_arch()
+            before = list(original.xpath("//div[@name='button_box']/button"))
+            arch, _ = employee._get_view(base.id, 'form')
+            after = arch.xpath("//div[@name='button_box']/button")
+            self.assertEqual(len(before), len(after))
+            self.assertEqual(after[0].get('name'), 'action_il_open_work_contact')
+            self.assertEqual(after[1].get('name'), 'action_open_versions')
+            ranks = [80 if node.xpath("./field[@name='equipment_count']")
+                     else priorities.get(node.get('name'), 85) for node in after]
+            self.assertEqual(ranks, sorted(ranks))
+            # No new actions or permission changes; the native variants remain.
+            for button in before:
+                matches = [node for node in after if all(
+                    node.get(key) == button.get(key)
+                    for key in ('name', 'type', 'groups', 'context'))]
+                self.assertEqual(len(matches), 1)
+            self.assertEqual(
+                etree.tostring(original),
+                etree.tostring(base.with_context(lang=lang)._get_combined_arch()))
+            for count in ('document_count', 'equipment_count'):
+                nodes = arch.xpath("//div[@name='button_box']/button[field[@name='%s']]" % count)
+                for button in nodes:
+                    self.assertTrue(safe_eval(button.get('invisible'), {count: 0}))
+                    self.assertFalse(safe_eval(button.get('invisible'), {count: 1}))
+
+        # Optional Documents and Maintenance actions retain native group access.
+        hr_user = new_test_user(self.env(context=dict(self.env.context, no_reset_password=True)),
+                                login='il_employee_navigation_hr_user',
+                                groups='hr.group_hr_user')
+        view = self.env['hr.employee'].with_user(hr_user).get_view(base.id, 'form')
+        visible = etree.fromstring(view['arch'].encode())
+        for count, group in (('document_count', 'documents.group_documents_user'),
+                             ('equipment_count', 'maintenance.group_equipment_manager')):
+            if count in self.env['hr.employee']._fields:
+                self.assertEqual(bool(visible.xpath("//button[field[@name='%s']]" % count)),
+                                 hr_user.has_group(group))
+
+    def test_employee_smartbutton_order_tolerates_missing_optional_addons(self):
+        arch = etree.fromstring('''<form><div name="button_box">
+            <button name="other_native_action" groups="hr.group_hr_user"/>
+            <button name="action_open_work_entries"/>
+            <field name="work_contact_id" invisible="1"/>
+            <button name="action_open_versions"/>
+            <button name="action_il_open_work_contact"/>
+        </div></form>''')
+        result = self.env['hr.employee']._il_order_employee_smartbuttons(arch)
+        self.assertEqual([node.get('name') for node in result.xpath('//button')], [
+            'action_il_open_work_contact', 'action_open_versions',
+            'other_native_action', 'action_open_work_entries'])
+        self.assertEqual(result.xpath('//div/field')[0].get('name'), 'work_contact_id')
+
     def test_batch_native_grouping_and_export_totals_include_every_payment(self):
         first = self._payment(self.employee, 100)
         second = self._payment(self.employee, 500)
@@ -181,6 +249,8 @@ class TestEmployeePaymentNavigation(TransactionCase):
         self.assertEqual(len(table.xpath('./tbody/tr')), 2)
         self.assertTrue(all(len(row.xpath('./td')) == 2 for row in table.xpath('./tbody/tr')))
         self.assertEqual(len(table.xpath('./tfoot/tr')), 1)
+        count = etree.HTML(html).xpath("//span[@class='il_employee_count']")[0]
+        self.assertEqual(count.text, '2')
 
     def test_report_keeps_multiple_currencies_in_one_employee_row(self):
         other_currency = self.env.ref('base.USD')

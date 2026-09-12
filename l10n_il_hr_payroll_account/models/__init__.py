@@ -18,3 +18,6 @@ from . import payment_cycle
 from . import res_partner_bank
 from . import payroll_reconciliation_actions
 from . import hr_employee
+from . import hr_employee_view
+from . import employee_accounting_navigation
+from . import hr_hebrew_translations

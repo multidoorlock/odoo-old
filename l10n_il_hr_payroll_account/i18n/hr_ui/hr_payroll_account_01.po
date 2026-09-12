@@ -1,0 +1,90 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:hr_payroll_account.hr_payslip_run_view_kanban
+msgid "(Canceled)"
+msgstr "(מבוטל)"
+
+#. module: hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:hr_payroll_account.hr_payslip_run_view_kanban
+msgid "(Draft)"
+msgstr "(טיוטה)"
+
+#. module: hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:hr_payroll_account.hr_payslip_run_view_kanban
+msgid "(Posted)"
+msgstr "(נרשם)"
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,field_description:hr_payroll_account.field_hr_payslip__batch_payroll_move_lines
+#: model:ir.model.fields,field_description:hr_payroll_account.field_res_config_settings__batch_payroll_move_lines
+msgid "Batch Payroll Move Lines"
+msgstr "שורות תנועות יומן של שכר באצווה"
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,field_description:hr_payroll_account.field_hr_salary_rule__credit_tag_ids
+msgid "Credit Tax Grids"
+msgstr "שדות דיווח מס בזכות"
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,field_description:hr_payroll_account.field_hr_salary_rule__debit_tag_ids
+msgid "Debit Tax Grids"
+msgstr "שדות דיווח מס בחובה"
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,help:hr_payroll_account.field_hr_salary_rule__account_debit
+msgid "Default account defined on the journal of the salary structure."
+msgstr "חשבון ברירת המחדל המוגדר ביומן של מבנה השכר."
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,help:hr_payroll_account.field_hr_salary_rule__employee_move_line
+msgid "Enable this option to set the employee on the journal items of the payslips."
+msgstr "יש להפעיל אפשרות זו כדי לשייך את העובד לשורות תנועות היומן של התלושים."
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,help:hr_payroll_account.field_hr_salary_rule__split_move_lines
+msgid "Enable this option to split the accountig entries for this rule according to the payslip line name. It could be useful for deduction/reimbursement or salary adjustments for instance."
+msgstr "יש להפעיל אפשרות זו כדי לפצל את תנועות היומן של כלל זה לפי שם שורת התלוש. שימושי למשל לניכויים, החזרים או התאמות שכר."
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,field_description:hr_payroll_account.field_hr_salary_rule__not_computed_in_net
+msgid "Excluded from Net"
+msgstr "אינו נכלל בנטו"
+
+#. module: hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:hr_payroll_account.hr_payslip_run_view_kanban
+msgid "Generated Journal Entries"
+msgstr "תנועות יומן שנוצרו"
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,help:hr_payroll_account.field_hr_salary_rule__not_computed_in_net
+msgid "If checked, the result of this rule will not be taken into account in the Net salary rule in the journal entries. A specific debit/credit account should be set to consider it independently."
+msgstr "אם מסומן, תוצאת כלל זה לא תיכלל בכלל שכר הנטו בתנועות היומן. יש להגדיר חשבון חובה או זכות נפרד כדי לרשום אותה בנפרד."
+
+#. module: hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:hr_payroll_account.hr_payslip_run_view_kanban
+msgid "Journal Entry <br/>"
+msgstr "תנועת יומן <br/>"
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,field_description:hr_payroll_account.field_hr_salary_rule__employee_move_line
+msgid "Set employee on account line"
+msgstr "הגדרת עובד בשורת החשבון"
+
+#. module: hr_payroll_account
+#: model:ir.model.fields,field_description:hr_payroll_account.field_hr_salary_rule__split_move_lines
+msgid "Split on names"
+msgstr "פיצול לפי שמות"
+
+#. module: hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:hr_payroll_account.hr_payslip_run_view_kanban
+#: model_terms:ir.ui.view,arch_db:hr_payroll_account.hr_payslip_view_form
+msgid "Validate"
+msgstr "אשר"

@@ -135,7 +135,7 @@ class TestEmployeePaymentReconciliation(TransactionCase):
 
     def test_accounting_user_can_unlink_unrelated_reconciliation(self):
         accounting_user = new_test_user(
-            self.env,
+            self.env(context=dict(self.env.context, no_reset_password=True)),
             login='reconciliation-accounting-only',
             groups='account.group_account_user',
         )

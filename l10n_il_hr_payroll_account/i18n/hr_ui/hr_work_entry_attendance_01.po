@@ -1,0 +1,25 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: hr_work_entry_attendance
+#: model:ir.model.fields,help:hr_work_entry_attendance.field_hr_employee__work_entry_source
+#: model:ir.model.fields,help:hr_work_entry_attendance.field_hr_version__work_entry_source
+msgid "\n        Defines the source for work entries generation\n\n        Working Schedule: Work entries will be generated from the working hours below.\n        Attendances: Work entries will be generated from the employee's attendances. (requires Attendance app)\n        Planning: Work entries will be generated from the employee's planning. (requires Planning app)\n    "
+msgstr "\n        מגדיר את המקור ליצירת כניסות לעבודה\n\n        לוח עבודה: כניסות לעבודה ייווצרו לפי שעות העבודה שלהלן.\n        נוכחות: כניסות לעבודה ייווצרו לפי רישומי הנוכחות של העובד. (דורש את יישום הנוכחות)\n        תכנון: כניסות לעבודה ייווצרו לפי תכנון העבודה של העובד. (דורש את יישום התכנון)\n    "
+
+#. module: hr_work_entry_attendance
+#: model:ir.model.fields,help:hr_work_entry_attendance.field_hr_employee__overtime_from_attendance
+#: model:ir.model.fields,help:hr_work_entry_attendance.field_hr_version__overtime_from_attendance
+msgid "Add extra hours from attendances to the working entries"
+msgstr "הוספת שעות נוספות מרישומי הנוכחות לכניסות לעבודה"
+
+#. module: hr_work_entry_attendance
+#: model_terms:ir.ui.view,arch_db:hr_work_entry_attendance.hr_attendance_overtime_rule_view_form
+msgid "Work entry type to use:"
+msgstr "סוג רישום העבודה לשימוש:"

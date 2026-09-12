@@ -1,0 +1,23 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: hr_payroll_attendance
+#: model:ir.model.fields,field_description:hr_payroll_attendance.field_hr_payslip__attendance_count
+msgid "Attendance Count"
+msgstr "מספר רישומי נוכחות"
+
+#. module: hr_payroll_attendance
+#: model_terms:ir.ui.view,arch_db:hr_payroll_attendance.hr_attendance_view_inherit_filter
+msgid "Employee Reference"
+msgstr "מזהה העובד"
+
+#. module: hr_payroll_attendance
+#: model:ir.model.fields,field_description:hr_payroll_attendance.field_hr_employee__ruleset_id
+msgid "Ruleset"
+msgstr "מערכת כללים"

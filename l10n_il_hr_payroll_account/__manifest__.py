@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Israel - Payroll With Accounting',
-    'version': '1.4.31',
+    'version': '1.4.32',
     'category': 'Human Resources/Payroll',
     'author': 'MDL',
     'summary': 'חוקי שכר ישראליים, התאמות שכר ותשלומי עובדים ישירים',
@@ -38,7 +38,9 @@
         'views/payment_cycle_views.xml',
         'views/hr_attendance_overtime_rule_views.xml',
         'views/menus.xml',
+        'views/employee_accounting_navigation.xml',
         'report/batch_employee_payments.xml',
+        'data/hr_hebrew_translations.xml',
     ],
     'assets': {
         'web.assets_backend': [

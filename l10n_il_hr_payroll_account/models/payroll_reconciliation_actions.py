@@ -9,8 +9,11 @@ class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
     il_payslip_linked_amount = fields.Monetary(
-        string='סכום בתלוש', compute='_compute_il_payslip_link_values',
+        string='סכום להכרה', compute='_compute_il_payslip_link_values',
         inverse='_inverse_il_payslip_linked_amount', currency_field='currency_id')
+    il_recognition_available_amount = fields.Monetary(
+        string='יתרה להכרה', compute='_compute_il_recognition_available_amount',
+        currency_field='currency_id')
     il_payslip_link_snapshot = fields.Char(
         compute='_compute_il_payslip_link_values')
     il_payslip_link_write_token = fields.Char(
@@ -40,6 +43,21 @@ class AccountPayment(models.Model):
         return self.move_id.line_ids.matched_credit_ids.filtered(
             lambda partial: partial.credit_move_id.il_payslip_id)
 
+    def _il_recognition_items(self):
+        self.ensure_one()
+        return self.move_id.line_ids.filtered(lambda line:
+            line.parent_state == 'posted'
+            and line.account_id == self.company_id.il_employee_payment_debit_account_id
+            and line.partner_id == self.partner_id
+            and line.currency_id == self.currency_id and line.balance > 0)
+
+    @api.depends('move_id.line_ids.amount_residual_currency', 'move_id.state',
+                 'company_id.il_employee_payment_debit_account_id', 'partner_id', 'currency_id')
+    def _compute_il_recognition_available_amount(self):
+        for payment in self:
+            payment.il_recognition_available_amount = max(payment.currency_id.round(
+                sum(payment._il_recognition_items().mapped('amount_residual_currency'))), 0.0)
+
     def _il_payslip_link_token(self, slip):
         """Fingerprint this payment's allocation pool, independent of other rows.
 
@@ -60,6 +78,10 @@ class AccountPayment(models.Model):
             'splits': [(line.id, line.sequence, line.amount, line.reconcile_id.id,
                         line.il_pending_payslip_move_line_id.id)
                        for line in self.il_split_line_ids.sorted('id')],
+            'items': [(line.id, line.account_id.id, line.partner_id.id,
+                       line.currency_id.id, line.balance, line.amount_currency,
+                       line.amount_residual, line.amount_residual_currency)
+                      for line in self._il_recognition_items().sorted('id')],
         }
         return hashlib.sha256(json.dumps(
             values, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
@@ -118,7 +140,7 @@ class AccountPayment(models.Model):
                                 for payment in self]:
             if payment.currency_id.compare_amounts(amount, 0.0) <= 0:
                 raise ValidationError(_(
-                    'הסכום בתלוש חייב להיות חיובי. להסרה השתמש בכפתור הסרה מהתלוש.'))
+                    'הסכום להכרה חייב להיות חיובי. להסרה בחר הסרת קישור מהתלוש בתפריט פעולות.'))
             payment._il_update_payslip_link(
                 amount, self.env.context.get('il_payslip_link_expected'))
 
@@ -155,8 +177,61 @@ class AccountPayment(models.Model):
 
     def action_il_add_payslip_payment(self):
         slip = self._il_context_payslip()
-        return self.env['il.payroll.reconciliation.wizard']._action_open(
-            payslip=slip, add_only=True)
+        # Native payment records remain searchable, sortable and exportable.
+        # Eligibility is checked again under accounting locks when applied.
+        candidates = self.env['il.payroll.reconciliation.wizard']._eligible_payments(slip)
+        return {
+            'type': 'ir.actions.act_window', 'name': _('תשלומים זמינים לקישור לתלוש'),
+            'res_model': 'account.payment', 'view_mode': 'list', 'target': 'current',
+            'views': [(self.env.ref(
+                'l10n_il_hr_payroll_account.view_account_payment_list_payslip_candidates'
+            ).id, 'list')],
+            'search_view_id': (self.env.ref(
+                'l10n_il_hr_payroll_account.view_account_payment_search_employee').id, ''),
+            'domain': [('id', 'in', candidates.ids)],
+            'context': {
+                'allowed_company_ids': self.env.companies.ids,
+                'il_employee_payment': True, 'il_payslip_id': slip.id,
+                'il_payslip_candidate_list': True, 'create': False,
+                'edit': False, 'delete': False,
+            },
+            'help': _('<p class="o_view_nocontent_smiling_face">אין תשלומים זמינים לקישור</p>'
+                      '<p>מוצגים תשלומים של העובד עם יתרה להכרה, שאינם מקושרים כבר לתלוש זה.</p>'),
+        }
+
+    def action_il_select_payslip_payments(self):
+        return self.env['il.payslip.payment.selection.wizard']._action_open(self, 'add')
+
+    def action_il_change_recognized_amount(self):
+        return self.env['il.payslip.payment.selection.wizard']._action_open(self, 'edit')
+
+    def action_il_remove_payslip_links(self):
+        return self.env['il.payslip.payment.selection.wizard']._action_open(self, 'remove')
+
+
+class IrActionsActions(models.Model):
+    _inherit = 'ir.actions.actions'
+
+    @api.model
+    def get_bindings(self, model_name):
+        result = super().get_bindings(model_name)
+        if model_name != 'account.payment':
+            return result
+        payroll_actions = {
+            record.id for xmlid in (
+                'l10n_il_hr_payroll_account.action_payslip_change_recognized_amount',
+                'l10n_il_hr_payroll_account.action_payslip_remove_payment_links',
+            ) if (record := self.env.ref(xmlid, raise_if_not_found=False))
+        }
+        linked = self.env.context.get('il_payslip_link_list') and self.env.context.get('il_payslip_id')
+        candidates = self.env.context.get('il_payslip_candidate_list') and self.env.context.get('il_payslip_id')
+        # get_bindings returns fresh dictionaries; never modify its cached
+        # _get_bindings data. Accounting entry points retain native actions.
+        result = dict(result)
+        result['action'] = [action for action in result.get('action', [])
+                            if (action['id'] in payroll_actions if linked and not candidates
+                                else not candidates and action['id'] not in payroll_actions)]
+        return result
 
 
 class HrPayslip(models.Model):

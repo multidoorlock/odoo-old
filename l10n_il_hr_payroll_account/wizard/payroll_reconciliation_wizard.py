@@ -356,11 +356,11 @@ class IlPayrollReconciliationWizardLine(models.TransientModel):
     payment_id = fields.Many2one('account.payment', string='תשלום', required=True)
     payslip_id = fields.Many2one('hr.payslip', string='תלוש', required=True)
     memo = fields.Char(related='payment_id.memo', string='פתק')
-    amount = fields.Monetary(string='סכום מקושר לתלוש', required=True)
+    amount = fields.Monetary(string='סכום להכרה', required=True)
     currency_id = fields.Many2one(related='wizard_id.currency_id')
     payment_amount = fields.Monetary(related='payment_id.amount', string='סכום התשלום')
     payment_available_amount = fields.Monetary(
-        string='יתרה זמינה לסגירה', compute='_compute_payment_available_amount')
+        string='יתרה להכרה', compute='_compute_payment_available_amount')
     payslip_remaining = fields.Monetary(
         related='payslip_id.il_net_amount_to_pay', string='יתרת התלוש כעת')
     is_existing = fields.Boolean(compute='_compute_existing')
@@ -386,3 +386,194 @@ class IlPayrollReconciliationWizardLine(models.TransientModel):
     def _compute_existing(self):
         for line in self:
             line.is_existing = str(line._origin.id) in (line.wizard_id.original_row_pairs or {})
+
+
+class IlPayslipPaymentSelectionWizard(models.TransientModel):
+    _name = 'il.payslip.payment.selection.wizard'
+    _description = 'Selected Payslip Payments'
+
+    source_payslip_id = fields.Many2one('hr.payslip', required=True, readonly=True, string='תלוש')
+    employee_id = fields.Many2one(related='source_payslip_id.employee_id', string='עובד')
+    currency_id = fields.Many2one(related='source_payslip_id.currency_id')
+    operation = fields.Selection([
+        ('add', 'קישור לתלוש'), ('edit', 'שינוי סכום להכרה'),
+        ('remove', 'הסרת קישור מהתלוש')], required=True, readonly=True)
+    selected_payment_ids = fields.Many2many('account.payment', readonly=True)
+    editor_id = fields.Many2one('il.payroll.reconciliation.wizard', readonly=True, ondelete='cascade')
+    line_ids = fields.One2many('il.payslip.payment.selection.wizard.line', 'wizard_id')
+    original_rows = fields.Json(readonly=True)
+    applied = fields.Boolean(readonly=True)
+    payslip_remaining = fields.Monetary(readonly=True, string='נותר לסגירה בתלוש')
+    total_amount = fields.Monetary(compute='_compute_total', string='סה״כ להכרה')
+
+    @api.depends('line_ids.amount')
+    def _compute_total(self):
+        for wizard in self:
+            wizard.total_amount = sum(wizard.line_ids.mapped('amount'))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # The selected records are the only client input used to generate a
+        # review. Tokens, baseline rows and the underlying editor are private.
+        clean = [{key: value for key, value in vals.items()
+                  if key in ('source_payslip_id', 'operation', 'selected_payment_ids')}
+                 for vals in vals_list]
+        wizards = super().create(clean)
+        for wizard in wizards:
+            wizard._prepare_selection()
+        return wizards
+
+    def write(self, vals):
+        if set(vals) - {'line_ids'}:
+            raise ValidationError(_('יש לפתוח חלון חדש כדי לשנות את בחירת התשלומים.'))
+        return super().write(vals)
+
+    def _prepare_selection(self):
+        self.ensure_one()
+        payments = self.selected_payment_ids.exists()
+        if not payments or payments != self.selected_payment_ids:
+            raise ValidationError(_('יש לבחור לפחות תשלום אחד מהרשימה.'))
+        payments.check_access('read')
+        payments.check_access('write')
+        editor = self.env['il.payroll.reconciliation.wizard'].create({
+            'source_payslip_id': self.source_payslip_id.id,
+            'add_only': self.operation == 'add',
+        })
+        slip = self.source_payslip_id
+        linked = editor._scope_partials().debit_move_id.payment_id
+        eligible = editor._eligible_payments(slip) if self.operation == 'add' else linked
+        if payments - eligible:
+            raise ValidationError(_(
+                'הבחירה השתנתה או אינה מתאימה לפעולה. רענן את רשימת התשלומים ובחר שוב.'))
+        for payment in payments:
+            editor._check_pair(payment, slip)
+        remaining = max(-sum(slip._il_salary_payable_lines().mapped('amount_residual_currency')), 0.0)
+        unassigned = remaining
+        lines = []
+        for payment in payments.sorted(lambda record: (record.date, record.id)):
+            current = sum(payment._il_payslip_link_partials().filtered(
+                lambda partial: partial.credit_move_id.il_payslip_id == slip
+            ).mapped('debit_amount_currency'))
+            available = payment.il_recognition_available_amount
+            amount = current
+            if self.operation == 'add':
+                amount = min(available, unassigned)
+                unassigned = max(unassigned - amount, 0.0)
+            lines.append(Command.create({
+                'payment_id': payment.id, 'payment_date': payment.date, 'memo': payment.memo,
+                'payment_amount': payment.amount, 'available_amount': available,
+                'current_amount': current, 'amount': amount,
+            }))
+        super(IlPayslipPaymentSelectionWizard, self).write({
+            'editor_id': editor.id, 'line_ids': lines, 'payslip_remaining': remaining,
+        })
+        super(IlPayslipPaymentSelectionWizard, self).write({
+            'original_rows': {str(line.id): {
+                'payment_id': line.payment_id.id,
+                'token': line.payment_id._il_payslip_link_token(slip),
+            } for line in self.line_ids},
+        })
+
+    @api.model
+    def _action_open(self, payments, operation):
+        slip = payments._il_context_payslip()
+        wizard = self.create({
+            'source_payslip_id': slip.id, 'operation': operation,
+            'selected_payment_ids': [Command.set(payments.ids)],
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': dict(self._fields['operation']._description_selection(self.env))[operation],
+            'res_model': self._name, 'res_id': wizard.id,
+            'view_mode': 'form', 'target': 'new',
+            'views': [(self.env.ref(
+                'l10n_il_hr_payroll_account.view_il_payslip_payment_selection_wizard').id, 'form')],
+            'context': {'dialog_size': 'large', 'allowed_company_ids': self.env.companies.ids},
+        }
+
+    def action_apply(self):
+        self.ensure_one()
+        with self.env.cr.savepoint():
+            return self._apply_selection()
+
+    def _apply_selection(self):
+        if self.applied:
+            raise UserError(_('הפעולה כבר בוצעה. יש לרענן את רשימת התשלומים.'))
+        editor = self.editor_id.exists()
+        if not editor:
+            raise UserError(_('חלון העריכה פג תוקף. פתח אותו מחדש מרשימת התשלומים.'))
+        editor.check_access('write')
+        if editor.source_payslip_id != self.source_payslip_id or bool(editor.add_only) != (self.operation == 'add'):
+            raise ValidationError(_('מקור הפעולה אינו תואם לחלון שנפתח.'))
+        rows = self.original_rows or {}
+        if set(rows) != {str(line.id) for line in self.line_ids}:
+            raise ValidationError(_('יש לבחור תשלומים מהרשימה; לא ניתן להוסיף או להסיר שורות בחלון זה.'))
+        proposed = []
+        for line in self.line_ids:
+            baseline = rows[str(line.id)]
+            if line.payment_id.id != baseline['payment_id']:
+                raise ValidationError(_('לא ניתן להחליף תשלום בחלון זה.'))
+            if self.currency_id.compare_amounts(line.amount, 0.0) < 0 or (
+                    self.operation == 'edit' and self.currency_id.is_zero(line.amount)):
+                raise ValidationError(_('הסכום להכרה חייב להיות חיובי; להסרה בחר הסרת קישור מהתלוש.'))
+            proposed.append((line.payment_id, line.amount, baseline['token']))
+        if self.operation == 'add' and not any(
+                self.currency_id.compare_amounts(amount, 0.0) > 0 for _, amount, _ in proposed):
+            raise ValidationError(_('יש להזין סכום להכרה לפחות באחד מהתשלומים שנבחרו.'))
+        payments = self.line_ids.payment_id
+        payments.check_access('write')
+        partials = editor._scope_partials()
+        editor._lock_records(partials.debit_move_id.payment_id | payments,
+                             partials.credit_move_id.il_payslip_id | self.source_payslip_id)
+        if self.applied:
+            raise UserError(_('הפעולה כבר בוצעה. יש לרענן את רשימת התשלומים.'))
+        if editor._fingerprint() != editor.snapshot:
+            raise UserError(_('הסכומים בתלוש השתנו מאז פתיחת החלון. רענן את הרשימה ונסה שוב.'))
+        initial = {command[2]['payment_id']: command[2]['amount']
+                   for command in editor._initial_rows()}
+        actual = {line.payment_id.id: line.amount for line in editor.line_ids}
+        if initial != actual or len(actual) != len(editor.line_ids):
+            raise UserError(_('חלון העריכה השתנה. פתח מחדש את הפעולה מרשימת התשלומים.'))
+        for payment, amount, token in proposed:
+            editor._check_pair(payment, self.source_payslip_id)
+            if token != payment._il_payslip_link_token(self.source_payslip_id):
+                raise UserError(_('התשלום או יתרתו השתנו מאז פתיחת החלון. רענן את הרשימה ונסה שוב.'))
+            if self.operation == 'add':
+                if not self.currency_id.is_zero(amount):
+                    editor.write({'line_ids': [Command.create({
+                        'payment_id': payment.id, 'payslip_id': self.source_payslip_id.id,
+                        'amount': amount,
+                    })]})
+            else:
+                current = editor.line_ids.filtered(lambda line: line.payment_id == payment)
+                if len(current) != 1:
+                    raise UserError(_('קישור התשלום השתנה. רענן את הרשימה ונסה שוב.'))
+                if self.operation == 'remove':
+                    current.unlink()
+                else:
+                    current.amount = amount
+        # Apply the entire selection together so increasing one link while
+        # decreasing another is independent of the order of selected rows.
+        editor.action_apply()
+        super(IlPayslipPaymentSelectionWizard, self).write({'applied': True})
+        return self.source_payslip_id.action_il_open_payments()
+
+
+class IlPayslipPaymentSelectionWizardLine(models.TransientModel):
+    _name = 'il.payslip.payment.selection.wizard.line'
+    _description = 'Selected Payslip Payment Amount'
+
+    wizard_id = fields.Many2one('il.payslip.payment.selection.wizard', required=True, ondelete='cascade')
+    payment_id = fields.Many2one('account.payment', required=True, readonly=True, string='תשלום')
+    payment_date = fields.Date(readonly=True, string='תאריך')
+    memo = fields.Char(readonly=True, string='פתק')
+    currency_id = fields.Many2one(related='wizard_id.currency_id')
+    payment_amount = fields.Monetary(readonly=True, string='סכום התשלום')
+    current_amount = fields.Monetary(readonly=True, string='מוכר כעת בתלוש')
+    available_amount = fields.Monetary(readonly=True, string='יתרה להכרה')
+    amount = fields.Monetary(string='סכום להכרה', required=True)
+
+    def write(self, vals):
+        if set(vals) - {'amount'}:
+            raise ValidationError(_('בחלון זה ניתן לשנות רק את הסכום להכרה.'))
+        return super().write(vals)

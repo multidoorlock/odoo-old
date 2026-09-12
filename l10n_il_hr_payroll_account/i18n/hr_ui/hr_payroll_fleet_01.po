@@ -1,0 +1,18 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: hr_payroll_fleet
+#: model:hr.payroll.dashboard.warning,name:hr_payroll_fleet.hr_payroll_dashboard_warning_employee_multiple_cars
+msgid "Employees With Multiple Company Cars"
+msgstr "עובדים עם יותר מרכב חברה אחד"
+
+#. module: hr_payroll_fleet
+#: model:hr.payroll.dashboard.warning,name:hr_payroll_fleet.hr_payroll_dashboard_warning_vehicle_without_running_contract
+msgid "Vehicles With Drivers And Without Running Contract"
+msgstr "רכבים עם נהגים ללא חוזה פעיל"

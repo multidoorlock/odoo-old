@@ -208,7 +208,7 @@ class HrPayslip(models.Model):
         return {
             **action,
             'name': 'תשלומים מקושרים',
-            'help': '<p>אין לתלוש תשלומים מקושרים. השתמש בהוסף תשלום כדי לקשר תשלום קיים עם יתרה.</p>',
+            'help': '<p>הוסף תשלום קיים עם יתרה להכרה. לשינוי סכום להכרה או להסרת קישור, בחר שורות והשתמש בתפריט הפעולות.</p>',
             'view_mode': 'list,form',
             'views': [(list_view.id, 'list'), (form_view.id, 'form')],
             'view_id': list_view.id,
@@ -219,7 +219,7 @@ class HrPayslip(models.Model):
             ],
             'context': {
                 'create': False,
-                'edit': True,
+                'edit': False,
                 'delete': False,
                 'il_employee_payment': True,
                 'il_payslip_id': self.id,

@@ -39,7 +39,7 @@
                                domain="[('id', 'in', parent.available_payslip_ids)]"
                                options="{'no_create': True, 'no_open': True}"/>
                         <field name="payslip_remaining" optional="hide" readonly="1"/>
-                        <field name="amount" sum="סה״כ מקושר לתלוש"/>
+                        <field name="amount" sum="סה״כ להכרה"/>
                     </list>
                 </field>
                 <footer>
@@ -47,6 +47,53 @@
                             class="btn-primary" invisible="add_only"/>
                     <button name="action_apply" type="object" string="קישור לתלוש"
                             class="btn-primary" invisible="not add_only"/>
+                    <button special="cancel" string="ביטול" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="view_il_payslip_payment_selection_wizard" model="ir.ui.view">
+        <field name="name">il.payslip.payment.selection.wizard.form</field>
+        <field name="model">il.payslip.payment.selection.wizard</field>
+        <field name="arch" type="xml">
+            <form string="תשלומים שנבחרו">
+                <field name="operation" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <group>
+                    <group>
+                        <field name="source_payslip_id" options="{'no_open': True}"/>
+                        <field name="employee_id" options="{'no_open': True}"/>
+                    </group>
+                    <group>
+                        <field name="payslip_remaining"/>
+                        <field name="total_amount" invisible="operation == 'remove'"/>
+                    </group>
+                </group>
+                <p invisible="operation != 'add'">
+                    הזן את הסכום להכרה בכל תשלום שנבחר. סכום אפס משאיר את התשלום ללא קישור לתלוש זה.
+                </p>
+                <p invisible="operation != 'remove'">
+                    הקישור של התשלומים שנבחרו לתלוש יוסר. סכומי התשלומים יישמרו.
+                </p>
+                <field name="line_ids" nolabel="1" readonly="operation == 'remove'">
+                    <list editable="bottom" create="0" delete="0">
+                        <field name="currency_id" column_invisible="True"/>
+                        <field name="payment_date"/>
+                        <field name="payment_id" options="{'no_open': True}"/>
+                        <field name="memo" optional="show"/>
+                        <field name="payment_amount"/>
+                        <field name="amount" sum="סה״כ להכרה" readonly="parent.operation == 'remove'"/>
+                        <field name="available_amount"/>
+                        <field name="current_amount" optional="hide"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_apply" type="object" string="קישור לתלוש"
+                            class="btn-primary" invisible="operation != 'add'"/>
+                    <button name="action_apply" type="object" string="שמירת הסכומים"
+                            class="btn-primary" invisible="operation != 'edit'"/>
+                    <button name="action_apply" type="object" string="הסרת הקישור"
+                            class="btn-primary" invisible="operation != 'remove'"/>
                     <button special="cancel" string="ביטול" class="btn-secondary"/>
                 </footer>
             </form>

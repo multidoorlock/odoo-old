@@ -187,8 +187,8 @@
         </field>
     </record>
 
-    <!-- Same native payment list, with only the payslip's linked amount
-         editable. General employee and batch entry points keep their list. -->
+    <!-- Native selectable payment list. Link changes are reviewed together
+         from Actions; financial payment fields remain read-only here. -->
     <record id="view_account_payment_list_payslip_links" model="ir.ui.view">
         <field name="name">mdl.payroll.account.payment.view.list.payslip.links</field>
         <field name="model">account.payment</field>
@@ -196,12 +196,11 @@
         <field name="mode">primary</field>
         <field name="arch" type="xml">
             <list position="attributes">
-                <attribute name="edit">1</attribute>
-                <attribute name="editable">bottom</attribute>
+                <attribute name="edit">0</attribute>
+                <attribute name="editable"/>
                 <attribute name="create">0</attribute>
                 <attribute name="delete">0</attribute>
                 <attribute name="multi_edit">0</attribute>
-                <attribute name="open_form_view">1</attribute>
             </list>
             <xpath expr="//header" position="replace">
                 <header>
@@ -242,19 +241,54 @@
                 <attribute name="readonly">1</attribute>
             </field>
             <field name="il_relevant_installment_number" position="replace"/>
-            <field name="il_relevant_installment_amount" position="replace">
-                <field name="il_payslip_link_snapshot" readonly="1" column_invisible="True"/>
-                <field name="il_payslip_link_write_token" readonly="0" column_invisible="True"/>
-                <field name="il_payslip_linked_amount" string="סכום בתלוש"
-                       widget="il_payslip_link_amount" readonly="0" sum="סה״כ בתלוש"/>
-            </field>
-            <field name="state" position="after">
-                <button name="action_il_remove_from_payslip" type="object"
-                        string="הסרה מהתלוש" icon="fa-unlink"
-                        context="{'il_payslip_link_expected': il_payslip_link_snapshot}"
-                        confirm="להסיר את התשלום מהתלוש? התשלום עצמו יישמר."/>
+            <field name="il_relevant_installment_amount" position="replace"/>
+            <field name="amount" position="after">
+                <field name="il_payslip_linked_amount" string="סכום להכרה"
+                       widget="monetary" readonly="1" sum="סה״כ להכרה"/>
+                <field name="il_recognition_available_amount" string="יתרה להכרה"
+                       widget="monetary" readonly="1" optional="hide"/>
             </field>
         </field>
+    </record>
+
+    <record id="view_account_payment_list_payslip_candidates" model="ir.ui.view">
+        <field name="name">mdl.payroll.account.payment.view.list.payslip.candidates</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="view_account_payment_list_payslip_links"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="replace">
+                <header>
+                    <button name="action_il_select_payslip_payments" type="object"
+                            string="קישור לתלוש"/>
+                </header>
+            </xpath>
+            <field name="il_payslip_linked_amount" position="replace"/>
+            <field name="il_recognition_available_amount" position="attributes">
+                <attribute name="optional">show</attribute>
+                <attribute name="sum">סה״כ יתרה להכרה</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="action_payslip_change_recognized_amount" model="ir.actions.server">
+        <field name="name">שינוי סכום להכרה</field>
+        <field name="model_id" ref="account.model_account_payment"/>
+        <field name="binding_model_id" ref="account.model_account_payment"/>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(4, ref('hr_payroll.group_hr_payroll_user'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_il_change_recognized_amount()</field>
+    </record>
+
+    <record id="action_payslip_remove_payment_links" model="ir.actions.server">
+        <field name="name">הסרת קישור מהתלוש</field>
+        <field name="model_id" ref="account.model_account_payment"/>
+        <field name="binding_model_id" ref="account.model_account_payment"/>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(4, ref('hr_payroll.group_hr_payroll_user'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_il_remove_payslip_links()</field>
     </record>
 
     <!-- מוסיפה פילטר "תשלומי עובדים" (ניתן להסרה) גם למסכי הנהלת

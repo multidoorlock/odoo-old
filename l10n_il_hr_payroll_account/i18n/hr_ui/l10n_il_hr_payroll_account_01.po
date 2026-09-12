@@ -1,0 +1,227 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: l10n_il_hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:l10n_il_hr_payroll_account.report_batch_employee_payments
+msgid "<strong>Employee count: </strong>"
+msgstr "<strong>סה״כ עובדים: </strong>"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard__add_only
+msgid "Add Only"
+msgstr "הוספה בלבד"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,help:l10n_il_hr_payroll_account.field_account_payment__il_currency_rounding
+msgid "Amounts in this currency are rounded off to the nearest multiple of the rounding factor."
+msgstr "סכומים במטבע זה מעוגלים לכפולה הקרובה ביותר של מקדם העיגול."
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard__available_payment_ids
+msgid "Available Payment"
+msgstr "תשלום זמין"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard__available_payment_method_ids
+msgid "Available Payment Method"
+msgstr "אמצעי תשלום זמין"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard__available_payslip_ids
+msgid "Available Payslip"
+msgstr "תלוש זמין"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_masav_export_wizard__batch_payment_id
+msgid "Batch Payment"
+msgstr "תשלום אצווה"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_type__batch_payment_count
+msgid "Batch Payment Count"
+msgstr "מספר תשלומי אצווה"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,help:l10n_il_hr_payroll_account.field_hr_salary_attachment__is_refund
+msgid "Check if the value of the salary adjustment must be taken into account as negative (-X)"
+msgstr "יש לסמן אם יש להביא בחשבון את ערך התאמת השכר כמספר שלילי (-X)"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_payment_split_line__company_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_masav_export_wizard__company_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard__company_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard__company_id
+msgid "Company"
+msgstr "חברה"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,help:l10n_il_hr_payroll_account.field_il_masav_export_wizard__company_id
+msgid "Company related to this journal"
+msgstr "החברה הקשורה ליומן זה"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_payment_split_line__currency_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_employee__il_payroll_currency_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_employee_payment_cycle_type_line__currency_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_masav_export_wizard_line__currency_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard_line__currency_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard__currency_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard_line__currency_id
+msgid "Currency"
+msgstr "מטבע"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_masav_export_wizard__payment_date
+msgid "Date"
+msgstr "תאריך"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_payment_split_line__employee_id
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard__employee_id
+msgid "Employee"
+msgstr "עובד"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.actions.act_window,name:l10n_il_hr_payroll_account.action_il_accounting_employee_batches
+#: model:ir.ui.menu,name:l10n_il_hr_payroll_account.menu_il_accounting_employee_batches
+msgid "Employee Batch Payments"
+msgstr "תשלומי אצווה לעובדים"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_partial_reconcile__il_payment_id
+msgid "Employee Payment"
+msgstr "תשלום עובד"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.actions.act_window,name:l10n_il_hr_payroll_account.action_il_accounting_employee_payments
+#: model:ir.ui.menu,name:l10n_il_hr_payroll_account.menu_il_accounting_employee_payments
+msgid "Employee Payments"
+msgstr "תשלומי עובדים"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.ui.menu,name:l10n_il_hr_payroll_account.menu_il_accounting_employee_payslips
+msgid "Employee Payslips"
+msgstr "תלושי עובדים"
+
+#. module: l10n_il_hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:l10n_il_hr_payroll_account.report_batch_employee_payments
+msgid "Employee count:"
+msgstr "סה״כ עובדים:"
+
+#. module: l10n_il_hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:l10n_il_hr_payroll_account.report_batch_employee_payments
+msgid "Employee count: "
+msgstr "סה״כ עובדים: "
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.ui.menu,name:l10n_il_hr_payroll_account.menu_il_accounting_employees
+msgid "Employees"
+msgstr "עובדים"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_masav_export_wizard__filename
+msgid "Filename"
+msgstr "שם קובץ"
+
+#. module: l10n_il_hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:l10n_il_hr_payroll_account.mdl_payroll_attendance_overtime_rule_view_form
+msgid "Fixed amount"
+msgstr "סכום קבוע"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_payslip_line__il_hide_redundant_base
+msgid "Il Hide Redundant Base"
+msgstr "הסתרת בסיס מיותר"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_employee__il_is_israel_payroll
+msgid "Il Is Israel Payroll"
+msgstr "שכר ישראלי"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_batch_payment__il_payment_count
+msgid "Il Payment Count"
+msgstr "מספר תשלומים"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_payment__il_payslip_link_snapshot
+msgid "Il Payslip Link Snapshot"
+msgstr "צילום מצב של קישור התלוש"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_payment__il_payslip_link_write_token
+msgid "Il Payslip Link Write Token"
+msgstr "אסימון כתיבה לקישור התלוש"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard_line__is_existing
+msgid "Is Existing"
+msgstr "קיים"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_hr_salary_attachment__is_refund
+msgid "Negative Value"
+msgstr "ערך שלילי"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_partial_reconcile__il_payment_move_id
+msgid "Payment Journal Entry"
+msgstr "תנועת יומן של התשלום"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_partial_reconcile__il_payslip_move_id
+msgid "Payslip Journal Entry"
+msgstr "תנועת יומן של התלוש"
+
+#. module: l10n_il_hr_payroll_account
+#: model_terms:ir.ui.view,arch_db:l10n_il_hr_payroll_account.mdl_payroll_attendance_overtime_rule_view_form
+msgid "Percentage"
+msgstr "אחוז"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_account_payment__il_currency_rounding
+msgid "Rounding Factor"
+msgstr "מקדם עיגול"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard_employee_line__sequence
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard_line__sequence
+msgid "Sequence"
+msgstr "רצף"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard__source_payment_id
+msgid "Source Payment"
+msgstr "תשלום מקור"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payroll_reconciliation_wizard__source_payslip_id
+msgid "Source Payslip"
+msgstr "תלוש מקור"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard__step
+msgid "Step"
+msgstr "שלב"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,help:l10n_il_hr_payroll_account.field_account_partial_reconcile__il_payment_id
+msgid "The payment that created this entry"
+msgstr "התשלום שיצר רישום זה"
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,help:l10n_il_hr_payroll_account.field_account_payment_split_line__currency_id
+#: model:ir.model.fields,help:l10n_il_hr_payroll_account.field_il_masav_export_wizard_line__currency_id
+msgid "The payment's currency."
+msgstr "מטבע התשלום."
+
+#. module: l10n_il_hr_payroll_account
+#: model:ir.model.fields,field_description:l10n_il_hr_payroll_account.field_il_payment_cycle_wizard_line__employee_partner_id
+msgid "Work Contact"
+msgstr "איש קשר לעבודה"

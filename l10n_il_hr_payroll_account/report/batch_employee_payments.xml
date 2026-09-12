@@ -34,6 +34,9 @@
                         <h3 style="margin-bottom: 4px;">סיכום תשלומים לעובדים — <span t-field="o.name"/></h3>
                         <p style="margin-bottom: 8px; font-size: 12px;">
                             <strong>תאריך אצווה: </strong><span t-field="o.date" dir="ltr" style="display: inline-block;"/>
+                            <span style="display: inline-block; margin-right: 16px;">
+                                <strong>Employee count: </strong><span class="il_employee_count" t-out="len(o.payment_ids.il_employee_id)"/>
+                            </span>
                         </p>
                         <table class="table table-sm il_batch_employee_summary" cellpadding="2">
                             <colgroup><col style="width: 75%;"/><col style="width: 25%;"/></colgroup>
