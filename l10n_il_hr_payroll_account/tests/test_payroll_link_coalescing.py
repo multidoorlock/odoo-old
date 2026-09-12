@@ -103,7 +103,17 @@ class TestPayrollLinkCoalescing(TransactionCase):
         self.assertEqual((other.state, other.il_net_amount_to_pay), other_values)
         self.assertEqual(payment.amount, 2500.0)
         self.assertEqual(payment.il_remaining_amount, 1700.0)
-        self.assertEqual(payment.il_split_line_ids.mapped('sequence'), [1, 2, 3, 4])
+        # An already cached one2many keeps its record IDs in cache order after
+        # resequencing. The native web client requests the list's model order
+        # through web_read; assert the actual displayed rows and their links.
+        ui_rows = payment.web_read({'il_split_line_ids': {
+            'order': self.env['account.payment.split.line']._order,
+            'fields': {'id': {}, 'sequence': {}, 'amount': {}, 'il_linked_payslip_id': {}},
+        }})[0]['il_split_line_ids']
+        self.assertEqual([(row['sequence'], row['amount'], row['il_linked_payslip_id']) for row in ui_rows],
+                         [(1, 500.0, slip.id), (2, 300.0, other.id),
+                          (3, 700.0, False), (4, 1000.0, False)])
+        self.assertEqual([row['id'] for row in ui_rows[2:]], future.ids)
 
     def _duplicate_fixture(self):
         payment = self._payment(800.0)
@@ -200,3 +210,4 @@ class TestPayrollLinkCoalescing(TransactionCase):
         self.assertEqual(partials.read(['amount', 'debit_amount_currency', 'credit_amount_currency',
                                        'debit_move_id', 'credit_move_id']), before)
         self.assertNotEqual(partials.credit_move_id.currency_id, self.company.currency_id)
+
