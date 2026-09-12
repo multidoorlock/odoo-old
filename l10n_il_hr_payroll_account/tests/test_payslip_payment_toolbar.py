@@ -143,7 +143,8 @@ class TestPayslipPaymentToolbar(TransactionCase):
         slip = self._payslip_with_posted_net(2000.0)
         payment = self._payment(1000.0)
         retained = self._payment(300.0)
-        (payment | retained).il_split_line_ids._il_reconcile_with_payslip(slip)
+        for line in (payment | retained).il_split_line_ids:
+            line._il_reconcile_with_payslip(slip)
         source_action = slip.with_user(self.payroll_user).action_il_open_payments()
         toolbar = self._client_views(self.linked_view, source_action['context'])
         self.assertEqual(self._action_ids(toolbar), self.payroll_action_ids)
