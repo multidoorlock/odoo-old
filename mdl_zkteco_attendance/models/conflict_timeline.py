@@ -117,7 +117,650 @@ class AttendanceConflictTimeline(models.Model):
         actions.append({"key": "dismiss_event", "label": _("הסתר"), "event_id": event.id})
         return actions
 
-    @apinflicts = candidates.filtered(
+    @api.model
+    def _timeline_attendance_actions(self, attendance, event=False, kind=False):
+        actions = [{
+            "key": "open_attendance",
+            "label": _("פתח נוכחות"),
+            "attendance_id": attendance.id,
+        }]
+        if event and kind in ("in", "out"):
+            actions.append({
+                "key": "flip_event",
+                "label": _("הפוך ליציאה") if kind == "in" else _("הפוך לכניסה"),
+                "event_id": event.id,
+            })
+        actions.append({
+            "key": "dismiss_event" if event else "dismiss_attendance",
+            "label": _("הסתר"),
+            "event_id": event.id if event else False,
+            "attendance_id": attendance.id,
+        })
+        return actions
+
+    @api.model
+    def _timeline_check_attendance_editable(self, attendances):
+        """Keep event corrections subject to the payroll work-entry locks.
+
+        Normalized Israeli entries may link several source attendances through
+        a many-to-many field, in addition to Odoo's native attendance_id link.
+        Visibility changes deliberately do not call this guard.
+        """
+        attendances = attendances.exists()
+        if not attendances:
+            return
+        Entry = self.env["hr.work.entry"].sudo().with_context(active_test=False)
+        links = [
+            Domain(name, "in", attendances.ids)
+            for name in ("attendance_id", "mdl_source_attendance_ids")
+            if name in Entry._fields
+        ]
+        if links and Entry.search_count(
+            Domain.OR(links) & Domain("state", "=", "validated"), limit=1,
+        ):
+            raise UserError(_(
+                "לא ניתן לשנות את האירוע כי הנוכחות כבר כלולה בכניסת עבודה מאושרת. "
+                "אפשר להסתיר את האירוע בלי לשנות את הנוכחות."
+            ))
+        Slip = self.env["hr.payslip"].sudo()
+        for attendance in attendances:
+            if Slip.search_count([
+                ("employee_id", "=", attendance.employee_id.id),
+                ("date_from", "<=", attendance.date),
+                ("date_to", ">=", attendance.date),
+                ("state", "in", ["validated", "paid"]),
+            ], limit=1):
+                raise UserError(_(
+                    "לא ניתן לשנות את האירוע כי הנוכחות נמצאת בתקופה של תלוש שכר מאושר. "
+                    "אפשר להסתיר את האירוע בלי לשנות את הנוכחות."
+                ))
+
+    @api.model
+    def _timeline_block_reason(
+        self, employee, check_in, check_out=False, exclude_attendance=False,
+        enforce_max_duration=True,
+    ):
+        """Mirror hr.attendance overlap/open constraints without mutating any record."""
+        if check_out and check_out <= check_in:
+            return _("לא ניתן ליצור נוכחות – היציאה חייבת להיות אחרי הכניסה.")
+        if enforce_max_duration and check_out and check_out - check_in > timedelta(days=1):
+            return _("לא ניתן ליצור נוכחות – הזוג חורג ממגבלת 24 השעות.")
+        Attendance = self.env["hr.attendance"].sudo()
+        excluded_id = exclude_attendance.id if exclude_attendance else False
+        base_domain = [("employee_id", "=", employee.id)]
+        if excluded_id:
+            base_domain.append(("id", "!=", excluded_id))
+
+        before_in = Attendance.search(
+            base_domain + [("check_in", "<=", check_in)],
+            order="check_in desc", limit=1,
+        )
+        if before_in:
+            if not before_in.check_out:
+                return _("לא ניתן ליצור נוכחות – קיימת כבר נוכחות פתוחה.")
+            if before_in.check_out > check_in:
+                return _("לא ניתן ליצור נוכחות – קיימת נוכחות חופפת.")
+
+        if not check_out:
+            if Attendance.search(base_domain + [("check_out", "=", False)], limit=1):
+                return _("לא ניתן ליצור נוכחות – קיימת כבר נוכחות פתוחה.")
+            return False
+
+        before_out = Attendance.search(
+            base_domain + [("check_in", "<", check_out)],
+            order="check_in desc", limit=1,
+        )
+        if before_out != before_in:
+            return _("לא ניתן ליצור נוכחות – קיימת נוכחות חופפת.")
+        return False
+
+    @api.model
+    def _timeline_reconcile_employee_ids(self, employee_ids, force_attendance_ids=None):
+        """Make device events and managed attendances agree after every edit.
+
+        Direct chronological neighbours are the only events that may form a pair.
+        A managed attendance is reused only when it still represents the same pair;
+        this preserves its ID on harmless time edits.  Attendances without a source
+        IN event are treated as external Odoo data and are never deleted here.
+        """
+        employee_ids = [int(employee_id) for employee_id in set(employee_ids or []) if employee_id]
+        forced_ids = set(int(attendance_id) for attendance_id in (force_attendance_ids or []) if attendance_id)
+        if not employee_ids:
+            return True
+
+        Event = self.sudo()
+        Attendance = self.env["hr.attendance"].sudo()
+        Employee = self.env["hr.employee"].sudo()
+        internal_context = {"attendance_event_edit_in_progress": True}
+        self._timeline_lock_employee_ids(employee_ids)
+
+        for employee_id in sorted(employee_ids):
+            employee = Employee.browse(employee_id).exists()
+            if not employee:
+                continue
+            events = Event.search([
+                ("employee_id", "=", employee.id),
+                ("processing_state", "!=", "ignored"),
+                "|",
+                ("conflict_dismissed", "=", False),
+                ("attendance_id", "in", list(forced_ids)),
+                ("event_datetime", "!=", False),
+                "|",
+                ("manual_punch_state", "in", ["in", "out"]),
+                ("punch_state", "in", ["in", "out"]),
+            ], order="event_datetime, id")
+            events = self._timeline_real_source_events(events)
+            employee_forced = Attendance.browse(list(forced_ids)).exists().filtered(
+                lambda attendance: attendance.employee_id == employee
+            )
+            if not events and not employee_forced:
+                continue
+
+            if events:
+                self.env.cr.execute(
+                    "SELECT id FROM mdl_attendance_device_event WHERE id = ANY(%s) FOR UPDATE",
+                    (events.ids,),
+                )
+                events.invalidate_recordset()
+
+            linked_attendances = events.mapped("attendance_id").exists()
+            candidate_attendances = (linked_attendances | employee_forced).filtered(
+                lambda attendance: attendance._is_attendance_event_source()
+            )
+            if candidate_attendances:
+                self.env.cr.execute(
+                    "SELECT id FROM hr_attendance WHERE id = ANY(%s) FOR UPDATE",
+                    (candidate_attendances.ids,),
+                )
+                candidate_attendances.invalidate_recordset()
+
+            linked_sources = Event.search([
+                ("attendance_id", "in", candidate_attendances.ids),
+                ("processing_state", "!=", "ignored"),
+                ("event_datetime", "!=", False),
+            ], order="event_datetime, id") if candidate_attendances else Event.browse()
+            sources_by_attendance = defaultdict(lambda: Event.browse())
+            for source in linked_sources:
+                sources_by_attendance[source.attendance_id.id] |= source
+            hidden_attendance_ids = set(linked_sources.filtered(
+                "conflict_dismissed"
+            ).mapped("attendance_id").ids) - forced_ids
+
+            def attendance_sources(attendance):
+                sources = sources_by_attendance[attendance.id]
+                in_sources = sources.filtered(
+                    lambda event: (event.manual_punch_state or event.punch_state) == "in"
+                )
+                out_sources = sources.filtered(
+                    lambda event: (event.manual_punch_state or event.punch_state) == "out"
+                )
+                source_in = min(
+                    in_sources,
+                    key=lambda event: (abs((event.event_datetime - attendance.check_in).total_seconds()), event.id),
+                    default=Event.browse(),
+                )
+                source_out = min(
+                    out_sources,
+                    key=lambda event: (
+                        abs((event.event_datetime - attendance.check_out).total_seconds()), event.id
+                    ),
+                    default=Event.browse(),
+                ) if attendance.check_out else Event.browse()
+                return source_in, source_out
+
+            managed_attendances = Attendance.browse()
+            source_pair_by_attendance = {}
+            for attendance in candidate_attendances:
+                source_in, source_out = attendance_sources(attendance)
+                source_pair_by_attendance[attendance.id] = (source_in, source_out)
+                if source_in or attendance.id in forced_ids:
+                    managed_attendances |= attendance
+
+            # Odoo-created endpoint mirrors are provenance records, not new
+            # clock punches.  They must never stand between two real punches
+            # while the reconciliation engine determines direct neighbours.
+            event_sequence = list(events.filtered(
+                lambda candidate: not candidate.odoo_generated
+            ))
+            desired_pairs = []
+            paired_event_ids = set()
+            for index, in_event in enumerate(event_sequence[:-1]):
+                out_event = event_sequence[index + 1]
+                if not (
+                    (in_event.manual_punch_state or in_event.punch_state) == "in"
+                    and (out_event.manual_punch_state or out_event.punch_state) == "out"
+                    and in_event.event_datetime < out_event.event_datetime
+                ):
+                    continue
+                in_attendance = in_event.attendance_id.exists()
+                out_attendance = out_event.attendance_id.exists()
+                if hidden_attendance_ids.intersection(
+                    (in_attendance | out_attendance).ids
+                ):
+                    continue
+                # A closed Odoo attendance already owns both of its endpoints.
+                # Never let a neighbouring raw event steal one of those endpoints.
+                if out_attendance and out_attendance != in_attendance:
+                    continue
+                if (
+                    in_attendance
+                    and in_attendance.check_out
+                    and in_attendance != out_attendance
+                ):
+                    continue
+                desired_pairs.append((in_event, out_event))
+                paired_event_ids.update((in_event.id, out_event.id))
+
+            reusable_by_pair = {}
+            # Hide changes visibility only. A hidden endpoint must not make
+            # its saved attendance look obsolete during the next clock sync.
+            reserved_attendance_ids = set(hidden_attendance_ids)
+            for in_event, out_event in desired_pairs:
+                common = in_event.attendance_id if in_event.attendance_id == out_event.attendance_id else Attendance.browse()
+                candidates = common if common else in_event.attendance_id
+                for attendance in candidates.exists():
+                    if attendance.id in reserved_attendance_ids or attendance not in managed_attendances:
+                        continue
+                    source_in, source_out = source_pair_by_attendance.get(
+                        attendance.id, (Event.browse(), Event.browse())
+                    )
+                    same_full_pair = bool(
+                        attendance.check_out
+                        and source_in == in_event
+                        and source_out == out_event
+                    )
+                    same_open_in = bool(
+                        not attendance.check_out
+                        and source_in == in_event
+                        and not source_out
+                    )
+                    if same_full_pair or same_open_in:
+                        reusable_by_pair[(in_event.id, out_event.id)] = attendance
+                        reserved_attendance_ids.add(attendance.id)
+                        break
+
+            singleton_open_by_event = {}
+            preserved_full_pairs = {}
+            preblocked_reason_by_event = {}
+            # A genuine open attendance remains the legal representation of its
+            # source IN until a direct-neighbour OUT can close it.  If that IN was
+            # edited, update the same open attendance ID when the new value is legal.
+            for attendance in managed_attendances.filtered(lambda record: not record.check_out):
+                if attendance.id in reserved_attendance_ids:
+                    continue
+                source_in, _source_out = source_pair_by_attendance.get(
+                    attendance.id, (Event.browse(), Event.browse())
+                )
+                if not source_in or source_in.id in paired_event_ids:
+                    continue
+                blocked_reason = self._timeline_block_reason(
+                    employee,
+                    source_in.event_datetime,
+                    exclude_attendance=attendance,
+                )
+                if blocked_reason:
+                    preblocked_reason_by_event[source_in.id] = blocked_reason
+                    continue
+                reserved_attendance_ids.add(attendance.id)
+                singleton_open_by_event[source_in.id] = attendance
+
+            # Closed attendances already know their own IN/OUT relationship.  A
+            # new raw event between those timestamps must not steal an endpoint
+            # or cause the known attendance to be deleted merely because the two
+            # source events are no longer adjacent in the raw sequence.
+            for attendance in managed_attendances.filtered("check_out"):
+                if attendance.id in reserved_attendance_ids:
+                    continue
+                source_in, source_out = source_pair_by_attendance.get(
+                    attendance.id, (Event.browse(), Event.browse())
+                )
+                if not (
+                    source_in
+                    and source_out
+                    and (source_in.manual_punch_state or source_in.punch_state) == "in"
+                    and (source_out.manual_punch_state or source_out.punch_state) == "out"
+                    and source_in.event_datetime < source_out.event_datetime
+                ):
+                    continue
+                blocked_reason = self._timeline_block_reason(
+                    employee,
+                    source_in.event_datetime,
+                    source_out.event_datetime,
+                    exclude_attendance=attendance,
+                )
+                if blocked_reason:
+                    preblocked_reason_by_event[source_in.id] = blocked_reason
+                    preblocked_reason_by_event[source_out.id] = blocked_reason
+                    continue
+                reserved_attendance_ids.add(attendance.id)
+                preserved_full_pairs[attendance.id] = (source_in, source_out)
+
+            obsolete_attendances = managed_attendances.filtered(
+                lambda attendance: attendance.id not in reserved_attendance_ids
+            )
+            if obsolete_attendances:
+                self._timeline_check_attendance_editable(obsolete_attendances)
+                obsolete_attendances.unlink()
+                events.invalidate_recordset(["attendance_id"])
+
+            represented = {}
+            blocked_reason_by_event = dict(preblocked_reason_by_event)
+            for attendance_id, (source_in, source_out) in preserved_full_pairs.items():
+                attendance = Attendance.browse(attendance_id).exists()
+                if not attendance:
+                    continue
+                try:
+                    with self.env.cr.savepoint():
+                        values = {
+                            "employee_id": employee.id,
+                            "check_in": source_in.event_datetime,
+                            "check_out": source_out.event_datetime,
+                        }
+                        changed_values = {
+                            key: value for key, value in values.items()
+                            if (
+                                attendance[key].id != value
+                                if attendance._fields[key].type == "many2one"
+                                else attendance[key] != value
+                            )
+                        }
+                        if changed_values:
+                            self._timeline_check_attendance_editable(attendance)
+                            attendance.write(changed_values)
+                except (UserError, ValidationError) as error:
+                    self._timeline_check_attendance_editable(attendance)
+                    attendance.unlink()
+                    blocked_reason_by_event[source_in.id] = str(error)
+                    blocked_reason_by_event[source_out.id] = str(error)
+                    continue
+                represented[source_in.id] = attendance
+                represented[source_out.id] = attendance
+            for event_id, attendance in singleton_open_by_event.items():
+                source_in = Event.browse(event_id)
+                try:
+                    with self.env.cr.savepoint():
+                        changed_values = {}
+                        if attendance.employee_id != employee:
+                            changed_values["employee_id"] = employee.id
+                        if attendance.check_in != source_in.event_datetime:
+                            changed_values["check_in"] = source_in.event_datetime
+                        if changed_values:
+                            self._timeline_check_attendance_editable(attendance)
+                            attendance.write(changed_values)
+                except (UserError, ValidationError) as error:
+                    self._timeline_check_attendance_editable(attendance)
+                    attendance.unlink()
+                    blocked_reason_by_event[event_id] = str(error)
+                    continue
+                represented[event_id] = attendance
+            for in_event, out_event in desired_pairs:
+                attendance = reusable_by_pair.get((in_event.id, out_event.id), Attendance.browse()).exists()
+                was_open_attendance = bool(attendance and not attendance.check_out)
+                blocked_reason = self._timeline_block_reason(
+                    employee,
+                    in_event.event_datetime,
+                    out_event.event_datetime,
+                    exclude_attendance=attendance,
+                )
+                if blocked_reason:
+                    if was_open_attendance:
+                        represented[in_event.id] = attendance
+                    elif attendance:
+                        self._timeline_check_attendance_editable(attendance)
+                        attendance.unlink()
+                    blocked_reason_by_event[out_event.id] = blocked_reason
+                    if not was_open_attendance:
+                        blocked_reason_by_event[in_event.id] = blocked_reason
+                    continue
+
+                values = {
+                    "employee_id": employee.id,
+                    "check_in": in_event.event_datetime,
+                    "check_out": out_event.event_datetime,
+                }
+                try:
+                    with self.env.cr.savepoint():
+                        if attendance:
+                            changed_values = {
+                                key: value for key, value in values.items()
+                                if (
+                                    attendance[key].id != value
+                                    if attendance._fields[key].type == "many2one"
+                                    else attendance[key] != value
+                                )
+                            }
+                            if changed_values:
+                                self._timeline_check_attendance_editable(attendance)
+                                attendance.write(changed_values)
+                        else:
+                            attendance = Attendance.create(values)
+                except (UserError, ValidationError) as error:
+                    if attendance and not was_open_attendance:
+                        self._timeline_check_attendance_editable(attendance)
+                        attendance.unlink()
+                    if was_open_attendance:
+                        represented[in_event.id] = attendance
+                    blocked_reason_by_event[out_event.id] = str(error)
+                    if not was_open_attendance:
+                        blocked_reason_by_event[in_event.id] = str(error)
+                    continue
+                represented[in_event.id] = attendance
+                represented[out_event.id] = attendance
+
+            # Preserve legal event links to external/manual Odoo attendances and
+            # preserved open attendances.  Only an exact timestamp/type match is green.
+            events.invalidate_recordset(["attendance_id"])
+            for event in events:
+                attendance = event.attendance_id.exists()
+                if not attendance or event.id in represented:
+                    continue
+                kind = event.manual_punch_state or event.punch_state
+                if (
+                    kind == "in" and attendance.check_in == event.event_datetime
+                    or kind == "out" and attendance.check_out == event.event_datetime
+                ):
+                    represented[event.id] = attendance
+
+            for index, event in enumerate(events):
+                attendance = represented.get(event.id, Attendance.browse())
+                if attendance:
+                    values = {
+                        "processing_state": "processed",
+                        "processing_message": False,
+                        "attendance_id": attendance.id,
+                        "conflict_action_failed": False,
+                        "conflict_action_error": False,
+                    }
+                else:
+                    kind = event.manual_punch_state or event.punch_state
+                    default_reason = _("חסרה יציאה") if kind == "in" else _("חסרה כניסה")
+                    reason = blocked_reason_by_event.get(event.id, default_reason)
+                    values = {
+                        "processing_state": "not_applied",
+                        "processing_message": reason,
+                        "attendance_id": False,
+                        "conflict_action_failed": bool(event.id in blocked_reason_by_event),
+                        "conflict_action_error": blocked_reason_by_event.get(event.id, False),
+                    }
+                changed_values = {
+                    key: value for key, value in values.items()
+                    if (
+                        event[key].id != value
+                        if event._fields[key].type == "many2one"
+                        else event[key] != value
+                    )
+                }
+                if changed_values:
+                    event.with_context(**internal_context).write(changed_values)
+        return True
+
+    @api.model
+    def _timeline_single_in_presentation(self, event, employee, sequence_conflict=False):
+        normalized = (event.processing_message or "").lower()
+        if sequence_conflict or "open attendance" in normalized:
+            return "2", {
+                "key": "flip_event", "label": _("הפוך ליציאה"), "event_id": event.id,
+            }, False
+        blocked_reason = self._timeline_block_reason(employee, event.event_datetime)
+        if not blocked_reason and event.conflict_action_failed:
+            blocked_reason = event.conflict_action_error or event.processing_message
+        if blocked_reason:
+            return "9", {
+                "key": "retry_single", "label": _("נסה שוב"), "event_id": event.id,
+            }, blocked_reason
+        return "8", {
+            "key": "create_open_attendance", "label": _("צור נוכחות"), "event_id": event.id,
+        }, False
+
+    @api.model
+    def _timeline_event_item(
+        self, event, state, action=None, pair_key=None, previous=None, blocked_reason=False,
+    ):
+        effective_state = event.manual_punch_state or event.punch_state
+        card = event.device_employee_id
+        reason = blocked_reason or self._timeline_event_reason(event, state)
+        details = [reason, fields.Datetime.to_string(event.event_datetime)]
+        if card:
+            details.append(_("כרטיס: %(card)s", card=card.display_name))
+        if event.device_id:
+            details.append(_("שעון: %(device)s", device=event.device_id.display_name))
+        details.append(
+            _("מקור: אירוע ידני")
+            if event.log_id.request_type == "MANUAL"
+            else _("מקור: שעון נוכחות")
+        )
+        if previous:
+            details.append(_(
+                "האירוע הקודם: %(kind)s %(time)s",
+                kind=_("כניסה") if previous["kind"] == "in" else _("יציאה"),
+                time=previous["datetime"],
+            ))
+        return {
+            "id": f"event:{event.id}",
+            "source": "event",
+            "source_id": event.id,
+            # Keep a common field for drag persistence. Attendance-backed
+            # tiles already expose their originating device event this way.
+            "event_id": event.id,
+            "kind": effective_state,
+            "datetime": self._timeline_dt(event.event_datetime),
+            "state": state,
+            "label": _("כניסה") if effective_state == "in" else _("יציאה"),
+            "reason": reason,
+            "tooltip": "\n".join(details),
+            "tooltip_lines": details,
+            "device": event.device_id.display_name,
+            "card": card.display_name if card else "",
+            "log_id": event.log_id.id,
+            "pair_key": pair_key,
+            "blocked": bool(blocked_reason or state in ("7", "9")),
+            "edited": event.timeline_is_edited,
+            "sort_id": event.id,
+            # Pairing is calculated by the server. Manual drag linking is disabled.
+            "linkable": False,
+            "actions": self._timeline_event_actions(event, state, action),
+        }
+
+    @api.model
+    def _timeline_attendance_item(
+        self, attendance, kind, value, state, action=None, placeholder=False,
+        pair_key=None, event=False,
+    ):
+        reason_by_state = {
+            "1": _("נוכחות תקינה הקיימת ב-Odoo"),
+            "1.5": _("נוכחות פתוחה הקיימת ב-Odoo"),
+            "6": _("נוכחות פתוחה עם אירוע יציאה שמוכן לעדכון"),
+            "7": _("לא ניתן לעדכן כרגע את הנוכחות"),
+        }
+        return {
+            "id": f"attendance:{attendance.id}:{kind}{':placeholder' if placeholder else ''}",
+            "source": "attendance",
+            "source_id": attendance.id,
+            "event_id": event.id if event else False,
+            "kind": kind,
+            "datetime": self._timeline_dt(value),
+            "state": state,
+            "label": _("כניסה") if kind == "in" else _("יציאה"),
+            "reason": reason_by_state[state],
+            "tooltip": "%s\n%s" % (reason_by_state[state], fields.Datetime.to_string(value)),
+            "tooltip_lines": [reason_by_state[state], fields.Datetime.to_string(value)],
+            "placeholder": placeholder,
+            "pair_key": pair_key,
+            "blocked": state == "7",
+            "edited": event.timeline_is_edited if event else False,
+            "sort_id": event.id if event else False,
+            "linkable": False,
+            "actions": self._timeline_attendance_actions(attendance, event, kind),
+        }
+
+    @api.model
+    def get_conflict_timeline(self, date_start, date_end, active_domain=None):
+        self._timeline_check_manager()
+        start, end = self._timeline_parse_range(date_start, date_end)
+        def domain_mentions_conflict(value):
+            if isinstance(value, (list, tuple)):
+                if len(value) == 3 and value[0] == "processing_state":
+                    operator, selected = value[1:]
+                    if operator == "=" and selected in self._TREATMENT_STATES:
+                        return True
+                    if operator == "in" and isinstance(selected, (list, tuple)):
+                        return bool(selected) and set(selected).issubset(self._TREATMENT_STATES)
+                return any(domain_mentions_conflict(item) for item in value)
+            return False
+
+        def domain_requests_hidden(value):
+            if isinstance(value, (list, tuple)):
+                if len(value) == 3 and value[0] == "conflict_dismissed":
+                    return value[1] == "=" and value[2] is True
+                return any(domain_requests_hidden(item) for item in value)
+            return False
+
+        def domain_mentions_data(value):
+            if isinstance(value, (list, tuple)):
+                if value and value[0] == "event_datetime" and value[1] == "!=":
+                    return True
+                return any(domain_mentions_data(item) for item in value)
+            return False
+
+        def domain_mentions_scope(value):
+            if isinstance(value, (list, tuple)):
+                if len(value) == 3 and isinstance(value[0], str):
+                    field_name = value[0].split(".", 1)[0]
+                    if field_name in ("employee_id", "device_id", "device_employee_id"):
+                        # This clause is always present in the native action;
+                        # it is not a user-selected employee restriction.
+                        return not (tuple(value) == ("employee_id", "!=", False))
+                return any(domain_mentions_scope(item) for item in value)
+            return False
+
+        # Direct RPC callers historically mean "conflicts only" when they do
+        # not pass a search domain.  Removing the default search filter still
+        # sends the action's base domain, which is how "all employees" is
+        # distinguished without adding a second UI switch.
+        only_conflicts = not active_domain or domain_mentions_conflict(active_domain)
+        only_with_data = domain_mentions_data(active_domain)
+        scoped_overview = not only_conflicts and domain_mentions_scope(active_domain)
+        Event = self.sudo()
+        candidate_domain = [
+            ("event_datetime", ">=", start),
+            ("event_datetime", "<", end),
+            ("processing_state", "!=", "ignored"),
+            ("employee_id", "!=", False),
+            "|",
+            ("manual_punch_state", "in", ["in", "out"]),
+            ("punch_state", "in", ["in", "out"]),
+        ]
+        candidates = Event.search(
+            Domain(candidate_domain) & Domain(active_domain or Domain.TRUE),
+            order="employee_id, event_datetime, id",
+        )
+        candidates = self._timeline_real_source_events(candidates)
+        # Rendering the timeline is read-only. Import, scheduled processing and
+        # explicit corrections reconcile events; opening a view must never
+        # rebuild saved attendances or payroll work entries.
+        if domain_requests_hidden(active_domain):
+            return self._timeline_hidden_search_result(candidates, start, end)
+        conflicts = candidates.filtered(
             lambda event: not event.conflict_dismissed
             and (event.processing_state != "processed" or not event.attendance_id)
         )
@@ -125,7 +768,7 @@ class AttendanceConflictTimeline(models.Model):
             self._timeline_event_employee(event).id for event in conflicts
             if self._timeline_event_employee(event)
         ))
-        if not only_conflicts and only_with_data:
+        if not only_conflicts and (only_with_data or scoped_overview):
             event_employee_ids = list(dict.fromkeys(
                 self._timeline_event_employee(event).id for event in candidates
                 if self._timeline_event_employee(event)
@@ -178,6 +821,7 @@ class AttendanceConflictTimeline(models.Model):
 
         events_by_employee = defaultdict(lambda: Event.browse())
         conflict_ids = set(conflicts.ids)
+        scoped_event_ids = set(candidates.ids) if scoped_overview else set()
         attendance_by_employee = defaultdict(lambda: self.env["hr.attendance"].browse())
         for event in all_events:
             employee = self._timeline_event_employee(event)
@@ -298,6 +942,17 @@ class AttendanceConflictTimeline(models.Model):
                     "blocked": True,
                     "actions": [],
                 })
+
+            if scoped_overview:
+                # Context lookup deliberately loads both saved endpoints. In a
+                # filtered overview, project back onto the exact native search
+                # result so other clocks cannot leak through a shared employee.
+                items = [item for item in items if item.get("event_id") in scoped_event_ids]
+                item_ids = {item["id"] for item in items}
+                connections = [
+                    connection for connection in connections
+                    if connection["from"] in item_ids and connection["to"] in item_ids
+                ]
 
             # Every employee in this result has a raw/candidate event. Attendances are
             # always valid context and never make an employee a conflict by themselves.

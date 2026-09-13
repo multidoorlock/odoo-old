@@ -84,6 +84,95 @@ class TestSavedEventActions(TransactionCase):
             "2026-08-24 00:00:00", "2026-08-25 00:00:00", domain,
         )
 
+    def test_overview_employee_filter_returns_only_selected_employee(self):
+        in_event, out_event, attendance = self._pair()
+        other_employee = self.env["hr.employee"].create({
+            "name": "Unselected overview employee",
+            "company_id": self.employee.company_id.id,
+            "structure_type_id": self.employee.structure_type_id.id,
+            **({"mdl_wage_type": "mdl_monthly"}
+               if "mdl_wage_type" in self.env["hr.employee"]._fields else {}),
+        })
+        other_attendance = self.Attendance.create({
+            "employee_id": other_employee.id,
+            "check_in": "2026-08-24 08:00:00", "check_out": "2026-08-24 17:00:00",
+        })
+        before = (attendance | other_attendance).read([
+            "employee_id", "check_in", "check_out", "write_date",
+        ])
+        data = self._search_action_filters("visible")
+        self.assertEqual([row["employee_id"] for row in data["rows"]], [self.employee.id])
+        self.assertEqual(
+            {item["event_id"] for item in data["rows"][0]["items"]},
+            {in_event.id, out_event.id},
+        )
+        self.assertEqual((attendance | other_attendance).read([
+            "employee_id", "check_in", "check_out", "write_date",
+        ]), before)
+
+    def test_overview_device_filter_excludes_other_clock_saved_pair(self):
+        in_event, out_event, first_attendance = self._pair()
+        other_device = self.env["mdl.attendance.device"].create({
+            "name": "Other overview clock", "manufacturer": "zkteco",
+            "device_identifier": "TEST-SAVED-EVENTS-OTHER-CLOCK",
+            "company_id": self.employee.company_id.id, "timezone": "UTC",
+        })
+        card = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": other_device.id, "device_user_id": "scope-other-clock",
+            "employee_id": self.employee.id,
+        })
+        log = self.env["mdl.attendance.device.log"].create({
+            "device_id": other_device.id, "request_type": "ATTLOG",
+        })
+        second_events = self.Event.create([{
+            "log_id": log.id, "device_id": other_device.id,
+            "device_employee_id": card.id, "employee_id": self.employee.id,
+            "device_user_id": card.device_user_id,
+            "event_datetime": "2026-08-24 %02d:00:00" % hour,
+            "raw_punch_state": kind, "punch_state": kind,
+            "raw_line": "Other device source event",
+            "event_fingerprint": "scope:%s" % uuid.uuid4().hex,
+            "processing_state": "not_applied",
+        } for hour, kind in ((18, "in"), (21, "out"))])
+        self.Event._timeline_reconcile_employee_ids([self.employee.id])
+        self.assertTrue(second_events.attendance_id)
+        self.assertNotEqual(second_events.attendance_id, first_attendance)
+        before = (in_event | out_event | second_events).read([
+            "device_id", "attendance_id", "event_datetime", "write_date",
+        ])
+        action = self.env.ref("mdl_zkteco_attendance.action_attendance_conflicts")
+        domain = safe_eval(action.domain) + [
+            ("conflict_dismissed", "=", False), ("device_id", "=", self.device.id),
+        ]
+        data = self.Event.get_conflict_timeline(
+            "2026-08-24 00:00:00", "2026-08-25 00:00:00", domain,
+        )
+        self.assertEqual([row["employee_id"] for row in data["rows"]], [self.employee.id])
+        row = data["rows"][0]
+        self.assertEqual({item["event_id"] for item in row["items"]}, {in_event.id, out_event.id})
+        self.assertEqual(len(row["connections"]), 1)
+        visible_ids = {item["id"] for item in row["items"]}
+        self.assertTrue(all(
+            connection["from"] in visible_ids and connection["to"] in visible_ids
+            for connection in row["connections"]
+        ))
+        self.assertEqual((in_event | out_event | second_events).read([
+            "device_id", "attendance_id", "event_datetime", "write_date",
+        ]), before)
+
+    def test_overview_scope_without_matching_events_returns_no_rows(self):
+        self._pair()
+        action = self.env.ref("mdl_zkteco_attendance.action_attendance_conflicts")
+        domain = safe_eval(action.domain) + [
+            ("conflict_dismissed", "=", False), ("employee_id", "=", 0),
+        ]
+        data = self.Event.get_conflict_timeline(
+            "2026-08-24 00:00:00", "2026-08-25 00:00:00", domain,
+        )
+        self.assertEqual(data["rows"], [])
+
     def test_visible_chip_does_not_force_conflicts_only(self):
         in_event, out_event, _attendance = self._pair()
         data = self._search_action_filters("visible")
