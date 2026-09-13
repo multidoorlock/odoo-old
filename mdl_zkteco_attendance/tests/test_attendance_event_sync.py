@@ -1,4 +1,4 @@
-"""Source provenance and visibility tests for saved attendance endpoints."""
+"""Source provenance and exclusion tests for saved attendance endpoints."""
 
 from datetime import timedelta
 
@@ -111,32 +111,33 @@ class TestAttendanceEventSync(TransactionCase):
         ])
         self.assertTrue(all(events.mapped("odoo_generated")))
 
-    def test_endpoint_sync_keeps_hidden_saved_manual_event_hidden(self):
+    def test_new_native_attendance_does_not_reuse_an_excluded_manual_event(self):
         attendance = self._manual_attendance()
         original_events = self._events(attendance)
         original_events[0].action_hide()
         self.assertTrue(original_events[0].conflict_dismissed)
-        attendance.write({"check_out": attendance.check_out + timedelta(minutes=15)})
-        attendance._ensure_attendance_device_events()
-        self.assertEqual(self._events(attendance), original_events)
+        self.assertFalse(attendance.exists())
+        replacement = self._manual_attendance(check_out="2026-09-03 14:15:00")
+        replacement._ensure_attendance_device_events()
+        self.assertNotIn(original_events[0], self._events(replacement))
         self.assertTrue(original_events[0].conflict_dismissed)
-        self.assertEqual(original_events[0].attendance_id, attendance)
-        self.assertEqual(original_events[1].event_datetime, attendance.check_out)
+        self.assertFalse(original_events[0].attendance_id)
+        self.assertTrue(original_events[0].exists())
 
-    def test_endpoint_sync_keeps_hidden_raw_evidence_and_saved_attendance(self):
+    def test_excluded_raw_checkout_survives_resync_without_saved_attendance(self):
         log, attendance = self._raw_attendance()
         original_events = log.event_ids.sorted("event_datetime")
         original_raw_lines = original_events.mapped("raw_line")
         original_events[-1].action_hide()
-        attendance.write({"check_out": attendance.check_out + timedelta(minutes=15)})
         self.env["mdl.attendance.device.event"]._timeline_reconcile_employee_ids([
             self.employee.id,
         ])
-        self.assertTrue(attendance.exists())
+        self.assertFalse(attendance.exists())
         self.assertTrue(original_events[-1].conflict_dismissed)
-        self.assertEqual(original_events.attendance_id, attendance)
+        self.assertFalse(original_events.attendance_id)
         self.assertEqual(original_events.mapped("raw_line"), original_raw_lines)
-        self.assertEqual(original_events[-1].event_datetime, attendance.check_out)
+        self.assertEqual(original_events[-1].event_datetime,
+                         fields.Datetime.to_datetime("2026-09-03 14:00:00"))
 
     def test_raw_endpoints_do_not_create_unused_odoo_logs(self):
         logs_before = self._odoo_logs()
@@ -163,16 +164,13 @@ class TestAttendanceEventSync(TransactionCase):
         self.assertFalse(any(events.mapped("conflict_dismissed")))
         self.assertEqual(events[-1].event_datetime, attendance.check_out)
 
-    def test_hide_saved_endpoint_does_not_delete_attendance_on_later_reconcile(self):
+    def test_excluded_endpoint_cannot_reappear_on_later_reconcile(self):
         _log, attendance = self._raw_attendance()
         events = self._events(attendance)
-        attendance_snapshot = attendance.read(["check_in", "check_out", "employee_id"])
         events[0].action_hide()
         self.env["mdl.attendance.device.event"]._timeline_reconcile_employee_ids([
             self.employee.id,
         ])
-        self.assertTrue(attendance.exists())
-        self.assertEqual(attendance.read(["check_in", "check_out", "employee_id"]),
-                         attendance_snapshot)
-        self.assertEqual(events.attendance_id, attendance)
+        self.assertFalse(attendance.exists())
+        self.assertFalse(events.attendance_id)
         self.assertTrue(events[0].conflict_dismissed)

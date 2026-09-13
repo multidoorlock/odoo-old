@@ -206,13 +206,15 @@ class AttendanceDeviceEmployee(models.Model):
             ("device_employee_id", "=", self.id),
             ("processing_state", "in", ["waiting_employee_link", "not_applied"]),
             ("conflict_dismissed", "=", False),
+            "|",
+            ("manual_punch_state", "in", ["in", "out"]),
             ("punch_state", "in", ["in", "out"]),
             ("event_datetime", "!=", False),
         ], order="event_datetime, id")
         candidates = []
         pending_in = False
         for event in events:
-            if event.punch_state == "in":
+            if (event.manual_punch_state or event.punch_state) == "in":
                 pending_in = event
                 continue
             if not pending_in:

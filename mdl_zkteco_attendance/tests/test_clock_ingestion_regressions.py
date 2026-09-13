@@ -6,7 +6,8 @@ from unittest.mock import patch
 from psycopg2.errors import SerializationFailure
 
 from odoo import fields
-from odoo.tests.common import TransactionCase, tagged
+from odoo.exceptions import AccessError, UserError
+from odoo.tests.common import TransactionCase, new_test_user, tagged
 from odoo.tools import mute_logger
 
 
@@ -89,6 +90,157 @@ class TestClockIngestionRegressions(TransactionCase):
         self.assertEqual(replay.processing_state, "ignored")
         self.assertTrue(original.conflict_dismissed)
         self.assertFalse(replay.attendance_id)
+
+    def test_hidden_exit_cannot_close_attendance_on_explicit_reprocess(self):
+        hidden = self._ingest("701\t2026-09-03 17:00:00\t255\t15\t0").event_ids
+        hidden.action_hide()
+        incoming = self._ingest("701\t2026-09-03 08:00:00\t255\t1\t0").event_ids
+        attendance = incoming.attendance_id
+        self.assertTrue(attendance)
+        self.assertFalse(attendance.check_out)
+        hidden.action_process()
+        hidden.invalidate_recordset()
+        attendance.invalidate_recordset()
+        self.assertTrue(hidden.conflict_dismissed)
+        self.assertFalse(hidden.attendance_id)
+        self.assertFalse(attendance.check_out)
+
+    def test_hidden_waiting_entry_stays_excluded_after_card_link_and_retry(self):
+        payload = "702\t2026-09-03 08:00:00\t255\t1\t0"
+        hidden = self._ingest(payload).event_ids
+        self.assertEqual(hidden.processing_state, "waiting_employee_link")
+        hidden.action_hide()
+        self.card.write({"employee_id": False})
+        hidden.device_employee_id.write({"employee_id": self.employee.id})
+        hidden.action_process()
+        replay = self._ingest(payload).event_ids
+        self.assertTrue(hidden.conflict_dismissed)
+        self.assertFalse(hidden.attendance_id | replay.attendance_id)
+        self.assertEqual(replay.processing_state, "ignored")
+        self.assertFalse(self.env["hr.attendance"].search([
+            ("employee_id", "=", self.employee.id),
+        ]))
+
+    def test_hidden_punch_is_not_a_cooldown_source_for_a_new_punch(self):
+        self.device.attendance_cooldown_minutes = 5
+        hidden = self._ingest("701\t2026-09-03 17:00:00\t255\t15\t0").event_ids
+        hidden.action_hide()
+        later = self._ingest("701\t2026-09-03 17:01:00\t255\t15\t0").event_ids
+        self.assertEqual(later.processing_state, "not_applied")
+        self.assertFalse(later.conflict_dismissed)
+        self.assertNotEqual(hidden.event_fingerprint, later.event_fingerprint)
+
+    def test_hidden_saved_entry_stays_excluded_when_original_payload_replays(self):
+        incoming = "701\t2026-09-03 08:00:00\t255\t1\t0"
+        outgoing = "701\t2026-09-03 17:00:00\t255\t15\t0"
+        originals = self._ingest(incoming + "\n" + outgoing).event_ids
+        saved = originals.attendance_id
+        self.assertEqual(len(saved), 1)
+        hidden = originals.filtered(lambda event: event.punch_state == "in")
+        hidden.action_hide()
+        self.assertFalse(saved.exists())
+        replays = self._ingest(incoming + "\n" + outgoing).event_ids
+        originals.action_process()
+        self.assertEqual(set(replays.mapped("processing_state")), {"ignored"})
+        self.assertFalse((originals | replays).mapped("attendance_id"))
+        self.assertTrue(hidden.conflict_dismissed)
+
+    def _pending_interval(self, user=None):
+        log = self.env["mdl.attendance.device.log"].create({
+            "device_id": self.device.id, "request_type": "ATTLOG",
+        })
+        adapter = self.device._adapter()
+        incoming = adapter._create_attlog_event(
+            log, "701\t2026-09-03 08:00:00\t255\t1\t0",
+        )
+        outgoing = adapter._create_attlog_event(
+            log, "701\t2026-09-03 17:00:00\t255\t15\t0",
+        )
+        events = incoming | outgoing
+        events.write({"processing_state": "not_applied"})
+        Wizard = self.env["mdl.attendance.pending.wizard"]
+        if user:
+            Wizard = Wizard.with_user(user)
+        wizard = Wizard.create({"device_employee_id": self.card.id})
+        line = Wizard.env["mdl.attendance.pending.wizard.line"].create({
+            "wizard_id": wizard.id,
+            "check_in_event_id": incoming.id,
+            "check_out_event_id": outgoing.id,
+        })
+        return events, line
+
+    def test_pending_popup_hide_excludes_a_pair_that_was_saved_after_opening(self):
+        events, line = self._pending_interval()
+        events.action_process()
+        saved = events.attendance_id
+        self.assertEqual(len(saved), 1)
+        result = line.action_dismiss()
+        events.invalidate_recordset()
+        self.assertTrue(all(events.mapped("conflict_dismissed")))
+        self.assertFalse(saved.exists())
+        self.assertFalse(events.attendance_id)
+        self.assertEqual(result, {"type": "ir.actions.act_window_close"})
+
+    def test_pending_popup_cannot_apply_an_interval_hidden_after_opening(self):
+        events, line = self._pending_interval()
+        events.action_hide()
+        with self.assertRaisesRegex(UserError, "האירועים השתנו או הוסתרו"):
+            line.action_apply()
+        self.assertTrue(all(events.mapped("conflict_dismissed")))
+        self.assertFalse(events.attendance_id)
+
+    def test_card_operator_can_hide_only_their_popup_card_without_event_edit_access(self):
+        operator = new_test_user(
+            self.env, login="clock_exclusion_operator",
+            groups="base.group_user,mdl_zkteco_attendance.group_attendance_device_user",
+        )
+        events, line = self._pending_interval(user=operator)
+        self.assertFalse(operator.has_group(
+            "mdl_zkteco_attendance.group_attendance_device_manager",
+        ))
+        with self.assertRaises(AccessError):
+            events.with_user(operator).check_access("write")
+        line.action_dismiss()
+        events.invalidate_recordset()
+        self.assertTrue(all(events.mapped("conflict_dismissed")))
+        self.assertFalse(events.attendance_id)
+
+    def test_pending_popup_rejects_an_event_injected_from_a_different_card(self):
+        events, line = self._pending_interval()
+        foreign = self._ingest("702\t2026-09-03 17:00:00\t255\t15\t0").event_ids
+        line.check_out_event_id = foreign.id
+        with self.assertRaisesRegex(UserError, "רק אירועים של הכרטיס"):
+            line.action_dismiss()
+        self.assertFalse(any((events | foreign).mapped("conflict_dismissed")))
+
+    def test_pending_candidates_use_exit_corrected_to_entry(self):
+        event = self._ingest("701\t2026-09-03 08:00:00\t255\t15\t0").event_ids
+        event.action_flip()
+        self.assertEqual(event.punch_state, "out")
+        self.assertEqual(event.manual_punch_state, "in")
+        self.assertFalse(event.attendance_id)
+        candidates = self.card._get_valid_attendance_candidates()
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0], event)
+        self.assertFalse(candidates[0][1])
+
+    def test_pending_candidates_do_not_offer_an_entry_corrected_to_exit(self):
+        event = self._ingest("701\t2026-09-03 08:00:00\t255\t1\t0").event_ids
+        event.action_flip()
+        self.assertEqual(event.punch_state, "in")
+        self.assertEqual(event.manual_punch_state, "out")
+        self.assertFalse(event.attendance_id)
+        self.assertEqual(self.card._get_valid_attendance_candidates(), [])
+
+    def test_pending_candidates_include_an_unknown_punch_corrected_to_entry(self):
+        event = self._ingest("701\t2026-09-03 08:00:00\t255\t99\t0").event_ids
+        event.write({"manual_punch_state": "in"})
+        self.assertEqual(event.punch_state, "unknown")
+        self.assertEqual(event.manual_punch_state, "in")
+        candidates = self.card._get_valid_attendance_candidates()
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0], event)
+        self.assertFalse(candidates[0][1])
 
     def test_repeated_waiting_card_keeps_original_available_for_linking(self):
         payload = "702\t2026-09-03 08:00:00\t255\t1\t0"

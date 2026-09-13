@@ -22,8 +22,11 @@
                 'o_mdl_attendance_event_tile_paired': props.item.paired,
                 'o_mdl_attendance_event_tile_dragging': props.dragging,
                 'o_mdl_attendance_event_tile_selected': props.selected,
+                'o_mdl_attendance_event_tile_selectable': props.selectionMode,
              }"
              t-att-aria-label="ariaLabel"
+             t-att-aria-pressed="props.selected ? 'true' : 'false'"
+             t-att-aria-disabled="props.busy ? 'true' : 'false'"
              role="button"
              tabindex="0"
              t-on-click="onClick"
@@ -40,6 +43,13 @@
                     <span class="o_mdl_attendance_event_kind" t-esc="props.item.label"/>
                     <strong class="o_mdl_attendance_event_time" t-esc="props.item.displayTime"/>
                 </span>
+            </div>
+            <div t-if="props.selectionMode" class="o_mdl_attendance_event_checkbox"
+                 t-on-pointerdown.stop="() => {}" t-on-click.stop="() => {}" t-on-keydown.stop="() => {}">
+                <CheckBox value="props.selected" disabled="props.busy"
+                          onChange="(value) => this.onSelectionChange(value)">
+                    <span class="visually-hidden">בחירת אירוע <t t-esc="ariaLabel"/></span>
+                </CheckBox>
             </div>
             <AttendanceTooltip t-if="state.hovered" item="props.item"/>
         </div>
@@ -111,8 +121,10 @@
                                          style="itemStyle"
                                          dragging="isTimelineDragging(item)"
                                          selected="isTimelineSelected(item)"
+                                         selectionMode="interactionState.selectionMode"
+                                         busy="interactionState.busy"
                                          onOpen="(selectedItem) => this.openTimelineItem(selectedItem)"
-                                         onSelect="(selectedItem) => this.toggleTimelineSelection(selectedItem)"
+                                         onSelect="(selectedItem, value) => this.toggleTimelineSelection(selectedItem, value)"
                                          onPointerDown="(ev, selectedItem) => this.startTimelineDrag(ev, selectedItem)"
                                          onContextMenu="(ev, selectedItem) => this.onTimelineContextMenu(ev, selectedItem)"/>
                 </t>
@@ -128,6 +140,27 @@
 
     <t t-name="mdl_zkteco_attendance.AttendanceConflictGanttRenderer"
        t-inherit="web_gantt.GanttRenderer" t-inherit-mode="primary">
+        <xpath expr="//t[@t-set-slot='multi_selection_buttons']" position="replace">
+            <t t-set-slot="multi_selection_buttons">
+                <div class="o_mdl_timeline_selection_controls d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-secondary" t-att-disabled="interactionState.busy"
+                            t-att-aria-pressed="interactionState.selectionMode ? 'true' : 'false'"
+                            t-on-click="toggleTimelineSelectionMode">
+                        <t t-if="interactionState.selectionMode">סיום בחירה</t>
+                        <t t-else="">בחירת אירועים</t>
+                    </button>
+                    <t t-if="interactionState.selectionMode">
+                        <span class="text-nowrap" role="status"><t t-esc="interactionState.selectedIds.length"/> נבחרו</span>
+                        <button type="button" class="btn btn-primary"
+                                t-att-disabled="!interactionState.selectedIds.length || interactionState.busy"
+                                t-on-click="hideSelectedTimelineItems">הסתר</button>
+                        <button type="button" class="btn btn-link text-nowrap"
+                                t-att-disabled="!interactionState.selectedIds.length || interactionState.busy"
+                                t-on-click="clearTimelineSelection">נקה בחירה</button>
+                    </t>
+                </div>
+            </t>
+        </xpath>
         <xpath expr="//div[@t-ref='grid']" position="after">
             <AttendanceContextMenu t-if="contextMenuState.menu"
                                    menu="contextMenuState.menu"

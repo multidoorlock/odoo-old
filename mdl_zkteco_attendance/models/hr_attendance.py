@@ -113,6 +113,7 @@ class HrAttendance(models.Model):
                     ("attendance_id", "=", attendance.id),
                     ("company_id", "=", company.id),
                     ("processing_state", "!=", "ignored"),
+                    ("conflict_dismissed", "=", False),
                 ], order="odoo_generated asc, id").filtered(
                     lambda event: (event.manual_punch_state or event.punch_state) == kind
                 )[:1]
@@ -126,6 +127,7 @@ class HrAttendance(models.Model):
                         ("company_id", "=", company.id),
                         ("event_datetime", "=", value),
                         ("processing_state", "!=", "ignored"),
+                        ("conflict_dismissed", "=", False),
                     ], order="odoo_generated asc, id").filtered(
                         lambda event: (event.manual_punch_state or event.punch_state) == kind
                     )[:1]
@@ -183,6 +185,13 @@ class HrAttendance(models.Model):
         generated = self.env["mdl.attendance.device.event"].sudo().search([
             ("attendance_id", "in", self.ids), ("odoo_generated", "=", True),
         ])
+        # Hidden generated endpoints are durable exclusion evidence. Even a
+        # later native attendance deletion must not erase that decision.
+        hidden_generated = generated.filtered("conflict_dismissed")
+        hidden_generated.with_context(attendance_event_system_write=True).write({
+            "odoo_generated": False,
+        })
+        generated -= hidden_generated
         raw_events = self.env["mdl.attendance.device.event"].sudo().search([
             ("attendance_id", "in", self.ids), ("odoo_generated", "=", False),
         ])

@@ -407,12 +407,12 @@ class AttendanceDeviceEvent(models.Model):
         return self.action_hide()
 
     def action_hide(self):
-        """The same visibility-only action in forms, lists and the timeline."""
+        """Use identical attendance exclusion in forms, lists and timeline."""
         self.timeline_hide_items(event_ids=self.ids)
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return False
 
     def action_flip(self):
         self._timeline_check_manager()
         for event in self:
             self.timeline_flip_event(event.id)
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return False
