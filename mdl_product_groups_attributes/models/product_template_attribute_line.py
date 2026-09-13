@@ -47,6 +47,30 @@ class ProductTemplateAttributeLine(models.Model):
             templates._mdl_sync_variant_codes()
         return result
 
+    def _update_field_translations(self, field_name, translations, digest=None, source_lang=""):
+        if field_name != "mdl_name_suffix" or self.env.context.get("skip_mdl_catalog_sync"):
+            return super()._update_field_translations(
+                field_name, translations, digest=digest, source_lang=source_lang,
+            )
+        self.ensure_one()
+        previous = self._fields[field_name]._get_stored_translations(self) or {}
+        result = super(
+            ProductTemplateAttributeLine,
+            self.with_context(skip_mdl_catalog_sync=True),
+        )._update_field_translations(
+            field_name, dict(translations), digest=digest, source_lang=source_lang,
+        )
+        if result:
+            # Translation dialogs write only in their UI language. Refresh each
+            # changed language, including native fallbacks changed by English.
+            languages = {code for code, _name in self.env["res.lang"].get_installed()} | {"en_US"}
+            for lang in languages:
+                line = self.with_context(lang=lang)
+                old_text = previous.get(lang, previous.get("en_US", "")) or ""
+                if (line.mdl_name_suffix or "") != old_text:
+                    line.product_tmpl_id._mdl_sync_variant_codes()
+        return result
+
     def unlink(self):
         templates = self.product_tmpl_id
         result = super().unlink()

@@ -89,12 +89,13 @@ class ProductTemplate(models.Model):
         ),
     )
     mdl_group_default_name = fields.Char(
-        string="Source Product Group Name",
+        string="Product Group Name",
         index="trigram",
         translate=True,
         help=(
-            "Shared name for the products. Selecting a product category copies "
-            "its name here, after which it can be adjusted for this group."
+            "The only shared base for automatic product names, followed by "
+            "the configured attribute text. The template title is independent. "
+            "Translate this field to name products in each language."
         ),
     )
     mdl_group_default_sku = fields.Char(
@@ -135,12 +136,12 @@ class ProductTemplate(models.Model):
         help="Optional. Enter — to omit the model SKU component.",
     )
     mdl_group_name_value = fields.Char(
-        string="Product Group Name",
+        string="Product Group Name (Compatibility)",
         compute="_compute_mdl_group_name_value",
         inverse="_inverse_mdl_group_name_value",
         help=(
-            "The group name used in product names. Editing creates an override "
-            "for this group; reset restores the source group name."
+            "The group name used in automatic product names. Editing changes "
+            "Product Group Name directly."
         ),
     )
     mdl_group_sku_value = fields.Char(
@@ -177,8 +178,8 @@ class ProductTemplate(models.Model):
         store=True,
         translate=True,
         help=(
-            "The product name before attributes. By default it comes from the "
-            "product group. Model is a regular, orderable attribute value."
+            "The Product Group Name before attribute text. The template "
+            "title and legacy name overrides do not affect this value."
         ),
     )
     mdl_model_as_attribute = fields.Boolean(
@@ -352,24 +353,20 @@ class ProductTemplate(models.Model):
             if full_name and template.name != full_name:
                 template.with_context(skip_mdl_catalog_sync=True).name = full_name
 
-    @api.depends("mdl_group_default_name", "mdl_group_name_override")
+    @api.depends("mdl_group_default_name")
+    @api.depends_context("lang")
     def _compute_mdl_group_name_value(self):
         for template in self:
             template.mdl_group_name_value = _resolved_component(
                 template.mdl_group_default_name,
-                template.mdl_group_name_override,
+                "",
             )
 
     def _inverse_mdl_group_name_value(self):
         for template in self:
-            override = _override_from_effective_value(
-                template.mdl_group_default_name,
-                template.mdl_group_name_value,
-            )
-            if template.mdl_group_name_override != override:
-                template.with_context(skip_mdl_catalog_sync=True).write(
-                    {"mdl_group_name_override": override}
-                )
+            template.write({
+                "mdl_group_default_name": clean_text(template.mdl_group_name_value),
+            })
 
     @api.depends("mdl_group_default_sku", "mdl_group_sku_override")
     def _compute_mdl_group_sku_value(self):
@@ -428,87 +425,18 @@ class ProductTemplate(models.Model):
                     {"mdl_model_sku_override": override}
                 )
 
-    @api.depends(
-        "name",
-        "mdl_group_default_name",
-        "mdl_group_name_override",
-        "mdl_model_name_override",
-        "mdl_model_as_attribute",
-        "mdl_native_name_override",
-    )
+    @api.depends("mdl_group_default_name")
     def _compute_mdl_effective_base_name(self):
         for template in self:
-            native_override = clean_text(template.mdl_native_name_override)
-            if native_override:
-                template.mdl_effective_base_name = _resolved_component(
-                    "",
-                    native_override,
-                )
-                continue
-            group_name = _resolved_component(
-                template.mdl_group_default_name,
-                template.mdl_group_name_override,
-            )
-            model_name = (
-                ""
-                if template.mdl_model_as_attribute
-                else _resolved_component(
-                    _name_without_group(
-                        template.mdl_group_default_name,
-                        template.name,
-                    ),
-                    template.mdl_model_name_override,
-                )
-            )
-            template.mdl_effective_base_name = clean_text(
-                " ".join(part for part in (group_name, model_name) if part)
+            template.mdl_effective_base_name = _resolved_component(
+                template.mdl_group_default_name, "",
             )
 
     def _inverse_mdl_effective_base_name(self):
         for template in self:
-            effective_value = clean_text(template.mdl_effective_base_name)
-            if clean_text(template.mdl_native_name_override):
-                values = {
-                    "mdl_native_name_override": effective_value or "—",
-                }
-                if effective_value:
-                    values["name"] = effective_value
-                template.with_context(skip_mdl_catalog_sync=True).write(
-                    values
-                )
-                continue
-            source_value = _name_with_group(
-                template.mdl_group_default_name,
-                (
-                    ""
-                    if template.mdl_model_as_attribute
-                    else _name_without_group(
-                        template.mdl_group_default_name,
-                        template.name,
-                    )
-                ),
-            )
-            if template.mdl_model_as_attribute:
-                values = {
-                    "mdl_group_name_override": _override_from_effective_value(
-                        template.mdl_group_default_name,
-                        effective_value,
-                    ),
-                    "mdl_model_name_override": "—",
-                }
-            elif effective_value == source_value:
-                values = {
-                    "mdl_group_name_override": False,
-                    "mdl_model_name_override": False,
-                }
-            else:
-                values = {
-                    "mdl_group_name_override": "—",
-                    "mdl_model_name_override": effective_value or "—",
-                }
-            template.with_context(skip_mdl_catalog_sync=True).write(values)
-        self._mdl_ensure_full_model_names()
-        self._mdl_sync_variant_codes()
+            template.write({
+                "mdl_group_default_name": clean_text(template.mdl_effective_base_name),
+            })
 
     def copy_data(self, default=None):
         default = dict(default or {})
@@ -516,53 +444,9 @@ class ProductTemplate(models.Model):
         for template, vals in zip(self, vals_list):
             if not template.mdl_catalog_managed:
                 continue
-            if "mdl_native_name_override" not in default:
-                if "name" in default or template.mdl_native_name_override:
-                    # Preserve the name generated by Odoo, including its
-                    # translated duplicate suffix, for a source whose native
-                    # template name was explicitly customized.
-                    vals["mdl_native_name_override"] = (
-                        "—"
-                        if (
-                            "name" not in default
-                            and clean_text(template.mdl_native_name_override)
-                            == "—"
-                        )
-                        else clean_text(vals.get("name"))
-                    )
             if "mdl_group_default_name" not in default:
-                if "name" in default:
-                    # ``name`` is part of Odoo's public copy contract.  Keep
-                    # the catalog source aligned with an explicitly supplied
-                    # copied name instead of letting the post-copy catalog
-                    # normalization silently restore the source group name.
-                    vals["mdl_group_default_name"] = clean_text(
-                        default["name"]
-                    )
-                else:
-                    vals["mdl_group_default_name"] = _(
-                        "%s (copy)",
-                        template.mdl_group_default_name,
-                    )
-            if vals.get("mdl_native_name_override"):
-                if template.mdl_model_as_attribute:
-                    model_values = template.attribute_line_ids.filtered(
-                        "mdl_is_model_attribute"
-                    ).product_template_value_ids._only_active()
-                    model_name = (
-                        model_values.product_attribute_value_id.name
-                        if len(model_values) == 1
-                        else ""
-                    )
-                else:
-                    model_name = _name_without_group(
-                        template.mdl_group_default_name,
-                        template.mdl_native_name_source or template.name,
-                    )
-                vals["mdl_native_name_source"] = _name_with_group(
-                    vals.get("mdl_group_default_name"),
-                    model_name,
-                )
+                # A copied/custom display title must never become a name source.
+                vals["mdl_group_default_name"] = template.mdl_group_default_name
             source_group_sku = _resolved_component(
                 template.mdl_group_default_sku,
                 template.mdl_group_sku_override,
@@ -590,6 +474,34 @@ class ProductTemplate(models.Model):
                 vals["mdl_group_default_sku"] = copied_group_sku
                 vals["mdl_group_sku_override"] = False
         return vals_list
+
+    def _mdl_copy_name_translations(self, target, field_names):
+        """Copy stored name maps, including blank and inactive-language values.
+
+        Native copy_translations skips a field whose current-language value is
+        empty and filters out inactive languages. These configured name sources
+        must retain their complete maps when a product group is duplicated.
+        """
+        self.ensure_one()
+        target.ensure_one()
+        self.check_access("read")
+        target.check_access("write")
+        for field_name in field_names:
+            field = self._fields[field_name]
+            target_field = target._fields[field_name]
+            self._check_field_access(field, "read")
+            target._check_field_access(target_field, "write")
+            translations = field._get_stored_translations(self)
+            target.flush_recordset([field_name])
+            target.invalidate_recordset([field_name])
+            # Odoo 19 uses this native field-cache path when writing a complete
+            # translation map; its normal flush persists every language key.
+            target_field._update_cache(
+                target.with_context(prefetch_langs=True),
+                dict(translations) if translations else None,
+                dirty=True,
+            )
+            target.modified([field_name])
 
     def copy(self, default=None):
         default = dict(default or {})
@@ -623,6 +535,28 @@ class ProductTemplate(models.Model):
                         }
                     )
                 continue
+            source_template._mdl_copy_name_translations(
+                copied_template,
+                [
+                    field_name for field_name in (
+                        "mdl_group_default_name", "mdl_name_suffix",
+                    )
+                    if field_name not in default
+                ],
+            )
+            if "attribute_line_ids" not in default:
+                source_lines = {
+                    line.attribute_id.id: line
+                    for line in source_template.attribute_line_ids
+                }
+                for target_line in copied_template.attribute_line_ids:
+                    source_line = source_lines.get(target_line.attribute_id.id)
+                    if source_line:
+                        # The same native Char-copy primitive also applies to
+                        # the translated separators on the copied lines.
+                        ProductTemplate._mdl_copy_name_translations(
+                            source_line, target_line, ["mdl_name_suffix"],
+                        )
             copied_values = {
                 (
                     value.attribute_id.id,
@@ -660,6 +594,9 @@ class ProductTemplate(models.Model):
                             source.mdl_sku_component_override
                         ),
                     }
+                )
+                ProductTemplate._mdl_copy_name_translations(
+                    source, target, ["mdl_name_component_override"],
                 )
 
             rule_values = []
@@ -728,8 +665,14 @@ class ProductTemplate(models.Model):
                 target_variants.with_context(
                     skip_mdl_catalog_sync=True
                 ).write({"default_code": False})
-            else:
-                copied_template._mdl_sync_variant_codes()
+            languages = {code for code, _name in self.env["res.lang"].get_installed()} | {"en_US"}
+            for lang in languages:
+                translated = copied_template.with_context(lang=lang)
+                translated.env.add_to_compute(
+                    translated._fields["mdl_effective_base_name"], translated,
+                )
+                translated._recompute_recordset(["mdl_effective_base_name"])
+                translated._mdl_sync_variant_codes()
         return copied
 
     @api.model_create_multi
@@ -858,10 +801,6 @@ class ProductTemplate(models.Model):
             )
         group_name_was_provided = "mdl_group_default_name" in vals
         group_sku_was_provided = "mdl_group_default_sku" in vals
-        if group_name_was_provided and not self.env.context.get("skip_mdl_catalog_sync"):
-            # The visible group name supersedes an old hidden override in the
-            # edited language. Keep an override explicitly supplied in this write.
-            vals.setdefault("mdl_group_name_override", "")
         pending_source_skus = {
             template.id: (
                 clean_text(template.mdl_copy_source_group_sku)
@@ -872,43 +811,6 @@ class ProductTemplate(models.Model):
             )
             for template in self.filtered("mdl_copy_requires_new_sku")
         }
-        name_changed = "name" in vals and any(
-            clean_text(template.name) != clean_text(vals["name"])
-            for template in self
-        )
-        native_name_sources = {}
-        if (
-            name_changed
-            and "mdl_native_name_override" not in vals
-            and not self.env.context.get("skip_mdl_catalog_sync")
-        ):
-            native_name_sources = {
-                template.id: clean_text(template.name)
-                for template in self.filtered("mdl_catalog_managed")
-                if not template.mdl_native_name_source
-            }
-        if "mdl_native_name_override" not in vals:
-            if name_changed and not self.env.context.get(
-                "skip_mdl_catalog_sync"
-            ) and (
-                vals.get("mdl_catalog_managed") is True
-                or all(template.mdl_catalog_managed for template in self)
-            ):
-                vals["mdl_native_name_override"] = clean_text(vals["name"])
-            elif (
-                "mdl_group_default_name" in vals
-                and not self.env.context.get("skip_mdl_catalog_sync")
-            ):
-                vals["mdl_native_name_override"] = False
-                vals.setdefault("mdl_native_name_source", False)
-        previous_group_names = (
-            {
-                template.id: clean_text(template.mdl_group_default_name)
-                for template in self
-            }
-            if "mdl_group_default_name" in vals
-            else {}
-        )
         for field_name in (
             "mdl_group_default_name",
             "mdl_group_default_sku",
@@ -967,47 +869,32 @@ class ProductTemplate(models.Model):
                         "mdl_copy_source_group_sku": False,
                     }
                 )
-        for template_id, source_name in native_name_sources.items():
-            template = self.browse(template_id).exists()
-            if template and source_name:
-                super(
-                    ProductTemplate,
-                    template.with_context(skip_mdl_catalog_sync=True),
-                ).write({"mdl_native_name_source": source_name})
         if not self.env.context.get("skip_mdl_catalog_sync") and any(
             field_name in vals
             for field_name in (
-                "name",
                 "mdl_group_default_name",
                 "mdl_group_default_sku",
-                "mdl_model_default_name",
-                "mdl_group_name_override",
                 "mdl_group_sku_override",
                 "mdl_model_sku_component",
-                "mdl_model_name_override",
                 "mdl_model_sku_override",
                 "mdl_group_name_value",
                 "mdl_group_sku_value",
-                "mdl_model_name_value",
                 "mdl_model_sku_value",
                 "mdl_model_as_attribute",
                 "mdl_catalog_managed",
-                "mdl_native_name_override",
+                "mdl_name_suffix",
             )
         ):
-            self._mdl_ensure_full_model_names(previous_group_names)
             self._mdl_sync_variant_codes()
         return result
 
     def _update_field_translations(self, field_name, translations, digest=None, source_lang=""):
         name_fields = {
-            "name", "mdl_group_default_name", "mdl_group_name_override",
-            "mdl_model_name_override", "mdl_name_suffix",
+            "mdl_group_default_name", "mdl_name_suffix",
         }
         if (
             field_name not in name_fields
             or self.env.context.get("skip_mdl_catalog_sync")
-            or (field_name == "name" and not self.mdl_catalog_managed)
         ):
             return super()._update_field_translations(
                 field_name, translations, digest=digest, source_lang=source_lang,
@@ -1016,33 +903,23 @@ class ProductTemplate(models.Model):
         previous_values = self._fields[field_name]._get_stored_translations(self) or {}
         # Odoo finishes translation updates with a write in the dialog's current
         # language, which need not be the language whose translation was edited.
-        # Let it validate/store translations, then sync only changed languages.
+        # Let it validate/store translations, then sync every changed language,
+        # including installed languages that inherit a changed English source.
         result = super(
             ProductTemplate, self.with_context(skip_mdl_catalog_sync=True),
         )._update_field_translations(
             field_name, dict(translations), digest=digest, source_lang=source_lang,
         )
         if result:
-            for lang in translations:
+            languages = {code for code, _name in self.env["res.lang"].get_installed()} | {"en_US"}
+            for lang in languages:
                 template = self.with_context(lang=lang)
-                previous_value = previous_values.get(lang, previous_values.get("en_US", ""))
-                current_value = clean_text(template[field_name])
-                if current_value == clean_text(previous_value):
+                previous_value = previous_values.get(lang, previous_values.get("en_US", "")) or ""
+                current_value = template[field_name] or ""
+                # Leading whitespace in terminal text controls whether the
+                # suffix attaches to the last attribute or starts a new word.
+                if current_value == previous_value:
                     continue
-                previous_group_names = {}
-                if field_name == "mdl_group_default_name":
-                    template.with_context(skip_mdl_catalog_sync=True).write({
-                        "mdl_group_name_override": "",
-                        "mdl_native_name_override": "",
-                        "mdl_native_name_source": "",
-                    })
-                    previous_group_names = {template.id: previous_value}
-                elif field_name == "name":
-                    template.with_context(skip_mdl_catalog_sync=True).write({
-                        "mdl_native_name_override": current_value,
-                        "mdl_native_name_source": template.mdl_native_name_source or previous_value,
-                    })
-                template._mdl_ensure_full_model_names(previous_group_names)
                 template.env.add_to_compute(template._fields["mdl_effective_base_name"], template)
                 template._recompute_recordset(["mdl_effective_base_name"])
                 template._mdl_sync_variant_codes()
@@ -1088,8 +965,6 @@ class ProductTemplate(models.Model):
             "mdl_native_name_override": False,
             "mdl_native_name_source": False,
         }
-        if self.mdl_native_name_source:
-            values["name"] = self.mdl_native_name_source
         self.write(values)
 
     def action_mdl_reset_base_sku(self):
@@ -1111,58 +986,11 @@ class ProductTemplate(models.Model):
             "mdl_native_name_override": False,
             "mdl_native_name_source": False,
         }
-        if self.mdl_native_name_source:
-            values["name"] = self.mdl_native_name_source
         self.write(values)
 
     def _mdl_ensure_full_model_names(self, previous_group_names=None):
-        previous_group_names = previous_group_names or {}
-        for template in self.filtered("mdl_catalog_managed"):
-            native_override = clean_text(template.mdl_native_name_override)
-            if native_override:
-                native_name = _resolved_component("", native_override)
-                if native_name and template.name != native_name:
-                    super(
-                        ProductTemplate,
-                        template.with_context(skip_mdl_catalog_sync=True),
-                    ).write({"name": native_name})
-                continue
-            if template.mdl_model_as_attribute:
-                model_values = template.attribute_line_ids.filtered(
-                    "mdl_is_model_attribute"
-                ).product_template_value_ids._only_active()
-                model_name = (
-                    model_values.product_attribute_value_id.name
-                    if len(model_values) == 1
-                    else ""
-                )
-                full_name = _name_with_group(
-                    template.mdl_group_default_name,
-                    model_name,
-                )
-                if full_name and template.name != full_name:
-                    super(
-                        ProductTemplate,
-                        template.with_context(skip_mdl_catalog_sync=True),
-                    ).write({"name": full_name})
-                continue
-            previous_group = previous_group_names.get(
-                template.id,
-                template.mdl_group_default_name,
-            )
-            model_name = _name_without_group(previous_group, template.name)
-            full_name = _name_with_group(
-                template.mdl_group_default_name,
-                model_name,
-            )
-            updates = {}
-            if full_name and template.name != full_name:
-                updates["name"] = full_name
-            if updates:
-                super(
-                    ProductTemplate,
-                    template.with_context(skip_mdl_catalog_sync=True),
-                ).write(updates)
+        """Compatibility hook: automatic naming never rewrites display titles."""
+        return None
 
     def _mdl_render_catalog_values(self, combination):
         self.ensure_one()
@@ -1188,7 +1016,7 @@ class ProductTemplate(models.Model):
             else:
                 missing_components.append(value.display_name)
 
-        final_name = clean_text(self.mdl_effective_base_name)
+        final_name = _resolved_component(self.mdl_group_default_name, "")
         deferred_name_markers = []
         displayed_values = 0
         previous_line_suffix = ""
