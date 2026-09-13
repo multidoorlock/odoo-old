@@ -26,6 +26,7 @@ class SaleOrderLine(models.Model):
             product_label = clean_text(
                 line.product_id.with_context(
                     display_default_code=True,
+                    lang=line.order_id._get_lang(),
                 ).display_name
             )
             description_lines = (line.name or "").splitlines()

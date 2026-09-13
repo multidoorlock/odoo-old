@@ -6,15 +6,15 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app string="קבוצות פריטים ומאפיינים" name="mdl_product_groups_attributes">
-                    <block title="תצוגת פריטים">
-                        <setting string="פורמט תצוגה בחיפוש ובמסמכים"
-                                 help="הגדרה מערכתית אחת לכל הדגמים. השתמשו ב-[מק״ט] וב-[שם הפריט].">
+                <app string="Product Groups &amp; Attributes" name="mdl_product_groups_attributes">
+                    <block title="Product Display">
+                        <setting string="Display Format in Search and Documents"
+                                 help="One system-wide format for all variants. Use [SKU] and [Product Name]; existing Hebrew tokens remain supported.">
                             <field name="mdl_variant_display_format"
-                                   class="text-end"
-                                   placeholder="[מק״ט] [שם הפריט]"/>
+                                   class="o_mdl_format_field font-monospace"
+                                   placeholder="[SKU] [Product Name]"/>
                             <div class="text-muted mt-2">
-                                <span>תצוגה לדוגמה: </span>
+                                <span>Example: </span>
                                 <field name="mdl_variant_display_example"
                                        class="oe_inline"
                                        readonly="1"/>

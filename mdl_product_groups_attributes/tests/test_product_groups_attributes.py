@@ -6,6 +6,9 @@ from odoo.tests.common import TransactionCase
 from odoo.addons.mdl_product_groups_attributes.hooks import (
     migrate_catalog_structure,
 )
+from odoo.addons.mdl_product_groups_attributes.models.catalog_utils import (
+    render_format,
+)
 
 
 @tagged("post_install", "-at_install")
@@ -1501,3 +1504,41 @@ class TestProductGroupsAttributes(TransactionCase):
             )
         )
 
+    def test_translatable_names_keep_sku_fields_language_independent(self):
+        template_fields = self.env["product.template"]._fields
+        product_fields = self.env["product.product"]._fields
+        attribute_fields = self.env["product.attribute"]._fields
+        attribute_value_fields = self.env["product.attribute.value"]._fields
+        value_fields = self.env["product.template.attribute.value"]._fields
+        line_fields = self.env["product.template.attribute.line"]._fields
+
+        self.assertTrue(attribute_fields["name"].translate)
+        self.assertTrue(attribute_value_fields["name"].translate)
+        self.assertTrue(template_fields["name"].translate)
+        self.assertTrue(template_fields["mdl_group_default_name"].translate)
+        self.assertTrue(template_fields["mdl_group_name_override"].translate)
+        self.assertTrue(template_fields["mdl_effective_base_name"].translate)
+        self.assertTrue(template_fields["mdl_name_suffix"].translate)
+        self.assertTrue(product_fields["mdl_generated_name"].translate)
+        self.assertTrue(value_fields["mdl_name_component_override"].translate)
+        self.assertTrue(line_fields["mdl_name_suffix"].translate)
+        self.assertFalse(template_fields["mdl_group_default_sku"].translate)
+        self.assertFalse(value_fields["mdl_sku_component_override"].translate)
+
+    def test_english_and_legacy_display_tokens_render_the_same_identity(self):
+        values = {
+            "SKU": "[100180100]",
+            "Product Name": "Door 80/100",
+            "מק״ט": "[100180100]",
+            "שם הפריט": "Door 80/100",
+        }
+        english, english_missing = render_format(
+            "[SKU] [Product Name]", values
+        )
+        legacy, legacy_missing = render_format(
+            "[מק״ט] [שם הפריט]", values
+        )
+
+        self.assertFalse(english_missing)
+        self.assertFalse(legacy_missing)
+        self.assertEqual(english, legacy)
