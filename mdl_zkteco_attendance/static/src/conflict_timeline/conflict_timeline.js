@@ -10,6 +10,7 @@ import {
     useState,
 } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { CheckBox } from "@web/core/checkbox/checkbox";
 import { deserializeDateTime, serializeDateTime } from "@web/core/l10n/dates";
 import { localization } from "@web/core/l10n/localization";
 import { _t } from "@web/core/l10n/translation";
@@ -58,8 +59,8 @@ export class AttendanceTooltip extends Component {
 
 export class AttendanceEventTile extends Component {
     static template = "mdl_zkteco_attendance.AttendanceEventTile";
-    static components = { AttendanceTooltip };
-    static props = ["item", "style", "dragging", "selected", "onOpen", "onSelect", "onPointerDown", "onContextMenu"];
+    static components = { AttendanceTooltip, CheckBox };
+    static props = ["item", "style", "dragging", "selected", "selectionMode", "busy", "onOpen", "onSelect", "onPointerDown", "onContextMenu"];
 
     setup() {
         this.state = useState({ hovered: false });
@@ -71,11 +72,14 @@ export class AttendanceEventTile extends Component {
 
     onClick(ev) {
         ev.stopPropagation();
+        if (this.props.busy) {
+            return;
+        }
         if (this.props.item.dragged) {
             this.props.item.dragged = false;
             return;
         }
-        if (ev.ctrlKey || ev.metaKey) {
+        if (this.props.selectionMode || ev.ctrlKey || ev.metaKey || ev.shiftKey) {
             this.props.onSelect(this.props.item);
             return;
         }
@@ -83,8 +87,21 @@ export class AttendanceEventTile extends Component {
     }
 
     onPointerDown(ev) {
+        // Selection must never reach either drag controller. A small pointer
+        // movement while selecting used to change the event's time instead.
+        if (this.props.busy || this.props.selectionMode || ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+            ev.stopPropagation();
+            this.props.item.dragged = false;
+            return;
+        }
         if (ev.button === 0) {
             this.props.onPointerDown(ev, this.props.item);
+        }
+    }
+
+    onSelectionChange(value) {
+        if (!this.props.busy) {
+            this.props.onSelect(this.props.item, value);
         }
     }
 
@@ -95,9 +112,17 @@ export class AttendanceEventTile extends Component {
     }
 
     onKeydown(ev) {
+        if (ev.target !== ev.currentTarget || this.props.busy) {
+            return;
+        }
         if (ev.key === "Enter" || ev.key === " ") {
             ev.preventDefault();
-            this.props.onOpen(this.props.item);
+            ev.stopPropagation();
+            if (this.props.selectionMode || ev.key === " " || ev.ctrlKey || ev.metaKey) {
+                this.props.onSelect(this.props.item);
+            } else {
+                this.props.onOpen(this.props.item);
+            }
         }
     }
 
@@ -269,7 +294,8 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         super.setup();
         this._timelineRendererDestroyed = false;
         this.contextMenuState = useState({ menu: null });
-        this.interactionState = useState({ selectedIds: [], drag: null });
+        this.interactionState = useState({ selectedIds: [], selectionMode: false, busy: false, drag: null });
+        onPatched(() => this._restoreTimelineScroll());
         onWillUnmount(() => {
             this._timelineRendererDestroyed = true;
             this.cancelTimelineDrag();
@@ -822,7 +848,9 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
     startTimelineDrag(ev, item) {
         const eventId = item.event_id || (item.source === "event" ? item.source_id : false);
-        if (!eventId || this._timelineRendererDestroyed || this.interactionState.drag) {
+        if (!eventId || this._timelineRendererDestroyed || this.interactionState.drag
+            || this.interactionState.busy || this.interactionState.selectionMode
+            || ev.ctrlKey || ev.metaKey || ev.shiftKey) {
             return;
         }
         ev.preventDefault();
@@ -922,14 +950,33 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         );
     }
 
-    toggleTimelineSelection(item) {
+    toggleTimelineSelection(item, value) {
+        if (this.interactionState.busy) {
+            return;
+        }
+        this.cancelTimelineDrag();
+        this.interactionState.selectionMode = true;
         const selected = new Set(this.interactionState.selectedIds);
-        if (selected.has(item.id)) {
-            selected.delete(item.id);
-        } else {
+        if (value ?? !selected.has(item.id)) {
             selected.add(item.id);
+        } else {
+            selected.delete(item.id);
         }
         this.interactionState.selectedIds = [...selected];
+    }
+
+    toggleTimelineSelectionMode() {
+        if (!this.interactionState.busy) {
+            this.cancelTimelineDrag();
+            this.interactionState.selectionMode = !this.interactionState.selectionMode;
+            this.interactionState.selectedIds = [];
+        }
+    }
+
+    clearTimelineSelection() {
+        if (!this.interactionState.busy) {
+            this.interactionState.selectedIds = [];
+        }
     }
 
     isTimelineSelected(item) {
@@ -937,6 +984,9 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
     }
 
     hideSelectedTimelineItems() {
+        if (this.interactionState.busy || this._timelineHideDialogOpen) {
+            return;
+        }
         const items = this.interactionState.selectedIds
             .map((id) => this._timelineItemsById.get(id)).filter(Boolean);
         const eventIds = [...new Set(items.map((item) =>
@@ -948,11 +998,17 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         if (!eventIds.length && !attendanceIds.length) {
             return;
         }
+        this._timelineHideDialogOpen = true;
         this.dialogService.add(ConfirmationDialog, {
             title: _t("הסתרת אירועי נוכחות"),
-            body: _t("להסתיר את האירועים שנבחרו? נתוני המקור ורשומות הנוכחות נשמרים."),
+            body: _t("האירועים שנבחרו לא ייכללו בחישוב הנוכחות. הנוכחות והקישורים יעודכנו לפי האירועים שנותרו. נתוני המקור נשמרים, ונוכחות נעולה לשכר לא תשונה."),
             confirmLabel: _t("הסתר"),
+            cancel: () => { this._timelineHideDialogOpen = false; },
             confirm: async () => {
+                if (this._timelineRendererDestroyed || this.interactionState.busy) {
+                    return;
+                }
+                this.interactionState.busy = true;
                 try {
                     await this.orm.call(
                         "mdl.attendance.device.event", "timeline_hide_items",
@@ -969,8 +1025,15 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                             { type: "danger", sticky: true }
                         );
                     }
+                } finally {
+                    this._timelineHideDialogOpen = false;
+                    if (!this._timelineRendererDestroyed) {
+                        this.interactionState.busy = false;
+                    }
                 }
             },
+        }, {
+            onClose: () => { this._timelineHideDialogOpen = false; },
         });
     }
 
@@ -1173,7 +1236,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         if (["dismiss_event", "dismiss_pair", "dismiss_attendance"].includes(action.key)) {
             this.dialogService.add(ConfirmationDialog, {
                 title: _t("להסתיר את אירוע הנוכחות?"),
-                body: _t("האירוע יוסתר מהתצוגה. נתוני המקור ורשומת הנוכחות נשמרים."),
+                body: _t("האירוע לא ייכלל בחישוב הנוכחות. הנוכחות והקישורים יעודכנו לפי האירועים שנותרו. נתוני המקור נשמרים, ונוכחות נעולה לשכר לא תשונה."),
                 confirmLabel: _t("הסתר"),
                 confirm: () => this._executeContextAction(action),
             });
@@ -1183,6 +1246,10 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
     }
 
     async _executeContextAction(action) {
+        if (this._timelineRendererDestroyed || this.interactionState.busy) {
+            return;
+        }
+        this.interactionState.busy = true;
         try {
             if (action.key === "create_event") {
                 const actionData = await this.orm.call(
@@ -1242,6 +1309,10 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             }
             const message = error.data?.message || error.message || _t("הפעולה נכשלה.");
             this.notificationService.add(message, { type: "danger", sticky: true });
+        } finally {
+            if (!this._timelineRendererDestroyed) {
+                this.interactionState.busy = false;
+            }
         }
     }
 
@@ -1257,14 +1328,41 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         if (this._timelineRendererDestroyed) {
             return;
         }
+        const content = this.props?.contentRef?.el;
+        const scrollPosition = content ? {
+            element: content, left: content.scrollLeft, top: content.scrollTop,
+        } : null;
         try {
+            // Refresh the existing model. Its current search domain, date range,
+            // scale and employee grouping survive; never re-execute the action.
             await this.model.fetchData();
+            if (!this._timelineRendererDestroyed) {
+                this._timelineScrollToRestore = scrollPosition;
+                const currentIds = new Set((this.model.data?.conflictTimeline?.rows || [])
+                    .flatMap((row) => (row.items || []).map((item) => item.id)));
+                if (this.model.data?.conflictTimeline) {
+                    this.interactionState.selectedIds = this.interactionState.selectedIds
+                        .filter((id) => currentIds.has(id));
+                }
+                this._restoreTimelineScroll(false);
+            }
         } catch (error) {
             // Odoo may destroy the underlying action while its dialog is
             // closing. In that case there is no timeline left to refresh.
             if (!this._timelineRendererDestroyed) {
                 throw error;
             }
+        }
+    }
+
+    _restoreTimelineScroll(clear = true) {
+        const position = this._timelineScrollToRestore;
+        if (position && !this._timelineRendererDestroyed && position.element === this.props?.contentRef?.el) {
+            position.element.scrollLeft = position.left;
+            position.element.scrollTop = position.top;
+        }
+        if (clear) {
+            this._timelineScrollToRestore = null;
         }
     }
 }

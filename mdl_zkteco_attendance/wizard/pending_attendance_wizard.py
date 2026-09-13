@@ -73,7 +73,9 @@ class AttendancePendingWizardLine(models.TransientModel):
 
     def action_apply(self):
         self.ensure_one()
-        card = self.wizard_id.device_employee_id
+        events, card = self._scoped_events()
+        self.env["mdl.attendance.device.event"]._timeline_lock_employee_ids(card.employee_id.ids)
+        events.invalidate_recordset()
         if not card.employee_id:
             raise UserError(_("חובה לקשר תחילה את הכרטיס לעובד."))
         current_pairs = {
@@ -84,7 +86,6 @@ class AttendancePendingWizardLine(models.TransientModel):
             raise UserError(_("האירועים השתנו או הוסתרו. יש לפתוח מחדש את רשימת הנוכחות הממתינה."))
         if not card._attendance_interval_is_valid(self.check_in, self.check_out or False):
             raise UserError(_("הרשומה כבר אינה תקינה או שהיא מתנגשת ברשומת נוכחות אחרת."))
-        events = self.check_in_event_id | self.check_out_event_id
         events.sudo().write({
             "employee_id": card.employee_id.id,
             "processing_state": "new",
@@ -96,19 +97,28 @@ class AttendancePendingWizardLine(models.TransientModel):
             raise UserError(failed[0].processing_message or _("Odoo דחה את רשומת הנוכחות."))
         return self._reload_wizard()
 
-    def action_dismiss(self):
+    def _scoped_events(self):
+        """Allow a card operator to act only on this owned wizard's card."""
         self.ensure_one()
         self.check_access("write")
-        events = self.check_in_event_id | self.check_out_event_id
-        events.check_access("read")
         card = self.wizard_id.device_employee_id
-        if any(event.device_employee_id != card for event in events):
+        card.check_access("write")
+        # Operators can manage their cards without general access to the
+        # event model.  Check the card before reading source records with sudo,
+        # and never accept an event from another card/company in this popup.
+        events = (self.check_in_event_id | self.check_out_event_id).sudo().exists()
+        if not events or any(
+            event.device_employee_id != card
+            or event.device_id != card.device_id
+            or event.company_id != card.company_id
+            for event in events
+        ):
             raise UserError(_("אפשר להסתיר כאן רק אירועים של הכרטיס שנבחר."))
-        # Card operators could already dismiss their pending intervals. Keep
-        # that scope without granting the manager-only timeline edit actions.
-        events.sudo().with_context(attendance_event_system_write=True).write({
-            "conflict_dismissed": True,
-            "conflict_action_failed": False,
-            "conflict_action_error": False,
-        })
+        return events, card
+
+    def action_dismiss(self):
+        events, _card = self._scoped_events()
+        # Use the same payroll guards, pairing repair and atomic bulk action
+        # as the timeline.  A stale popup may now refer to saved attendance.
+        self.env["mdl.attendance.device.event"].sudo()._timeline_exclude_events(events)
         return self._reload_wizard()

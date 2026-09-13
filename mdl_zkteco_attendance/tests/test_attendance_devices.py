@@ -647,7 +647,7 @@ class TestAttendanceDevices(TransactionCase):
         )
         action = events[1].action_dismiss_conflict()
         self.assertTrue(events[1].conflict_dismissed)
-        self.assertEqual(action["tag"], "reload")
+        self.assertFalse(action)
         self.assertEqual(events[0].processing_state, "processed")
         self.assertTrue(events[0].attendance_id)
 

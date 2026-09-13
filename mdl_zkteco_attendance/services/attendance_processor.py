@@ -44,6 +44,10 @@ class AttendanceProcessor:
         ))
         employee_ids.update(valid_cards.mapped("employee_id").ids)
         self.env["mdl.attendance.device.event"]._timeline_lock_employee_ids(employee_ids)
+        # Selection and the initial employee lookup may have prefetched an
+        # event before another request excluded it.  Read its current state
+        # after the same fence used by Hide before applying any punch.
+        events.invalidate_recordset()
         for event in events.sorted(key=lambda e: (e.event_datetime or datetime.min, e.id)):
             try:
                 with self.env.cr.savepoint():
@@ -62,7 +66,10 @@ class AttendanceProcessor:
             )
 
     def _process_one(self, event):
-        if event.processing_state in ("processed", "ignored"):
+        # Hide is a processing exclusion, not just a timeline display flag.
+        # Keep the source and fingerprint so a clock replay stays deduplicated,
+        # but never let a retry, card relink or manual reprocess apply it again.
+        if event.conflict_dismissed or event.processing_state in ("processed", "ignored"):
             return
         if not event.manual_punch_state and event.punch_state == "unknown" and event.raw_punch_state:
             mapped_state = event.device_id._adapter().map_punch_state(event.raw_punch_state)
@@ -167,6 +174,7 @@ class AttendanceProcessor:
             ("event_datetime", ">=", event.event_datetime - timedelta(minutes=minutes)),
             ("event_datetime", "<=", event.event_datetime),
             ("processing_state", "!=", "ignored"),
+            ("conflict_dismissed", "=", False),
         ], order="event_datetime desc, id desc")
         return candidates.filtered(
             lambda candidate: (

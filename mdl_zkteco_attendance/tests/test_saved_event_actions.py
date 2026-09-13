@@ -1,6 +1,7 @@
 """Exercise the saved-event actions through their native ORM/RPC interfaces."""
 
 import uuid
+from unittest.mock import patch
 
 from lxml import etree
 
@@ -184,7 +185,7 @@ class TestSavedEventActions(TransactionCase):
         in_event, out_event, attendance = self._pair()
         pending = self._event(20, "out")
         self.Event.timeline_hide_items([in_event.id, pending.id])
-        before_attendance = attendance.read(["check_in", "check_out", "write_date"])
+        self.assertFalse(attendance.exists())
         before_events = (in_event | out_event | pending).read([
             "processing_state", "attendance_id", "conflict_dismissed", "write_date",
         ])
@@ -196,64 +197,63 @@ class TestSavedEventActions(TransactionCase):
         conflicts = self._search_action_filters("hidden", "only_conflicts")
         self.assertEqual(
             [item["event_id"] for row in conflicts["rows"] for item in row["items"]],
-            [pending.id],
+            [in_event.id, pending.id],
         )
-        self.assertEqual(attendance.read(["check_in", "check_out", "write_date"]), before_attendance)
         self.assertEqual((in_event | out_event | pending).read([
             "processing_state", "attendance_id", "conflict_dismissed", "write_date",
         ]), before_events)
 
-    def test_hide_saved_endpoint_retains_attendance_and_raw_source(self):
+    def test_hide_saved_endpoint_removes_contribution_and_retains_raw_source(self):
         in_event, out_event, attendance = self._pair()
         original_source = in_event.read([
             "raw_line", "event_fingerprint", "event_datetime", "punch_state",
-            "attendance_id", "processing_state",
         ])
-        original_attendance = attendance.read(["employee_id", "check_in", "check_out"])
         in_event.action_hide()
         self.Event._timeline_reconcile_employee_ids([self.employee.id])
-        attendance._ensure_attendance_device_events()
         self.assertTrue(in_event.conflict_dismissed)
         self.assertEqual(in_event.read([
             "raw_line", "event_fingerprint", "event_datetime", "punch_state",
-            "attendance_id", "processing_state",
         ]), original_source)
-        self.assertEqual(attendance.read(["employee_id", "check_in", "check_out"]), original_attendance)
+        self.assertFalse(attendance.exists())
+        self.assertFalse((in_event | out_event).mapped("attendance_id"))
         row = self._row()
         self.assertEqual([item["event_id"] for item in row["items"]], [out_event.id])
         self.assertEqual(row["connections"], [])
 
-    def test_hide_saved_pair_keeps_both_events_and_attendance(self):
+    def test_hide_saved_pair_keeps_evidence_but_excludes_attendance(self):
         in_event, out_event, attendance = self._pair()
         self.Event.timeline_dismiss_pair([in_event.id, out_event.id])
         self.Event._timeline_reconcile_employee_ids([self.employee.id])
-        self.assertTrue(attendance.exists())
-        self.assertEqual((in_event | out_event).mapped("attendance_id"), attendance)
+        self.assertFalse(attendance.exists())
+        self.assertFalse((in_event | out_event).mapped("attendance_id"))
         self.assertEqual(len((in_event | out_event).exists()), 2)
         self.assertEqual(self._row()["items"], [])
 
-    def test_legacy_delete_action_is_visibility_only(self):
+    def test_legacy_delete_action_excludes_without_deleting_source_events(self):
         in_event, out_event, attendance = self._pair()
         self.Event.timeline_delete_items([], [attendance.id])
-        self.assertTrue(attendance.exists())
+        self.assertFalse(attendance.exists())
         self.assertTrue(all((in_event | out_event).mapped("conflict_dismissed")))
         self.assertEqual(len((in_event | out_event).exists()), 2)
         self.assertEqual(self._row()["items"], [])
 
-    def test_hide_native_attendance_only_adds_missing_visibility_endpoints(self):
+    def test_hide_native_attendance_preserves_missing_endpoint_evidence(self):
         attendance = self.Attendance.with_context(skip_attendance_event_sync=True).create({
             "employee_id": self.employee.id,
             "check_in": "2026-08-24 08:00:00", "check_out": "2026-08-24 17:00:00",
         })
-        before = attendance.read(["employee_id", "check_in", "check_out", "write_date"])
         self.assertFalse(self.Event.search([("attendance_id", "=", attendance.id)]))
         self.Event.timeline_hide_items([], [attendance.id])
-        events = self.Event.search([("attendance_id", "=", attendance.id)])
+        self.assertFalse(attendance.exists())
+        events = self.Event.search([("employee_id", "=", self.employee.id)])
         self.assertEqual(len(events), 2)
         self.assertTrue(all(events.mapped("conflict_dismissed")))
+        self.assertFalse(any(events.mapped("odoo_generated")))
+        self.assertFalse(events.mapped("attendance_id"))
+        before = events.read(["write_date", "attendance_id", "conflict_dismissed"])
+        self.Event.timeline_hide_items(events.ids)
         self.Event.timeline_hide_items([], [attendance.id])
-        self.assertEqual(self.Event.search([("attendance_id", "=", attendance.id)]), events)
-        self.assertEqual(attendance.read(["employee_id", "check_in", "check_out", "write_date"]), before)
+        self.assertEqual(events.read(["write_date", "attendance_id", "conflict_dismissed"]), before)
         self.assertEqual(self._row()["items"], [])
 
     def test_saved_in_flip_relinks_neighbour_then_can_be_reversed(self):
@@ -338,7 +338,7 @@ class TestSavedEventActions(TransactionCase):
             (in_event | out_event).read(["write_date", "processing_state", "attendance_id"]), before,
         )
 
-    def test_validated_native_work_entry_blocks_flip_but_not_hide(self):
+    def test_validated_native_work_entry_blocks_flip_and_bulk_hide_atomically(self):
         in_event, out_event, attendance = self._pair()
         Entry = self.env["hr.work.entry"]
         if "attendance_id" not in Entry._fields:
@@ -358,8 +358,15 @@ class TestSavedEventActions(TransactionCase):
         self.assertEqual(in_event.effective_punch_state, "in")
         self.assertEqual(in_event.attendance_id, attendance)
         self.assertEqual(entry.state, "validated")
-        in_event.action_hide()
-        self.assertTrue(in_event.conflict_dismissed)
+        pending = self._event(20, "out")
+        before = (in_event | pending).read(["conflict_dismissed", "attendance_id", "write_date"])
+        # The method owns its savepoint, so even a caller that catches the
+        # failure cannot keep the unlocked half of a partially hidden batch.
+        with self.assertRaises(UserError):
+            self.Event.timeline_hide_items([pending.id, in_event.id])
+        self.assertEqual(
+            (in_event | pending).read(["conflict_dismissed", "attendance_id", "write_date"]), before,
+        )
         self.assertEqual(entry.attendance_id, attendance)
         self.assertEqual(out_event.attendance_id, attendance)
 
@@ -379,11 +386,14 @@ class TestSavedEventActions(TransactionCase):
         self.assertEqual(entry.state, "validated")
         with self.assertRaises(UserError), self.cr.savepoint():
             in_event.action_flip()
+        with self.assertRaises(UserError):
+            in_event.action_hide()
+        self.assertFalse(in_event.conflict_dismissed)
         self.assertEqual(entry.mdl_source_attendance_ids, attendance)
         self.assertEqual(in_event.attendance_id, attendance)
         self.assertEqual(in_event.effective_punch_state, "in")
 
-    def test_finalized_payslip_period_blocks_correction_but_allows_hide(self):
+    def test_finalized_payslip_period_blocks_correction_and_hide(self):
         in_event, _out_event, attendance = self._pair()
         structure = self.env["hr.payroll.structure"].search([
             ("type_id", "=", self.employee.structure_type_id.id),
@@ -412,7 +422,112 @@ class TestSavedEventActions(TransactionCase):
         self.assertEqual(in_event.effective_punch_state, "in")
         self.assertEqual(in_event.attendance_id, attendance)
         self.assertEqual(slip.state, "validated")
-        in_event.action_hide()
-        self.assertTrue(in_event.conflict_dismissed)
+        with self.assertRaises(UserError):
+            in_event.action_hide()
+        self.assertFalse(in_event.conflict_dismissed)
         self.assertTrue(attendance.exists())
         self.assertEqual(slip.state, "validated")
+
+    def test_hide_saved_out_relinks_to_later_real_exit_and_preserves_other_pair(self):
+        in_event, out_event, attendance = self._pair()
+        later_out = self._event(18, "out")
+        second_in = self._event(20, "in")
+        second_out = self._event(22, "out")
+        self.Event._timeline_reconcile_employee_ids([self.employee.id])
+        untouched = second_in.attendance_id
+        before = untouched.read(["employee_id", "check_in", "check_out", "write_date"])
+        self.Event.timeline_hide_items([out_event.id])
+        self.assertFalse(attendance.exists())
+        self.assertTrue(in_event.attendance_id)
+        self.assertEqual(in_event.attendance_id, later_out.attendance_id)
+        self.assertEqual(in_event.attendance_id.check_out, later_out.event_datetime)
+        self.assertTrue(out_event.conflict_dismissed)
+        self.assertFalse(out_event.attendance_id)
+        self.assertEqual(second_out.attendance_id, untouched)
+        self.assertEqual(untouched.read(["employee_id", "check_in", "check_out", "write_date"]), before)
+
+    def test_already_hidden_generated_checkout_is_backfilled_and_cannot_reappear(self):
+        in_event = self._event(8, "in")
+        attendance = self.Attendance.create({
+            "employee_id": self.employee.id,
+            "check_in": in_event.event_datetime, "check_out": "2026-08-24 17:00:00",
+        })
+        generated = self.Event.search([
+            ("attendance_id", "=", attendance.id), ("odoo_generated", "=", True),
+        ])
+        self.assertEqual(len(generated), 1)
+        generated.write({"conflict_dismissed": True})  # Legacy visibility-only state.
+        later_out = self._event(18, "out")
+        source_before = generated.read(["raw_line", "event_fingerprint", "event_datetime", "punch_state"])
+        self.Event.timeline_hide_items(generated.ids)
+        self.assertFalse(attendance.exists())
+        self.assertTrue(in_event.attendance_id)
+        self.assertEqual(in_event.attendance_id, later_out.attendance_id)
+        self.assertFalse(generated.attendance_id)
+        self.assertFalse(generated.odoo_generated)
+        self.assertTrue(generated.conflict_dismissed)
+        self.assertEqual(generated.read([
+            "raw_line", "event_fingerprint", "event_datetime", "punch_state",
+        ]), source_before)
+        before = (generated | in_event | later_out).read([
+            "write_date", "attendance_id", "conflict_dismissed", "processing_state",
+        ])
+        self.Event.timeline_hide_items(generated.ids)
+        self.Event._timeline_reconcile_employee_ids([self.employee.id])
+        self.assertEqual((generated | in_event | later_out).read([
+            "write_date", "attendance_id", "conflict_dismissed", "processing_state",
+        ]), before)
+
+    def test_hide_pending_in_allows_remaining_direct_neighbours_to_pair(self):
+        in_event = self._event(8, "in")
+        wrong_in = self._event(17, "in")
+        out_event = self._event(18, "out")
+        self.Event.timeline_hide_items([wrong_in.id])
+        self.assertTrue(in_event.attendance_id)
+        self.assertEqual(in_event.attendance_id, out_event.attendance_id)
+        self.assertTrue(wrong_in.conflict_dismissed)
+        self.assertFalse(wrong_in.attendance_id)
+
+    def test_hide_technical_absence_mirror_does_not_remove_absence(self):
+        attendance = self.Attendance.create({
+            "employee_id": self.employee.id, "in_mode": "technical", "out_mode": "technical",
+            "check_in": "2026-08-24 00:00:00", "check_out": "2026-08-24 00:00:01",
+        })
+        event = self._event(0, "in")
+        event.with_context(attendance_event_system_write=True).write({
+            "attendance_id": attendance.id, "odoo_generated": True, "processing_state": "processed",
+        })
+        before = attendance.read(["check_in", "check_out", "write_date"])
+        self.Event.timeline_hide_items([event.id])
+        self.assertTrue(event.conflict_dismissed)
+        self.assertEqual(event.attendance_id, attendance)
+        self.assertEqual(attendance.read(["check_in", "check_out", "write_date"]), before)
+
+    def test_hide_ignored_duplicate_does_not_rebuild_canonical_saved_pair(self):
+        in_event, out_event, attendance = self._pair()
+        duplicate = self._event(8, "in")
+        duplicate.with_context(attendance_event_system_write=True).write({
+            "processing_state": "ignored", "attendance_id": attendance.id,
+        })
+        before_attendance = attendance.read(["check_in", "check_out", "write_date"])
+        before_sources = (in_event | out_event).read(["attendance_id", "write_date"])
+        self.Event.timeline_hide_items([duplicate.id])
+        self.assertTrue(duplicate.conflict_dismissed)
+        self.assertEqual(duplicate.processing_state, "ignored")
+        self.assertEqual(attendance.read(["check_in", "check_out", "write_date"]), before_attendance)
+        self.assertEqual((in_event | out_event).read(["attendance_id", "write_date"]), before_sources)
+
+    def test_repair_failure_rolls_back_exclusion_and_attendance_as_one_action(self):
+        in_event, out_event, attendance = self._pair()
+        before = (in_event | out_event).read([
+            "conflict_dismissed", "attendance_id", "processing_state", "write_date",
+        ])
+        before_attendance = attendance.read(["check_in", "check_out", "write_date"])
+        with patch.object(type(self.Event), "_timeline_reconcile_employee_ids", side_effect=UserError("Repair failed")):
+            with self.assertRaises(UserError):
+                self.Event.timeline_hide_items([out_event.id])
+        self.assertTrue(attendance.exists())
+        self.assertEqual(attendance.read(["check_in", "check_out", "write_date"]), before_attendance)
+        self.assertEqual((in_event | out_event).read([
+            "conflict_dismissed", "attendance_id", "processing_state", "write_date",
+        ]), before)

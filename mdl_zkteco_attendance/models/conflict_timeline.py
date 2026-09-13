@@ -148,26 +148,28 @@ class AttendanceConflictTimeline(models.Model):
 
         Normalized Israeli entries may link several source attendances through
         a many-to-many field, in addition to Odoo's native attendance_id link.
-        Visibility changes deliberately do not call this guard.
+        Hiding an event changes attendance, so it uses this same protection.
         """
         attendances = attendances.exists()
         if not attendances:
             return
         Entry = self.env["hr.work.entry"].sudo().with_context(active_test=False)
-        links = [
-            Domain(name, "in", attendances.ids)
-            for name in ("attendance_id", "mdl_source_attendance_ids")
-            if name in Entry._fields
-        ]
-        if links and Entry.search_count(
-            Domain.OR(links) & Domain("state", "=", "validated"), limit=1,
-        ):
-            raise UserError(_(
-                "לא ניתן לשנות את האירוע כי הנוכחות כבר כלולה בכניסת עבודה מאושרת. "
-                "אפשר להסתיר את האירוע בלי לשנות את הנוכחות."
-            ))
         Slip = self.env["hr.payslip"].sudo()
         for attendance in attendances:
+            links = [
+                Domain(name, "in", attendance.ids)
+                for name in ("attendance_id", "mdl_source_attendance_ids")
+                if name in Entry._fields
+            ]
+            if links and Entry.search_count(
+                Domain.OR(links) & Domain("state", "=", "validated"), limit=1,
+            ):
+                raise UserError(_(
+                    "לא ניתן לשנות או להסתיר אירוע של %(employee)s בתאריך %(date)s: "
+                    "הנוכחות כבר כלולה בכניסת עבודה מאושרת. "
+                    "לא הוסתר אף אירוע מהבחירה.",
+                    employee=attendance.employee_id.name, date=attendance.date,
+                ))
             if Slip.search_count([
                 ("employee_id", "=", attendance.employee_id.id),
                 ("date_from", "<=", attendance.date),
@@ -175,8 +177,10 @@ class AttendanceConflictTimeline(models.Model):
                 ("state", "in", ["validated", "paid"]),
             ], limit=1):
                 raise UserError(_(
-                    "לא ניתן לשנות את האירוע כי הנוכחות נמצאת בתקופה של תלוש שכר מאושר. "
-                    "אפשר להסתיר את האירוע בלי לשנות את הנוכחות."
+                    "לא ניתן לשנות או להסתיר אירוע של %(employee)s בתאריך %(date)s: "
+                    "הנוכחות נמצאת בתקופה של תלוש שכר מאושר. "
+                    "לא הוסתר אף אירוע מהבחירה.",
+                    employee=attendance.employee_id.name, date=attendance.date,
                 ))
 
     @api.model
@@ -245,9 +249,7 @@ class AttendanceConflictTimeline(models.Model):
             events = Event.search([
                 ("employee_id", "=", employee.id),
                 ("processing_state", "!=", "ignored"),
-                "|",
                 ("conflict_dismissed", "=", False),
-                ("attendance_id", "in", list(forced_ids)),
                 ("event_datetime", "!=", False),
                 "|",
                 ("manual_punch_state", "in", ["in", "out"]),
@@ -286,7 +288,11 @@ class AttendanceConflictTimeline(models.Model):
             sources_by_attendance = defaultdict(lambda: Event.browse())
             for source in linked_sources:
                 sources_by_attendance[source.attendance_id.id] |= source
-            hidden_attendance_ids = set(linked_sources.filtered(
+            # Legacy visibility-only exclusions are migrated explicitly through
+            # _timeline_exclude_events with the same payroll guards and audit
+            # snapshot as a user action. A background sync must not migrate or
+            # delete those historical attendances opportunistically.
+            legacy_hidden_attendance_ids = set(linked_sources.filtered(
                 "conflict_dismissed"
             ).mapped("attendance_id").ids) - forced_ids
 
@@ -338,7 +344,7 @@ class AttendanceConflictTimeline(models.Model):
                     continue
                 in_attendance = in_event.attendance_id.exists()
                 out_attendance = out_event.attendance_id.exists()
-                if hidden_attendance_ids.intersection(
+                if legacy_hidden_attendance_ids.intersection(
                     (in_attendance | out_attendance).ids
                 ):
                     continue
@@ -356,9 +362,7 @@ class AttendanceConflictTimeline(models.Model):
                 paired_event_ids.update((in_event.id, out_event.id))
 
             reusable_by_pair = {}
-            # Hide changes visibility only. A hidden endpoint must not make
-            # its saved attendance look obsolete during the next clock sync.
-            reserved_attendance_ids = set(hidden_attendance_ids)
+            reserved_attendance_ids = set(legacy_hidden_attendance_ids)
             for in_event, out_event in desired_pairs:
                 common = in_event.attendance_id if in_event.attendance_id == out_event.attendance_id else Attendance.browse()
                 candidates = common if common else in_event.attendance_id
@@ -1066,27 +1070,118 @@ class AttendanceConflictTimeline(models.Model):
 
     @api.model
     def timeline_hide_items(self, event_ids=None, attendance_ids=None):
-        """Hide chosen endpoints without deleting raw events or attendance."""
+        """Exclude chosen punches and update their unlocked saved attendance."""
         self._timeline_check_manager()
         events = self.sudo().browse([int(value) for value in (event_ids or [])]).exists()
         attendances = self.env["hr.attendance"].sudo().browse(
             [int(value) for value in (attendance_ids or [])]
         ).exists()
-        if attendances:
-            self._timeline_lock_sources(attendance_ids=attendances.ids)
-            self._timeline_ensure_hide_endpoints(attendances)
-            events |= self.sudo().search([("attendance_id", "in", attendances.ids)])
-        events.write({"conflict_dismissed": True})
-        return True
+        return self._timeline_exclude_events(events, attendances)
+
+    @api.model
+    def _timeline_exclude_events(self, events, attendances=None):
+        """Private exclusion engine shared with the card-scoped operator wizard.
+
+        The complete selection is atomic, including any newly paired attendance.
+        Raw punch rows and corrected/generated source evidence remain available
+        under the Hidden filter; only their contribution to attendance is removed.
+        Calling this again also repairs old visibility-only hidden endpoints.
+        """
+        Event = self.sudo()
+        Attendance = self.env["hr.attendance"].sudo()
+        events = events.sudo().exists()
+        attendances = (attendances or Attendance.browse()).sudo().exists()
+        with self.env.cr.savepoint():
+            self._timeline_lock_sources(events.ids, attendances.ids)
+            if events:
+                self.env.cr.execute(
+                    "SELECT id FROM mdl_attendance_device_event WHERE id = ANY(%s) FOR UPDATE",
+                    (events.ids,),
+                )
+                events.invalidate_recordset()
+            # Synthetic absence placeholders are payroll inputs, not clock
+            # punches. Hiding old synthetic mirrors must never remove them.
+            attendances = attendances.filtered(
+                lambda attendance: attendance._is_attendance_event_source()
+            )
+            contributing_events = events.filtered(lambda event: (
+                event.processing_state != "ignored"
+                and event.attendance_id
+                and (event.manual_punch_state or event.punch_state) in ("in", "out")
+                and event.event_datetime == (
+                    event.attendance_id.check_in
+                    if (event.manual_punch_state or event.punch_state) == "in"
+                    else event.attendance_id.check_out
+                )
+            ))
+            affected = (attendances | contributing_events.mapped("attendance_id")).filtered(
+                lambda attendance: attendance._is_attendance_event_source()
+            )
+            if affected:
+                self.env.cr.execute(
+                    "SELECT id FROM hr_attendance WHERE id = ANY(%s) FOR UPDATE",
+                    (affected.ids,),
+                )
+                affected.invalidate_recordset()
+                self._timeline_check_attendance_editable(affected)
+                self._timeline_ensure_hide_endpoints(affected)
+            if attendances:
+                events |= Event.search([("attendance_id", "in", attendances.ids)])
+            sources = Event.search([("attendance_id", "in", affected.ids)]) if affected else Event.browse()
+            employee_ids = set(affected.mapped("employee_id").ids)
+            employee_ids.update(
+                employee.id for event in events
+                if (employee := self._timeline_event_employee(event))
+            )
+            if not affected and not events.filtered(lambda event: not event.conflict_dismissed):
+                return {
+                    "hidden_event_ids": events.ids,
+                    "affected_employee_ids": sorted(employee_ids),
+                }
+            # Generated partners become durable before the old pair is removed.
+            # This preserves both the hidden endpoint and a visible endpoint that
+            # can now pair with a different clock punch.
+            sources.filtered("odoo_generated").with_context(
+                attendance_event_edit_in_progress=True,
+            ).write({"odoo_generated": False})
+            (sources | events)._clear_manual_timeline_pairs()
+            to_hide = events.filtered(lambda event: not event.conflict_dismissed)
+            to_hide.with_context(attendance_event_edit_in_progress=True).write({
+                "conflict_dismissed": True,
+                "conflict_action_failed": False,
+                "conflict_action_error": False,
+            })
+            if affected:
+                affected.unlink()
+            # Some rejected clock rows retain an attendance reference for
+            # diagnostics. They did not supply its endpoint, so hiding them
+            # must not rebuild or unlock the canonical attendance.
+            detached = events.filtered(lambda event: (
+                event.attendance_id and event.processing_state != "ignored"
+                and event.attendance_id._is_attendance_event_source()
+            ))
+            detached.with_context(attendance_event_edit_in_progress=True).write({
+                "attendance_id": False,
+            })
+            excluded = events.filtered(
+                lambda event: not event.attendance_id and event.processing_state != "ignored"
+            )
+            if excluded:
+                excluded.with_context(attendance_event_edit_in_progress=True).write({
+                    "processing_state": "not_applied",
+                    "processing_message": _("האירוע הוסתר ואינו נכלל בחישוב הנוכחות"),
+                    "conflict_action_failed": False,
+                    "conflict_action_error": False,
+                })
+            self._timeline_reconcile_employee_ids(employee_ids)
+            return {
+                "hidden_event_ids": events.ids,
+                "affected_employee_ids": sorted(employee_ids),
+            }
 
     @api.model
     def _timeline_ensure_hide_endpoints(self, attendances):
-        """Store visibility for legacy native endpoints without running sync.
-
-        Existing clock events, timestamps, links and attendance rows must stay
-        untouched by Hide. Only a missing endpoint needs a new provenance row
-        to remember its hidden state when the timeline is opened again.
-        """
+        """Capture missing native endpoints before excluding an existing pair."""
         Event = self.sudo()
         for attendance in attendances:
             if not attendance._is_attendance_event_source():
@@ -1095,11 +1190,14 @@ class AttendanceConflictTimeline(models.Model):
                 ("attendance_id", "=", attendance.id),
                 ("processing_state", "=", "processed"),
             ])
-            kinds = {event.manual_punch_state or event.punch_state for event in linked}
+            endpoints = {
+                (event.manual_punch_state or event.punch_state, event.event_datetime)
+                for event in linked
+            }
             missing = [
                 (kind, value)
                 for kind, value in (("in", attendance.check_in), ("out", attendance.check_out))
-                if value and kind not in kinds
+                if value and (kind, value) not in endpoints
             ]
             if not missing:
                 continue
@@ -1109,7 +1207,7 @@ class AttendanceConflictTimeline(models.Model):
                 "device_identifier": device.device_identifier,
                 "request_type": "ODOO", "http_method": "ORM", "endpoint": "hr.attendance",
                 "processing_state": "processed",
-                "processing_message": "Generated hidden Odoo attendance endpoint",
+                "processing_message": "Preserved Odoo attendance endpoint before exclusion",
             })
             Event.with_context(attendance_event_system_write=True).create([
                 {
@@ -1117,7 +1215,7 @@ class AttendanceConflictTimeline(models.Model):
                     "event_datetime": value,
                     "processing_state": "processed",
                     "attendance_id": attendance.id,
-                    "conflict_dismissed": True,
+                    "conflict_dismissed": False,
                     "log_id": log.id, "device_id": device.id,
                     "device_employee_id": card.id,
                     "device_user_id": card.device_user_id if card else False,
