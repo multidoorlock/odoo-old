@@ -194,6 +194,10 @@ class HrAttendance(models.Model):
         generated -= hidden_generated
         raw_events = self.env["mdl.attendance.device.event"].sudo().search([
             ("attendance_id", "in", self.ids), ("odoo_generated", "=", False),
+            # Rebuilding attendance must not reactivate retransmissions or
+            # cooldown punches that were already rejected. Their attendance
+            # reference is cleared by unlink; their rejection remains intact.
+            ("processing_state", "!=", "ignored"),
         ])
         result = super().unlink()
         generated.unlink()
