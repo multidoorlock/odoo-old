@@ -1,6 +1,10 @@
 from odoo import api, fields, models
 
-from .catalog_utils import clean_text
+from .catalog_utils import (
+    changed_name_language_records,
+    clean_text,
+    snapshot_other_name_languages,
+)
 
 
 class ProductAttributeValue(models.Model):
@@ -25,6 +29,9 @@ class ProductAttributeValue(models.Model):
     def write(self, vals):
         if "mdl_sku_component" in vals:
             vals["mdl_sku_component"] = clean_text(vals["mdl_sku_component"])
+        previous_names = snapshot_other_name_languages(
+            self, ("name",) if "name" in vals else (),
+        )
         result = super().write(vals)
         if not self.env.context.get("skip_mdl_catalog_sync") and any(
             field_name in vals for field_name in ("name", "mdl_sku_component")
@@ -32,6 +39,8 @@ class ProductAttributeValue(models.Model):
             templates = self.pav_attribute_line_ids.product_tmpl_id
             templates._mdl_ensure_full_model_names()
             templates._mdl_sync_variant_codes()
+        for values in changed_name_language_records(self, previous_names):
+            values.pav_attribute_line_ids.product_tmpl_id._mdl_sync_variant_codes()
         return result
 
     def _update_field_translations(self, field_name, translations, digest=None, source_lang=""):
@@ -56,4 +65,3 @@ class ProductAttributeValue(models.Model):
                 if (value.name or "") != previous_name:
                     value.pav_attribute_line_ids.product_tmpl_id._mdl_sync_variant_codes()
         return result
-

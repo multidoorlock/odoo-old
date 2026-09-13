@@ -354,3 +354,77 @@ class TestDisplayTitleIsolation(TransactionCase):
         self.assertEqual(
             {p.id: (p.default_code, p.active) for p in self.products}, self.identity,
         )
+
+    def _check_direct_english_name_write(self, record, field_name, old_text, new_text):
+        for lang in ("he_IL", "ar_001"):
+            self.env["res.lang"]._activate_lang(lang)
+        self.template.mdl_group_default_name = "Configured base"
+        self.template.attribute_line_ids.product_template_value_ids.write({
+            "mdl_name_component_override": "",
+        })
+        record.update_field_translations(field_name, {
+            "en_US": old_text, "he_IL": " טקסט עברי",
+        })
+        self.sibling.with_context(lang="he_IL").mdl_effective_name = "שם פריט מפורש"
+        hebrew_names = {
+            product.id: (product.mdl_generated_name, product.mdl_effective_name)
+            for product in self.products.with_context(lang="he_IL")
+        }
+        titles = {
+            lang: self.template.with_context(lang=lang).name
+            for lang in ("en_US", "he_IL", "ar_001")
+        }
+        # Materialize the English fallback before the ordinary form/write path.
+        arabic = self.product.with_context(lang="ar_001")
+        self.assertIn(old_text.strip(), arabic.mdl_generated_name)
+        # Consecutive edits in one transaction must not reuse the first edit's
+        # cached fallback when refreshing the final translated search name.
+        record.write({field_name: new_text + " intermediate"})
+        record.write({field_name: new_text})
+        self.env.flush_all()
+        self.env.invalidate_all()
+        for lang in ("en_US", "ar_001"):
+            product = self.product.with_context(lang=lang)
+            self.assertIn(new_text.strip(), product.mdl_generated_name)
+            self.assertEqual(product.mdl_generated_name, product.mdl_automatic_name)
+            self.assertIn(new_text.strip(), product.mdl_effective_name)
+            self.assertIn(new_text.strip(), product.display_name)
+            for name in (product.mdl_generated_name, product.mdl_effective_name, product.display_name):
+                self.assertNotIn(" intermediate", name)
+            self.assertIn(product, self.env["product.product"].with_context(lang=lang).search([
+                ("id", "=", product.id), ("mdl_effective_name", "ilike", new_text.strip()),
+            ]))
+            self.assertFalse(self.env["product.product"].with_context(lang=lang).search([
+                ("id", "=", product.id), ("mdl_effective_name", "ilike", " intermediate"),
+            ]))
+        self.assertEqual({
+            product.id: (product.mdl_generated_name, product.mdl_effective_name)
+            for product in self.products.with_context(lang="he_IL")
+        }, hebrew_names)
+        self.assertEqual({
+            lang: self.template.with_context(lang=lang).name for lang in titles
+        }, titles)
+        self.assertEqual(
+            {p.id: (p.default_code, p.active) for p in self.products}, self.identity,
+        )
+
+    def test_direct_group_name_write_refreshes_inherited_language_search(self):
+        self._check_direct_english_name_write(
+            self.template, "mdl_group_default_name", "Old group base", "New group base",
+        )
+
+    def test_direct_attribute_name_write_refreshes_inherited_language_search(self):
+        self._check_direct_english_name_write(
+            self.product.product_template_attribute_value_ids.product_attribute_value_id,
+            "name", "Old attribute text", "New attribute text",
+        )
+
+    def test_direct_final_suffix_write_refreshes_inherited_language_search(self):
+        self._check_direct_english_name_write(
+            self.template, "mdl_name_suffix", " old final text", " new final text",
+        )
+
+    def test_direct_row_suffix_write_refreshes_inherited_language_search(self):
+        self._check_direct_english_name_write(
+            self.template.attribute_line_ids, "mdl_name_suffix", " old row text", " new row text",
+        )

@@ -1,5 +1,7 @@
 from odoo import api, fields, models
 
+from .catalog_utils import changed_name_language_records, snapshot_other_name_languages
+
 
 class ProductTemplateAttributeLine(models.Model):
     _inherit = "product.template.attribute.line"
@@ -40,10 +42,18 @@ class ProductTemplateAttributeLine(models.Model):
 
     def write(self, vals):
         templates_before = self.product_tmpl_id
+        previous_names = snapshot_other_name_languages(
+            self, ("mdl_name_suffix",) if "mdl_name_suffix" in vals else (),
+        )
         result = super().write(vals)
         if not self.env.context.get("skip_mdl_catalog_sync"):
             templates = templates_before | self.product_tmpl_id
             templates._mdl_ensure_full_model_names()
+            templates._mdl_sync_variant_codes()
+        for lines in changed_name_language_records(self, previous_names):
+            templates = lines.product_tmpl_id
+            if "product_tmpl_id" in vals:
+                templates |= templates_before.with_context(lang=lines.env.lang)
             templates._mdl_sync_variant_codes()
         return result
 

@@ -5,7 +5,13 @@ from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Domain
 
-from .catalog_utils import clean_text, normalize_token, split_direction_marker
+from .catalog_utils import (
+    changed_name_language_records,
+    clean_text,
+    normalize_token,
+    snapshot_other_name_languages,
+    split_direction_marker,
+)
 
 
 MODEL_ATTRIBUTE_NAME = "דגם"
@@ -827,6 +833,10 @@ class ProductTemplate(models.Model):
                 vals[field_name] = clean_text(vals[field_name])
         if has_catalog_values:
             vals.setdefault("mdl_catalog_managed", True)
+        previous_names = snapshot_other_name_languages(
+            self,
+            tuple(field for field in ("mdl_group_default_name", "mdl_name_suffix") if field in vals),
+        )
         result = super().write(vals)
         for template in self.browse(newly_managed_ids).exists():
             seed_values = {}
@@ -885,7 +895,19 @@ class ProductTemplate(models.Model):
                 "mdl_name_suffix",
             )
         ):
+            if "mdl_group_default_name" in vals:
+                # Stored translated computes share a recomputation queue.
+                # Finish the edited language before another-language source
+                # read can consume that queue using its own language context.
+                self.env.add_to_compute(self._fields["mdl_effective_base_name"], self)
+                self._recompute_recordset(["mdl_effective_base_name"])
             self._mdl_sync_variant_codes()
+        for templates in changed_name_language_records(self, previous_names):
+            templates.env.add_to_compute(
+                templates._fields["mdl_effective_base_name"], templates,
+            )
+            templates._recompute_recordset(["mdl_effective_base_name"])
+            templates._mdl_sync_variant_codes()
         return result
 
     def _update_field_translations(self, field_name, translations, digest=None, source_lang=""):
