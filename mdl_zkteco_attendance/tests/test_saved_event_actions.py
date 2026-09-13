@@ -531,3 +531,67 @@ class TestSavedEventActions(TransactionCase):
         self.assertEqual((in_event | out_event).read([
             "conflict_dismissed", "attendance_id", "processing_state", "write_date",
         ]), before)
+
+    def test_hide_checkout_never_reactivates_ignored_entry_copies(self):
+        in_event, old_out, old_attendance = self._pair()
+        copies = self._event(8, "in") | self._event(8, "in")
+        for copy, reason in zip(copies, ("Duplicate retransmission", "Filtered by cooldown")):
+            copy.with_context(attendance_event_system_write=True).write({
+                "raw_line": in_event.raw_line,
+                "event_fingerprint": in_event.event_fingerprint,
+                "processing_state": "ignored",
+                "processing_message": reason,
+                "attendance_id": old_attendance.id,
+            })
+        raw_fields = [
+            "raw_line", "event_fingerprint", "raw_punch_state", "original_event_datetime",
+            "event_datetime", "processing_state", "processing_message", "conflict_dismissed",
+        ]
+        copies_before = copies.read(raw_fields)
+        later_out = self._event(18, "out")
+        self.Event.timeline_hide_items([old_out.id])
+        self.assertFalse(old_attendance.exists())
+        self.assertEqual(copies.read(raw_fields), copies_before)
+        self.assertFalse(copies.mapped("attendance_id"))
+        replacement = in_event.attendance_id
+        self.assertTrue(replacement)
+        self.assertEqual(replacement, later_out.attendance_id)
+        self.assertEqual(replacement.check_in, in_event.event_datetime)
+        self.assertEqual(replacement.check_out, later_out.event_datetime)
+        self.assertEqual(self.Attendance.search([
+            ("employee_id", "=", self.employee.id),
+        ]), replacement)
+        row = self._row()
+        self.assertEqual({item["event_id"] for item in row["items"]}, {in_event.id, later_out.id})
+        self.assertTrue(all(item["state"] == "1" for item in row["items"]))
+        self.assertEqual(len(row["connections"]), 1)
+
+        # Repeat both the user action and normal processing, as a retrying
+        # clock sync must not expose the ignored copies on a later refresh.
+        self.Event.timeline_hide_items([old_out.id])
+        copies.action_process()
+        self.Event._timeline_reconcile_employee_ids([self.employee.id])
+        self.assertEqual(copies.read(raw_fields), copies_before)
+        self.assertFalse(copies.mapped("attendance_id"))
+        self.assertEqual(in_event.attendance_id, replacement)
+        self.assertEqual({item["event_id"] for item in self._row()["items"]},
+                         {in_event.id, later_out.id})
+
+    def test_native_attendance_unlink_preserves_ignored_reasons_and_resets_real_sources(self):
+        in_event, out_event, attendance = self._pair()
+        copies = self._event(8, "in") | self._event(8, "in")
+        for copy, reason in zip(copies, ("Duplicate retransmission", "Filtered by cooldown")):
+            copy.with_context(attendance_event_system_write=True).write({
+                "processing_state": "ignored", "processing_message": reason,
+                "attendance_id": attendance.id,
+            })
+        ignored_before = copies.read(["processing_state", "processing_message", "raw_line", "event_fingerprint"])
+        attendance.unlink()
+        self.assertFalse(attendance.exists())
+        self.assertFalse((in_event | out_event | copies).mapped("attendance_id"))
+        self.assertEqual(copies.read([
+            "processing_state", "processing_message", "raw_line", "event_fingerprint",
+        ]), ignored_before)
+        for event in in_event | out_event:
+            self.assertEqual(event.processing_state, "not_applied")
+            self.assertEqual(event.processing_message, "Linked attendance was deleted")
