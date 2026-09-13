@@ -50,6 +50,7 @@
         font-size: 12px;
         font-weight: 600;
         white-space: nowrap;
+        border-radius: 2px;
     }
 
     .o_mdl_attendance_event_tile {
@@ -58,7 +59,8 @@
         border: 0 !important;
         outline: 0 !important;
         box-sizing: border-box !important;
-        padding: 4px;
+        padding: 2px 4px;
+        border-radius: 2px;
         line-height: 1;
         box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
         transition: filter 120ms ease, box-shadow 120ms ease, transform 120ms ease;
@@ -74,11 +76,11 @@
         .o_mdl_attendance_event_kind {
             font-size: 12px;
             font-weight: 500;
-            line-height: 1.1;
+            line-height: 1;
         }
 
         .o_mdl_attendance_event_time {
-            margin-top: 2px;
+            margin-top: 1px;
             font-size: 14px;
             line-height: 1;
         }

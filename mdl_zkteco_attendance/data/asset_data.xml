@@ -6,21 +6,21 @@
         module upgrade invalidate that bundle for already-running workers.
     -->
     <record id="asset_conflict_timeline_js" model="ir.asset">
-        <field name="name">ZKTeco attendance conflict timeline JavaScript v19.0.5.9.24</field>
+        <field name="name">ZKTeco attendance conflict timeline JavaScript v19.0.5.9.68</field>
         <field name="bundle">web.assets_backend_lazy</field>
         <field name="directive">append</field>
         <field name="path">mdl_zkteco_attendance/static/src/conflict_timeline/conflict_timeline.js</field>
     </record>
 
     <record id="asset_conflict_timeline_xml" model="ir.asset">
-        <field name="name">ZKTeco attendance conflict timeline templates v19.0.5.9.24</field>
+        <field name="name">ZKTeco attendance conflict timeline templates v19.0.5.9.68</field>
         <field name="bundle">web.assets_backend_lazy</field>
         <field name="directive">append</field>
         <field name="path">mdl_zkteco_attendance/static/src/conflict_timeline/conflict_timeline.xml</field>
     </record>
 
     <record id="asset_conflict_timeline_scss" model="ir.asset">
-        <field name="name">ZKTeco attendance conflict timeline styles v19.0.5.9.24</field>
+        <field name="name">ZKTeco attendance conflict timeline styles v19.0.5.9.68</field>
         <field name="bundle">web.assets_backend_lazy</field>
         <field name="directive">append</field>
         <field name="path">mdl_zkteco_attendance/static/src/conflict_timeline/conflict_timeline.scss</field>

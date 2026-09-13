@@ -34,7 +34,7 @@
              t-on-focusin="() => this.state.hovered = true"
              t-on-focusout="() => this.state.hovered = false"
              t-on-contextmenu="onContextMenu">
-            <div t-att-class="`o_gantt_pill o_mdl_attendance_event_tile o_mdl_attendance_event_tile_${props.item.variant} h-100 w-100 d-flex align-items-center justify-content-center rounded-2 text-dark`">
+            <div t-att-class="`o_gantt_pill o_mdl_attendance_event_tile o_mdl_attendance_event_tile_${props.item.variant} h-100 w-100 d-flex align-items-center justify-content-center text-dark`">
                 <span t-if="props.item.edited" class="o_mdl_attendance_event_fold" aria-label="נערך ידנית"/>
                 <span class="o_gantt_pill_title o_mdl_attendance_event_tile_title d-flex flex-column align-items-center justify-content-center">
                     <span class="o_mdl_attendance_event_kind" t-esc="props.item.label"/>
@@ -47,7 +47,7 @@
 
     <t t-name="mdl_zkteco_attendance.AttendanceTreatmentSummary">
         <div class="o_mdl_attendance_summary_wrapper" t-att-style="props.style">
-            <div class="o_gantt_pill o_mdl_attendance_summary h-100 w-100 d-flex align-items-center justify-content-center rounded-2 text-dark">
+            <div class="o_gantt_pill o_mdl_attendance_summary h-100 w-100 d-flex align-items-center justify-content-center text-dark">
                 <span class="o_gantt_pill_title text-truncate px-2" t-esc="props.summary.label"/>
             </div>
         </div>
@@ -73,7 +73,7 @@
                 </defs>
                 <rect t-att-x="geometry.left" t-att-y="geometry.top"
                       t-att-width="geometry.rectWidth" t-att-height="geometry.rectHeight"
-                      rx="6" ry="6"
+                      rx="2" ry="2"
                       t-att-fill="`url(#mdl_gradient_${props.connection.id})`"/>
             </svg>
         </div>
