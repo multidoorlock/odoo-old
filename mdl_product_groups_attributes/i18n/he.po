@@ -70,6 +70,8 @@ msgstr "קבוצת פריטים"
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_name
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_group_default_name
 msgid "Product Group Name"
 msgstr "שם קבוצת הפריטים"
 
@@ -1007,11 +1009,6 @@ msgid "A product name override must be text."
 msgstr "שם מותאם לפריט חייב להיות טקסט."
 
 #. module: mdl_product_groups_attributes
-#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_name
-msgid "Source Product Group Name"
-msgstr "שם מקור לקבוצת הפריטים"
-
-#. module: mdl_product_groups_attributes
 #: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_sku
 msgid "Source Product Group SKU"
 msgstr "מק״ט מקור לקבוצת הפריטים"
@@ -1099,3 +1096,49 @@ msgstr "שמירה"
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
 msgid "Cancel"
 msgstr "ביטול"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_template__mdl_group_default_name
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_product__mdl_group_default_name
+msgid "The only shared base for automatic product names, followed by the configured attribute text. The template title is independent. Translate this field to name products in each language."
+msgstr "הבסיס המשותף היחיד לשמות פריטים אוטומטיים, שאחריו מופיע טקסט המאפיינים שהוגדר. כותרת התבנית עצמאית. תרגמו שדה זה כדי לקבוע את שמות הפריטים בכל שפה."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_template__mdl_group_name_value
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_product__mdl_group_name_value
+msgid "The group name used in automatic product names. Editing changes Product Group Name directly."
+msgstr "שם הקבוצה המשמש בשמות הפריטים האוטומטיים. עריכה משנה ישירות את שם קבוצת הפריטים."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_template__mdl_effective_base_name
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_product__mdl_effective_base_name
+msgid "The Product Group Name before attribute text. The template title and legacy name overrides do not affect this value."
+msgstr "שם קבוצת הפריטים לפני טקסט המאפיינים. כותרת התבנית והתאמות השם הישנות אינן משפיעות על ערך זה."
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+msgid "The template title is for display only. Automatic product names use Product Group Name followed by the configured attribute text, in each language."
+msgstr "כותרת התבנית משמשת לתצוגה בלבד. שמות הפריטים האוטומטיים משתמשים בשם קבוצת הפריטים ואחריו בטקסט המאפיינים שהוגדר, בכל שפה."
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Display title of the product group. Automatic product names use Product Group Name below."
+msgstr "כותרת התצוגה של קבוצת הפריטים. שמות הפריטים האוטומטיים משתמשים בשדה שם קבוצת הפריטים שלמטה."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template_attribute_value.py:0
+msgid "Attribute text translations must be a language-to-text mapping."
+msgstr "תרגומי טקסט המאפיין חייבים להיות מיפוי של שפה לטקסט."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template_attribute_value.py:0
+msgid "Activate the language before adding an attribute text translation."
+msgstr "יש להפעיל את השפה לפני הוספת תרגום לטקסט המאפיין."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_name_value
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_group_name_value
+msgid "Product Group Name (Compatibility)"
+msgstr "שם קבוצת הפריטים (תאימות)"

@@ -289,15 +289,32 @@ class TestHookHardening(TransactionCase):
                 _retire_old_module(unsafe)
             unsafe.write.assert_not_called()
 
-    def test_uninstall_is_allowed_without_managed_catalog_data(self):
-        self.assertFalse(
-            self.env["product.template"].with_context(
-                active_test=False
-            ).search_count([("mdl_catalog_managed", "=", True)])
+    def _clear_uninstall_dependencies(self):
+        # This TransactionCase also runs on populated development databases.
+        # Neutralize every guard dependency inside the rollback-only test
+        # transaction; keep real records and exercise the real uninstall hook.
+        models_and_fields = (
+            ("product.template", "mdl_catalog_managed", True, False),
+            ("product.template.attribute.exclusion", "mdl_is_catalog_condition", True, False),
+            ("product.product", "mdl_catalog_allowed", False, True),
         )
+        for model_name, field_name, blocked_value, clear_value in models_and_fields:
+            model = self.env[model_name].sudo().with_context(
+                active_test=False,
+                skip_mdl_catalog_sync=True,
+                mdl_skip_combination_sync=True,
+                mdl_defer_variant_rebuild=True,
+            )
+            domain = [(field_name, "=", blocked_value)]
+            model.search(domain).write({field_name: clear_value})
+            self.assertFalse(model.search_count(domain), model_name)
+
+    def test_uninstall_is_allowed_without_managed_catalog_data(self):
+        self._clear_uninstall_dependencies()
         self.assertIsNone(uninstall_hook(self.env))
 
     def test_uninstall_blocks_managed_templates(self):
+        self._clear_uninstall_dependencies()
         self.env["product.template"].with_context(
             skip_mdl_catalog_sync=True
         ).create(
@@ -311,6 +328,7 @@ class TestHookHardening(TransactionCase):
             uninstall_hook(self.env)
 
     def test_uninstall_blocks_custom_rules_and_legacy_variants(self):
+        self._clear_uninstall_dependencies()
         first_attribute = self.env["product.attribute"].create(
             {"name": "Hook attribute A", "create_variant": "always"}
         )
@@ -343,7 +361,7 @@ class TestHookHardening(TransactionCase):
             }
         )
         values = template.attribute_line_ids.product_template_value_ids
-        self.env["product.template.attribute.exclusion"].with_context(
+        rule = self.env["product.template.attribute.exclusion"].with_context(
             mdl_defer_variant_rebuild=True
         ).create(
             {
@@ -353,9 +371,18 @@ class TestHookHardening(TransactionCase):
                 "mdl_combination_value_ids": [Command.set(values.ids)],
             }
         )
+        # A custom rule alone must prevent uninstalling, even when its
+        # template is unmanaged and no variant has the legacy blocked flag.
+        with self.assertRaisesRegex(UserError, "כללי קטלוג מותאמים"):
+            uninstall_hook(self.env)
+        rule.with_context(mdl_skip_combination_sync=True).write({
+            "mdl_is_catalog_condition": False,
+        })
+        self.assertIsNone(uninstall_hook(self.env))
+
+        # The legacy variant flag must independently prevent uninstalling.
         template.product_variant_id.with_context(
             skip_mdl_catalog_sync=True
         ).write({"mdl_catalog_allowed": False})
-
-        with self.assertRaisesRegex(UserError, "כללי קטלוג מותאמים"):
+        with self.assertRaisesRegex(UserError, "וריאנטים חסומים"):
             uninstall_hook(self.env)
