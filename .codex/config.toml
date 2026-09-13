@@ -1,0 +1,10 @@
+# Project defaults: Astra manages; Spark handles delegated work.
+model = "gpt-6-astra"
+model_reasoning_effort = "high"
+
+[agents]
+enabled = true
+default_subagent_model = "gpt-5.3-codex-spark"
+default_subagent_reasoning_effort = "medium"
+# Maximum open child agents, excluding the primary manager.
+max_concurrent_threads_per_session = 6
