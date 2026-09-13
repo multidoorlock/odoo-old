@@ -4,7 +4,7 @@
         <field name="name">mdl.attendance.pending.wizard.form</field>
         <field name="model">mdl.attendance.pending.wizard</field>
         <field name="arch" type="xml">
-            <form string="רשומות נוכחות מוכנות לעיבוד">
+            <form string="רשומות נוכחות מוכנות לעיבוד" delete="false">
                 <group>
                     <field name="device_employee_id"/>
                     <field name="employee_id"/>
@@ -16,9 +16,9 @@
                         <field name="check_out"/>
                         <button name="action_apply" type="object" icon="fa-check"
                                 title="הכנס את הרשומה למערכת" class="btn-success"/>
-                        <button name="action_dismiss" type="object" icon="fa-times"
-                                title="התעלם מהאירועים לצמיתות" class="btn-danger"
-                                confirm="אירועי הכניסה והיציאה יישכחו לצמיתות ולא יוצעו שוב. האם אתה בטוח?"/>
+                        <button name="action_dismiss" type="object" icon="fa-eye-slash"
+                                string="הסתר" title="הסתר את האירועים מהתצוגה" class="btn-secondary"
+                                confirm="להסתיר את האירועים? נתוני המקור ורשומות הנוכחות נשמרים."/>
                     </list>
                 </field>
                 <footer><button string="סגור" special="cancel" class="btn-secondary"/></footer>

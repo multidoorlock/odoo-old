@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 
 
 class AttendanceDeviceEvent(models.Model):
@@ -267,69 +267,22 @@ class AttendanceDeviceEvent(models.Model):
                     values["timeline_blocked_attendance_ids"] = [(4, attendance.id)]
                 out_event.write(values)
 
-    def _sync_processed_manual_edit(self, previous_values):
-        """Keep a processed event and its hr.attendance atomically consistent."""
-        self.ensure_one()
-        attendance = self.attendance_id.sudo().exists()
-        if not attendance:
-            raise UserError(_(
-                "לא ניתן לערוך את האירוע כי רשומת הנוכחות המקושרת אינה קיימת."
-            ))
-
-        previous_kind = previous_values["kind"]
-        effective_kind = self.manual_punch_state or self.punch_state
-        if effective_kind != previous_kind:
-            raise UserError(_(
-                "לא ניתן לשנות את סוג האירוע שכבר נמצא בנוכחות. "
-                "שינוי כזה ישאיר את רשומת הנוכחות ללא כניסה או ללא יציאה."
-            ))
-
-        employee = self.employee_id or self.device_employee_id.employee_id
-        if not employee:
-            raise UserError(_("יש לקשר את אירוע הנוכחות לעובד לפני השמירה."))
-
-        check_in = self.event_datetime if effective_kind == "in" else attendance.check_in
-        check_out = self.event_datetime if effective_kind == "out" else attendance.check_out
-        if not check_in:
-            raise UserError(_("לא ניתן לשמור נוכחות ללא שעת כניסה."))
-
-        block_reason = self._timeline_block_reason(
-            employee,
-            check_in,
-            check_out,
-            exclude_attendance=attendance,
-            enforce_max_duration=False,
-        )
-        if block_reason:
-            raise UserError(_(
-                "לא ניתן לשמור את השינוי באירוע הנוכחות: %(reason)s",
-                reason=block_reason,
-            ))
-
-        attendance_values = {"employee_id": employee.id, "check_in": check_in}
-        if attendance.check_out or effective_kind == "out":
-            attendance_values["check_out"] = check_out
-        try:
-            attendance.write(attendance_values)
-        except (UserError, ValidationError) as error:
-            raise UserError(_(
-                "לא ניתן לשמור את השינוי באירוע הנוכחות: %(reason)s",
-                reason=str(error),
-            )) from error
-
-        if employee != previous_values["employee"]:
-            sibling_events = self.sudo().search([
-                ("attendance_id", "=", attendance.id),
-                ("processing_state", "=", "processed"),
-                ("id", "!=", self.id),
-            ])
-            sibling_events.with_context(attendance_event_system_write=True).write({
-                "employee_id": employee.id,
-            })
-
     def write(self, vals):
         if self.env.context.get("attendance_event_edit_in_progress"):
             return super().write(vals)
+        if "effective_punch_state" in vals:
+            # Apply the editable facade once through the same atomic correction
+            # path, instead of letting its inverse start a nested rebuild.
+            values = dict(vals)
+            selected = values.pop("effective_punch_state")
+            if selected not in ("in", "out"):
+                raise UserError(_("יש לבחור כניסה או יציאה."))
+            for event in self:
+                event.write({
+                    **values,
+                    "manual_punch_state": False if selected == event.punch_state else selected,
+                })
+            return True
 
         editable_fields = {
             "employee_id", "event_datetime", "manual_punch_state", "effective_punch_state",
@@ -340,7 +293,14 @@ class AttendanceDeviceEvent(models.Model):
         )
         previous_employee_ids = set()
         previous_attendance_ids = set()
+        rebuild_attendances = self.env["hr.attendance"]
         if manually_edited:
+            self._timeline_lock_employee_ids(
+                self.mapped("employee_id").ids
+                + self.mapped("device_employee_id.employee_id").ids
+                + [vals.get("employee_id")]
+            )
+            self.invalidate_recordset()
             blocked = self.filtered(lambda event: event.processing_state == "ignored")
             if blocked:
                 raise UserError(_("לא ניתן לערוך אירוע שהוגדר כהתעלמות."))
@@ -348,6 +308,35 @@ class AttendanceDeviceEvent(models.Model):
                 employee.id for employee in self.mapped("employee_id") if employee
             }
             previous_attendance_ids = set(self.mapped("attendance_id").ids)
+            saved_endpoints = self.filtered(lambda event: (
+                event.processing_state == "processed"
+                and event.attendance_id
+                and event.event_datetime == (
+                    event.attendance_id.check_in
+                    if (event.manual_punch_state or event.punch_state) == "in"
+                    else event.attendance_id.check_out
+                )
+            ))
+            self._timeline_check_attendance_editable(saved_endpoints.mapped("attendance_id"))
+            for event in self:
+                current_kind = event.manual_punch_state or event.punch_state
+                selected_kind = vals.get(
+                    "effective_punch_state",
+                    vals.get("manual_punch_state", event.manual_punch_state)
+                    or event.punch_state,
+                )
+                if selected_kind != current_kind and event in saved_endpoints:
+                    rebuild_attendances |= event.attendance_id
+            if rebuild_attendances:
+                # Once a manager corrects a generated endpoint, both endpoints
+                # are durable event evidence. Preserve them when the old, now
+                # invalid attendance pair is replaced after the type change.
+                self.sudo().search([
+                    ("attendance_id", "in", rebuild_attendances.ids),
+                    ("odoo_generated", "=", True),
+                ]).with_context(attendance_event_edit_in_progress=True).write({
+                    "odoo_generated": False,
+                })
             self._clear_manual_timeline_pairs()
             vals = dict(vals)
             vals.update({
@@ -370,6 +359,8 @@ class AttendanceDeviceEvent(models.Model):
                     missing_employee_baseline.with_context(attendance_event_edit_in_progress=True),
                 ).write({"original_employee_id": vals["employee_id"]})
         if manually_edited:
+            if rebuild_attendances:
+                rebuild_attendances.unlink()
             current_employee_ids = {
                 employee.id for employee in self.mapped("employee_id") if employee
             }
@@ -413,6 +404,15 @@ class AttendanceDeviceEvent(models.Model):
         return True
 
     def action_dismiss_conflict(self):
-        """Hide a conflict without changing the source event or attendance data."""
-        self.sudo().write({"conflict_dismissed": True})
+        return self.action_hide()
+
+    def action_hide(self):
+        """The same visibility-only action in forms, lists and the timeline."""
+        self.timeline_hide_items(event_ids=self.ids)
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_flip(self):
+        self._timeline_check_manager()
+        for event in self:
+            self.timeline_flip_event(event.id)
         return {"type": "ir.actions.client", "tag": "reload"}

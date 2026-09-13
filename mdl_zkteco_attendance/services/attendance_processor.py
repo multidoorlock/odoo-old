@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime, timedelta
 
+from psycopg2.errors import DeadlockDetected, SerializationFailure
+
 from odoo import _
 from odoo.exceptions import ValidationError
 
@@ -11,14 +13,49 @@ class AttendanceProcessor:
     def __init__(self, env):
         self.env = env
 
+    @staticmethod
+    def _invalid_company_binding_message():
+        return _(
+            "כרטיס השעון מקושר לעובד מחברה אחרת. "
+            "יש לקשר את הכרטיס לעובד מאותה חברה של השעון."
+        )
+
     def process(self, events):
+        # Share the timeline editor's lock order, and acquire every affected
+        # employee up front.  Taking one employee lock per chronological punch
+        # would invert that order for batches covering several employees.
+        valid_employee_events = events.sudo().filtered(lambda event: (
+            event.employee_id and event.employee_id.company_id == event.device_id.company_id
+        ))
+        employee_ids = set(valid_employee_events.mapped("employee_id").ids)
+        cards = events.sudo().mapped("device_employee_id")
+        unbound = events.filtered(
+            lambda event: not event.device_employee_id
+            and event.device_id and event.device_user_id
+        )
+        if unbound:
+            keys = {(event.device_id.id, event.device_user_id) for event in unbound}
+            cards |= self.env["mdl.attendance.device.employee"].sudo().search([
+                ("device_id", "in", list({key[0] for key in keys})),
+                ("device_user_id", "in", list({key[1] for key in keys})),
+            ]).filtered(lambda card: (card.device_id.id, card.device_user_id) in keys)
+        valid_cards = cards.filtered(lambda card: (
+            card.employee_id and card.employee_id.company_id == card.device_id.company_id
+        ))
+        employee_ids.update(valid_cards.mapped("employee_id").ids)
+        self.env["mdl.attendance.device.event"]._timeline_lock_employee_ids(employee_ids)
         for event in events.sorted(key=lambda e: (e.event_datetime or datetime.min, e.id)):
             try:
-                self._process_one(event)
+                with self.env.cr.savepoint():
+                    self._process_one(event)
+            except (DeadlockDetected, SerializationFailure):
+                raise
             except Exception as exc:
                 _logger.exception("Attendance event %s failed", event.id)
                 event.sudo().write({"processing_state": "error", "processing_message": str(exc)})
-        affected_employee_ids = events.sudo().mapped("employee_id").ids
+        affected_employee_ids = events.sudo().filtered(lambda event: (
+            event.employee_id and event.employee_id.company_id == event.device_id.company_id
+        )).mapped("employee_id").ids
         if affected_employee_ids:
             self.env["mdl.attendance.device.event"]._timeline_reconcile_employee_ids(
                 affected_employee_ids,
@@ -32,11 +69,21 @@ class AttendanceProcessor:
             if mapped_state != "unknown":
                 event.sudo().write({"punch_state": mapped_state})
         duplicate = self.env["mdl.attendance.device.event"].sudo().search([
-            ("id", "!=", event.id), ("event_fingerprint", "=", event.event_fingerprint),
-            ("processing_state", "=", "processed"),
+            # The fingerprint describes the immutable clock punch, regardless
+            # of whether its first occurrence could be paired yet.  In
+            # particular, retransmitting an unmatched or hidden punch must
+            # not create another visible conflict (or resurrect a hidden one).
+            # Only earlier records are canonical: a later replay must never
+            # prevent processing the original after its employee is linked.
+            ("id", "<", event.id),
+            ("device_id", "=", event.device_id.id),
+            ("event_fingerprint", "=", event.event_fingerprint),
         ], order="id", limit=1)
         if duplicate:
-            event.sudo().write({"processing_state": "ignored", "processing_message": "Duplicate retransmission", "attendance_id": duplicate.attendance_id.id})
+            duplicate_attendance = duplicate.attendance_id.filtered(lambda attendance: (
+                attendance.employee_id.company_id == event.device_id.company_id
+            ))
+            event.sudo().write({"processing_state": "ignored", "processing_message": "Duplicate retransmission", "attendance_id": duplicate_attendance.id})
             return
         card = event.device_employee_id
         if not card and event.device_id and event.device_user_id:
@@ -48,6 +95,16 @@ class AttendanceProcessor:
                 event.sudo().write({"device_employee_id": card.id})
         if not card or not card.employee_id:
             event.sudo().write({"processing_state": "waiting_employee_link", "processing_message": "Device card is not linked to an employee"})
+            return
+        if card.employee_id.company_id != event.device_id.company_id:
+            # Legacy card mappings can predate the company constraint.  This
+            # is a configuration issue, not a malformed timestamp or punch.
+            # Keep its raw evidence and card; never guess a replacement person.
+            event.sudo().with_context(attendance_event_system_write=True).write({
+                "employee_id": False,
+                "processing_state": "waiting_employee_link",
+                "processing_message": self._invalid_company_binding_message(),
+            })
             return
         event.sudo().with_context(attendance_event_system_write=True).write({
             "employee_id": card.employee_id.id,

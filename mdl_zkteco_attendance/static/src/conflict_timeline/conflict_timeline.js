@@ -936,29 +936,40 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         return this.interactionState.selectedIds.includes(item.id);
     }
 
-    deleteSelectedTimelineItems() {
+    hideSelectedTimelineItems() {
         const items = this.interactionState.selectedIds
             .map((id) => this._timelineItemsById.get(id)).filter(Boolean);
-        const eventIds = [...new Set(items.filter((item) => item.source === "event")
-            .map((item) => item.source_id))];
-        const attendanceIds = [...new Set(items.filter((item) => item.source === "attendance")
-            .map((item) => item.source_id))];
+        const eventIds = [...new Set(items.map((item) =>
+            item.event_id || (item.source === "event" ? item.source_id : false)
+        ).filter(Boolean))];
+        const attendanceIds = [...new Set(items.filter((item) =>
+            item.source === "attendance" && !item.event_id
+        ).map((item) => item.source_id))];
         if (!eventIds.length && !attendanceIds.length) {
             return;
         }
         this.dialogService.add(ConfirmationDialog, {
-            title: _t("מחיקת אירועי נוכחות"),
-            body: _t("למחוק את כל אירועי הנוכחות שנבחרו?"),
-            confirmLabel: _t("מחיקה"),
+            title: _t("הסתרת אירועי נוכחות"),
+            body: _t("להסתיר את האירועים שנבחרו? נתוני המקור ורשומות הנוכחות נשמרים."),
+            confirmLabel: _t("הסתר"),
             confirm: async () => {
-                await this.orm.call(
-                    "mdl.attendance.device.event", "timeline_delete_items",
-                    [eventIds, attendanceIds]
-                );
-                if (!this._timelineRendererDestroyed) {
-                    this.interactionState.selectedIds = [];
+                try {
+                    await this.orm.call(
+                        "mdl.attendance.device.event", "timeline_hide_items",
+                        [eventIds, attendanceIds]
+                    );
+                    if (!this._timelineRendererDestroyed) {
+                        this.interactionState.selectedIds = [];
+                    }
+                    await this._refreshTimelineIfAlive();
+                } catch (error) {
+                    if (!this._timelineRendererDestroyed) {
+                        this.notificationService.add(
+                            error.data?.message || error.message || _t("לא ניתן להסתיר את האירועים."),
+                            { type: "danger", sticky: true }
+                        );
+                    }
                 }
-                await this._refreshTimelineIfAlive();
             },
         });
     }
@@ -1136,7 +1147,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         ) {
             this.contextMenuState.menu = {
                 item,
-                actions: [{ key: "delete_selected", label: _t("מחיקה") }],
+                actions: [{ key: "hide_selected", label: _t("הסתר") }],
                 x: Math.min(ev.clientX, window.innerWidth - 230),
                 y: Math.min(ev.clientY, window.innerHeight - 220),
             };
@@ -1155,14 +1166,14 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
     async onContextAction(action) {
         this.contextMenuState.menu = null;
-        if (action.key === "delete_selected") {
-            this.deleteSelectedTimelineItems();
+        if (action.key === "hide_selected") {
+            this.hideSelectedTimelineItems();
             return;
         }
-        if (["dismiss_event", "dismiss_pair"].includes(action.key)) {
+        if (["dismiss_event", "dismiss_pair", "dismiss_attendance"].includes(action.key)) {
             this.dialogService.add(ConfirmationDialog, {
                 title: _t("להסתיר את אירוע הנוכחות?"),
-                body: _t("האירוע יוסתר לצמיתות ממסך הקונפליקטים."),
+                body: _t("האירוע יוסתר מהתצוגה. נתוני המקור ורשומת הנוכחות נשמרים."),
                 confirmLabel: _t("הסתר"),
                 confirm: () => this._executeContextAction(action),
             });
@@ -1217,6 +1228,11 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     "mdl.attendance.device.event",
                     "timeline_dismiss_pair",
                     [action.event_ids]
+                );
+            } else if (action.key === "dismiss_attendance") {
+                await this.orm.call(
+                    "mdl.attendance.device.event", "timeline_hide_items",
+                    [[], [action.attendance_id]]
                 );
             }
             await this._refreshTimelineIfAlive();

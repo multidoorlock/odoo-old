@@ -50,6 +50,23 @@ class AttendanceConflictEventWizard(models.TransientModel):
         ], order="last_sync_at desc, id", limit=1)
         if not card:
             raise UserError(_("לא נמצא לעובד כרטיס פעיל בשעון שנבחר."))
+        Event = self.env["mdl.attendance.device.event"].sudo()
+        Event._timeline_lock_employee_ids([self.employee_id.id])
+        # A second click or re-opening the same manual event must not create a
+        # new punch with a fresh UUID at precisely the same employee/time/type.
+        # The existing source retains its immutable clock evidence.
+        existing = Event.search([
+            ("employee_id", "=", self.employee_id.id),
+            ("event_datetime", "=", self.event_datetime),
+            ("processing_state", "!=", "ignored"),
+        ], order="id").filtered(
+            lambda event: (event.manual_punch_state or event.punch_state) == self.punch_state
+        )[:1]
+        if existing:
+            if existing.conflict_dismissed:
+                existing.write({"conflict_dismissed": False})
+            existing._timeline_reconcile_employee_ids([self.employee_id.id])
+            return {"type": "ir.actions.act_window_close"}
         log = self.env["mdl.attendance.device.log"].sudo().create({
             "device_id": self.device_id.id,
             "device_identifier": self.device_id.device_identifier,
@@ -59,7 +76,7 @@ class AttendanceConflictEventWizard(models.TransientModel):
             "processing_state": "processed",
             "processing_message": "Manual attendance event created by a manager",
         })
-        event = self.env["mdl.attendance.device.event"].sudo().create({
+        event = Event.create({
             "log_id": log.id,
             "device_id": self.device_id.id,
             "device_employee_id": card.id,

@@ -4,7 +4,7 @@
         <field name="name">mdl.attendance.conflict.event.wizard.form</field>
         <field name="model">mdl.attendance.conflict.event.wizard</field>
         <field name="arch" type="xml">
-            <form string="אירוע נוכחות חדש">
+            <form string="אירוע נוכחות חדש" delete="false">
                 <group>
                     <field name="employee_id"/>
                     <field name="company_id" invisible="1"/>
