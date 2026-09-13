@@ -23,11 +23,17 @@
         <field name="model">mdl.attendance.device.event</field>
         <field name="arch" type="xml">
             <list string="קונפליקטים" create="false" edit="false" delete="false">
+                <header>
+                    <button name="action_hide" type="object" groups="mdl_zkteco_attendance.group_attendance_device_manager,base.group_system" string="הסתר" icon="fa-eye-slash"
+                            confirm="להסתיר את האירועים שנבחרו? נתוני המקור ורשומות הנוכחות נשמרים."/>
+                </header>
                 <field name="employee_id" string="עובד"/>
                 <field name="device_id" string="שעון"/>
-                <field name="punch_state" string="כניסה / יציאה"/>
+                <field name="effective_punch_state" string="כניסה / יציאה"/>
                 <field name="event_datetime" string="שעה"/>
                 <field name="conflict_reason" string="הסיבה שלא נכנס"/>
+                <button name="action_flip" type="object" groups="mdl_zkteco_attendance.group_attendance_device_manager,base.group_system" icon="fa-exchange" title="החלף כניסה ויציאה"
+                        invisible="effective_punch_state not in ['in', 'out']"/>
             </list>
         </field>
     </record>
@@ -37,8 +43,16 @@
         <field name="model">mdl.attendance.device.event</field>
         <field name="arch" type="xml">
             <form string="קונפליקט נוכחות" create="false" edit="true" delete="false">
+                <header>
+                    <button name="action_flip" type="object" groups="mdl_zkteco_attendance.group_attendance_device_manager,base.group_system" string="החלף כניסה ויציאה" icon="fa-exchange"
+                            invisible="effective_punch_state not in ['in', 'out']"/>
+                    <button name="action_hide" type="object" groups="mdl_zkteco_attendance.group_attendance_device_manager,base.group_system" string="הסתר" icon="fa-eye-slash"
+                            invisible="conflict_dismissed"
+                            confirm="להסתיר את האירוע? נתוני המקור ורשומת הנוכחות נשמרים."/>
+                </header>
                 <sheet>
                     <field name="processing_state" invisible="1"/>
+                    <field name="conflict_dismissed" invisible="1"/>
                     <group>
                         <group>
                             <field name="employee_id" string="עובד"
@@ -70,10 +84,13 @@
             <search string="חיפוש קונפליקטים">
                 <field name="employee_id"/>
                 <field name="device_id"/>
+                <filter name="visible" string="מוצגים" domain="[('conflict_dismissed', '=', False)]"/>
+                <filter name="hidden" string="מוסתרים" domain="[('conflict_dismissed', '=', True)]"/>
+                <separator/>
                 <filter name="punch_in" string="כניסות" domain="[('punch_state', '=', 'in')]"/>
                 <filter name="punch_out" string="יציאות" domain="[('punch_state', '=', 'out')]"/>
                 <filter name="only_conflicts" string="קונפליקטים בלבד"
-                        domain="[('processing_state', 'in', ['new', 'not_applied', 'waiting_employee_link', 'error']), ('conflict_dismissed', '=', False)]"/>
+                        domain="[('processing_state', 'in', ['new', 'not_applied', 'waiting_employee_link', 'error'])]"/>
                 <filter name="with_data" string="כולל נתונים"
                         domain="[('event_datetime', '!=', False)]"/>
                 <group>
@@ -121,7 +138,7 @@
         <field name="view_mode">gantt,list,form</field>
         <field name="search_view_id" ref="view_attendance_conflict_search"/>
         <field name="domain">[('punch_state', 'in', ['in', 'out']), ('employee_id', '!=', False)]</field>
-        <field name="context">{'search_default_only_conflicts': 1}</field>
+        <field name="context">{'search_default_only_conflicts': 1, 'search_default_visible': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">אין כרגע קונפליקטים באירועי הנוכחות.</p>
         </field>

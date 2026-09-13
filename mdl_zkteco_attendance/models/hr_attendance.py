@@ -6,6 +6,44 @@ from odoo import api, fields, models
 class HrAttendance(models.Model):
     _inherit = "hr.attendance"
 
+    def _is_attendance_event_source(self):
+        """Absence placeholders are payroll inputs, never physical punches."""
+        self.ensure_one()
+        return not (self.in_mode == "technical" and self.out_mode == "technical")
+
+    @api.model
+    def _filter_conflicting_technical_absence_vals(self, vals_list):
+        """Skip only absence placeholders that overlap real attendance.
+
+        Odoo's absence cron creates all technical rows in one batch.  One
+        employee with an open or overlapping attendance would otherwise make
+        the native validity constraint roll back the complete cron job.
+        Ordinary attendance creation must keep raising the native validation
+        error, so the protection is deliberately limited to rows whose input
+        and output modes are both ``technical``.
+        """
+        safe_vals_list = []
+        for vals in vals_list:
+            check_in = fields.Datetime.to_datetime(vals.get("check_in"))
+            check_out = fields.Datetime.to_datetime(vals.get("check_out"))
+            is_absence_placeholder = (
+                vals.get("in_mode") == "technical"
+                and vals.get("out_mode") == "technical"
+                and vals.get("employee_id")
+                and check_in
+                and check_out
+            )
+            if is_absence_placeholder and self.search_count([
+                ("employee_id", "=", vals["employee_id"]),
+                ("check_in", "<", check_out),
+                "|",
+                ("check_out", "=", False),
+                ("check_out", ">", check_in),
+            ], limit=1):
+                continue
+            safe_vals_list.append(vals)
+        return safe_vals_list
+
     def _attendance_event_source(self):
         self.ensure_one()
         company = self.employee_id.company_id or self.env.company
@@ -36,7 +74,9 @@ class HrAttendance(models.Model):
         if self.env.context.get("skip_attendance_event_sync"):
             return
         Event = self.env["mdl.attendance.device.event"].sudo()
-        for attendance in self.filtered(lambda item: item.employee_id and item.check_in):
+        for attendance in self.filtered(
+            lambda item: item.employee_id and item.check_in and item._is_attendance_event_source()
+        ):
             company = attendance.employee_id.company_id or self.env.company
             device, card = attendance._attendance_event_source()
             linked_events = Event.search([
@@ -67,21 +107,12 @@ class HrAttendance(models.Model):
                 ("odoo_generated", "=", True),
                 ("company_id", "=", company.id),
             ], limit=1).log_id
-            if not log:
-                log = self.env["mdl.attendance.device.log"].sudo().create({
-                    "device_id": device.id,
-                    "device_identifier": device.device_identifier,
-                    "request_type": "ODOO",
-                    "http_method": "ORM",
-                    "endpoint": "hr.attendance",
-                    "processing_state": "processed",
-                    "processing_message": "Generated from Odoo attendance",
-                })
             endpoints = (("in", attendance.check_in), ("out", attendance.check_out))
             for kind, value in endpoints:
                 linked = Event.search([
                     ("attendance_id", "=", attendance.id),
                     ("company_id", "=", company.id),
+                    ("processing_state", "!=", "ignored"),
                 ], order="odoo_generated asc, id").filtered(
                     lambda event: (event.manual_punch_state or event.punch_state) == kind
                 )[:1]
@@ -104,11 +135,20 @@ class HrAttendance(models.Model):
                     "processing_state": "processed",
                     "processing_message": False,
                     "attendance_id": attendance.id,
-                    "conflict_dismissed": False,
                 }
                 if linked:
                     linked.with_context(attendance_event_system_write=True).write(values)
                     continue
+                if not log:
+                    log = self.env["mdl.attendance.device.log"].sudo().create({
+                        "device_id": device.id,
+                        "device_identifier": device.device_identifier,
+                        "request_type": "ODOO",
+                        "http_method": "ORM",
+                        "endpoint": "hr.attendance",
+                        "processing_state": "processed",
+                        "processing_message": "Generated from Odoo attendance",
+                    })
                 Event.with_context(attendance_event_system_write=True).create({
                     **values,
                     "log_id": log.id,
@@ -126,6 +166,9 @@ class HrAttendance(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = self._filter_conflicting_technical_absence_vals(vals_list)
+        if not vals_list:
+            return self.browse()
         attendances = super().create(vals_list)
         attendances._ensure_attendance_device_events()
         return attendances

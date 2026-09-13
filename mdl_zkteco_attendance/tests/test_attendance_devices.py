@@ -142,6 +142,36 @@ class TestAttendanceDevices(TransactionCase):
         events.invalidate_recordset(["event_datetime"])
         self.assertEqual(events[-1].event_datetime, new_check_out)
 
+    def test_technical_absence_skips_an_overlapping_open_attendance(self):
+        check_in = fields.Datetime.to_datetime("2026-09-08 21:00:00")
+        existing = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": check_in,
+        })
+
+        technical = self.env["hr.attendance"].create({
+            "employee_id": self.employee.id,
+            "check_in": check_in + timedelta(hours=3),
+            "check_out": check_in + timedelta(hours=3, seconds=1),
+            "in_mode": "technical",
+            "out_mode": "technical",
+        })
+
+        self.assertFalse(technical)
+        self.assertEqual(
+            self.env["hr.attendance"].search_count([
+                ("employee_id", "=", self.employee.id),
+            ]),
+            1,
+        )
+        self.assertEqual(existing.check_in, check_in)
+
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self.env["hr.attendance"].create({
+                "employee_id": self.employee.id,
+                "check_in": check_in + timedelta(hours=4),
+            })
+
     def test_manual_attendance_reuses_matching_raw_event(self):
         check_in = fields.Datetime.now() - timedelta(hours=2)
         raw_event = self._pending_event(check_in, "in", "reuse-manual")
@@ -500,7 +530,7 @@ class TestAttendanceDevices(TransactionCase):
         self.assertEqual(attendance_items["out"]["event_id"], source_events[1].id)
         self.assertEqual(
             [action["key"] for action in attendance_items["in"]["actions"]],
-            ["open_attendance", "flip_event"],
+            ["open_attendance", "flip_event", "dismiss_event"],
         )
         self.assertEqual(
             attendance_items["in"]["actions"][1]["label"],
@@ -508,7 +538,7 @@ class TestAttendanceDevices(TransactionCase):
         )
         self.assertEqual(
             [action["key"] for action in attendance_items["out"]["actions"]],
-            ["open_attendance", "flip_event"],
+            ["open_attendance", "flip_event", "dismiss_event"],
         )
         self.assertEqual(
             attendance_items["out"]["actions"][1]["label"],
@@ -682,7 +712,7 @@ class TestAttendanceDevices(TransactionCase):
             if item["source"] == "attendance" and item["source_id"] == attendance.id
         ]
         self.assertTrue(all(
-            [action["key"] for action in item["actions"]] == ["open_attendance"]
+            [action["key"] for action in item["actions"]] == ["open_attendance", "flip_event", "dismiss_event"]
             for item in green_items
         ))
 
@@ -1904,7 +1934,7 @@ class TestAttendanceDevices(TransactionCase):
         self.assertTrue(self.device.last_automatic_sync_at)
         self.assertFalse(self.device._queue_automatic_sync())
 
-    def test_conflict_view_reconciles_a_stale_valid_pair_automatically(self):
+    def test_conflict_view_does_not_mutate_a_stale_valid_pair(self):
         check_in = self._pending_event(
             "2026-08-24 13:43:10", "in", "stale-view-in",
         )
@@ -1915,13 +1945,13 @@ class TestAttendanceDevices(TransactionCase):
             "2026-08-24 00:00:00", "2026-08-25 00:00:00",
         )
         (check_in | check_out).invalidate_recordset()
-        self.assertEqual(check_in.attendance_id, check_out.attendance_id)
-        self.assertTrue(check_in.attendance_id)
+        self.assertFalse(check_in.attendance_id)
+        self.assertFalse(check_out.attendance_id)
         self.assertEqual(
             (check_in | check_out).mapped("processing_state"),
-            ["processed", "processed"],
+            ["not_applied", "not_applied"],
         )
-        self.assertNotIn(self.employee.id, [row["employee_id"] for row in data["rows"]])
+        self.assertIn(self.employee.id, [row["employee_id"] for row in data["rows"]])
 
     def test_same_minute_events_pair_only_direct_deterministic_neighbours(self):
         first_out = self._pending_event(

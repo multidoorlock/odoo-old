@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 import pytz
 from PIL import Image
+from psycopg2.errors import DeadlockDetected, SerializationFailure
 from odoo import fields
 
 from .base import AttendanceDeviceAdapter
@@ -769,6 +770,32 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         timezone = pytz.timezone(self.device.timezone or "UTC")
         return timezone.localize(local_naive, is_dst=None).astimezone(pytz.utc).replace(tzinfo=None)
 
+    def _create_attlog_event(self, log, line):
+        columns = line.split("\t")
+        if len(columns) < 4:
+            columns = line.split()
+            if len(columns) >= 5:
+                columns = [columns[0], f"{columns[1]} {columns[2]}", *columns[3:]]
+        punch_column = self.device.punch_state_column
+        if punch_column < 0 or punch_column >= len(columns):
+            raise ValueError(f"Punch State column {punch_column} is missing")
+        pin, event_text, raw_punch = columns[0].strip(), columns[1].strip(), columns[punch_column].strip()
+        if not pin:
+            raise ValueError("Device user identifier is missing")
+        event_datetime = self._utc_datetime(event_text)
+        punch_state = self.map_punch_state(raw_punch)
+        card = self._get_or_create_card(pin)
+        fingerprint_source = f"{self.device.id}|{pin}|{event_datetime.isoformat()}|{raw_punch}"
+        fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()
+        return self.env["mdl.attendance.device.event"].sudo().create({
+            "log_id": log.id, "device_id": self.device.id,
+            "device_employee_id": card.id if card else False,
+            "employee_id": card.employee_id.id if card and card.employee_id else False,
+            "device_user_id": pin, "event_datetime": event_datetime,
+            "raw_punch_state": raw_punch, "punch_state": punch_state,
+            "event_fingerprint": fingerprint, "raw_line": line,
+        })
+
     def _process_attlog(self, log, body_text):
         Event = self.env["mdl.attendance.device.event"].sudo()
         events = Event.browse()
@@ -776,29 +803,15 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         lines = [line.strip() for line in body_text.replace("\r\n", "\n").replace("\r", "\n").split("\n") if line.strip()]
         for line_number, line in enumerate(lines, start=1):
             try:
-                columns = line.split("\t")
-                if len(columns) < 4:
-                    columns = line.split()
-                    if len(columns) >= 5:
-                        columns = [columns[0], f"{columns[1]} {columns[2]}", *columns[3:]]
-                punch_column = self.device.punch_state_column
-                if punch_column < 0 or punch_column >= len(columns):
-                    raise ValueError(f"Punch State column {punch_column} is missing")
-                pin, event_text, raw_punch = columns[0].strip(), columns[1].strip(), columns[punch_column].strip()
-                event_datetime = self._utc_datetime(event_text)
-                punch_state = self.map_punch_state(raw_punch)
-                card = self._get_or_create_card(pin)
-                fingerprint_source = f"{self.device.id}|{pin}|{event_datetime.isoformat()}|{raw_punch}"
-                fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()
-                event = Event.create({
-                    "log_id": log.id, "device_id": self.device.id,
-                    "device_employee_id": card.id if card else False,
-                    "employee_id": card.employee_id.id if card and card.employee_id else False,
-                    "device_user_id": pin, "event_datetime": event_datetime,
-                    "raw_punch_state": raw_punch, "punch_state": punch_state,
-                    "event_fingerprint": fingerprint, "raw_line": line,
-                })
+                # One invalid row must not leave the transaction aborted and
+                # discard valid sibling punches or their immutable raw log.
+                with self.env.cr.savepoint():
+                    event = self._create_attlog_event(log, line)
                 events |= event
+            except (DeadlockDetected, SerializationFailure):
+                # Odoo retries the complete request with a fresh snapshot.
+                # A concurrency conflict is not malformed clock input.
+                raise
             except Exception as exc:
                 errors += 1
                 # Malformed device input is an expected validation outcome: it
@@ -818,7 +831,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
         states = set(events.mapped("processing_state"))
         if errors:
             state = "error"
-        elif states == {"processed"}:
+        elif "processed" in states and states <= {"processed", "ignored"}:
             state = "processed"
         elif "waiting_employee_link" in states:
             state = "waiting_employee_link"

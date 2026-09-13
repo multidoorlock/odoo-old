@@ -205,6 +205,7 @@ class AttendanceDeviceEmployee(models.Model):
         events = self.env["mdl.attendance.device.event"].sudo().search([
             ("device_employee_id", "=", self.id),
             ("processing_state", "in", ["waiting_employee_link", "not_applied"]),
+            ("conflict_dismissed", "=", False),
             ("punch_state", "in", ["in", "out"]),
             ("event_datetime", "!=", False),
         ], order="event_datetime, id")

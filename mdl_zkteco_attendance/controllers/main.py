@@ -3,6 +3,8 @@ import logging
 import re
 from urllib.parse import unquote_plus
 
+from psycopg2.errors import DeadlockDetected, SerializationFailure
+
 from odoo import http
 from odoo.http import request
 
@@ -98,6 +100,8 @@ class ZKTecoADMSController(http.Controller):
             return self._response(response)
         try:
             count = device._adapter().process_payload(log, req.args.get("table"), raw, text) if req.method == "POST" else 0
+        except (DeadlockDetected, SerializationFailure):
+            raise
         except Exception as exc:
             _logger.exception("ZKTeco cdata processing failed for log %s", log.id)
             log.sudo().write({"processing_state": "error", "processing_message": str(exc)})
@@ -143,6 +147,8 @@ class ZKTecoADMSController(http.Controller):
             device._adapter().process_payload(log, request_type, raw, text)
             if command:
                 log.sudo().write({"command_id": command.id})
+        except (DeadlockDetected, SerializationFailure):
+            raise
         except Exception as exc:
             _logger.exception("ZKTeco querydata processing failed for log %s", log.id)
             log.sudo().write({

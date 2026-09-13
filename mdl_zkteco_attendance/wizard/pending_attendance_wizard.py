@@ -76,6 +76,12 @@ class AttendancePendingWizardLine(models.TransientModel):
         card = self.wizard_id.device_employee_id
         if not card.employee_id:
             raise UserError(_("חובה לקשר תחילה את הכרטיס לעובד."))
+        current_pairs = {
+            (check_in.id, check_out.id or False)
+            for check_in, check_out in card._get_valid_attendance_candidates()
+        }
+        if (self.check_in_event_id.id, self.check_out_event_id.id or False) not in current_pairs:
+            raise UserError(_("האירועים השתנו או הוסתרו. יש לפתוח מחדש את רשימת הנוכחות הממתינה."))
         if not card._attendance_interval_is_valid(self.check_in, self.check_out or False):
             raise UserError(_("הרשומה כבר אינה תקינה או שהיא מתנגשת ברשומת נוכחות אחרת."))
         events = self.check_in_event_id | self.check_out_event_id
@@ -92,9 +98,17 @@ class AttendancePendingWizardLine(models.TransientModel):
 
     def action_dismiss(self):
         self.ensure_one()
+        self.check_access("write")
         events = self.check_in_event_id | self.check_out_event_id
-        events.sudo().write({
-            "processing_state": "ignored",
-            "processing_message": "Dismissed permanently by a user",
+        events.check_access("read")
+        card = self.wizard_id.device_employee_id
+        if any(event.device_employee_id != card for event in events):
+            raise UserError(_("אפשר להסתיר כאן רק אירועים של הכרטיס שנבחר."))
+        # Card operators could already dismiss their pending intervals. Keep
+        # that scope without granting the manager-only timeline edit actions.
+        events.sudo().with_context(attendance_event_system_write=True).write({
+            "conflict_dismissed": True,
+            "conflict_action_failed": False,
+            "conflict_action_error": False,
         })
         return self._reload_wizard()
