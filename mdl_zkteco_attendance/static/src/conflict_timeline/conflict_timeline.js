@@ -20,9 +20,9 @@ import { AttendanceGanttRenderer } from "@hr_attendance_gantt/attendance_gantt/a
 import { attendanceGanttView } from "@hr_attendance_gantt/attendance_gantt/attendance_gantt_view";
 
 const TILE_METRICS_BY_SCALE = {
-    day: { width: 46, height: 46, top: 4, compact: false },
-    week: { width: 46, height: 46, top: 4, compact: false },
-    month: { width: 46, height: 46, top: 4, compact: false },
+    day: { width: 46, height: 32, top: 2, compact: false },
+    week: { width: 46, height: 32, top: 2, compact: false },
+    month: { width: 46, height: 32, top: 2, compact: false },
 };
 
 const SUMMARY_HEIGHT = 28;
@@ -30,6 +30,7 @@ const SUMMARY_TOP = 4;
 const BUCKET_ITEM_GAP = 5;
 const BUCKET_PADDING = 5;
 const MIN_TILE_GAP = 8;
+const TILE_LANE_GAP = 4;
 
 const VARIANT_BY_STATE = {
     "1": "success",
@@ -70,12 +71,12 @@ export class AttendanceEventTile extends Component {
 
     onClick(ev) {
         ev.stopPropagation();
-        if (ev.ctrlKey || ev.metaKey) {
-            this.props.onSelect(this.props.item);
-            return;
-        }
         if (this.props.item.dragged) {
             this.props.item.dragged = false;
+            return;
+        }
+        if (ev.ctrlKey || ev.metaKey) {
+            this.props.onSelect(this.props.item);
             return;
         }
         this.props.onOpen(this.props.item);
@@ -271,12 +272,16 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         this.interactionState = useState({ selectedIds: [], drag: null });
         onWillUnmount(() => {
             this._timelineRendererDestroyed = true;
+            this.cancelTimelineDrag();
         });
         useExternalListener(window, "click", () => {
             this.contextMenuState.menu = null;
         });
         useExternalListener(window, "pointermove", (ev) => this.onTimelinePointerMove(ev));
         useExternalListener(window, "pointerup", (ev) => this.onTimelinePointerUp(ev));
+        useExternalListener(window, "pointercancel", (ev) => this.onTimelinePointerCancel(ev));
+        useExternalListener(window, "blur", () => this.cancelTimelineDrag());
+        useExternalListener(window, "keydown", (ev) => this.onTimelineKeyDown(ev), { capture: true });
     }
 
     computeDerivedParams() {
@@ -377,7 +382,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             }
         }
         if (type === "t2" && this._modelRowBeingProcessed && !this._modelRowBeingProcessed.rows) {
-            return 8;
+            return 4;
         }
         return super.getRowTypeHeight(type);
     }
@@ -534,7 +539,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
                     32,
                     metrics.top * 2
                         + laneCount * metrics.height
-                        + Math.max(0, laneCount - 1) * MIN_TILE_GAP,
+                        + Math.max(0, laneCount - 1) * TILE_LANE_GAP,
                 ),
                 detailed: true,
             });
@@ -817,15 +822,19 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
     startTimelineDrag(ev, item) {
         const eventId = item.event_id || (item.source === "event" ? item.source_id : false);
-        if (!eventId) {
+        if (!eventId || this._timelineRendererDestroyed || this.interactionState.drag) {
             return;
         }
         ev.preventDefault();
         ev.stopPropagation();
         const tile = ev.currentTarget;
         const rect = tile.getBoundingClientRect();
+        // A cancelled drag may not produce a click (e.g. release outside the
+        // tile). The next deliberate pointer interaction must still open it.
+        item.dragged = false;
         this.interactionState.drag = {
             item, startX: ev.clientX, startY: ev.clientY,
+            pointerId: ev.pointerId,
             x: ev.clientX, y: ev.clientY, moved: false,
             grabX: ev.clientX - rect.left,
             grabY: ev.clientY - rect.top,
@@ -843,7 +852,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
     onTimelinePointerMove(ev) {
         const drag = this.interactionState.drag;
-        if (drag) {
+        if (drag && ev.pointerId === drag.pointerId) {
             drag.x = ev.clientX;
             // A timeline event always belongs to its employee. Vertical mouse
             // movement is deliberately ignored; dragging only changes time.
@@ -863,9 +872,35 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         }
     }
 
-    async onTimelinePointerUp() {
+    cancelTimelineDrag() {
         const drag = this.interactionState.drag;
-        if (drag) {
+        if (!drag) {
+            return;
+        }
+        // Only pointerup saves the event. Clearing this preview restores its
+        // original position and prevents the later release from saving it.
+        // Suppress the release click as well, including a Ctrl/Meta click.
+        drag.item.dragged = true;
+        this.interactionState.drag = null;
+    }
+
+    onTimelineKeyDown(ev) {
+        if (ev.key === "Escape" && this.interactionState.drag) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            this.cancelTimelineDrag();
+        }
+    }
+
+    onTimelinePointerCancel(ev) {
+        if (this.interactionState.drag?.pointerId === ev.pointerId) {
+            this.cancelTimelineDrag();
+        }
+    }
+
+    async onTimelinePointerUp(ev) {
+        const drag = this.interactionState.drag;
+        if (drag && ev.pointerId === drag.pointerId) {
             this.interactionState.drag = null;
             if (drag.moved && drag.eventId) {
                 drag.item.dragged = true;
@@ -978,7 +1013,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
             `width:${metrics.width}px`,
             `height:${metrics.height}px`,
             `margin-inline-start:${position.offset - metrics.width / 2}px`,
-            `margin-top:${metrics.top + (item.visualLane || 0) * (metrics.height + MIN_TILE_GAP)}px`,
+            `margin-top:${metrics.top + (item.visualLane || 0) * (metrics.height + TILE_LANE_GAP)}px`,
         ];
         const drag = this.interactionState.drag;
         if (drag?.moved && drag.item.id === item.id) {
@@ -1041,7 +1076,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
         const top = metrics.top + Math.min(
             connection.fromItem.visualLane || 0,
             connection.toItem.visualLane || 0,
-        ) * (metrics.height + MIN_TILE_GAP);
+        ) * (metrics.height + TILE_LANE_GAP);
 
         const safeId = String(connection.id).replace(/[^a-zA-Z0-9_-]/g, "_");
         const [rowStart, rowStop] = row.grid.row;
