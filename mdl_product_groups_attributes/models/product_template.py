@@ -65,189 +65,195 @@ class ProductTemplate(models.Model):
     _inherit = "product.template"
 
     mdl_sku_prefix = fields.Char(
-        string="מק״ט בסיס",
+        string="Base SKU",
         compute="_compute_mdl_sku_prefix",
         inverse="_inverse_mdl_sku_prefix",
         store=True,
         index=True,
         copy=False,
         help=(
-            "מחושב מרכיב המק״ט של קבוצת הפריטים. ערכי המאפיינים, לרבות "
-            "דגם, מתווספים לפי סדר שורות המאפיינים. "
-            "המק״ט הסופי נשמר בשדה המקורי 'מק״ט פנימי' של הווריאנט."
+            "Computed from the product group SKU. Attribute values, including "
+            "Model, are appended in attribute-row order. The final SKU is "
+            "stored in Odoo's native Internal Reference field."
         ),
     )
     mdl_catalog_managed = fields.Boolean(
-        string="ניהול שמות ומק״טים לפי מאפיינים",
+        string="Manage Names and SKUs by Attributes",
         default=False,
         index=True,
         copy=True,
         help=(
-            "הפעילו עבור תבנית שמייצגת קבוצת פריטים. לאחר ההפעלה ניתן "
-            "לערוך בטאב המאפיינים את טקסט השם, רכיבי המק״ט, סדר המאפיינים "
-            "וכללי השילובים. מוצרים רגילים של Odoo נשארים ללא שינוי."
+            "Enable for a template that represents a product group. Names, "
+            "SKU components, attribute order, and combination rules are then "
+            "managed on the Attributes tab. Regular Odoo products are unchanged."
         ),
     )
     mdl_group_default_name = fields.Char(
-        string="שם קבוצת הפריטים",
-        index=True,
+        string="Source Product Group Name",
+        index="trigram",
+        translate=True,
         help=(
-            "שם הקבוצה המשותף לפריטים. בחירת קטגוריית מוצר מעתיקה לכאן "
-            "את שם הקטגוריה, ולאחר מכן ניתן להתאים אותו לקבוצה."
+            "Shared name for the products. Selecting a product category copies "
+            "its name here, after which it can be adjusted for this group."
         ),
     )
     mdl_group_default_sku = fields.Char(
-        string="מק״ט קבוצת הפריטים",
+        string="Source Product Group SKU",
         index=True,
         help=(
-            "רכיב המק״ט המשותף שמופיע לפני רכיבי ערכי המאפיינים. בחירת "
-            "קטגוריית מוצר מעתיקה לכאן את רכיב המק״ט של הקטגוריה."
+            "Shared SKU component placed before attribute value components. "
+            "Selecting a category copies its SKU component here."
         ),
     )
     mdl_group_name_override = fields.Char(
-        string="שינוי טקסט לקבוצה",
-        help="אופציונלי לקבוצה זו בלבד. הזן — כדי לא להציג את הבסיס בשם.",
+        string="Group Text Override",
+        translate=True,
+        help="Optional for this group. Enter — to omit the group from the name.",
     )
     mdl_group_sku_override = fields.Char(
-        string="שינוי מק״ט לקבוצה",
-        help="אופציונלי לקבוצה זו בלבד. הזן — כדי לא להוסיף את רכיב הקבוצה.",
+        string="Group SKU Override",
+        help="Optional for this group. Enter — to omit the group SKU component.",
     )
     mdl_model_default_name = fields.Char(
-        string="טקסט ברירת מחדל לדגם",
+        string="Default Model Text",
         compute="_compute_mdl_model_default_name",
         inverse="_inverse_mdl_model_default_name",
-        help="שם הדגם ללא שם קבוצת הפריטים.",
+        help="Model name without the product group name.",
     )
     mdl_model_sku_component = fields.Char(
-        string="מק״ט ברירת מחדל לדגם",
+        string="Default Model SKU",
         index=True,
-        help="רכיב המק״ט הבסיסי של הדגם.",
+        help="Default SKU component for the model.",
     )
     mdl_model_name_override = fields.Char(
-        string="שינוי טקסט לדגם",
-        help="אופציונלי. הזן — כדי לא להציג את הדגם בשם הפריט.",
+        string="Model Text Override",
+        translate=True,
+        help="Optional. Enter — to omit the model from the product name.",
     )
     mdl_model_sku_override = fields.Char(
-        string="שינוי מק״ט לדגם",
-        help="אופציונלי. הזן — כדי לא להוסיף את רכיב הדגם למק״ט.",
+        string="Model SKU Override",
+        help="Optional. Enter — to omit the model SKU component.",
     )
     mdl_group_name_value = fields.Char(
-        string="שם קבוצת פריטים",
+        string="Product Group Name",
         compute="_compute_mdl_group_name_value",
         inverse="_inverse_mdl_group_name_value",
         help=(
-            "מציג את שם הקבוצה שבפועל ייכנס לשם הפריט. עריכה יוצרת שינוי "
-            "לקבוצה הזו בלבד; איפוס מחזיר לשם קבוצת הפריטים."
+            "The group name used in product names. Editing creates an override "
+            "for this group; reset restores the source group name."
         ),
     )
     mdl_group_sku_value = fields.Char(
-        string="מק״ט קבוצת פריטים",
+        string="Product Group SKU",
         compute="_compute_mdl_group_sku_value",
         inverse="_inverse_mdl_group_sku_value",
         help=(
-            "מציג את רכיב המק״ט הקבוצתי שבפועל. עריכה יוצרת שינוי לקבוצה "
-            "הזו בלבד; איפוס מחזיר למק״ט הבסיס של הקבוצה."
+            "The group SKU component in use. Editing creates an override for "
+            "this group; reset restores the source group SKU."
         ),
     )
     mdl_model_name_value = fields.Char(
-        string="שם הדגם",
+        string="Model Name",
         compute="_compute_mdl_model_name_value",
         inverse="_inverse_mdl_model_name_value",
         help=(
-            "מציג את שם הדגם שבפועל ללא שם הקבוצה. עריכה יוצרת שינוי "
-            "לדגם הזה בלבד; איפוס מחזיר לשם המקור של הדגם."
+            "The model name in use, without the group name. Editing creates an "
+            "override for this model; reset restores its source name."
         ),
     )
     mdl_model_sku_value = fields.Char(
-        string="מק״ט הדגם",
+        string="Model SKU",
         compute="_compute_mdl_model_sku_value",
         inverse="_inverse_mdl_model_sku_value",
         help=(
-            "מציג את רכיב המק״ט של הדגם שבפועל. עריכה יוצרת שינוי לדגם "
-            "הזה בלבד; איפוס מחזיר לרכיב המקור."
+            "The model SKU component in use. Editing creates an override for "
+            "this model; reset restores the source component."
         ),
     )
     mdl_effective_base_name = fields.Char(
-        string="שם בסיס",
+        string="Base Name",
         compute="_compute_mdl_effective_base_name",
         inverse="_inverse_mdl_effective_base_name",
         store=True,
+        translate=True,
         help=(
-            "שם הבסיס של הפריט לפני המאפיינים. כברירת מחדל הוא מחובר "
-            "משם קבוצת הפריטים. דגם מנוהל כערך מאפיין רגיל וניתן לסידור."
+            "The product name before attributes. By default it comes from the "
+            "product group. Model is a regular, orderable attribute value."
         ),
     )
     mdl_model_as_attribute = fields.Boolean(
-        string="דגם מנוהל כמאפיין",
+        string="Model Managed as Attribute",
         default=False,
         copy=True,
         help=(
-            "שדה תאימות טכני המציין שהדגם הישן הועבר לערך מאפיין רגיל."
+            "Technical marker indicating that the legacy model was converted "
+            "to a regular attribute value."
         ),
     )
     mdl_native_name_override = fields.Char(
-        string="שם תבנית Odoo מותאם",
+        string="Custom Odoo Template Name",
         copy=False,
+        translate=True,
         help=(
-            "שדה טכני ששומר שם תבנית שנבחר במפורש דרך פעולת Odoo, "
-            "למשל בעת העתקה עם שם מותאם."
+            "Technical field storing a template name explicitly selected by "
+            "an Odoo action, such as duplicating with a custom name."
         ),
     )
     mdl_native_name_source = fields.Char(
-        string="שם המקור לפני התאמת Odoo",
+        string="Source Name Before Odoo Override",
         copy=False,
+        translate=True,
         help=(
-            "שדה טכני ששומר את שם המקור כאשר שם התבנית נערך ישירות, "
-            "כדי שפעולת האיפוס תחזיר את המבנה הנגזר גם לפני המרת הדגם."
+            "Technical field storing the source name when a template is edited "
+            "directly, allowing reset to restore the generated structure."
         ),
     )
     mdl_copy_requires_new_sku = fields.Boolean(
-        string="נדרש מק״ט קבוצה חדש",
+        string="New Group SKU Required",
         default=False,
         copy=False,
         help=(
-            "שדה טכני לתבנית ששוכפלה. כל עוד לא הוגדר "
-            "רכיב מק״ט קבוצה חדש, המק״טים הפנימיים נשארים ריקים "
-            "כמו בהעתקה רגילה של Odoo."
+            "Technical marker for a duplicated template. Internal references "
+            "remain empty until a different group SKU is assigned."
         ),
     )
     mdl_copy_source_group_sku = fields.Char(
-        string="מק״ט קבוצת המקור של ההעתקה",
+        string="Copied Source Group SKU",
         copy=False,
         help=(
-            "שדה טכני שמשמש להשוואה עד שהקבוצה המועתקת מקבלת רכיב "
-            "מק״ט שונה באמת מקבוצת המקור."
+            "Technical value used until the duplicated group receives a SKU "
+            "that differs from the source group."
         ),
     )
     mdl_model_value_summary = fields.Char(
-        string="דגמים",
+        string="Models",
         compute="_compute_mdl_model_value_summary",
-        help="ערכי מאפיין הדגם המשויכים לקבוצת הפריטים.",
+        help="Model attribute values assigned to the product group.",
     )
     mdl_attribute_value_ids = fields.One2many(
         comodel_name="product.template.attribute.value",
         inverse_name="product_tmpl_id",
-        string="ערכי מאפיינים בקבוצה",
+        string="Group Attribute Values",
     )
     mdl_exclusion_ids = fields.One2many(
         comodel_name="product.template.attribute.exclusion",
         inverse_name="product_tmpl_id",
-        string="כללי שילובים",
+        string="Combination Rules",
         help=(
-            "כל שורה מגדירה שילוב מותר או אסור של שני ערכים או יותר. "
-            "הכלל יכול להיות תלוי בדגם ובכמה מאפיינים יחד."
+            "Each row defines an allowed or blocked combination of two or more "
+            "values. A rule can depend on Model and several attributes."
         ),
     )
     mdl_active_variant_count = fields.Integer(
-        string="פריטים פעילים",
+        string="Active Products",
         compute="_compute_mdl_variant_overview",
     )
     mdl_archived_variant_count = fields.Integer(
-        string="פריטים בארכיון",
+        string="Archived Products",
         compute="_compute_mdl_variant_overview",
     )
     mdl_blocked_variant_count = fields.Integer(
-        string="שילובים חסומים",
+        string="Blocked Combinations",
         compute="_compute_mdl_variant_overview",
     )
     @api.depends(
@@ -266,14 +272,16 @@ class ProductTemplate(models.Model):
             ) or False
 
     # Kept out of the form: users manage the readable format through the
-    # ordered attribute rows and their single "טקסט אחרי" field.
+    # ordered attribute rows and their single "Text After" field.
     mdl_variant_base_name = fields.Char(
-        string="שם בסיס ישן (לא בשימוש)",
+        string="Legacy Base Name (Unused)",
         copy=True,
+        translate=True,
     )
     mdl_name_suffix = fields.Char(
-        string="טקסט סופי של הפורמט (טכני)",
+        string="Final Format Text (Technical)",
         copy=True,
+        translate=True,
     )
 
     @api.depends(
@@ -850,6 +858,10 @@ class ProductTemplate(models.Model):
             )
         group_name_was_provided = "mdl_group_default_name" in vals
         group_sku_was_provided = "mdl_group_default_sku" in vals
+        if group_name_was_provided and not self.env.context.get("skip_mdl_catalog_sync"):
+            # The visible group name supersedes an old hidden override in the
+            # edited language. Keep an override explicitly supplied in this write.
+            vals.setdefault("mdl_group_name_override", "")
         pending_source_skus = {
             template.id: (
                 clean_text(template.mdl_copy_source_group_sku)
@@ -860,9 +872,13 @@ class ProductTemplate(models.Model):
             )
             for template in self.filtered("mdl_copy_requires_new_sku")
         }
+        name_changed = "name" in vals and any(
+            clean_text(template.name) != clean_text(vals["name"])
+            for template in self
+        )
         native_name_sources = {}
         if (
-            "name" in vals
+            name_changed
             and "mdl_native_name_override" not in vals
             and not self.env.context.get("skip_mdl_catalog_sync")
         ):
@@ -872,7 +888,7 @@ class ProductTemplate(models.Model):
                 if not template.mdl_native_name_source
             }
         if "mdl_native_name_override" not in vals:
-            if "name" in vals and not self.env.context.get(
+            if name_changed and not self.env.context.get(
                 "skip_mdl_catalog_sync"
             ) and (
                 vals.get("mdl_catalog_managed") is True
@@ -982,6 +998,69 @@ class ProductTemplate(models.Model):
             self._mdl_ensure_full_model_names(previous_group_names)
             self._mdl_sync_variant_codes()
         return result
+
+    def _update_field_translations(self, field_name, translations, digest=None, source_lang=""):
+        name_fields = {
+            "name", "mdl_group_default_name", "mdl_group_name_override",
+            "mdl_model_name_override", "mdl_name_suffix",
+        }
+        if (
+            field_name not in name_fields
+            or self.env.context.get("skip_mdl_catalog_sync")
+            or (field_name == "name" and not self.mdl_catalog_managed)
+        ):
+            return super()._update_field_translations(
+                field_name, translations, digest=digest, source_lang=source_lang,
+            )
+        self.ensure_one()
+        previous_values = self._fields[field_name]._get_stored_translations(self) or {}
+        # Odoo finishes translation updates with a write in the dialog's current
+        # language, which need not be the language whose translation was edited.
+        # Let it validate/store translations, then sync only changed languages.
+        result = super(
+            ProductTemplate, self.with_context(skip_mdl_catalog_sync=True),
+        )._update_field_translations(
+            field_name, dict(translations), digest=digest, source_lang=source_lang,
+        )
+        if result:
+            for lang in translations:
+                template = self.with_context(lang=lang)
+                previous_value = previous_values.get(lang, previous_values.get("en_US", ""))
+                current_value = clean_text(template[field_name])
+                if current_value == clean_text(previous_value):
+                    continue
+                previous_group_names = {}
+                if field_name == "mdl_group_default_name":
+                    template.with_context(skip_mdl_catalog_sync=True).write({
+                        "mdl_group_name_override": "",
+                        "mdl_native_name_override": "",
+                        "mdl_native_name_source": "",
+                    })
+                    previous_group_names = {template.id: previous_value}
+                elif field_name == "name":
+                    template.with_context(skip_mdl_catalog_sync=True).write({
+                        "mdl_native_name_override": current_value,
+                        "mdl_native_name_source": template.mdl_native_name_source or previous_value,
+                    })
+                template._mdl_ensure_full_model_names(previous_group_names)
+                template.env.add_to_compute(template._fields["mdl_effective_base_name"], template)
+                template._recompute_recordset(["mdl_effective_base_name"])
+                template._mdl_sync_variant_codes()
+        return result
+
+    def action_mdl_open_name_sku_overrides(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Name and SKU Overrides"),
+            "res_model": "product.template",
+            "res_id": self.id,
+            "views": [(self.env.ref(
+                "mdl_product_groups_attributes.mdl_product_template_name_sku_form"
+            ).id, "form")],
+            "target": "new",
+            "context": dict(self.env.context),
+        }
 
     def action_mdl_reset_group_values(self):
         self.ensure_one()
@@ -1136,7 +1215,7 @@ class ProductTemplate(models.Model):
                 last_line_had_text = True
             else:
                 last_line_had_text = False
-            # "טקסט אחרי" is the separator before the next row.  Deferring
+            # "Text After" is the separator before the next row.  Deferring
             # it until the next non-empty value keeps optional values such as
             # "ללא הלבשה" from leaving a dangling '+' in the final name.
             previous_line_suffix = _name_separator(line.mdl_name_suffix)
@@ -1159,22 +1238,23 @@ class ProductTemplate(models.Model):
         issues = []
         if self.mdl_copy_requires_new_sku:
             issues.append(
-                "זוהי קבוצת פריטים מועתקת; יש להגדיר לה מק״ט קבוצה חדש."
+                _("This duplicated product group needs a new group SKU.")
             )
         if not self.mdl_group_default_name:
-            issues.append("לא הוגדר שם לקבוצת הפריטים.")
+            issues.append(_("The product group has no name."))
         if not self.categ_id:
-            issues.append("לא נבחרה קטגוריית מוצר.")
+            issues.append(_("No product category is selected."))
 
         dynamic_attributes = self.attribute_line_ids.attribute_id.filtered(
             lambda attribute: attribute.create_variant == "dynamic"
         )
         if dynamic_attributes:
             issues.append(
-                "המאפיינים הבאים מוגדרים ליצירת וריאנטים דינמית ולכן לא תיווצר "
-                "התפוצצות מלאה: "
-                + ", ".join(dynamic_attributes.mapped("name"))
-                + "."
+                _(
+                    "These attributes create variants dynamically, so not all "
+                    "combinations will be generated: %(attributes)s.",
+                    attributes=", ".join(dynamic_attributes.mapped("name")),
+                )
             )
 
         variants = self.with_context(active_test=False).product_variant_ids
@@ -1187,18 +1267,24 @@ class ProductTemplate(models.Model):
         generated_skus = [sku for sku, _name, _missing in rendered.values() if sku]
         for sku, count in Counter(generated_skus).items():
             if count > 1:
-                issues.append(f"המק״ט {sku} נוצר ל-{count} פריטים בקבוצה.")
+                issues.append(
+                    _("SKU %(sku)s is generated for %(count)s products in the group.",
+                      sku=sku, count=count)
+                )
 
         for product, (sku, _name, missing) in rendered.items():
             if missing:
                 issues.append(
-                    f"בפריט {product.id} חסר רכיב מק״ט לערכים: "
-                    + ", ".join(missing)
-                    + "."
+                    _(
+                        "Product %(product)s is missing SKU components for: %(values)s.",
+                        product=product.id,
+                        values=", ".join(missing),
+                    )
                 )
             if include_sync_state and sku and product.default_code != sku:
                 issues.append(
-                    f"המק״ט של פריט {product.id} טרם עודכן ל-{sku}."
+                    _("Product %(product)s has not yet been updated to SKU %(sku)s.",
+                      product=product.id, sku=sku)
                 )
 
         if generated_skus:
@@ -1212,8 +1298,11 @@ class ProductTemplate(models.Model):
             )
             for product in external_products:
                 issues.append(
-                    f"המק״ט {product.default_code} כבר נמצא בפריט אחר: "
-                    f"{product.product_tmpl_id.name}."
+                    _(
+                        "SKU %(sku)s already belongs to another product: %(product)s.",
+                        sku=product.default_code,
+                        product=product.product_tmpl_id.name,
+                    )
                 )
         return list(dict.fromkeys(issues))
 
@@ -1319,8 +1408,8 @@ class ProductTemplate(models.Model):
         ):
             raise UserError(
                 _(
-                    "המאפיין דגם של התוסף חייב להשתמש ביצירת וריאנטים "
-                    "מיידית ובתצוגת בחירה רגילה."
+                    "The module's Model attribute must create variants "
+                    "instantly and use a regular selection display."
                 )
             )
         return attribute
@@ -1339,8 +1428,8 @@ class ProductTemplate(models.Model):
         if len(model_lines) > 1:
             raise UserError(
                 _(
-                    "בתבנית %(template)s קיימות כמה שורות מאפיין בשם דגם. "
-                    "יש להשאיר שורה אחת לפני ההמרה.",
+                    "Template %(template)s has multiple Model attribute rows. "
+                    "Keep one row before conversion.",
                     template=self.display_name,
                 )
             )
@@ -1351,8 +1440,8 @@ class ProductTemplate(models.Model):
         ):
             raise UserError(
                 _(
-                    "מאפיין הדגם בתבנית %(template)s אינו מוגדר ליצירת "
-                    "וריאנטים מיידית.",
+                    "The Model attribute on %(template)s is not configured to "
+                    "create variants instantly.",
                     template=self.display_name,
                 )
             )
@@ -1387,8 +1476,8 @@ class ProductTemplate(models.Model):
         if not matches:
             raise UserError(
                 _(
-                    "לא נמצא בשורת הדגם של %(template)s ערך שתואם לשם "
-                    "הדגם %(model)s. הערכים הקיימים: %(values)s.",
+                    "No value matching model %(model)s was found on the Model "
+                    "row of %(template)s. Available values: %(values)s.",
                     template=self.display_name,
                     model=derived_name or "—",
                     values=available or "—",
@@ -1396,8 +1485,8 @@ class ProductTemplate(models.Model):
             )
         raise UserError(
             _(
-                "בשורת הדגם של %(template)s נמצאו כמה ערכים שתואמים לשם "
-                "הדגם %(model)s. יש לייחד את שמות הערכים לפני ההמרה.",
+                "Multiple values on %(template)s match model %(model)s. Make "
+                "the value names unique before conversion.",
                 template=self.display_name,
                 model=derived_name,
             )
@@ -1453,9 +1542,8 @@ class ProductTemplate(models.Model):
                 if len(global_matches) > 1:
                     raise UserError(
                         _(
-                            "נמצאו כמה ערכי דגם כלליים שתואמים לשם "
-                            "%(model)s עבור %(template)s. יש לייחד את "
-                            "שמות הערכים לפני ההמרה.",
+                            "Multiple global Model values match %(model)s for "
+                            "%(template)s. Make the value names unique before conversion.",
                             model=lookup_name,
                             template=template.display_name,
                         )
@@ -1555,8 +1643,7 @@ class ProductTemplate(models.Model):
             if not existing_model_value and len(matching_values) > 1:
                 raise UserError(
                     _(
-                        "נמצאו כמה ערכי דגם כלליים שתואמים לשם "
-                        "%(model)s עבור %(template)s.",
+                        "Multiple global Model values match %(model)s for %(template)s.",
                         model=source_model_name,
                         template=template.display_name,
                     )
@@ -1661,8 +1748,11 @@ class ProductTemplate(models.Model):
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "title": "המרת דגם הושלמה",
-                "message": f"הדגם הועבר למאפיין רגיל ב-{len(converted)} קבוצות.",
+                "title": _("Model Conversion Complete"),
+                "message": _(
+                    "Model was converted to a regular attribute in %(count)s groups.",
+                    count=len(converted),
+                ),
                 "type": "success",
                 "sticky": False,
                 "next": {"type": "ir.actions.client", "tag": "reload"},
@@ -1788,7 +1878,7 @@ class ProductTemplate(models.Model):
         if issues:
             raise UserError(
                 _(
-                    "לא ניתן לעדכן את הפריטים לפני תיקון השגיאות:\n%s",
+                    "Products cannot be updated until these issues are fixed:\n%s",
                     "\n".join(f"• {issue}" for issue in issues),
                 )
             )
@@ -1797,8 +1887,11 @@ class ProductTemplate(models.Model):
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "title": "החישוב הושלם",
-                "message": f"עודכנו {len(self.product_variant_ids)} פריטים בקבוצה.",
+                "title": _("Update Complete"),
+                "message": _(
+                    "%(count)s products were updated in the group.",
+                    count=len(self.product_variant_ids),
+                ),
                 "type": "success",
                 "sticky": False,
                 "next": {"type": "ir.actions.client", "tag": "reload"},
@@ -1831,13 +1924,13 @@ class ProductTemplate(models.Model):
 
     def action_mdl_open_active_variants(self):
         return self._mdl_variant_action(
-            "פריטים פעילים",
+            "Active Products",
             [("active", "=", True), ("mdl_catalog_allowed", "=", True)],
         )
 
     def action_mdl_open_archived_variants(self):
         return self._mdl_variant_action(
-            "פריטים בארכיון",
+            "Archived Products",
             [("active", "=", False), ("mdl_catalog_allowed", "=", True)],
         )
 
@@ -1851,7 +1944,7 @@ class ProductTemplate(models.Model):
         )
         return {
             "type": "ir.actions.act_window",
-            "name": "פריטים חסומים",
+            "name": _("Blocked Products"),
             "res_model": "mdl.blocked.variant.preview",
             "view_mode": "list",
             "views": [(list_view.id, "list")],
@@ -1864,7 +1957,7 @@ class ProductTemplate(models.Model):
         }
 
     def action_mdl_open_variants(self):
-        return self._mdl_variant_action("פריטי הקבוצה")
+        return self._mdl_variant_action(_("Group Products"))
 
     @api.depends("name", "default_code", "mdl_catalog_managed")
     @api.depends_context("display_default_code", "lang")
@@ -1889,7 +1982,7 @@ class ProductTemplate(models.Model):
         variant_domain = Domain.OR(
             [
                 Domain("default_code", operator, name),
-                Domain("mdl_generated_name", operator, name),
+                Domain("mdl_effective_name", operator, name),
             ]
         )
         extra_domain = Domain(domain or Domain.TRUE)

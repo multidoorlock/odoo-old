@@ -1,0 +1,1101 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following module:
+#   * mdl_product_groups_attributes
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"PO-Revision-Date: 2026-09-08 00:00+0000\n"
+"Last-Translator: Multi Doorlock\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n == 1) ? 0 : ((n == 2) ? 1 : ((n > 10 && n % 10 == 0) ? 2 : 3));\n"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Product Groups & Attributes"
+msgstr "קבוצות פריטים ומאפיינים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Product Group Setup"
+msgstr "הגדרת קבוצת הפריטים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Product Group"
+msgstr "קבוצת פריטים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Product Group Name"
+msgstr "שם קבוצת הפריטים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Product Group SKU"
+msgstr "מק״ט קבוצת הפריטים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Product Category"
+msgstr "קטגוריית מוצר"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Manage Names and SKUs by Attributes"
+msgstr "ניהול שמות ומק״טים לפי מאפיינים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Product Status"
+msgstr "מצב הפריטים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Active Products"
+msgstr "פריטים פעילים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Archived Products"
+msgstr "פריטים בארכיון"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Blocked Combinations"
+msgstr "שילובים חסומים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Group Attribute Values"
+msgstr "ערכי מאפיינים בקבוצה"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Attribute"
+msgstr "מאפיין"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Attribute Value"
+msgstr "ערך המאפיין"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Default Text"
+msgstr "טקסט ברירת מחדל"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Default SKU"
+msgstr "מק״ט ברירת מחדל"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Group Text"
+msgstr "טקסט בקבוצה"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Group SKU"
+msgstr "מק״ט בקבוצה"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Text After"
+msgstr "טקסט אחרי"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Sequence"
+msgstr "סדר"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Combination Rules"
+msgstr "כללי שילובים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Combination Rule"
+msgstr "כלל שילוב"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Action"
+msgstr "פעולה"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Rule Condition"
+msgstr "תנאי הכלל"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "When These Values Are Selected"
+msgstr "כאשר נבחרים הערכים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Block Combination"
+msgstr "חסום את השילוב"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Allow Only Combination"
+msgstr "אפשר רק את השילוב"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_effective_name
+msgid "Product Name"
+msgstr "שם הפריט"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Models"
+msgstr "דגמים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Technical Data"
+msgstr "נתונים טכניים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Dimensions and Weight"
+msgstr "מידות ומשקל"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Weight"
+msgstr "משקל"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Volume"
+msgstr "נפח"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "System Data"
+msgstr "נתוני מערכת"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Product Display"
+msgstr "תצוגת פריטים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Product Display Format"
+msgstr "פורמט תצוגת פריט"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Display Format in Search and Documents"
+msgstr "פורמט תצוגה בחיפוש ובמסמכים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Display Example"
+msgstr "דוגמת תצוגה"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Example: "
+msgstr "תצוגה לדוגמה: "
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Reset text to the Odoo value"
+msgstr "אפס את הטקסט לערך של Odoo"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Reset SKU to its source value"
+msgstr "אפס את המק״ט לערך המקור"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Final SKU"
+msgstr "מק״ט סופי"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Final Product Name"
+msgstr "שם הפריט"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Attribute Values"
+msgstr "ערכי מאפיינים"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Overhead"
+msgstr "עילית"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Concealed"
+msgstr "סמויה"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Other"
+msgstr "אחר"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Installation Type"
+msgstr "סוג התקנה"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Length (cm)"
+msgstr "אורך (ס״מ)"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Width (cm)"
+msgstr "רוחב (ס״מ)"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Height (cm)"
+msgstr "גובה (ס״מ)"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Maximum Protected Area (m²)"
+msgstr "שטח מוגן מרבי (מ״ר)"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Institutional blast door left 100/20 L"
+msgstr "דלת הדף מוסדית שמאל 100/20 L"
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Enable group management to generate product names and SKUs from attribute values."
+msgstr "הפעל את ניהול הקבוצה כדי ליצור שמות ומק״טים מערכי המאפיינים."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Choose a product category, review the group name and SKU, then arrange the attributes and their values. Each value contributes to the generated name and SKU."
+msgstr "בחר קטגוריית מוצר, בדוק את שם הקבוצה והמק״ט, ואז סדר את המאפיינים והערכים שלהם. כל ערך משתתף בשם ובמק״ט המחושבים."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Selecting a category copies its name and SKU component. Model is a regular attribute value."
+msgstr "בחירת קטגוריה מעתיקה את שמה ואת רכיב המק״ט שלה. דגם הוא ערך מאפיין רגיל."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "This is a duplicated group. Set a new group SKU before generating product SKUs."
+msgstr "זו קבוצה שהועתקה. יש להגדיר מק״ט קבוצה חדש לפני יצירת מק״טים לפריטים."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "“Block Combination” prevents the selected values from appearing together. “Allow Only Combination” creates an allowlist and blocks all other combinations."
+msgstr "„חסום את השילוב” מונע מהערכים שנבחרו להופיע יחד. „אפשר רק את השילוב” יוצר רשימת שילובים מורשים וחוסם את כל השאר."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Any product containing all selected values together will be blocked."
+msgstr "כל פריט שמכיל יחד את כל הערכים שנבחרו ייחסם."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Only products containing all selected values together will be allowed. Once an allow rule exists, combinations that match no allow rule are blocked."
+msgstr "רק פריטים שמכילים יחד את כל הערכים שנבחרו יורשו. כשקיים כלל מותר, כל שילוב שאינו מתאים לכלל מותר נחסם."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+#: code:addons/mdl_product_groups_attributes/models/product_product.py:0
+#: code:addons/mdl_product_groups_attributes/models/res_config_settings.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_attribute_value_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_catalog_combination_rule_form_view
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
+msgid "Select one value from at least two different attributes, for example “Model: Window” with “Color: Orange”."
+msgstr "בחר ערך אחד לפחות משני מאפיינים שונים, לדוגמה „דגם: חלון” יחד עם „צבע: כתום”."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_form.py:0
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Product Template"
+msgstr "תבנית מוצר"
+
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_form.py:0
+msgid "Product Variants"
+msgstr "וריאנטים של מוצר"
+
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_variant_seller_ids
+msgid "Variant Vendor Prices"
+msgstr "מחירי ספקים לווריאנט"
+
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_variant_pricelist_item_ids
+msgid "Variant Sales Prices"
+msgstr "מחירי מכירה לווריאנט"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Sales Price (Template + Extras)"
+msgstr "מחיר מכירה (תבנית + תוספות)"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Edit this variant here. Shared settings are read-only; use Product Template to change them for all variants."
+msgstr "כאן עורכים את הווריאנט הזה. ההגדרות המשותפות הן לקריאה בלבד; לשינוי עבור כל הווריאנטים יש לפתוח את תבנית המוצר."
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Only prices assigned to this variant are listed. Shared template and pricelist rules may still apply."
+msgstr "מוצגים רק מחירים שהוגדרו לווריאנט הזה. כללים משותפים מהתבנית וממחירונים עדיין עשויים לחול."
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "Only vendor prices assigned to this variant are listed. Shared vendor prices are managed on the product template and may still apply."
+msgstr "מוצגים רק מחירי ספקים שהוגדרו לווריאנט הזה. מחירי ספקים משותפים מנוהלים בתבנית המוצר ועדיין עשויים לחול."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_shared_seller_ids
+msgid "All Variants"
+msgstr "כל הווריאנטים"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "All variants"
+msgstr "כל הווריאנטים"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "This variant"
+msgstr "הווריאנט הזה"
+
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_full_form
+msgid "These vendor prices apply to all variants, subject to quantity, validity dates, and company. Edit them on the Product Template."
+msgstr "מחירי ספקים אלה חלים על כל הווריאנטים, בכפוף לכמות, לתאריכי התוקף ולחברה. ניתן לערוך אותם בתבנית המוצר."
+
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_name_overrides
+msgid "Product Name Overrides (Technical)"
+msgstr "שמות מותאמים לפריט (טכני)"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_name_override
+msgid "Custom Name in This Language"
+msgstr "שם מותאם בשפה זו"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_automatic_name
+msgid "Automatic Name"
+msgstr "שם אוטומטי"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_product_form_final_name
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_easy_form_final_name
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Reset to the automatic name"
+msgstr "חזרה לשם האוטומטי"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_product_form_final_name
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_variant_easy_form_final_name
+msgid "Leave empty to use the automatic name"
+msgstr "השאר ריק כדי להשתמש בשם האוטומטי"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_product__mdl_name_override
+msgid "Optional name for this variant in the current language. Use the language button to edit other languages. Clear a language to use its automatic name. The SKU and other variants are unchanged."
+msgstr "שם חלופי לווריאנט הזה בשפה הנוכחית. לחץ על כפתור השפה לעריכת שפות נוספות. רוקן שפה כדי לחזור לשם האוטומטי שלה. המק״ט והווריאנטים האחרים אינם משתנים."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
+msgid "Product name overrides must contain valid language codes and non-empty names."
+msgstr "שמות מותאמים חייבים לכלול קודי שפה תקינים ושמות שאינם ריקים."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
+msgid "Product name translations must be a language-to-name mapping."
+msgstr "תרגומי שם הפריט חייבים להיות מיפוי של שפה לשם."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
+msgid "Activate the language before adding a product name override."
+msgstr "יש להפעיל את השפה לפני הוספת שם מותאם."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_variant_name.py:0
+msgid "A product name override must be text."
+msgstr "שם מותאם לפריט חייב להיות טקסט."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_name
+msgid "Source Product Group Name"
+msgstr "שם מקור לקבוצת הפריטים"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_sku
+msgid "Source Product Group SKU"
+msgstr "מק״ט מקור לקבוצת הפריטים"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_generated_name
+msgid "Generated Product Name (Technical)"
+msgstr "שם פריט מחושב (טכני)"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template_attribute_value__mdl_attribute_group_id
+msgid "Attribute Group Heading"
+msgstr "כותרת קבוצת תכונות"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template.py:0
+msgid "Name and SKU Overrides"
+msgstr "דריסות שם ומק״ט"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Template Name"
+msgstr "שם התבנית"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Custom Group Text"
+msgstr "טקסט מותאם לקבוצה"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Custom Group SKU"
+msgstr "מק״ט מותאם לקבוצה"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Custom Model Text"
+msgstr "טקסט מותאם לדגם"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Custom Model SKU"
+msgstr "מק״ט מותאם לדגם"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Text After All Attributes"
+msgstr "טקסט אחרי כל המאפיינים"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "The custom template name replaces the group and model text in variant names. Use Undo to return to automatic naming."
+msgstr "שם התבנית המותאם מחליף את טקסט הקבוצה והדגם בשמות הווריאנטים. לחצו על Undo כדי לחזור לשם האוטומטי."
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Leave an override blank to use its source value. Enter — to omit that component. Attribute values are added after the shared name and SKU."
+msgstr "השאירו שדה התאמה ריק כדי להשתמש בערך המקור. הזינו — כדי להשמיט את הרכיב. ערכי המאפיינים מתווספים אחרי השם והמק״ט המשותפים."
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Model"
+msgstr "דגם"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Save"
+msgstr "שמירה"
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Cancel"
+msgstr "ביטול"

@@ -5,27 +5,28 @@ class ProductTemplateAttributeLine(models.Model):
     _inherit = "product.template.attribute.line"
 
     mdl_name_prefix = fields.Char(
-        string="טקסט לפני ישן (לא בשימוש)",
-        help="שדה טכני לגרסאות קודמות; סדר השורות והטקסט שאחרי משמשים כעת.",
+        string="Legacy Prefix (Unused)",
+        help="Compatibility field; row order and Text After are used now.",
     )
     mdl_name_suffix = fields.Char(
-        string="טקסט אחרי",
+        string="Text After",
+        translate=True,
         help=(
-            "הפרדה בין ערך המאפיין למאפיין הבא. רווח רגיל נוסף "
-            "אוטומטית; סימנים כמו / או + נשארים צמודים."
+            "Separator between this attribute value and the next attribute. "
+            "A normal space is added automatically; / and + remain attached."
         ),
     )
     mdl_variant_creation_mode = fields.Selection(
         related="attribute_id.create_variant",
-        string="יצירת וריאנטים",
+        string="Variant Creation",
         readonly=True,
     )
     mdl_is_model_attribute = fields.Boolean(
-        string="שורת דגם שהוסבה",
+        string="Converted Model Row",
         default=False,
         copy=True,
         help=(
-            "סימון תאימות טכני בלבד. השורה מתנהגת כמו כל מאפיין אחר."
+            "Technical compatibility marker. The row behaves like any other attribute."
         ),
     )
 
