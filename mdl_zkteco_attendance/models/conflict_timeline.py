@@ -38,7 +38,11 @@ class AttendanceConflictTimeline(models.Model):
 
     @api.model
     def _timeline_event_employee(self, event):
-        return event.employee_id or event.device_employee_id.employee_id
+        employee = event.employee_id or event.device_employee_id.employee_id
+        # Legacy card bindings can outlive an employee's company transfer.
+        # Keep those punches waiting for a valid binding, never display or
+        # reconcile them under an employee in a different company.
+        return employee if not employee or employee.company_id == event.company_id else self.env["hr.employee"]
 
     @api.model
     def _timeline_lock_employee_ids(self, employee_ids):

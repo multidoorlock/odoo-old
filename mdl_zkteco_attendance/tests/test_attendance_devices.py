@@ -1034,7 +1034,7 @@ class TestAttendanceDevices(TransactionCase):
         ))
         self.assertEqual(
             [action["key"] for action in open_item["actions"]],
-            ["open_attendance"],
+            ["open_attendance", "flip_event", "dismiss_event"],
         )
 
     def test_conflict_timeline_excludes_open_attendance_without_raw_events(self):

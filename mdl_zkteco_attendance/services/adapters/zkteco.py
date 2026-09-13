@@ -255,13 +255,19 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             values[match.group(1).upper()] = line[match.end():value_end].strip()
         return values
 
-    def _get_or_create_card(self, pin, name=None, update_existing=False):
+    def _get_or_create_card(self, pin, name=None, update_existing=False, for_attendance=False):
         Card = self.env["mdl.attendance.device.employee"].sudo()
         card = Card.with_context(active_test=False).search([
             ("device_id", "=", self.device.id),
             ("device_user_id", "=", pin),
         ], limit=1)
         if card:
+            if (for_attendance and card.employee_id
+                    and card.employee_id.company_id != self.device.company_id):
+                # Preserve a legacy invalid mapping for an administrator to
+                # fix. Reactivating it would fail validation before its punch
+                # could be saved with the parsed time and raw evidence.
+                return card
             values = {}
             if not card.active:
                 values["active"] = True
@@ -784,16 +790,21 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             raise ValueError("Device user identifier is missing")
         event_datetime = self._utc_datetime(event_text)
         punch_state = self.map_punch_state(raw_punch)
-        card = self._get_or_create_card(pin)
+        card = self._get_or_create_card(pin, for_attendance=True)
+        invalid_binding = bool(card and card.employee_id
+                               and card.employee_id.company_id != self.device.company_id)
         fingerprint_source = f"{self.device.id}|{pin}|{event_datetime.isoformat()}|{raw_punch}"
         fingerprint = hashlib.sha256(fingerprint_source.encode()).hexdigest()
         return self.env["mdl.attendance.device.event"].sudo().create({
             "log_id": log.id, "device_id": self.device.id,
             "device_employee_id": card.id if card else False,
-            "employee_id": card.employee_id.id if card and card.employee_id else False,
+            "employee_id": card.employee_id.id if card and card.employee_id and not invalid_binding else False,
             "device_user_id": pin, "event_datetime": event_datetime,
             "raw_punch_state": raw_punch, "punch_state": punch_state,
             "event_fingerprint": fingerprint, "raw_line": line,
+            "processing_state": "waiting_employee_link" if invalid_binding else "new",
+            "processing_message": AttendanceProcessor._invalid_company_binding_message()
+            if invalid_binding else False,
         })
 
     def _process_attlog(self, log, body_text):
@@ -827,7 +838,9 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
                     "processing_message": str(exc),
                 })
                 events |= event
-        AttendanceProcessor(self.env).process(events.filtered(lambda event: event.processing_state == "new"))
+        AttendanceProcessor(self.env).process(events.filtered(
+            lambda event: event.processing_state in ("new", "waiting_employee_link")
+        ))
         states = set(events.mapped("processing_state"))
         if errors:
             state = "error"

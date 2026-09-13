@@ -350,8 +350,9 @@ class TestSavedEventActions(TransactionCase):
             "duration": 9,
             "work_entry_type_id": self.env.ref("hr_work_entry.work_entry_type_attendance").id,
             "attendance_id": attendance.id,
-            "state": "validated",
         })
+        self.assertTrue(entry.action_validate())
+        self.assertEqual(entry.state, "validated")
         with self.assertRaises(UserError), self.cr.savepoint():
             in_event.action_flip()
         self.assertEqual(in_event.effective_punch_state, "in")
@@ -373,8 +374,9 @@ class TestSavedEventActions(TransactionCase):
             "date": fields.Date.to_date("2026-08-24"), "duration": 9,
             "work_entry_type_id": self.env.ref("hr_work_entry.work_entry_type_attendance").id,
             "mdl_source_attendance_ids": [(6, 0, attendance.ids)],
-            "state": "validated",
         })
+        self.assertTrue(entry.action_validate())
+        self.assertEqual(entry.state, "validated")
         with self.assertRaises(UserError), self.cr.savepoint():
             in_event.action_flip()
         self.assertEqual(entry.mdl_source_attendance_ids, attendance)
@@ -396,6 +398,7 @@ class TestSavedEventActions(TransactionCase):
             "employee_id": self.employee.id, "struct_id": structure.id,
             "date_from": "2026-08-01", "date_to": "2026-08-31",
             "state": "validated",
+            "done_date": fields.Datetime.now(),
         })
         # Prove the payslip guard itself protects the period, independently
         # from the separate validated-work-entry protection tested above.

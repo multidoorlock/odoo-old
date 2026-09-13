@@ -1,5 +1,6 @@
 """Clock payload replay and timestamp regressions, through the real adapter."""
 
+import hashlib
 from unittest.mock import patch
 
 from psycopg2.errors import SerializationFailure
@@ -253,3 +254,103 @@ class TestClockIngestionRegressions(TransactionCase):
         event.action_dismiss_conflict()
         self.assertTrue(event.conflict_dismissed)
         self.assertEqual(self.card._get_valid_attendance_candidates(), [])
+
+    def _legacy_wrong_company_card(self, active=True):
+        other_company = self.env["res.company"].create({"name": "Legacy clock binding company"})
+        values = {"name": "Legacy other-company employee", "company_id": other_company.id}
+        if "mdl_wage_type" in self.env["hr.employee"]._fields:
+            values["mdl_wage_type"] = "mdl_monthly"
+        if "structure_type_id" in self.env["hr.employee"]._fields and self.employee.structure_type_id:
+            values["structure_type_id"] = self.employee.structure_type_id.id
+        other_employee = self.env["hr.employee"].with_company(other_company).create(values)
+        card = self.env["mdl.attendance.device.employee"].with_context(
+            attendance_device_discovery=True,
+        ).create({
+            "device_id": self.device.id, "device_user_id": "703",
+            "device_name": "Legacy invalid binding", "active": active,
+        })
+        # Reproduce records that predate the company constraint.  Native ORM
+        # creation correctly rejects this mapping today.  Test-only SQL is
+        # contained by TransactionCase and never used as a production repair.
+        card.flush_recordset()
+        self.env.cr.execute(
+            "UPDATE mdl_attendance_device_employee SET employee_id = %s WHERE id = %s",
+            (other_employee.id, card.id),
+        )
+        card.invalidate_recordset(["employee_id"])
+        return card, other_employee
+
+    def test_invalid_legacy_binding_preserves_parsed_punch_and_valid_siblings(self):
+        card, other_employee = self._legacy_wrong_company_card()
+        card_before = card.read(["employee_id", "device_id", "active", "write_date", "write_uid"])
+        invalid_line = "703\t2026-09-03 08:00:05\t255\t1\t0"
+        log = self._ingest(
+            "701\t2026-09-03 08:00:00\t255\t1\t0\n" + invalid_line
+            + "\n701\t2026-09-03 17:00:00\t255\t15\t0"
+        )
+        invalid = log.event_ids.filtered(lambda event: event.device_user_id == "703")
+        valid = log.event_ids - invalid
+        self.assertEqual(len(invalid), 1)
+        self.assertEqual(invalid.processing_state, "waiting_employee_link")
+        self.assertIn("מאותה חברה", invalid.processing_message)
+        self.assertEqual(invalid.device_employee_id, card)
+        self.assertFalse(invalid.employee_id)
+        self.assertFalse(invalid.attendance_id)
+        self.assertFalse(self.env["mdl.attendance.device.event"]._timeline_event_employee(invalid))
+        self.assertEqual(invalid.raw_line, invalid_line)
+        self.assertEqual(invalid.raw_punch_state, "1")
+        self.assertEqual(invalid.punch_state, "in")
+        self.assertEqual(invalid.event_datetime,
+                         fields.Datetime.to_datetime("2026-09-03 05:00:05"))
+        expected_hash = hashlib.sha256(
+            f"{self.device.id}|703|2026-09-03T05:00:05|1".encode()
+        ).hexdigest()
+        self.assertEqual(invalid.event_fingerprint, expected_hash)
+        self.assertEqual(set(valid.mapped("processing_state")), {"processed"})
+        self.assertEqual(len(valid.attendance_id), 1)
+        self.assertEqual(valid.employee_id, self.employee)
+        self.assertEqual(log.processing_state, "waiting_employee_link")
+        self.assertIn("0 parse error(s)", log.processing_message)
+        self.assertEqual(card.read(["employee_id", "device_id", "active", "write_date", "write_uid"]),
+                         card_before)
+        self.assertFalse(self.env["hr.attendance"].sudo().search([
+            ("employee_id", "=", other_employee.id),
+        ]))
+
+    def test_invalid_legacy_binding_is_not_reactivated_or_reassigned(self):
+        card, other_employee = self._legacy_wrong_company_card(active=False)
+        log = self._ingest("703\t2026-09-03 08:00:05\t255\t1\t0")
+        event = log.event_ids
+        self.assertEqual(event.processing_state, "waiting_employee_link")
+        self.assertEqual(event.device_employee_id, card)
+        self.assertFalse(event.employee_id)
+        self.assertTrue(event.event_datetime)
+        self.assertFalse(card.active)
+        self.assertEqual(card.employee_id, other_employee)
+
+    def test_processor_rechecks_legacy_company_binding_before_assignment(self):
+        card, other_employee = self._legacy_wrong_company_card()
+        log = self.env["mdl.attendance.device.log"].create({
+            "device_id": self.device.id, "request_type": "ATTLOG",
+        })
+        event = self.device._adapter()._create_attlog_event(
+            log, "703\t2026-09-03 08:00:05\t255\t1\t0",
+        )
+        self.assertEqual(event.processing_state, "waiting_employee_link")
+        event.action_process()
+        self.assertEqual(event.processing_state, "waiting_employee_link")
+        self.assertFalse(event.employee_id)
+        self.assertFalse(event.attendance_id)
+        self.assertEqual(card.employee_id, other_employee)
+        self.assertTrue(event.event_datetime)
+
+    def test_invalid_legacy_binding_replay_is_deduplicated(self):
+        card, other_employee = self._legacy_wrong_company_card()
+        payload = "703\t2026-09-03 08:00:05\t255\t1\t0"
+        original = self._ingest(payload).event_ids
+        replay = self._ingest(payload).event_ids
+        self.assertEqual(original.processing_state, "waiting_employee_link")
+        self.assertEqual(replay.processing_state, "ignored")
+        self.assertEqual(original.event_fingerprint, replay.event_fingerprint)
+        self.assertFalse(original.employee_id | replay.employee_id)
+        self.assertEqual(card.employee_id, other_employee)
