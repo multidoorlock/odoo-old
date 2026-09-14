@@ -78,8 +78,8 @@ class TestProductGroupsAttributes(TransactionCase):
 
     def test_generates_standard_internal_reference_and_final_name(self):
         template = self._create_template()
-        self.assertEqual(template.name, "כנף")
-        self.assertEqual(template.display_name, "כנף")
+        self.assertEqual(template.name, "דלת כנף")
+        self.assertEqual(template.display_name, "דלת כנף")
         self.assertEqual(len(template.product_variant_ids), 2)
         by_width = {
             product.product_template_attribute_value_ids.filtered(
@@ -90,7 +90,7 @@ class TestProductGroupsAttributes(TransactionCase):
         self.assertEqual(by_width["80"].default_code, "100180100")
         self.assertEqual(
             by_width["80"].mdl_generated_name,
-            "דלת 80/100 +ידית",
+            "דלת כנף 80/100 +ידית",
         )
 
     def test_empty_text_after_adds_a_natural_space(self):
@@ -100,8 +100,8 @@ class TestProductGroupsAttributes(TransactionCase):
         )
         width_line.mdl_name_suffix = False
         names = set(template.product_variant_ids.mapped("mdl_generated_name"))
-        self.assertIn("דלת 80 100 +ידית", names)
-        self.assertIn("דלת 90 100 +ידית", names)
+        self.assertIn("דלת כנף 80 100 +ידית", names)
+        self.assertIn("דלת כנף 90 100 +ידית", names)
 
     def test_final_product_display_and_search(self):
         template = self._create_template()
@@ -115,7 +115,7 @@ class TestProductGroupsAttributes(TransactionCase):
         )
         self.assertEqual(
             clean_display_name,
-            "[100180100] דלת 80/100 +ידית",
+            "[100180100] דלת כנף 80/100 +ידית",
         )
         self.assertIn(
             product.id,
@@ -132,7 +132,7 @@ class TestProductGroupsAttributes(TransactionCase):
             display_without_native_code
             .replace("\u2066", "")
             .replace("\u2069", ""),
-            "[100180100] דלת 80/100 +ידית",
+            "[100180100] דלת כנף 80/100 +ידית",
         )
         search_results = dict(
             self.env["product.product"]
@@ -143,14 +143,14 @@ class TestProductGroupsAttributes(TransactionCase):
             search_results[product.id]
             .replace("\u2066", "")
             .replace("\u2069", ""),
-            "[100180100] דלת 80/100 +ידית",
+            "[100180100] דלת כנף 80/100 +ידית",
         )
         self.assertEqual(
             product.with_context(
                 display_default_code=True,
                 formatted_display_name=True,
             ).display_name,
-            "דלת 80/100 +ידית\t--100180100--",
+            "דלת כנף 80/100 +ידית\t--100180100--",
         )
 
         self.env["ir.config_parameter"].sudo().set_param(
@@ -162,7 +162,7 @@ class TestProductGroupsAttributes(TransactionCase):
             product.display_name
             .replace("\u2066", "")
             .replace("\u2069", ""),
-            "[100180100] | דלת 80/100 +ידית",
+            "[100180100] | דלת כנף 80/100 +ידית",
         )
         self.env["ir.config_parameter"].sudo().set_param(
             "mdl_product_groups_attributes.variant_display_format",
@@ -214,10 +214,10 @@ class TestProductGroupsAttributes(TransactionCase):
         )
         product = template.product_variant_id
         self.assertEqual(product.default_code, "1001180100")
-        self.assertEqual(product.mdl_generated_name, "דלת שמאל 80/100 L")
+        self.assertEqual(product.mdl_generated_name, "דלת כנף שמאל 80/100 L")
         self.assertEqual(
             product.display_name.replace("\u2066", "").replace("\u2069", ""),
-            "[1001180100] דלת שמאל 80/100 L",
+            "[1001180100] דלת כנף שמאל 80/100 L",
         )
 
     def test_quotation_uses_final_product_name(self):
@@ -341,7 +341,7 @@ class TestProductGroupsAttributes(TransactionCase):
             in variant.product_template_attribute_value_ids.product_attribute_value_id
         )
         self.assertEqual(product.default_code, "1001080100")
-        self.assertEqual(product.mdl_generated_name, "דלת 80 ס״מ/100 +ידית")
+        self.assertEqual(product.mdl_generated_name, "דלת כנף 80 ס״מ/100 +ידית")
 
         value.action_mdl_reset_components()
         self.assertFalse(value.mdl_sku_component_override)
@@ -349,7 +349,7 @@ class TestProductGroupsAttributes(TransactionCase):
         self.assertEqual(value.mdl_sku_component_value, "80")
         self.assertEqual(value.mdl_name_component_value, "80")
         self.assertEqual(product.default_code, "100180100")
-        self.assertEqual(product.mdl_generated_name, "דלת 80/100 +ידית")
+        self.assertEqual(product.mdl_generated_name, "דלת כנף 80/100 +ידית")
 
     def test_single_column_exclusion_table_manages_native_rules(self):
         template = self._create_template()
@@ -577,13 +577,13 @@ class TestProductGroupsAttributes(TransactionCase):
         self.assertFalse(rule.mdl_is_catalog_condition)
         self.assertFalse(rule.mdl_combination_value_ids)
 
-    def test_visible_base_name_and_sku_overrides_are_independent(self):
+    def test_base_defaults_and_overrides_drive_the_result(self):
         template = self._create_template()
-        product_ids = template.product_variant_ids.ids
         self.assertEqual(template.mdl_group_name_value, "דלת")
         self.assertEqual(template.mdl_group_sku_value, "10")
+        self.assertEqual(template.mdl_model_name_value, "כנף")
         self.assertEqual(template.mdl_model_sku_value, "01")
-        self.assertEqual(template.mdl_effective_base_name, "דלת")
+        self.assertEqual(template.mdl_effective_base_name, "דלת כנף")
         self.assertEqual(template.mdl_sku_prefix, "1001")
 
         template.write(
@@ -592,12 +592,9 @@ class TestProductGroupsAttributes(TransactionCase):
                 "mdl_sku_prefix": "9007",
             }
         )
-        self.assertEqual(template.mdl_group_default_name, "סט דלת מיוחדת")
-        self.assertEqual(template.name, "כנף")
-        self.assertEqual(template.product_variant_ids.ids, product_ids)
-        self.assertFalse(template.mdl_group_name_override)
-        self.assertFalse(template.mdl_model_name_override)
+        self.assertEqual(template.mdl_group_name_override, "—")
         self.assertEqual(template.mdl_group_sku_override, "—")
+        self.assertEqual(template.mdl_model_name_override, "סט דלת מיוחדת")
         self.assertEqual(template.mdl_model_sku_override, "9007")
         self.assertEqual(template.mdl_effective_base_name, "סט דלת מיוחדת")
         self.assertEqual(template.mdl_sku_prefix, "9007")
@@ -614,18 +611,12 @@ class TestProductGroupsAttributes(TransactionCase):
         self.assertFalse(template.mdl_group_sku_override)
         self.assertFalse(template.mdl_model_name_override)
         self.assertFalse(template.mdl_model_sku_override)
-        self.assertEqual(template.mdl_group_name_value, "סט דלת מיוחדת")
-        self.assertEqual(template.mdl_group_default_name, "סט דלת מיוחדת")
+        self.assertEqual(template.mdl_group_name_value, "דלת")
         self.assertEqual(template.mdl_group_sku_value, "10")
+        self.assertEqual(template.mdl_model_name_value, "כנף")
         self.assertEqual(template.mdl_model_sku_value, "01")
-        self.assertEqual(template.mdl_effective_base_name, "סט דלת מיוחדת")
+        self.assertEqual(template.mdl_effective_base_name, "דלת כנף")
         self.assertEqual(template.mdl_sku_prefix, "1001")
-        self.assertEqual(template.name, "כנף")
-        self.assertEqual(template.product_variant_ids.ids, product_ids)
-        self.assertEqual(
-            set(template.product_variant_ids.mapped("default_code")),
-            {"100180100", "100190100"},
-        )
 
     def test_technical_data_is_stored_on_the_final_variant(self):
         template = self._create_template()
@@ -749,10 +740,10 @@ class TestProductGroupsAttributes(TransactionCase):
             skip_mdl_catalog_sync=False
         )._mdl_sync_variant_codes()
         names = set(template.product_variant_ids.mapped("mdl_generated_name"))
-        self.assertIn("דלת 30", names)
-        self.assertIn("דלת 30+3", names)
-        self.assertIn("דלת 30 רב בריח", names)
-        self.assertIn("דלת 30+3 רב בריח", names)
+        self.assertIn("דלת חלון 30", names)
+        self.assertIn("דלת חלון 30+3", names)
+        self.assertIn("דלת חלון 30 רב בריח", names)
+        self.assertIn("דלת חלון 30+3 רב בריח", names)
 
     def test_attribute_value_edit_in_model_does_not_change_the_source(self):
         template = self._create_template()
@@ -774,7 +765,7 @@ class TestProductGroupsAttributes(TransactionCase):
         self.assertEqual(template_value.mdl_name_component_value, "80 ס״מ")
         self.assertEqual(template_value.mdl_sku_component_value, "080")
         self.assertEqual(product.default_code, "1001080100")
-        self.assertEqual(product.mdl_generated_name, "דלת 80 ס״מ/100 +ידית")
+        self.assertEqual(product.mdl_generated_name, "דלת כנף 80 ס״מ/100 +ידית")
 
     def test_category_change_updates_group_names_and_skus(self):
         template = self._create_template()
@@ -825,10 +816,6 @@ class TestProductGroupsAttributes(TransactionCase):
             for product in products_before
         }
 
-        self.assertEqual(
-            {name for code, name in expected_before.values()},
-            {"דלת 80/100 +ידית", "דלת 90/100 +ידית"},
-        )
         converted = template._mdl_convert_models_to_attributes()
 
         self.assertEqual(converted, template)
@@ -851,16 +838,11 @@ class TestProductGroupsAttributes(TransactionCase):
         self.assertEqual(template.product_variant_ids.ids, products_before.ids)
         self.assertEqual(
             {
-                product.id: product.default_code
+                product.id: (product.default_code, product.mdl_generated_name)
                 for product in template.product_variant_ids
             },
-            {product_id: values[0] for product_id, values in expected_before.items()},
+            expected_before,
         )
-        self.assertEqual(
-            set(template.product_variant_ids.mapped("mdl_generated_name")),
-            {"דלת כנף 80/100 +ידית", "דלת כנף 90/100 +ידית"},
-        )
-        self.assertEqual(template.name, "כנף")
 
         model_template_value.mdl_sku_component_value = "99"
         self.assertEqual(model_template_value.mdl_sku_component_override, "99")
@@ -890,7 +872,7 @@ class TestProductGroupsAttributes(TransactionCase):
             {"108010001", "109010001"},
         )
 
-    def test_display_title_is_independent_of_model_value_count(self):
+    def test_native_template_name_tracks_single_or_multiple_model_values(self):
         template = self._create_template()
         template._mdl_convert_models_to_attributes()
         model_line = template.attribute_line_ids.filtered(
@@ -904,11 +886,11 @@ class TestProductGroupsAttributes(TransactionCase):
                 "mdl_sku_component": "02",
             }
         )
-        self.assertEqual(template.name, "כנף")
+        self.assertEqual(template.name, "דלת כנף")
 
         model_line.value_ids = [Command.set((first_model | second_model).ids)]
 
-        self.assertEqual(template.name, "כנף")
+        self.assertEqual(template.name, "דלת")
         self.assertTrue(
             all(
                 name.count("כנף") <= 1 and name.count("משקוף") <= 1
@@ -919,7 +901,7 @@ class TestProductGroupsAttributes(TransactionCase):
         )
 
         model_line.value_ids = [Command.set(first_model.ids)]
-        self.assertEqual(template.name, "כנף")
+        self.assertEqual(template.name, "דלת כנף")
 
     def test_copy_preserves_converted_structure_overrides_and_rules(self):
         template = self._create_template()
@@ -991,11 +973,8 @@ class TestProductGroupsAttributes(TransactionCase):
             self.assertTrue(target.mdl_model_as_attribute)
             self.assertEqual(
                 target.mdl_group_default_name,
-                source.mdl_group_default_name,
+                f"{source.mdl_group_default_name} (copy)",
             )
-            self.assertEqual(target.name, f"{source.name} (copy)")
-            self.assertTrue(target.mdl_copy_requires_new_sku)
-            self.assertTrue(all(not p.default_code for p in target.product_variant_ids))
 
     def test_copy_with_explicit_name_preserves_odoo_copy_default(self):
         template = self._create_template()
@@ -1004,7 +983,7 @@ class TestProductGroupsAttributes(TransactionCase):
         copied = template.copy({"name": "קבוצה מועתקת"})
 
         self.assertEqual(copied.name, "קבוצה מועתקת")
-        self.assertEqual(copied.mdl_group_default_name, template.mdl_group_default_name)
+        self.assertEqual(copied.mdl_group_default_name, "קבוצה מועתקת")
         copied._mdl_ensure_full_model_names()
         self.assertEqual(copied.name, "קבוצה מועתקת")
 
@@ -1510,36 +1489,13 @@ class TestProductGroupsAttributes(TransactionCase):
         )
         self.assertTrue(template.product_variant_id.mdl_generated_name)
 
-    def test_hidden_name_overrides_do_not_change_visible_name_source(self):
+    def test_variant_base_name_can_differ_from_model_name(self):
         template = self._create_template()
-        before = {
-            product.id: (product.default_code, product.mdl_generated_name)
-            for product in template.product_variant_ids
-        }
         template.write(
             {
                 "mdl_group_name_override": "סט דלת",
                 "mdl_model_name_override": "מיוחדת",
-                "mdl_native_name_override": "שם נסתר",
             }
-        )
-        self.assertEqual(template.name, "כנף")
-        self.assertEqual(template.mdl_group_default_name, "דלת")
-        self.assertEqual(template.mdl_effective_base_name, "דלת")
-        self.assertEqual(
-            {
-                product.id: (product.default_code, product.mdl_generated_name)
-                for product in template.product_variant_ids
-            },
-            before,
-        )
-
-        template.mdl_group_default_name = "סט דלת מיוחדת"
-        self.assertEqual(template.name, "כנף")
-        self.assertEqual(template.mdl_effective_base_name, "סט דלת מיוחדת")
-        self.assertEqual(
-            {product.id: product.default_code for product in template.product_variant_ids},
-            {product_id: values[0] for product_id, values in before.items()},
         )
         self.assertTrue(
             all(

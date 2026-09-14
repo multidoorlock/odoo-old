@@ -29,13 +29,13 @@ class TestVariantNameOverride(TransactionCase):
         cls.template = cls.env["product.template"].create({
             "name": "Door", "categ_id": category.id,
             "mdl_catalog_managed": True, "mdl_model_sku_component": "N",
-            "mdl_group_default_name": "Door",
+            "mdl_group_name_override": "Door",
             "attribute_line_ids": [Command.create({
                 "attribute_id": attribute.id,
                 "value_ids": [Command.set(attribute.value_ids.ids)],
             })],
         })
-        cls.template.update_field_translations("mdl_group_default_name", {
+        cls.template.update_field_translations("mdl_group_name_override", {
             "en_US": "Door", "he_IL": "דלת", "ar_001": "باب",
         })
         cls.variant, cls.sibling = cls.template.product_variant_ids.sorted("id")
@@ -113,7 +113,7 @@ class TestVariantNameOverride(TransactionCase):
     def test_source_changes_preserve_override_and_reset_uses_new_automatic_name(self):
         p = self.variant
         p.mdl_name_override = "Keep this name"
-        self.template.mdl_group_default_name = "Updated automatic group"
+        self.template.mdl_group_name_override = "Updated automatic group"
         self.assertEqual(p.mdl_effective_name, "Keep this name")
         self.assertIn("Updated automatic group", p.mdl_automatic_name)
         p.mdl_name_override = False
@@ -159,7 +159,7 @@ class TestVariantNameOverride(TransactionCase):
         hebrew.mdl_effective_name = "כותרת בעברית"
         self.assertEqual(p.mdl_effective_name, "Custom English title")
         self.assertEqual(hebrew.mdl_effective_name, "כותרת בעברית")
-        self.template.mdl_group_default_name = "New automatic group"
+        self.template.mdl_group_name_override = "New automatic group"
         hebrew.action_mdl_reset_variant_name()
         self.assertEqual(hebrew.mdl_effective_name, hebrew.mdl_automatic_name)
         self.assertEqual(p.mdl_effective_name, "Custom English title")

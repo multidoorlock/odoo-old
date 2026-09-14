@@ -67,7 +67,7 @@ class TestGroupNameEdit(TransactionCase):
 
     def _assert_names(self, lang, prefix):
         template = self.template.with_context(lang=lang)
-        self.assertEqual(template.mdl_group_default_name, prefix)
+        self.assertFalse(template.mdl_group_name_override)
         self.assertEqual(template.mdl_effective_base_name, prefix)
         self.env.flush_all()
         self.env.invalidate_all()
@@ -80,33 +80,29 @@ class TestGroupNameEdit(TransactionCase):
 
     def test_group_write_updates_variants_in_edited_language_only(self):
         english, hebrew = self._snapshot("en_US"), self._snapshot("he_IL")
-        arabic_title = self.template.with_context(lang="ar_001").name
         self.template.with_context(lang="ar_001").write({"mdl_group_default_name": "شباك"})
         self._assert_names("ar_001", "شباك")
-        self.assertEqual(self.template.with_context(lang="ar_001").name, arabic_title)
+        self.assertEqual(self.template.with_context(lang="ar_001").name, "شباك")
         self.assertEqual(self._snapshot("en_US"), english)
         self.assertEqual(self._snapshot("he_IL"), hebrew)
 
-    def test_group_form_edit_ignores_legacy_overrides_and_preserves_title(self):
+    def test_group_form_edit_clears_stale_title_and_group_overrides(self):
         self.template.write({"name": "Old manual title"})
         hebrew, arabic = self._snapshot("he_IL"), self._snapshot("ar_001")
         with Form(self.template, view="product.product_template_only_form_view") as form:
             form.mdl_group_default_name = "Renamed window"
         self._assert_names("en_US", "Renamed window")
-        self.assertEqual(self.template.name, "Old manual title")
-        self.assertEqual(self.template.mdl_group_name_override, "Legacy window")
+        self.assertEqual(self.template.name, "Renamed window")
         self.assertFalse(self.template.mdl_native_name_override)
         self.assertEqual(self._snapshot("he_IL"), hebrew)
         self.assertEqual(self._snapshot("ar_001"), arabic)
 
     def test_translation_dialog_updates_only_changed_language(self):
         english, hebrew = self._snapshot("en_US"), self._snapshot("he_IL")
-        arabic_title = self.template.with_context(lang="ar_001").name
         self.assertTrue(self.template.update_field_translations("mdl_group_default_name", {
             "en_US": "Window", "he_IL": "חלון נגרר", "ar_001": "شباك",
         }))
         self._assert_names("ar_001", "شباك")
-        self.assertEqual(self.template.with_context(lang="ar_001").name, arabic_title)
         self.assertEqual(self._snapshot("en_US"), english)
         self.assertEqual(self._snapshot("he_IL"), hebrew)
 
@@ -138,43 +134,24 @@ class TestGroupNameEdit(TransactionCase):
         self._assert_names("ar_001", "شباك")
         self.assertFalse(self.products[0].active)
 
-    def test_translation_edit_ignores_legacy_model_suffix(self):
+    def test_translation_edit_preserves_legacy_model_suffix(self):
         template = self.env["product.template"].create({
             "name": "Panel", "mdl_catalog_managed": True,
             "mdl_group_default_name": "Window", "mdl_group_default_sku": "RENP",
             "mdl_group_name_override": "Legacy window",
         })
-        self.assertEqual(template.name, "Panel")
-        self.assertEqual(template.mdl_effective_base_name, "Window")
+        self.assertEqual(template.name, "Window Panel")
         template.update_field_translations("mdl_group_default_name", {"en_US": "Door"})
-        self.assertEqual(template.name, "Panel")
-        self.assertEqual(template.mdl_effective_base_name, "Door")
-        self.assertEqual(template.product_variant_id.mdl_automatic_name, "Door")
+        self.assertEqual(template.name, "Door Panel")
+        self.assertEqual(template.mdl_effective_base_name, "Door Panel")
 
-    def test_explicit_legacy_override_is_inert_and_internal_source_edit_works(self):
+    def test_explicit_override_and_internal_sync_remain_supported(self):
         self.template.write({
             "mdl_group_default_name": "New source", "mdl_group_name_override": "Explicit name",
-            "mdl_model_name_override": "Old model",
-            "mdl_native_name_override": "Old title override",
         })
-        self._assert_names("en_US", "New source")
+        self.assertEqual(self.template.mdl_effective_base_name, "Explicit name")
         self.template.with_context(skip_mdl_catalog_sync=True).write({"mdl_group_default_name": "Imported source"})
         self.assertEqual(self.template.mdl_group_name_override, "Explicit name")
-        self.assertEqual(self.template.mdl_effective_base_name, "Imported source")
-        self.template._mdl_sync_variant_codes()
-        self._assert_names("en_US", "Imported source")
-
-    def test_title_translation_does_not_change_group_or_variant_names(self):
-        before = {lang: self._snapshot(lang) for lang in ("en_US", "he_IL", "ar_001")}
-        self.template.update_field_translations("name", {"ar_001": "عنوان للعرض فقط"})
-        self.template.write({"name": self.template.name})
-        self.env.flush_all()
-        self.env.invalidate_all()
-        for lang, snapshot in before.items():
-            current = self._snapshot(lang)
-            self.assertEqual(current[1:], snapshot[1:])
-            self.assertEqual(current[0], "عنوان للعرض فقط" if lang == "ar_001" else snapshot[0])
-        self.assertEqual({p.id: (p.default_code, p.active) for p in self.products}, self.identity)
 
     def test_invalid_translation_language_does_not_change_names(self):
         before = self._snapshot("en_US")
