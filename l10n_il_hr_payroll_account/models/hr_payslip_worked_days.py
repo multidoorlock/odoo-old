@@ -38,7 +38,11 @@ class HrPayslipWorkedDays(models.Model):
         super()._compute_amount()
         for worked_days in self:
             version = worked_days.version_id
-            if (worked_days.code in ('WORK100', 'ADDITIONAL_DAY')
+            is_additional = (
+                worked_days.work_entry_type_id
+                == worked_days.payslip_id.company_id._mdl_additional_day_type()
+            )
+            if ((worked_days.code == 'WORK100' or is_additional)
                     and version
                     and version.mdl_wage_type == 'mdl_daily'
                     and version.mdl_wage_rate_type == 'gross'):
@@ -48,8 +52,13 @@ class HrPayslipWorkedDays(models.Model):
                     else version.resource_calendar_id.hours_per_day
                 )
                 if worked_days.is_paid and hours_per_day:
+                    daily_rate = (
+                        version.mdl_additional_day_wage
+                        if is_additional
+                        else version.mdl_daily_wage
+                    )
                     exact_rate = (
-                        Decimal(str(version.mdl_daily_wage or 0.0))
+                        Decimal(str(daily_rate or 0.0))
                         / Decimal(str(hours_per_day))
                     )
                     amount = Decimal(str(worked_days.number_of_hours or 0.0)) * exact_rate
@@ -66,7 +75,7 @@ class HrPayslipWorkedDays(models.Model):
                 else:
                     worked_days.amount = 0.0
                 continue
-            if (worked_days.code != 'ADDITIONAL_DAY'
+            if (not is_additional
                     or not version
                     or version.mdl_wage_type != 'mdl_monthly'
                     or version.mdl_wage_rate_type != 'gross'):

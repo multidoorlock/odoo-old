@@ -449,35 +449,39 @@ class HrPayslip(models.Model):
         """Gross up a net additional-day rate directly on its Worked Days row."""
         self.ensure_one()
         version = self.version_id
-        additional_lines = self.worked_days_line_ids.filtered(
-            lambda line: line.code == 'ADDITIONAL_DAY')
+        additional_lines = self._il_additional_day_lines()
         if (not additional_lines
                 or version.mdl_wage_rate_type != 'net'):
             return
-        if version.mdl_wage_type == 'mdl_monthly':
-            target_delta = (
-                self._il_worked_days_units('ADDITIONAL_DAY')
-                * version.mdl_additional_day_wage
+        if version.mdl_wage_type in ('mdl_monthly', 'mdl_daily'):
+            additional_hours = sum(additional_lines.mapped('number_of_hours'))
+            hours_per_day = (
+                self.company_id.mdl_shift_morning_hours
+                if version.resource_calendar_id.mdl_schedule_type == 'shifts'
+                else version.mdl_standard_day_hours
             )
-        elif version.mdl_wage_type == 'mdl_daily':
-            target_delta = float(self._il_currency_round_decimal(
-                _decimal(self._il_worked_days_hours('ADDITIONAL_DAY'))
-                * self._il_exact_hourly_rate()
-            ))
+            target_delta = (
+                float(self._il_currency_round_decimal(
+                    _decimal(additional_hours)
+                    * _decimal(version.mdl_additional_day_wage)
+                    / _decimal(hours_per_day)
+                )) if hours_per_day else 0.0
+            )
         else:
             return
         if not target_delta:
             return
 
         rounding = self._il_currency_rounding()
+        additional_code = self.company_id._mdl_additional_day_type().code
         sign = -1.0 if target_delta < 0 else 1.0
         target_delta = abs(target_delta)
-        self._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
+        self._il_set_worked_days_amount(additional_code, 0.0)
         base_net = self._il_compute_net_total()
         target_net = base_net + sign * target_delta
 
         def net_at(gross):
-            self._il_set_worked_days_amount('ADDITIONAL_DAY', sign * gross)
+            self._il_set_worked_days_amount(additional_code, sign * gross)
             return self._il_compute_net_total()
 
         low, high = 0.0, max(target_delta, rounding)
@@ -486,7 +490,7 @@ class HrPayslip(models.Model):
             high *= 2
             iterations += 1
         if sign * (net_at(high) - target_net) < 0:
-            self._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
+            self._il_set_worked_days_amount(additional_code, 0.0)
             raise ValidationError(_(
                 'לא ניתן לגלם את גמול היום הנוסף ליעד הנטו המבוקש. '
                 'יש לבדוק את חוקי השכר והפרמטרים הפעילים.'))
@@ -504,7 +508,7 @@ class HrPayslip(models.Model):
             best = mid
         self._il_refine_gross_at_currency_precision(
             lambda amount: self._il_set_worked_days_amount(
-                'ADDITIONAL_DAY', sign * amount),
+                additional_code, sign * amount),
             best,
             target_net,
         )
@@ -518,9 +522,9 @@ class HrPayslip(models.Model):
             for line in gross_up_lines:
                 line.amount = 0.0
             if (slip.version_id.mdl_wage_rate_type == 'net'
-                    and slip.worked_days_line_ids.filtered(
-                        lambda line: line.code == 'ADDITIONAL_DAY')):
-                slip._il_set_worked_days_amount('ADDITIONAL_DAY', 0.0)
+                    and slip._il_additional_day_lines()):
+                slip._il_set_worked_days_amount(
+                    slip.company_id._mdl_additional_day_type().code, 0.0)
             slip._il_gross_up_regular_attendance()
             slip._il_gross_up_additional_day()
             if not gross_up_lines:
@@ -907,7 +911,9 @@ class HrPayslip(models.Model):
     def _il_overtime_amount(self):
         self.ensure_one()
         overtime_worked_days = self.worked_days_line_ids.filtered(
-            lambda worked_day: worked_day.code == 'OVERTIME')
+            lambda worked_day: worked_day.code == 'OVERTIME'
+            and worked_day.work_entry_type_id
+            != self.company_id._mdl_additional_day_type())
         net_base_wage = not self._il_uses_gross_base_wage()
         if net_base_wage and self.env.context.get('il_solving_net_base_wage'):
             return 0.0
@@ -968,11 +974,16 @@ class HrPayslip(models.Model):
             fixed_adjustment += rule_amount - native_amount
         return normal_odoo_amount + fixed_adjustment
 
+    def _il_additional_day_lines(self):
+        self.ensure_one()
+        entry_type = self.company_id._mdl_additional_day_type()
+        return self.worked_days_line_ids.filtered(
+            lambda line: line.work_entry_type_id == entry_type)
+
     def _il_additional_day_amount(self):
         self.ensure_one()
         version = self.version_id
-        additional_lines = self.worked_days_line_ids.filtered(
-            lambda line: line.code == 'ADDITIONAL_DAY')
+        additional_lines = self._il_additional_day_lines()
         if not additional_lines:
             return 0.0
         # Daily workers already receive their calculated hourly/daily amount
@@ -983,7 +994,13 @@ class HrPayslip(models.Model):
             return sum(additional_lines.mapped('amount'))
         if not version.mdl_additional_day_wage:
             return 0.0
-        return self._il_worked_days_units('ADDITIONAL_DAY') * version.mdl_additional_day_wage
+        hours_per_day = (
+            self.company_id.mdl_shift_morning_hours
+            if version.resource_calendar_id.mdl_schedule_type == 'shifts'
+            else version.mdl_standard_day_hours
+        )
+        return (sum(additional_lines.mapped('number_of_hours')) / hours_per_day
+                * version.mdl_additional_day_wage if hours_per_day else 0.0)
 
     def _il_inputs_base(self, flag_field):
         """Sum of signed adjustment-input amounts participating in a base.

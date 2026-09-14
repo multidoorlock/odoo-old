@@ -211,6 +211,27 @@ class TestWorkEntryNormalization(TransactionCase):
         self.assertAlmostEqual(sum(value["duration"] for value in regular), 19.0)
         self.assertAlmostEqual(additional[0]["duration"], 9.5)
 
+    def test_configured_additional_day_type_is_generated(self):
+        entry_type = self.env['hr.work.entry.type'].create({
+            'name': 'Configured Extra Day',
+            'code': 'CONFIGURED_EXTRA_DAY',
+            'is_extra_hours': True,
+            'round_days': 'NO',
+        })
+        settings = self.env['res.config.settings'].create({
+            'company_id': self.company.id,
+            'mdl_additional_day_work_entry_type_id': entry_type.id,
+        })
+        settings.execute()
+        self.assertEqual(self.company._mdl_additional_day_type(), entry_type)
+        self._attendance(
+            datetime(2026, 1, 10, 6, 30),
+            datetime(2026, 1, 10, 16, 0),
+        )
+        values = self._values(date(2026, 1, 10), date(2026, 1, 11))
+        self.assertEqual([code for code, _value in values],
+                         ['CONFIGURED_EXTRA_DAY'])
+
     def test_daily_off_schedule_day_replaces_regular_work(self):
         # This suite exercises work-entry normalization rather than salary
         # category selection. Keep the existing category compatible with the

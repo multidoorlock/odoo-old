@@ -18,6 +18,12 @@
                             </group>
                         </div>
                     </setting>
+                    <setting string="סוג עבודה ליום נוסף" id="mdl_additional_day_work_entry_type"
+                             help="שעות בסוג עבודה זה יחושבו בתלוש לפי תעריף יום נוסף שהוגדר לעובד, לפי שעות העבודה וסוג השכר — ברוטו או נטו.">
+                        <field name="mdl_additional_day_work_entry_type_id"
+                               options="{'no_create': True}"
+                               domain="[('is_extra_hours', '=', True), ('is_leave', '=', False)]"/>
+                    </setting>
                 </block>
             </xpath>
         </field>

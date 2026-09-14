@@ -97,6 +97,29 @@ class TestWagePrecision(TransactionCase):
         )
         self.assertEqual(before, after)
 
+    def test_gross_additional_day_uses_configured_rate_and_actual_hours(self):
+        self.version.mdl_additional_day_wage = 475.0
+        entry_type = self.env['hr.work.entry.type'].create({
+            'name': 'Configured Extra Day',
+            'code': 'CONFIGURED_EXTRA_DAY',
+            'is_extra_hours': True,
+            'round_days': 'NO',
+        })
+        self.company.mdl_additional_day_work_entry_type_id = entry_type
+        self.payslip.write({
+            'worked_days_line_ids': [Command.create({
+                'work_entry_type_id': entry_type.id,
+                'number_of_hours': 4.75,
+                'number_of_days': 1.0,
+            })],
+        })
+        additional = self.payslip.worked_days_line_ids.filtered(
+            lambda line: line.work_entry_type_id == entry_type)
+        additional._compute_is_paid()
+        self.assertAlmostEqual(additional.amount, 237.50, places=2)
+        self.assertAlmostEqual(
+            self.payslip._il_additional_day_amount(), 237.50, places=2)
+
     def test_rounding_rules_are_retired_in_all_israeli_structures(self):
         structures = self.env['hr.payroll.structure'].search([
             ('code', 'in', [
@@ -766,6 +789,7 @@ class TestNetDailyWageGrossUp(TransactionCase):
             'mdl_wage_type': 'mdl_daily',
             'mdl_wage_rate_type': 'gross',
             'mdl_daily_wage': 400.0,
+            'mdl_additional_day_wage': 600.0,
         })
         employee.version_id.work_entry_source = 'attendance'
         self.env['hr.attendance'].create({
@@ -793,10 +817,18 @@ class TestNetDailyWageGrossUp(TransactionCase):
         by_code = {line.code: line.total for line in payslip.line_ids}
         self.assertAlmostEqual(by_code.get('BASIC', 0.0), 0.0, places=2)
         self.assertAlmostEqual(
-            by_code['IL_ADDITIONAL_DAY_GROSS'], 400.0, places=2)
-        self.assertAlmostEqual(by_code['GROSS'], 400.0, places=2)
+            by_code['IL_ADDITIONAL_DAY_GROSS'], 600.0, places=2)
+        self.assertAlmostEqual(by_code['GROSS'], 600.0, places=2)
 
     def test_net_daily_additional_day_is_grossed_up(self):
+        self.version.mdl_additional_day_wage = 475.0
+        entry_type = self.env['hr.work.entry.type'].create({
+            'name': 'Configured Net Extra Day',
+            'code': 'CONFIGURED_NET_EXTRA_DAY',
+            'is_extra_hours': True,
+            'round_days': 'NO',
+        })
+        self.company.mdl_additional_day_work_entry_type_id = entry_type
         regular = self._create_payslip()
         regular._il_run_gross_up_engine()
         regular_net = regular._il_compute_net_total()
@@ -804,9 +836,8 @@ class TestNetDailyWageGrossUp(TransactionCase):
         payslip = self._create_payslip()
         payslip.write({
             'worked_days_line_ids': [Command.create({
-                'work_entry_type_id': self.env.ref(
-                    'l10n_il_hr_payroll.work_entry_type_additional_day').id,
-                'number_of_hours': 9.5,
+                'work_entry_type_id': entry_type.id,
+                'number_of_hours': 4.75,
                 'number_of_days': 1.0,
             })],
         })
@@ -817,9 +848,9 @@ class TestNetDailyWageGrossUp(TransactionCase):
             for line in payslip._get_payslip_lines()
         }
 
-        self.assertGreater(by_code['IL_ADDITIONAL_DAY_GROSS'], 250.0)
+        self.assertGreater(by_code['IL_ADDITIONAL_DAY_GROSS'], 237.50)
         self.assertAlmostEqual(
-            by_code['NET'], regular_net + 250.0,
+            by_code['NET'], regular_net + 237.50,
             delta=payslip.currency_id.rounding,
         )
 
