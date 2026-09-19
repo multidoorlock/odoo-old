@@ -70,6 +70,8 @@ msgstr "مجموعة المنتجات"
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_blocked_variant_preview_list_view
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_name
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_group_default_name
 msgid "Product Group Name"
 msgstr "اسم مجموعة المنتجات"
 
@@ -1007,11 +1009,6 @@ msgid "A product name override must be text."
 msgstr "يجب أن يكون اسم المنتج المخصص نصًا."
 
 #. module: mdl_product_groups_attributes
-#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_name
-msgid "Source Product Group Name"
-msgstr "اسم مجموعة المنتجات الأصلي"
-
-#. module: mdl_product_groups_attributes
 #: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_default_sku
 msgid "Source Product Group SKU"
 msgstr "رمز مجموعة المنتجات الأصلي"
@@ -1099,3 +1096,49 @@ msgstr "حفظ"
 #: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
 msgid "Cancel"
 msgstr "إلغاء"
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_template__mdl_group_default_name
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_product__mdl_group_default_name
+msgid "The only shared base for automatic product names, followed by the configured attribute text. The template title is independent. Translate this field to name products in each language."
+msgstr "الأساس المشترك الوحيد لأسماء المنتجات التلقائية، ويليه نص الخصائص الذي تم إعداده. عنوان القالب مستقل. ترجم هذا الحقل لتحديد أسماء المنتجات بكل لغة."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_template__mdl_group_name_value
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_product__mdl_group_name_value
+msgid "The group name used in automatic product names. Editing changes Product Group Name directly."
+msgstr "اسم المجموعة المستخدم في أسماء المنتجات التلقائية. يؤدي تعديله إلى تغيير اسم مجموعة المنتجات مباشرة."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_template__mdl_effective_base_name
+#: model:ir.model.fields,help:mdl_product_groups_attributes.field_product_product__mdl_effective_base_name
+msgid "The Product Group Name before attribute text. The template title and legacy name overrides do not affect this value."
+msgstr "اسم مجموعة المنتجات قبل نص الخصائص. لا يؤثر عنوان القالب أو تخصيصات الأسماء القديمة على هذه القيمة."
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_form
+msgid "The template title is for display only. Automatic product names use Product Group Name followed by the configured attribute text, in each language."
+msgstr "عنوان القالب للعرض فقط. تستخدم أسماء المنتجات التلقائية اسم مجموعة المنتجات متبوعًا بنص الخصائص الذي تم إعداده، بكل لغة."
+
+#. module: mdl_product_groups_attributes
+#: model_terms:ir.ui.view,arch_db:mdl_product_groups_attributes.mdl_product_template_name_sku_controls
+msgid "Display title of the product group. Automatic product names use Product Group Name below."
+msgstr "عنوان العرض لمجموعة المنتجات. تستخدم أسماء المنتجات التلقائية حقل اسم مجموعة المنتجات أدناه."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template_attribute_value.py:0
+msgid "Attribute text translations must be a language-to-text mapping."
+msgstr "يجب أن تربط ترجمات نص الخاصية كل لغة بالنص الخاص بها."
+
+#. module: mdl_product_groups_attributes
+#. odoo-python
+#: code:addons/mdl_product_groups_attributes/models/product_template_attribute_value.py:0
+msgid "Activate the language before adding an attribute text translation."
+msgstr "فعّل اللغة قبل إضافة ترجمة لنص الخاصية."
+
+#. module: mdl_product_groups_attributes
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_template__mdl_group_name_value
+#: model:ir.model.fields,field_description:mdl_product_groups_attributes.field_product_product__mdl_group_name_value
+msgid "Product Group Name (Compatibility)"
+msgstr "اسم مجموعة المنتجات (التوافق)"
