@@ -7,6 +7,3 @@ from . import test_variant_name_override
 from . import test_sale_selector
 from . import test_group_name_edit
 from . import test_name_overrides_ui
-from . import test_attribute_text_translation
-from . import test_display_title_isolation
-from . import test_name_source_migration

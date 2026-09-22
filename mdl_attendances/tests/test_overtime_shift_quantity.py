@@ -94,6 +94,13 @@ class TestOvertimeShiftQuantity(TransactionCase):
                 attendances._update_overtime()
                 self._assert_hours(attendances, 11, 2)
 
+    def test_deleting_last_attendance_clears_its_overtime(self):
+        attendance = self._attendances([(7, 18)])
+        overtime_lines = attendance.linked_overtime_ids
+        self.assertTrue(overtime_lines)
+        attendance.unlink()
+        self.assertFalse(overtime_lines.exists())
+
     def test_non_work_segments_and_repeated_generation(self):
         for breaks, effective, overtime in [([(9, 12)], 9, 0), ([(9, 10)], 11, 2), ([(12, 13)], 11, 2)]:
             with self.subTest(breaks=breaks):

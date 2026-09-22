@@ -1,5 +1,4 @@
-from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo import api, fields, models
 
 from .catalog_utils import clean_text
 
@@ -43,7 +42,6 @@ class ProductTemplateAttributeValue(models.Model):
         string="Group Text",
         compute="_compute_mdl_name_component_value",
         inverse="_inverse_mdl_name_component_value",
-        translate=True,
         help=(
             "The text displayed in this group. Editing affects only this "
             "group; reset restores the attribute value name."
@@ -104,79 +102,10 @@ class ProductTemplateAttributeValue(models.Model):
                 value.product_attribute_value_id.name,
                 value.mdl_name_component_value,
             )
-            if clean_text(value.mdl_name_component_override) != clean_text(override):
-                value.with_context(skip_mdl_catalog_sync=True)._update_field_translations(
-                    "mdl_name_component_value",
-                    {self.env.lang or "en_US": value.mdl_name_component_value},
+            if value.mdl_name_component_override != override:
+                value.with_context(skip_mdl_catalog_sync=True).write(
+                    {"mdl_name_component_override": override}
                 )
-
-    def get_field_translations(self, field_name, langs=None):
-        if field_name != "mdl_name_component_value":
-            return super().get_field_translations(field_name, langs=langs)
-        self.ensure_one()
-        self.check_access("read")
-        self._check_field_access(self._fields[field_name], "read")
-        langs = langs or [code for code, _name in self.env["res.lang"].get_installed()]
-        return [
-            {
-                "lang": lang,
-                "source": "",
-                "value": self.with_context(lang=lang).mdl_name_component_value,
-            }
-            for lang in sorted(set(langs))
-        ], {"translation_type": "char", "translation_show_source": False}
-
-    def _update_field_translations(self, field_name, translations, digest=None, source_lang=""):
-        if field_name not in ("mdl_name_component_value", "mdl_name_component_override"):
-            return super()._update_field_translations(
-                field_name, translations, digest=digest, source_lang=source_lang,
-            )
-        self.ensure_one()
-        self.check_access("write")
-        self._check_field_access(self._fields[field_name], "write")
-        installed = {code for code, _name in self.env["res.lang"].get_installed()} | {"en_US"}
-        if not isinstance(translations, dict) or any(
-            value is not None and value is not False and not isinstance(value, str)
-            for value in translations.values()
-        ):
-            raise ValidationError(_("Attribute text translations must be a language-to-text mapping."))
-        if (set(translations) | {source_lang or "en_US"}) - installed:
-            raise ValidationError(_("Activate the language before adding an attribute text translation."))
-        if not translations:
-            return True
-        updates = {}
-        for lang, text in translations.items():
-            value = self.with_context(lang=lang)
-            if field_name == "mdl_name_component_value":
-                text = self._override_from_effective_value(
-                    value.product_attribute_value_id.name, text,
-                )
-            # Empty text in an override restores this language's source. A
-            # False translated Char would clear every stored language instead.
-            updates[lang] = clean_text(text)
-        override_field = self._fields["mdl_name_component_override"]
-        previous = override_field._get_stored_translations(self) or {}
-        if not previous or "en_US" in updates:
-            # Odoo fills a missing English base from the first translation.
-            # Preserve every untouched installed language's existing fallback
-            # when the first override or its English value is edited.
-            for lang in installed - updates.keys():
-                if lang not in previous:
-                    updates[lang] = previous.get("en_US", "")
-        result = super(
-            ProductTemplateAttributeValue,
-            self.with_context(skip_mdl_catalog_sync=True),
-        )._update_field_translations(
-            "mdl_name_component_override", updates, digest=digest,
-            source_lang=source_lang,
-        )
-        self.invalidate_recordset(["mdl_name_component_value"])
-        if result and not self.env.context.get("skip_mdl_catalog_sync"):
-            for lang in translations:
-                template = self.product_tmpl_id.with_context(lang=lang)
-                template._mdl_ensure_full_model_names()
-                template._mdl_sync_variant_codes()
-        return result
 
     @api.depends(
         "product_attribute_value_id.mdl_sku_component",
@@ -252,10 +181,6 @@ class ProductTemplateAttributeValue(models.Model):
             if field_name in vals:
                 vals[field_name] = clean_text(vals[field_name])
         result = super().write(vals)
-        if "mdl_name_component_value" in vals:
-            # Discard the inverse's protected cache, including a False value
-            # that would otherwise mark this translated field empty in all langs.
-            self.invalidate_recordset(["mdl_name_component_value"])
         if reactivated_rules:
             # Odoo may clear the native pair representation while a PTAV is
             # unavailable.  The MDL combination remains the source of truth,
@@ -313,14 +238,15 @@ class ProductTemplateAttributeValue(models.Model):
         return result
 
     def action_mdl_reset_components(self):
-        self.action_mdl_reset_name_component()
-        self.action_mdl_reset_sku_component()
+        self.write(
+            {
+                "mdl_name_component_override": False,
+                "mdl_sku_component_override": False,
+            }
+        )
 
     def action_mdl_reset_name_component(self):
-        for value in self:
-            value._update_field_translations(
-                "mdl_name_component_override", {self.env.lang or "en_US": ""},
-            )
+        self.write({"mdl_name_component_override": False})
 
     def action_mdl_reset_sku_component(self):
         self.write({"mdl_sku_component_override": False})

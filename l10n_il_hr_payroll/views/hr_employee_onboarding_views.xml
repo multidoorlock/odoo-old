@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_employee_onboarding" model="ir.ui.view">
+        <field name="name">hr.employee.onboarding.israel</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="העסקה" name="israeli_onboarding">
+                    <div class="mb-4">
+                        <h2>השלמת העסקה</h2>
+                        <p class="text-muted">הדברים שצריך לבצע להשלמת העסקת העובד, מה שבוצע מסומן ב-V</p>
+                    </div>
+                    <div class="d-flex flex-column gap-2 w-100">
+                        <div class="card p-3 w-100">
+                            <div class="d-flex align-items-center gap-3">
+                                <field name="onboarding_form_101_done" widget="boolean" readonly="1" nolabel="1"/>
+                                <div class="flex-grow-1"><strong>טופס 101</strong><br/><span class="text-muted">נדרש טופס 101 פעיל.</span></div>
+                                <field name="onboarding_form_101_id" readonly="1" nolabel="1" options="{'no_open': False}" invisible="not onboarding_form_101_id"/>
+                                <button name="action_configure_onboarding_form_101" type="object" string="הגדר" class="btn-primary" invisible="onboarding_form_101_done"/>
+                            </div>
+                        </div>
+                        <div class="card p-3 w-100">
+                            <div class="d-flex align-items-center gap-3">
+                                <field name="onboarding_section_14_done" widget="boolean" readonly="1" nolabel="1"/>
+                                <div class="flex-grow-1"><strong>סעיף 14</strong><br/><span class="text-muted">נדרשים סטטוס פעיל וקובץ חתום.</span></div>
+                                <field name="onboarding_section_14_id" readonly="1" nolabel="1" options="{'no_open': False}" invisible="not onboarding_section_14_id"/>
+                                <button name="action_configure_onboarding_section_14" type="object" string="הגדר" class="btn-primary" invisible="onboarding_section_14_done"/>
+                            </div>
+                        </div>
+                        <div class="card p-3 w-100">
+                            <div class="d-flex align-items-center gap-3">
+                                <field name="onboarding_employee_fields_done" widget="boolean" readonly="1" nolabel="1"/>
+                                <div class="flex-grow-1"><strong>השלמת שדות עובד</strong><br/><span class="text-muted">שם, תמונה, דוא״ל וטלפון.</span></div>
+                                <button name="action_configure_onboarding_employee_fields" type="object" string="הגדר" class="btn-primary" invisible="onboarding_employee_fields_done"/>
+                            </div>
+                        </div>
+                        <div class="card p-3 w-100">
+                            <div class="d-flex align-items-center gap-3">
+                                <field name="onboarding_odoo_user_done" widget="boolean" readonly="1" nolabel="1"/>
+                                <div class="flex-grow-1"><strong>משתמש ב־Odoo</strong><br/><span class="text-muted">משתמש עם אותו דוא״ל והרשאה לחברת העובד.</span></div>
+                                <field name="onboarding_user_id" readonly="1" nolabel="1" options="{'no_open': False}" invisible="not onboarding_user_id"/>
+                                <button name="action_configure_onboarding_user" type="object" string="הגדר" class="btn-primary" invisible="onboarding_odoo_user_done"/>
+                            </div>
+                        </div>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_hr_employee_section_14_company" model="ir.rule">
+        <field name="name">סעיף 14 לפי חברה</field>
+        <field name="model_id" ref="model_hr_employee_section_14"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+    </record>
+</odoo>

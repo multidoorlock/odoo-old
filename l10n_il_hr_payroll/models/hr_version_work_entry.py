@@ -24,7 +24,7 @@ class HrVersion(models.Model):
             lambda v: v.work_entry_source == 'attendance' and v.resource_calendar_id)
         # Calendar-based versions keep Odoo's planned WORK100 entries.  We
         # additionally inspect real clockings and append only off-schedule or
-        # quota-excess ADDITIONAL_DAY entries.  This is a
+        # quota-excess entries of the configured additional-day type.  This is a
         # hybrid layer: the calendar remains the source of regular work and
         # attendance is solely the evidence for an actually worked extra day.
         calendar_additional_versions = self.sudo().filtered(
@@ -54,9 +54,8 @@ class HrVersion(models.Model):
                 if version.date_generated_to < generated_to:
                     version.date_generated_to = generated_to
 
-        type_additional = self.env.ref(
-            'l10n_il_hr_payroll.work_entry_type_additional_day')
         for version in calendar_additional_versions:
+            type_additional = version.company_id._mdl_additional_day_type()
             # Remember the complete requested period even when the calendar
             # has no planned row and no extra attendance on a particular day
             # yet.  A clocking entered later inside that period must trigger
@@ -250,7 +249,7 @@ class HrVersion(models.Model):
 
         type_regular = self.env.ref('hr_work_entry.work_entry_type_attendance')
         type_overtime = self.env.ref('hr_work_entry.work_entry_type_overtime')
-        type_additional = self.env.ref('l10n_il_hr_payroll.work_entry_type_additional_day')
+        type_additional = self.company_id._mdl_additional_day_type()
         type_sleep = self.env.ref('l10n_il_hr_payroll.work_entry_type_sleep')
         type_absence = self.env.ref('l10n_il_hr_payroll.work_entry_type_unpaid_absence')
         category_types = {

@@ -60,10 +60,19 @@ class HrAttendance(models.Model):
         return Domain.OR(domains)
 
     def _update_overtime(self, attendance_domain=None):
-        domain = attendance_domain or self._get_overtimes_to_update_domain()
-        domain = self._mdl_whole_shift_attendance_domain(domain)
+        base_domain = attendance_domain or self._get_overtimes_to_update_domain()
+        expanded_domain = self._mdl_whole_shift_attendance_domain(base_domain)
+        affected_attendances = (self.exists() | self.search(expanded_domain)).filtered('check_out')
+        # Odoo 19 uses the same employee/date domain for attendance and
+        # overtime lines.  The whole-shift domain also contains check_in,
+        # which is not a field on overtime lines, so derive a shared domain
+        # from the affected attendances while retaining the original domain
+        # (needed when the last attendance of a day was deleted).
+        overtime_domain = Domain.OR([
+            base_domain,
+            affected_attendances._get_overtimes_to_update_domain(),
+        ])
         line_model = self.env['hr.attendance.overtime.line']
-        overtime_domain = self._get_overtime_domain_from_attendance_domain(domain)
         previous = line_model.search(overtime_domain)
         restore_default = set()
         for key, lines in previous.grouped(lambda line: (line.employee_id.id, line.date)).items():
@@ -72,7 +81,7 @@ class HrAttendance(models.Model):
                     and all(line.status == 'approved' and not line._mdl_has_manual_duration_override()
                             for line in lines)):
                 restore_default.add(key)
-        result = super()._update_overtime(attendance_domain=domain)
+        result = super()._update_overtime(attendance_domain=overtime_domain)
         if restore_default:
             # Native regeneration sees rounded manual_duration != raw duration
             # as a human edit. Restore only the automatic company's default;
@@ -84,7 +93,7 @@ class HrAttendance(models.Model):
                 and any(line.rule_ids.mapped('mdl_shift_rounding_threshold_minutes'))
                 and not line._mdl_has_manual_duration_override()
             ).write({'status': 'approved'})
-        (self.exists() | self.search(domain))._mdl_sync_shift_overtime_marks()
+        affected_attendances._mdl_sync_shift_overtime_marks()
         return result
 
     def _mdl_sync_shift_overtime_marks(self):

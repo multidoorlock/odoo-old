@@ -23,39 +23,6 @@ def clean_text(value):
     return " ".join(str(value).split())
 
 
-def snapshot_other_name_languages(records, field_names):
-    """Remember resolved name inputs outside an ordinary write's language.
-
-    A direct English edit can change untranslated languages through fallback,
-    while stored computed product names retain their old translations. Compare
-    source text rather than language keys so explicit translations stay intact.
-    """
-    if not records or not field_names or records.env.context.get("skip_mdl_catalog_sync"):
-        return {}
-    languages = {code for code, _name in records.env["res.lang"].get_installed()} | {"en_US"}
-    languages.discard(records.env.lang or "en_US")
-    return {
-        lang: {
-            record.id: {field: record[field] or "" for field in field_names}
-            for record in records.with_context(lang=lang)
-        }
-        for lang in languages
-    }
-
-
-def changed_name_language_records(records, previous):
-    """Yield each affected recordset in the language requiring a refresh."""
-    for lang, values_by_id in previous.items():
-        changed = records.with_context(lang=lang).filtered(
-            lambda record: any(
-                (record[field] or "") != old_value
-                for field, old_value in values_by_id[record.id].items()
-            )
-        )
-        if changed:
-            yield changed
-
-
 def normalize_token(value):
     return clean_text(value).casefold()
 

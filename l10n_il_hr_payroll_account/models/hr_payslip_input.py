@@ -15,6 +15,7 @@ class HrPayslipInput(models.Model):
     il_effect_type = fields.Selection([
         ('gross', 'ברוטו'),
         ('net', 'נטו'),
+        ('taxable_benefit', 'שווי חייב (לא משולם)'),
     ], string='סוג השפעה')
     il_adjustment_direction = fields.Selection([
         ('positive', 'חיובי'),

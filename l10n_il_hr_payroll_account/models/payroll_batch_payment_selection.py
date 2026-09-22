@@ -6,6 +6,39 @@ from odoo.tools.safe_eval import safe_eval
 class AccountBatchPayment(models.Model):
     _inherit = 'account.batch.payment'
 
+    @api.constrains('batch_type', 'journal_id', 'payment_ids', 'payment_method_id')
+    def _check_payments_constrains(self):
+        """Allow mixed accounting-entry states in employee batches only.
+
+        Odoo's native constraint rejects a batch containing both payments
+        with a journal entry and payments without one.  Employee payment
+        batches are also used as an operational grouping, so that restriction
+        is intentionally relaxed while every other native consistency check
+        remains enforced.
+        """
+        standard_batches = self.filtered(lambda batch: not batch.il_is_employee_batch)
+        if standard_batches:
+            super(AccountBatchPayment, standard_batches)._check_payments_constrains()
+
+        for record in self - standard_batches:
+            if record.payment_ids and record.journal_id != record.payment_ids.journal_id:
+                raise ValidationError(_(
+                    'The journal of the batch payment and of the payments it contains must be the same.'))
+            all_types = set(record.payment_ids.mapped('payment_type'))
+            if all_types and record.batch_type not in all_types:
+                raise ValidationError(_(
+                    'The batch must have the same type as the payments it contains.'))
+            all_payment_methods = record.payment_ids.payment_method_id
+            if len(all_payment_methods) > 1:
+                raise ValidationError(_(
+                    'All payments in the batch must share the same payment method.'))
+            if all_payment_methods and record.payment_method_id not in all_payment_methods:
+                raise ValidationError(_(
+                    'The batch must have the same payment method as the payments it contains.'))
+            if record.payment_ids.filtered(lambda payment: payment.amount == 0):
+                raise ValidationError(_(
+                    'You cannot add payments with zero amount in a Batch Payment.'))
+
     def _il_check_can_add_employee_payments(self):
         self.ensure_one()
         if not self.env.user.has_group('hr_payroll.group_hr_payroll_user'):
@@ -29,9 +62,6 @@ class AccountBatchPayment(models.Model):
             ('company_id', '=', self.company_id.id),
             ('il_is_employee_payment', '=', True),
         ]
-        if self.payment_ids:
-            # Odoo disallows mixing payments with and without entries.
-            domain.append(('move_id', '!=' if self.payment_ids.move_id else '=', False))
         return domain
 
     def action_il_add_existing_payments(self):

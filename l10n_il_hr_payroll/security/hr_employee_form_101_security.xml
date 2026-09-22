@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_hr_employee_form_101_company" model="ir.rule">
+        <field name="name">טופס 101 לפי חברות מורשות</field>
+        <field name="model_id" ref="model_hr_employee_form_101"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+    </record>
+    <record id="rule_hr_employee_form_101_child_company" model="ir.rule">
+        <field name="name">ילדי טופס 101 לפי חברות מורשות</field>
+        <field name="model_id" ref="model_hr_employee_form_101_child"/>
+        <field name="domain_force">[('form_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+    </record>
+    <record id="rule_hr_employee_form_101_other_employer_company" model="ir.rule">
+        <field name="name">מעסיקים נוספים בטופס 101 לפי חברות מורשות</field>
+        <field name="model_id" ref="model_hr_employee_form_101_other_employer"/>
+        <field name="domain_force">[('form_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+    </record>
+</odoo>

@@ -133,6 +133,74 @@ class TestEmployeeBatchPaymentSelection(TransactionCase):
         self.assertEqual(batch.payment_ids, payment)
         self.assertEqual(self.env['account.payment'].search_count([]), before_count)
 
+    def test_employee_batch_allows_payments_with_and_without_entries(self):
+        posted = self._payment(100.0)
+        without_entry = self._payment(200.0, post=False)
+        batch = self._batch(posted | without_entry)
+        additional = self._payment(300.0)
+
+        self._select(batch, additional)
+
+        self.assertEqual(
+            set(batch.payment_ids.ids),
+            set((posted | without_entry | additional).ids),
+        )
+        self.assertEqual(len(batch.payment_ids.filtered('move_id')), 2)
+        self.assertEqual(len(batch.payment_ids.filtered(lambda payment: not payment.move_id)), 1)
+
+    def test_standard_batch_still_rejects_mixed_entry_states(self):
+        vendor = self.env['res.partner'].create({
+            'name': 'Standard Batch Vendor',
+            'supplier_rank': 1,
+        })
+        payment_values = {
+            'partner_id': vendor.id,
+            'company_id': self.company.id,
+            'payment_type': 'outbound',
+            'partner_type': 'supplier',
+            'journal_id': self.bank_journal.id,
+            'date': date(2026, 8, 1),
+        }
+        posted = self.env['account.payment'].create({
+            **payment_values,
+            'amount': 100.0,
+        })
+        payment_move = self.env['account.move'].create({
+            'move_type': 'entry',
+            'journal_id': self.bank_journal.id,
+            'date': date(2026, 8, 1),
+            'line_ids': [
+                Command.create({
+                    'name': 'Standard batch test debit',
+                    'account_id': self.company.il_employee_payment_debit_account_id.id,
+                    'debit': 100.0,
+                }),
+                Command.create({
+                    'name': 'Standard batch test credit',
+                    'account_id': self.company.il_employee_payment_credit_account_id.id,
+                    'credit': 100.0,
+                }),
+            ],
+        })
+        posted.move_id = payment_move
+        without_entry = self.env['account.payment'].create({
+            **payment_values,
+            'amount': 200.0,
+        })
+
+        self.assertTrue(posted.move_id)
+        self.assertFalse(without_entry.move_id)
+        self.assertFalse(any((posted | without_entry).mapped('il_is_employee_payment')))
+
+        with self.assertRaisesRegex(ValidationError, 'entry or not at all'):
+            self.env['account.batch.payment'].create({
+                'name': 'Standard mixed batch',
+                'date': date(2026, 8, 1),
+                'journal_id': self.bank_journal.id,
+                'batch_type': 'outbound',
+                'payment_ids': [Command.set((posted | without_entry).ids)],
+            })
+
     def test_stale_assignment_rejects_entire_selection_and_duplicate_replay(self):
         current = self._payment(100.0)
         batch = self._batch(current)

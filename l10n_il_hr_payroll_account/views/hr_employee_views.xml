@@ -46,6 +46,7 @@
                 <group invisible="not il_is_israel_payroll">
                     <group string="פרטים אישיים לשכר" name="il_personal">
                         <field name="il_tax_credit_points"/>
+                        <field name="il_monthly_tax_credit_adjustment"/>
                         <field name="il_primary_employer"/>
                         <field name="il_tax_coordination"/>
                         <field name="il_tax_coordination_valid_from"
@@ -54,6 +55,9 @@
                                invisible="not il_tax_coordination"/>
                         <field name="il_employment_sector"/>
                         <field name="il_pal_organization_tax"/>
+                        <field name="il_ni_full_rate_from_first_shekel"/>
+                        <field name="il_national_insurance_exempt"/>
+                        <field name="il_health_insurance_exempt"/>
                     </group>
                     <group string="הפרשות סוציאליות" name="il_social">
                         <field name="il_pension_enabled"/>
@@ -61,6 +65,7 @@
                         <field name="il_employee_pension_rate" invisible="not il_pension_enabled"/>
                         <field name="il_employer_pension_rate" invisible="not il_pension_enabled"/>
                         <field name="il_severance_rate" invisible="not il_pension_enabled"/>
+                        <field name="il_pension_insured_wage" invisible="not il_pension_enabled"/>
                         <field name="il_study_fund_enabled"/>
                         <field name="il_employee_study_fund_rate" invisible="not il_study_fund_enabled"/>
                         <field name="il_employer_study_fund_rate" invisible="not il_study_fund_enabled"/>
