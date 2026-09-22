@@ -77,7 +77,7 @@ class ProductProduct(models.Model):
     @api.depends(
         "product_tmpl_id.mdl_catalog_managed",
         "product_tmpl_id.mdl_sku_prefix",
-        "product_tmpl_id.mdl_effective_base_name",
+        "product_tmpl_id.mdl_group_default_name",
         "product_tmpl_id.mdl_name_suffix",
         "product_tmpl_id.attribute_line_ids.sequence",
         "product_tmpl_id.attribute_line_ids.mdl_name_suffix",
@@ -95,7 +95,9 @@ class ProductProduct(models.Model):
             _sku, name, _missing = template._mdl_render_catalog_values(
                 product.product_template_attribute_value_ids
             )
-            product.mdl_generated_name = name or False
+            # False on a translated Char clears every language. A managed
+            # product may deliberately have no configured name in this one.
+            product.mdl_generated_name = name or ""
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -182,6 +184,7 @@ class ProductProduct(models.Model):
         "product_tmpl_id",
         "mdl_generated_name",
         "mdl_name_overrides",
+        "product_tmpl_id.mdl_group_default_name",
         "product_tmpl_id.mdl_catalog_managed",
         "product_tmpl_id.mdl_sku_prefix",
     )
@@ -250,18 +253,14 @@ class ProductProduct(models.Model):
                     product.product_template_attribute_value_ids
                 )
             )
-            final_name = (
-                product.mdl_name_override or generated_name
-                or product.mdl_generated_name
-            )
+            # Keep an intentionally empty configured name empty. Falling back
+            # to the native label would reintroduce the unrelated group title.
+            final_name = product.mdl_name_override or generated_name or ""
             final_sku = (
                 generated_sku
                 if generated_sku and not missing
                 else product.default_code
             )
-            if not final_name:
-                continue
-
             # ``formatted_display_name`` is an Odoo web-client protocol, not
             # a request to fall back to the native template/attribute label.
             # The sales many2one widget splits this exact tab/marker format
@@ -285,7 +284,7 @@ class ProductProduct(models.Model):
                 product.display_name = (
                     display_name
                     if display_name and not missing
-                    else f"{ltr_isolate(f'[{final_sku}]')} {final_name}"
+                    else clean_text(f"{ltr_isolate(f'[{final_sku}]')} {final_name}")
                 )
             else:
                 product.display_name = final_name
