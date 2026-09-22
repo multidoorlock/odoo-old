@@ -141,6 +141,344 @@ class TestWagePrecision(TransactionCase):
             self.assertFalse(structure.rule_ids.filtered(
                 lambda rule: rule.code == 'IL_ADJUSTMENT_NET_DIRECT' and rule.active))
 
+    def test_all_four_structures_have_the_same_active_rule_codes(self):
+        structures = self.env['hr.payroll.structure'].search([
+            ('code', 'in', [
+                'IL_ISR_MONTHLY', 'IL_PAL_MONTHLY',
+                'IL_ISR_DAILY', 'IL_PAL_DAILY',
+            ]),
+        ]).sorted('code')
+        expected = set(structures[0].rule_ids.filtered('active').mapped('code'))
+        self.assertTrue(expected)
+        for structure in structures[1:]:
+            self.assertEqual(
+                set(structure.rule_ids.filtered('active').mapped('code')),
+                expected,
+                structure.code,
+            )
+        self.assertIn('IL_ISR_INCOME_TAX', expected)
+        self.assertIn('IL_PAL_INCOME_TAX', expected)
+        self.assertFalse(any(code.startswith('IL_FOR_') for code in expected))
+        self.assertFalse({
+            'ASSIG_SALARY', 'ATTACH_SALARY', 'CHILD_SUPPORT',
+            'DEDUCTION', 'REIMBURSEMENT',
+        } & expected)
+
+    def test_existing_structure_and_rule_are_adopted_when_xmlids_are_missing(self):
+        module = 'l10n_il_hr_payroll_account'
+        structure = self.env.ref(
+            f'{module}.hr_payroll_structure_il')
+        basic = self.env.ref(f'{module}.hr_salary_rule_il_basic')
+        xml_names = (
+            'hr_payroll_structure_il',
+            'hr_salary_rule_il_basic',
+        )
+        self.env['ir.model.data'].search([
+            ('module', '=', module), ('name', 'in', xml_names),
+        ]).unlink()
+
+        self.env['hr.payroll.structure']._il_bind_existing_structure_xmlids()
+
+        self.assertEqual(
+            self.env.ref(f'{module}.hr_payroll_structure_il'), structure)
+        self.assertEqual(
+            self.env.ref(f'{module}.hr_salary_rule_il_basic'), basic)
+
+    def test_structure_sync_replaces_changed_and_unneeded_rules(self):
+        template = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il')
+        target = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_daily')
+        template_basic = template.rule_ids.filtered(
+            lambda rule: rule.code == 'BASIC')
+        target_basic = target.rule_ids.filtered(
+            lambda rule: rule.code == 'BASIC')
+        target_basic.write({
+            'name': 'Wrong rule',
+            'amount_python_compute': 'result = 123456',
+        })
+        obsolete = self.env['hr.salary.rule'].create({
+            'name': 'Obsolete custom rule',
+            'code': 'IL_OBSOLETE_CUSTOM',
+            'sequence': 999,
+            'category_id': self.env.ref('hr_payroll.BASIC').id,
+            'struct_id': target.id,
+            'condition_select': 'none',
+            'amount_select': 'fix',
+            'amount_fix': 1.0,
+        })
+
+        self.env['hr.payroll.structure']._il_sync_structures_and_rules()
+
+        self.assertFalse(obsolete.exists())
+        target_basic = target.rule_ids.filtered(lambda rule: rule.code == 'BASIC')
+        self.assertEqual(len(target_basic), 1)
+        self.assertEqual(target_basic.name, template_basic.name)
+        self.assertEqual(
+            target_basic.amount_python_compute,
+            template_basic.amount_python_compute,
+        )
+
+    def test_palestinian_insurance_matches_supplied_payslip_rates(self):
+        self.assertEqual(
+            self.payslip._rule_parameter('IL_TAX_BRACKET_3_LIMIT'), 19000)
+        self.assertEqual(
+            self.payslip._rule_parameter('IL_TAX_BRACKET_4_LIMIT'), 25100)
+        self.assertAlmostEqual(
+            self.payslip._il_ni_amount(
+                6716.46, 'PAL',
+                'IL_PAL_NI_EE_REDUCED_RATE',
+                'IL_PAL_NI_EE_FULL_RATE'),
+            4.701522,
+            places=6,
+        )
+        self.assertAlmostEqual(
+            self.payslip._il_ni_amount(
+                10975.59, 'PAL',
+                'IL_PAL_NI_EE_REDUCED_RATE',
+                'IL_PAL_NI_EE_FULL_RATE'),
+            25.354899,
+            places=6,
+        )
+
+    def test_israeli_insurance_profile_rates_and_exemptions(self):
+        self.version.write({
+            'il_ni_full_rate_from_first_shekel': False,
+            'il_national_insurance_exempt': False,
+            'il_health_insurance_exempt': False,
+        })
+        self.assertAlmostEqual(self.payslip._il_ni_amount(
+            10807.85, 'ISR', 'IL_ISR_NI_EE_REDUCED_RATE',
+            'IL_ISR_NI_EE_FULL_RATE'), 297.45, places=2)
+        self.assertAlmostEqual(self.payslip._il_ni_amount(
+            10807.85, 'ISR', 'IL_ISR_HEALTH_REDUCED_RATE',
+            'IL_ISR_HEALTH_FULL_RATE'), 409.327645, places=6)
+        self.version.il_ni_full_rate_from_first_shekel = True
+        self.assertAlmostEqual(self.payslip._il_ni_amount(
+            9793.0, 'ISR', 'IL_ISR_NI_EE_REDUCED_RATE',
+            'IL_ISR_NI_EE_FULL_RATE'), 685.51, places=2)
+        self.assertAlmostEqual(self.payslip._il_ni_amount(
+            9793.0, 'ISR', 'IL_ISR_HEALTH_REDUCED_RATE',
+            'IL_ISR_HEALTH_FULL_RATE'), 506.30, places=2)
+
+        self.version.write({
+            'il_national_insurance_exempt': True,
+            'il_health_insurance_exempt': True,
+        })
+        self.assertEqual(self.payslip._il_ni_amount(
+            9793.0, 'ISR', 'IL_ISR_NI_EE_REDUCED_RATE',
+            'IL_ISR_NI_EE_FULL_RATE'), 0.0)
+        self.assertEqual(self.payslip._il_ni_amount(
+            9793.0, 'ISR', 'IL_ISR_HEALTH_REDUCED_RATE',
+            'IL_ISR_HEALTH_FULL_RATE'), 0.0)
+
+    def test_taxable_benefit_changes_bases_without_changing_gross(self):
+        input_type = self.env.ref(
+            'l10n_il_hr_payroll_account.input_type_il_adj_bonus')
+        attachment = self.env['hr.salary.attachment'].create({
+            'employee_ids': [self.employee.id],
+            'description': 'Non-cash taxable benefit',
+            'other_input_type_id': input_type.id,
+            'duration_type': 'unlimited',
+            'date_start': date(2026, 1, 1),
+            'monthly_amount': 785.53,
+            'il_effect_type': 'taxable_benefit',
+        })
+        self.assertEqual(attachment.il_effect_type, 'taxable_benefit')
+        self.payslip._compute_input_line_ids()
+        line = self.payslip.input_line_ids.filtered(
+            lambda item: item.il_salary_attachment_id == attachment)
+        self.assertEqual(len(line), 1)
+        self.assertEqual(line.il_effect_type, 'taxable_benefit')
+        by_code = {
+            item['code']: item['total']
+            for item in self.payslip._get_payslip_lines()
+        }
+        self.assertAlmostEqual(by_code['GROSS'], 5000.0, places=2)
+        self.assertAlmostEqual(by_code['IL_TAX_BASE'], 5785.53, places=2)
+        self.assertAlmostEqual(by_code['IL_NI_BASE'], 5785.53, places=2)
+
+    def test_employee_insured_wage_caps_pension_and_severance_base(self):
+        self.version.write({
+            'il_pension_enabled': True,
+            'il_employee_pension_rate': 6.0,
+            'il_pension_insured_wage': 9430.0,
+        })
+        self.assertEqual(self.payslip._il_pension_base(10807.85), 9430.0)
+        self.assertAlmostEqual(
+            self.payslip._il_pension_base(10807.85)
+            * self.version.il_employee_pension_rate / 100.0,
+            565.80,
+            places=2,
+        )
+
+    def test_active_form_101_drives_rules_and_reproduces_gross_payslip(self):
+        """Source-payslip amounts: gross 10,807.85 and net 9,000.00.
+
+        The employee is deliberately configured as gross-paid.  The 2.25
+        points come from the active Form 101, not from the legacy manual
+        field on the employee version.  The isolated fixture uses January so
+        no unavailable preceding-year-to-date payslips distort cumulative
+        withholding.
+        """
+        structure = self.env.ref(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il')
+        employee = self.env['hr.employee'].create({
+            'name': 'Form 101 Gross Document Sample',
+            'company_id': self.company.id,
+            'contract_date_start': date(2026, 1, 1),
+            'date_version': date(2026, 1, 1),
+            'resource_calendar_id': self.calendar.id,
+            'structure_type_id': structure.type_id.id,
+            'il_salary_structure_id': structure.id,
+            'mdl_wage_type': 'mdl_monthly',
+            'mdl_wage_rate_type': 'gross',
+            'wage': 10807.85,
+            # Proves that an applicable active form supersedes this field.
+            'il_tax_credit_points': 99.0,
+            'il_monthly_tax_credit_adjustment': -0.23,
+            'il_pension_enabled': True,
+            'il_employee_pension_rate': 6.0,
+            'il_pension_insured_wage': 9430.0,
+        })
+        form = self.env['hr.employee.form.101'].create({
+            'employee_id': employee.id,
+            'tax_year': '2026',
+            'state': 'active',
+            'employer_name': 'Document Employer',
+            'employer_address': 'Test Address',
+            'employer_phone': '03-5555555',
+            'employer_withholding_file': '935000000',
+            'has_israeli_id': 'yes',
+            'identification_id': '326356482',
+            'first_name': 'Gross',
+            'last_name': 'Sample',
+            'birthday': date(1990, 1, 1),
+            'private_street': 'Test Street',
+            'private_house_number': '1',
+            'private_city': 'Tel Aviv',
+            'mobile_phone': '050-5555555',
+            'sex': 'male',
+            'marital': 'married',
+            'spouse_has_israeli_id': 'yes',
+            'spouse_identification_id': '123456789',
+            'spouse_first_name': 'Spouse',
+            'spouse_last_name': 'Sample',
+            'spouse_birthdate': date(1991, 1, 1),
+            'spouse_has_income': 'yes',
+            'is_israeli_resident': 'yes',
+            'relief_resident': True,
+            'employer_income_main_type': 'monthly',
+            'employment_start_date': date(2026, 1, 1),
+            'has_other_income': 'no',
+            'declaration_confirmed': True,
+            'declaration_date': date(2026, 1, 1),
+        })
+        payslip = self.env['hr.payslip'].create({
+            'name': 'Form 101 Gross Document Sample',
+            'employee_id': employee.id,
+            'company_id': self.company.id,
+            'date_from': date(2026, 1, 1),
+            'date_to': date(2026, 1, 31),
+            'version_id': employee.version_id.id,
+            'struct_id': structure.id,
+            'edited': True,
+            'worked_days_line_ids': [Command.create({
+                'work_entry_type_id': self.env.ref(
+                    'hr_work_entry.work_entry_type_attendance').id,
+                'number_of_hours': 190.0,
+                'number_of_days': 22.0,
+            })],
+        })
+        payslip.worked_days_line_ids._compute_is_paid()
+        by_code = {
+            line['code']: line['total']
+            for line in payslip._get_payslip_lines()
+        }
+        self.assertEqual(payslip._il_active_form_101(), form)
+        self.assertEqual(
+            form._il_payroll_credit_points(date(2026, 1, 1)), 2.25)
+        self.assertAlmostEqual(by_code['BASIC'], 10807.85, places=2)
+        self.assertAlmostEqual(by_code['GROSS'], 10807.85, places=2)
+        self.assertLess(by_code['IL_ISR_INCOME_TAX'], 0.0)
+        self.assertLess(by_code['IL_ISR_NI_EE'], 0.0)
+        self.assertLess(by_code['IL_ISR_HEALTH_EE'], 0.0)
+        self.assertAlmostEqual(by_code['IL_ISR_PENSION_EE'], -565.80, places=2)
+        self.assertAlmostEqual(by_code['NET'], 9000.00, places=2)
+
+    def test_sample_payslips_reproduce_supplied_gross_and_net(self):
+        attendance_type = self.env.ref('hr_work_entry.work_entry_type_attendance')
+        samples = (
+            {
+                'name': 'Israeli document sample',
+                'structure': self.env.ref(
+                    'l10n_il_hr_payroll_account.hr_payroll_structure_il'),
+                'net': 9000.0,
+                'gross': 10807.85,
+                'credit_points': 2.25,
+                'tax_credit_adjustment': -0.23,
+                'pension': True,
+                'insured_wage': 9430.0,
+            },
+            {
+                'name': 'Palestinian document sample',
+                'structure': self.env.ref(
+                    'l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_monthly'),
+                'net': 6250.0,
+                'gross': 6716.46,
+                'credit_points': 1.0,
+                'tax_credit_adjustment': -32.11,
+                'pension': False,
+                'insured_wage': 0.0,
+            },
+        )
+        for sample in samples:
+            with self.subTest(sample=sample['name']):
+                structure = sample['structure']
+                employee = self.env['hr.employee'].create({
+                    'name': sample['name'],
+                    'company_id': self.company.id,
+                    'contract_date_start': date(2026, 1, 1),
+                    'date_version': date(2026, 1, 1),
+                    'resource_calendar_id': self.calendar.id,
+                    'structure_type_id': structure.type_id.id,
+                    'il_salary_structure_id': structure.id,
+                    'mdl_wage_type': 'mdl_monthly',
+                    'mdl_wage_rate_type': 'net',
+                    'wage': sample['net'],
+                    'il_tax_credit_points': sample['credit_points'],
+                    'il_monthly_tax_credit_adjustment': sample[
+                        'tax_credit_adjustment'],
+                    'il_pension_enabled': sample['pension'],
+                    'il_employee_pension_rate': 6.0 if sample['pension'] else 0.0,
+                    'il_pension_insured_wage': sample['insured_wage'],
+                })
+                payslip = self.env['hr.payslip'].create({
+                    'name': sample['name'],
+                    'employee_id': employee.id,
+                    'company_id': self.company.id,
+                    'date_from': date(2026, 1, 1),
+                    'date_to': date(2026, 1, 31),
+                    'version_id': employee.version_id.id,
+                    'struct_id': structure.id,
+                    'edited': True,
+                    'worked_days_line_ids': [Command.create({
+                        'work_entry_type_id': attendance_type.id,
+                        'number_of_hours': 190.0,
+                        'number_of_days': 22.0,
+                    })],
+                })
+                payslip.worked_days_line_ids._compute_is_paid()
+                payslip._compute_input_line_ids()
+                payslip._il_run_gross_up_engine()
+                by_code = {
+                    line['code']: line['total']
+                    for line in payslip._get_payslip_lines()
+                }
+                self.assertAlmostEqual(by_code['BASIC'], sample['gross'], places=2)
+                self.assertAlmostEqual(by_code['GROSS'], sample['gross'], places=2)
+                self.assertAlmostEqual(by_code['NET'], sample['net'], places=2)
+
     def test_redundant_base_is_hidden_only_when_equal_to_gross(self):
         gross = self.payslip.gross_wage
         rule = self.env.ref(
@@ -161,6 +499,7 @@ class TestWagePrecision(TransactionCase):
         line.flush_recordset(['amount', 'total', 'il_hide_redundant_base'])
         line.invalidate_recordset(['total', 'il_hide_redundant_base'])
         self.assertFalse(line.il_hide_redundant_base)
+
 
     def test_compute_sheet_refreshes_redundant_base_visibility(self):
         self.payslip.compute_sheet()
@@ -208,6 +547,139 @@ class TestWagePrecision(TransactionCase):
         self.assertEqual(employee.version_id.date_start, date(2026, 6, 1))
         self.assertEqual(
             employee.version_id.contract_date_start, date(2026, 6, 1))
+
+
+@tagged('post_install', '-at_install', 'l10n_il_hr_payroll_account_source_gross')
+class TestSourcePayslipGrossScenarios(TransactionCase):
+    """Eight gross checks taken from the supplied 2026 payslip PDFs."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env.company
+        cls.company.country_id = cls.env.ref('base.il')
+        cls.calendar = cls.env['resource.calendar'].create({
+            'name': 'Source Payslip Gross Test Calendar',
+            'company_id': cls.company.id,
+            'tz': 'Asia/Jerusalem',
+            'mdl_schedule_type': 'attendance',
+            'mdl_schedule_frequency': 'daily_duration',
+            'mdl_hours_per_day': 9.5,
+        })
+        cls.attendance_type = cls.env.ref(
+            'hr_work_entry.work_entry_type_attendance')
+
+    def _assert_source_gross(self, structure_xmlid, gross, source, daily=False):
+        structure = self.env.ref(structure_xmlid)
+        employee_values = {
+            'name': source,
+            'company_id': self.company.id,
+            'contract_date_start': date(2026, 1, 1),
+            'date_version': date(2026, 1, 1),
+            'resource_calendar_id': self.calendar.id,
+            'structure_type_id': structure.type_id.id,
+            'il_salary_structure_id': structure.id,
+            'mdl_wage_rate_type': 'gross',
+            'il_tax_credit_points': 2.25,
+            'il_pension_enabled': False,
+        }
+        worked_hours = 190.0
+        if daily:
+            # A 950 daily wage on this 9.5-hour calendar is exactly 100/hour;
+            # varying hours lets the test exercise the daily rule at cent
+            # precision without pre-rounding the source gross into a wage.
+            employee_values.update({
+                'mdl_wage_type': 'mdl_daily',
+                'mdl_daily_wage': 950.0,
+            })
+            worked_hours = gross / 100.0
+        else:
+            employee_values.update({
+                'mdl_wage_type': 'mdl_monthly',
+                'wage': gross,
+            })
+        employee = self.env['hr.employee'].create(employee_values)
+        payslip = self.env['hr.payslip'].create({
+            'name': source,
+            'employee_id': employee.id,
+            'company_id': self.company.id,
+            'date_from': date(2026, 1, 1),
+            'date_to': date(2026, 1, 31),
+            'version_id': employee.version_id.id,
+            'struct_id': structure.id,
+            'edited': True,
+            'worked_days_line_ids': [Command.create({
+                'work_entry_type_id': self.attendance_type.id,
+                'number_of_hours': worked_hours,
+                'number_of_days': worked_hours / 9.5,
+            })],
+        })
+        payslip.worked_days_line_ids._compute_is_paid()
+        by_code = {
+            line['code']: line['total']
+            for line in payslip._get_payslip_lines()
+        }
+        self.assertAlmostEqual(by_code['GROSS'], gross, places=2, msg=source)
+
+    def test_israeli_monthly_multi_april_page_3(self):
+        self._assert_source_gross(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il',
+            10807.85,
+            'Multi April 2026 page 3',
+        )
+
+    def test_israeli_monthly_multi_april_page_4(self):
+        self._assert_source_gross(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il',
+            10513.28,
+            'Multi April 2026 page 4',
+        )
+
+    def test_israeli_daily_multi_april_page_14(self):
+        self._assert_source_gross(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il_isr_daily',
+            1045.20,
+            'Multi April 2026 page 14',
+            daily=True,
+        )
+
+    def test_israeli_daily_multi_april_page_16(self):
+        self._assert_source_gross(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il_isr_daily',
+            4178.00,
+            'Multi April 2026 page 16',
+            daily=True,
+        )
+
+    def test_palestinian_monthly_autonomy_february_page_1(self):
+        self._assert_source_gross(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_monthly',
+            6716.46,
+            'Autonomy February 2026 page 1',
+        )
+
+    def test_palestinian_monthly_autonomy_february_page_2(self):
+        self._assert_source_gross(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_monthly',
+            10975.59,
+            'Autonomy February 2026 page 2',
+        )
+
+    def test_palestinian_daily_autonomy_february_page_23(self):
+        self._assert_source_gross(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_daily',
+            3119.67,
+            'Autonomy February 2026 page 23',
+            daily=True,
+        )
+
+    def test_palestinian_daily_autonomy_march_page_24(self):
+        self._assert_source_gross(
+            'l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_daily',
+            3071.93,
+            'Autonomy March 2026 page 24',
+            daily=True,
+        )
 
 
 @tagged('post_install', '-at_install', 'l10n_il_hr_payroll_account_net_wage')

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="sign_items_form_101_radio_marker" inherit_id="sign.items_input_info">
+        <xpath expr="//input[hasclass('o_sign_item_input_info')]" position="attributes">
+            <attribute name="t-att-data-form101-radio">item.l10n_il_form_101_radio</attribute>
+        </xpath>
+    </template>
+</odoo>

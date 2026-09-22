@@ -1,0 +1,51 @@
+2026-09-20 09:50:29,216 7912 WARNING ? odoo.tools.config: missing --http-interface/http_interface, using 0.0.0.0 by default, will change to 127.0.0.1 in 20.0 
+2026-09-20 09:50:29,216 7912 INFO ? odoo: Odoo version 19.0 
+2026-09-20 09:50:29,216 7912 INFO ? odoo: Using configuration file at c:\odoo\odoo-19\odoo.conf 
+2026-09-20 09:50:29,216 7912 INFO ? odoo: addons paths: _NamespacePath(['C:\\odoo\\odoo-19\\odoo-src\\odoo\\addons', 'c:\\odoo\\odoo-19\\data\\addons\\19.0', 'c:\\odoo\\odoo-19\\enterprise', 'c:\\odoo\\odoo-19\\project', 'c:\\odoo\\odoo-19\\odoo-src\\addons', 'c:\\odoo\\odoo-19\\odoo-src\\odoo\\addons', 'c:\\odoo\\odoo-19\\project-settings']) 
+2026-09-20 09:50:29,224 7912 INFO ? odoo: database: odoo@127.0.0.1:5432 
+2026-09-20 09:50:29,705 7912 INFO ? odoo.service.server: HTTP service (werkzeug) running on ItayYosef.home:8071 
+2026-09-20 09:50:29,760 7912 INFO multidoorlock-local odoo.modules.loading: loading 1 modules... 
+2026-09-20 09:50:29,760 7912 INFO multidoorlock-local odoo.modules.loading: 1 modules loaded in 0.00s, 0 queries (+0 extra) 
+2026-09-20 09:50:29,816 7912 INFO multidoorlock-local odoo.modules.loading: loading 145 modules... 
+2026-09-20 09:50:31,203 7912 INFO multidoorlock-local odoo.modules.loading: 145 modules loaded in 1.39s, 0 queries (+0 extra) 
+2026-09-20 09:50:31,428 7912 INFO multidoorlock-local odoo.modules.loading: Modules loaded. 
+2026-09-20 09:50:31,637 7912 INFO multidoorlock-local odoo.registry: Registry loaded in 1.933s 
+2026-09-20 09:50:43,853 7912 INFO multidoorlock-local odoo.addons.base.models.ir_http: Generating routing map for key None 
+2026-09-20 09:50:44,206 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:50:44] "GET /sign/document/593/f1381e11-1030-4dfc-9528-d5e7a5d6bdb0 HTTP/1.1" 200 - 275 0.130 0.229
+2026-09-20 09:50:44,717 7912 INFO multidoorlock-local odoo.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/58f87d1/sign.assets_public_sign.min.js (id:39274) 
+2026-09-20 09:50:44,717 7912 INFO multidoorlock-local odoo.addons.base.models.assetsbundle: Deleting attachments [34056] (matching /web/assets/_______/sign.assets_public_sign.min.js) because it was replaced with /web/assets/58f87d1/sign.assets_public_sign.min.js 
+2026-09-20 09:50:44,987 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:50:44] "GET /web/assets/58f87d1/sign.assets_public_sign.min.js HTTP/1.1" 200 - 14 0.076 0.635
+2026-09-20 09:51:01,856 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:51:01] "GET /web/assets/58f87d1/sign.assets_public_sign.min.js HTTP/1.1" 200 - 4 0.004 0.004
+2026-09-20 09:51:43,070 7912 INFO ? odoo.registry: Reloading the model registry after database signaling. 
+2026-09-20 09:51:43,112 7912 INFO ? odoo.modules.loading: loading 1 modules... 
+2026-09-20 09:51:43,118 7912 INFO ? odoo.modules.loading: 1 modules loaded in 0.01s, 0 queries (+0 extra) 
+2026-09-20 09:51:43,120 7912 INFO ? odoo.modules.loading: loading 145 modules... 
+2026-09-20 09:51:43,163 7912 INFO ? odoo.modules.loading: 145 modules loaded in 0.04s, 0 queries (+0 extra) 
+2026-09-20 09:51:43,403 7912 INFO ? odoo.modules.loading: Modules loaded. 
+2026-09-20 09:51:43,436 7912 INFO ? odoo.registry: Registry loaded in 0.367s 
+2026-09-20 09:51:43,436 7912 INFO multidoorlock-local odoo.addons.base.models.ir_http: Generating routing map for key None 
+2026-09-20 09:51:43,729 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:51:43] "GET /sign/document/593/f1381e11-1030-4dfc-9528-d5e7a5d6bdb0 HTTP/1.1" 200 - 296 0.099 0.563
+2026-09-20 09:51:44,116 7912 INFO multidoorlock-local odoo.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/a93e866/sign.assets_public_sign.min.js (id:39275) 
+2026-09-20 09:51:44,116 7912 INFO multidoorlock-local odoo.addons.base.models.assetsbundle: Deleting attachments [39274] (matching /web/assets/_______/sign.assets_public_sign.min.js) because it was replaced with /web/assets/a93e866/sign.assets_public_sign.min.js 
+2026-09-20 09:51:44,310 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:51:44] "GET /web/assets/a93e866/sign.assets_public_sign.min.js HTTP/1.1" 200 - 14 0.016 0.514
+2026-09-20 09:52:16,241 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:52:16] "GET /sign/document/593/f1381e11-1030-4dfc-9528-d5e7a5d6bdb0 HTTP/1.1" 200 - 232 0.040 0.066
+2026-09-20 09:52:16,314 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:52:16] "GET /web/assets/a93e866/sign.assets_public_sign.min.js HTTP/1.1" 200 - 4 0.000 0.007
+2026-09-20 09:52:22,237 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:52:22] "GET /web/assets/a93e866/sign.assets_public_sign.min.js HTTP/1.1" 200 - 4 0.000 0.003
+2026-09-20 09:52:49,157 7912 INFO ? odoo.registry: Reloading the model registry after database signaling. 
+2026-09-20 09:52:49,161 7912 INFO ? odoo.modules.loading: loading 1 modules... 
+2026-09-20 09:52:49,165 7912 INFO ? odoo.modules.loading: 1 modules loaded in 0.00s, 0 queries (+0 extra) 
+2026-09-20 09:52:49,168 7912 INFO ? odoo.modules.loading: loading 145 modules... 
+2026-09-20 09:52:49,206 7912 INFO ? odoo.modules.loading: 145 modules loaded in 0.04s, 0 queries (+0 extra) 
+2026-09-20 09:52:49,379 7912 INFO ? odoo.modules.loading: Modules loaded. 
+2026-09-20 09:52:49,400 7912 INFO ? odoo.registry: Registry loaded in 0.243s 
+2026-09-20 09:52:49,400 7912 INFO multidoorlock-local odoo.addons.base.models.ir_http: Generating routing map for key None 
+2026-09-20 09:52:49,671 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:52:49] "GET /sign/document/593/f1381e11-1030-4dfc-9528-d5e7a5d6bdb0 HTTP/1.1" 200 - 296 0.071 0.442
+2026-09-20 09:52:50,055 7912 INFO multidoorlock-local odoo.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/b685259/sign.assets_public_sign.min.js (id:39276) 
+2026-09-20 09:52:50,055 7912 INFO multidoorlock-local odoo.addons.base.models.assetsbundle: Deleting attachments [39275] (matching /web/assets/_______/sign.assets_public_sign.min.js) because it was replaced with /web/assets/b685259/sign.assets_public_sign.min.js 
+2026-09-20 09:52:50,235 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:52:50] "GET /web/assets/b685259/sign.assets_public_sign.min.js HTTP/1.1" 200 - 14 0.008 0.502
+2026-09-20 09:52:55,213 7912 INFO multidoorlock-local werkzeug: 127.0.0.1 - - [20/Sep/2026 09:52:55] "GET /wyvrn/Synapse HTTP/1.1" 404 - 42 0.017 0.139
+2026-09-20 09:54:44,111 7912 INFO multidoorlock-local odoo.service.server: Initiating shutdown 
+2026-09-20 09:54:44,111 7912 INFO multidoorlock-local odoo.service.server: Hit CTRL-C again or send a second signal to force the shutdown. 
+2026-09-20 09:54:44,580 7912 INFO multidoorlock-local odoo.sql_db: ConnectionPool(read/write;used=0/count=0/max=64): Closed 4 connections  
+2026-09-20 09:54:44,580 7912 INFO ? odoo.service.server: cron0 max age (0s) reached, releasing connection. 
+2026-09-20 09:54:44,595 7912 INFO ? odoo.service.server: cron1 max age (0s) reached, releasing connection. 

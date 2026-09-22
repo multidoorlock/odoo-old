@@ -26,10 +26,25 @@ class HrVersion(models.Model):
         domain="[('type_id', '=', structure_type_id)]")
     il_is_israel_payroll = fields.Boolean(compute='_compute_il_is_israel_payroll')
     il_tax_credit_points = fields.Float(string='נקודות זיכוי במס', digits=(6, 2))
+    il_monthly_tax_credit_adjustment = fields.Monetary(
+        string='התאמת זיכוי מס חודשית', currency_field='currency_id',
+        help='סכום חיובי מפחית את מס ההכנסה וסכום שלילי מגדיל אותו. '
+             'השדה מיועד לזיכוי, חיוב או עיגול אישי שמופיע באישור המס או במערכת השכר הקודמת.')
     il_primary_employer = fields.Boolean(string='מעסיק עיקרי לתשלומי שכר', default=True)
     il_tax_coordination = fields.Boolean(string='יש תיאום מס')
     il_tax_coordination_valid_from = fields.Date(string='תוקף תיאום מס מ-')
     il_tax_coordination_valid_until = fields.Date(string='תוקף תיאום מס עד-')
+
+    # National-insurance reporting can differ by employee (Form 102 column,
+    # secondary employer, retirement-age/exempt classifications).  Keep the
+    # legal rates in parameters and store only the employee's applicability.
+    il_ni_full_rate_from_first_shekel = fields.Boolean(
+        string='ביטוח בשיעור מלא מהשקל הראשון',
+        help='למעסיק משני או לפי אישור ביטוח לאומי: אין מדרגה מופחתת.')
+    il_national_insurance_exempt = fields.Boolean(
+        string='פטור מניכוי ביטוח לאומי לעובד')
+    il_health_insurance_exempt = fields.Boolean(
+        string='פטור מניכוי ביטוח בריאות לעובד')
 
     # ------------------------------------------------------------------
     # הפרשות סוציאליות (תנאי עבודה)
@@ -39,6 +54,10 @@ class HrVersion(models.Model):
     il_employee_pension_rate = fields.Float(string='הפרשת עובד לפנסיה (%)', digits=(6, 2))
     il_employer_pension_rate = fields.Float(string='הפרשת מעסיק לפנסיה (%)', digits=(6, 2))
     il_severance_rate = fields.Float(string='הפרשה לפיצויים (%)', digits=(6, 2))
+    il_pension_insured_wage = fields.Monetary(
+        string='שכר מבוטח לפנסיה', currency_field='currency_id',
+        help='אם הוגדר סכום, ההפרשות יחושבו לפי הנמוך מבין בסיס הפנסיה '
+             'לבין השכר המבוטח. סכום אפס משאיר את בסיס הפנסיה ללא הגבלה אישית.')
 
     il_study_fund_enabled = fields.Boolean(string='קרן השתלמות פעילה')
     il_employee_study_fund_rate = fields.Float(string='הפרשת עובד לקרן השתלמות (%)', digits=(6, 2))
@@ -62,8 +81,12 @@ class HrVersion(models.Model):
     @api.onchange('structure_type_id')
     def _onchange_il_salary_structure(self):
         for version in self:
-            version.il_salary_structure_id = version.structure_type_id.default_struct_id
-            version.schedule_pay = 'monthly'
+            if version.structure_type_id.country_id.code == 'IL':
+                version.il_salary_structure_id = (
+                    version.structure_type_id.default_struct_id)
+                version.schedule_pay = 'monthly'
+            else:
+                version.il_salary_structure_id = False
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -93,7 +116,14 @@ class HrVersion(models.Model):
         if structure_type and structure_type.country_id.code == 'IL':
             vals['schedule_pay'] = 'monthly'
             vals.setdefault('il_salary_structure_id', structure_type.default_struct_id.id)
-        vals['schedule_pay'] = 'monthly'
+        elif structure_type:
+            vals.setdefault('il_salary_structure_id', False)
+        elif self and all(
+                version.structure_type_id.country_id.code == 'IL'
+                for version in self):
+            # Israeli structures are monthly even when a caller writes only
+            # schedule_pay and does not repeat structure_type_id.
+            vals['schedule_pay'] = 'monthly'
         result = super().write(vals)
         if not self.env.context.get('il_ensuring_contract_start'):
             self._il_ensure_contract_start()
@@ -115,14 +145,16 @@ class HrVersion(models.Model):
     @api.constrains('structure_type_id', 'il_salary_structure_id', 'schedule_pay')
     def _check_il_salary_structure(self):
         for version in self:
-            if version.il_salary_structure_id and version.structure_type_id and \
+            is_israeli_payroll = (
+                version.structure_type_id.country_id.code == 'IL')
+            if is_israeli_payroll and version.il_salary_structure_id and \
                     version.il_salary_structure_id.type_id != version.structure_type_id:
                 raise ValidationError(
                     'מבנה השכר חייב להשתייך לקטגוריית השכר שנבחרה. '
                     f'נבחרה הקטגוריה "{version.structure_type_id.display_name}", '
                     f'אך המבנה שייך לקטגוריה '
                     f'"{version.il_salary_structure_id.type_id.display_name}".')
-            if version.schedule_pay != 'monthly':
+            if is_israeli_payroll and version.schedule_pay != 'monthly':
                 raise ValidationError('מחזור התשלום לעובד חייב להיות חודשי.')
 
     @api.constrains('il_tax_coordination', 'il_tax_coordination_valid_from',
@@ -163,10 +195,14 @@ class HrVersion(models.Model):
     def _get_whitelist_fields_from_template(self):
         return super()._get_whitelist_fields_from_template() + [
             'il_salary_structure_id', 'il_tax_credit_points', 'il_primary_employer',
+            'il_monthly_tax_credit_adjustment',
             'il_tax_coordination', 'il_tax_coordination_valid_from',
             'il_tax_coordination_valid_until',
+            'il_ni_full_rate_from_first_shekel',
+            'il_national_insurance_exempt', 'il_health_insurance_exempt',
             'il_pension_enabled', 'il_pension_start_date',
             'il_employee_pension_rate', 'il_employer_pension_rate', 'il_severance_rate',
+            'il_pension_insured_wage',
             'il_study_fund_enabled', 'il_employee_study_fund_rate',
             'il_employer_study_fund_rate', 'il_employment_sector',
             'il_pal_organization_tax', 'il_for_deposit_start_date',

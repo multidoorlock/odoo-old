@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_hr_employee_form_101_user,hr.employee.form.101.user,model_hr_employee_form_101,hr.group_hr_user,1,1,1,1
+access_hr_employee_form_101_child_user,hr.employee.form.101.child.user,model_hr_employee_form_101_child,hr.group_hr_user,1,1,1,1
+access_hr_employee_form_101_other_employer_user,hr.employee.form.101.other.employer.user,model_hr_employee_form_101_other_employer,hr.group_hr_user,1,1,1,1
+access_hr_employee_form_101_activation_wizard_user,hr.employee.form.101.activation.wizard.user,model_hr_employee_form_101_activation_wizard,hr.group_hr_user,1,1,1,1
+access_hr_employee_form_101_sign_employee_wizard_user,hr.employee.form.101.sign.employee.wizard.user,model_hr_employee_form_101_sign_employee_wizard,hr.group_hr_user,1,1,1,1
+access_hr_employee_section_14_user,hr.employee.section.14.user,model_hr_employee_section_14,hr.group_hr_user,1,1,1,1
+access_hr_employee_section_14_activation_wizard_user,hr.employee.section.14.activation.wizard.user,model_hr_employee_section_14_activation_wizard,hr.group_hr_user,1,1,1,1

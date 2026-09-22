@@ -1,0 +1,101 @@
+2026-09-17 02:44:05,551 42216 WARNING ? odoo.tools.config: missing --http-interface/http_interface, using 0.0.0.0 by default, will change to 127.0.0.1 in 20.0 
+2026-09-17 02:44:05,552 42216 INFO ? odoo: Odoo version 19.0 
+2026-09-17 02:44:05,552 42216 INFO ? odoo: Using configuration file at c:\odoo\odoo-19\odoo.conf 
+2026-09-17 02:44:05,552 42216 INFO ? odoo: addons paths: _NamespacePath(['C:\\odoo\\odoo-19\\odoo-src\\odoo\\addons', 'c:\\odoo\\odoo-19\\data\\addons\\19.0', 'c:\\odoo\\odoo-19\\enterprise', 'c:\\odoo\\odoo-19\\project', 'c:\\odoo\\odoo-19\\odoo-src\\addons', 'c:\\odoo\\odoo-19\\odoo-src\\odoo\\addons', 'c:\\odoo\\odoo-19\\project-settings']) 
+2026-09-17 02:44:05,554 42216 INFO ? odoo: database: odoo@127.0.0.1:5432 
+2026-09-17 02:44:06,123 42216 INFO ? odoo.service.server: HTTP service (werkzeug) running on ItayYosef.home:8069 
+2026-09-17 02:44:06,162 42216 INFO multidoorlock-local odoo.tests.common: Importing test framework 
+2026-09-17 02:44:06,235 42216 INFO multidoorlock-local odoo.modules.loading: loading 1 modules... 
+2026-09-17 02:44:06,240 42216 INFO multidoorlock-local odoo.modules.loading: 1 modules loaded in 0.00s, 0 queries (+0 extra) 
+2026-09-17 02:44:06,262 42216 INFO multidoorlock-local odoo.modules.loading: updating modules list 
+2026-09-17 02:44:06,267 42216 INFO multidoorlock-local odoo.addons.base.models.ir_module: ALLOW access to module.update_list on [] to user __system__ #1 via n/a 
+2026-09-17 02:44:09,322 42216 INFO multidoorlock-local odoo.addons.base.models.ir_module: ALLOW access to module.button_upgrade on ['Israel - Payroll'] to user __system__ #1 via n/a 
+2026-09-17 02:44:09,322 42216 INFO multidoorlock-local odoo.addons.base.models.ir_module: ALLOW access to module.update_list on ['Israel - Payroll'] to user __system__ #1 via n/a 
+2026-09-17 02:44:11,802 42216 INFO multidoorlock-local odoo.addons.base.models.ir_module: ALLOW access to module.button_install on [] to user __system__ #1 via n/a 
+2026-09-17 02:44:11,884 42216 INFO multidoorlock-local odoo.modules.loading: loading 141 modules... 
+2026-09-17 02:44:13,603 42216 INFO multidoorlock-local odoo.modules.loading: Loading module l10n_il_hr_payroll (133/141) 
+2026-09-17 02:44:13,770 42216 WARNING multidoorlock-local odoo.fields: Translated stored related field (hr.employee.name) will not be computed correctly in all languages 
+2026-09-17 02:44:13,886 42216 WARNING multidoorlock-local odoo.fields: Translated stored related field (hr.employee.name) will not be computed correctly in all languages 
+2026-09-17 02:44:13,913 42216 INFO multidoorlock-local odoo.registry: module l10n_il_hr_payroll: creating or updating database tables 
+2026-09-17 02:44:14,172 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/security/sign_security.xml 
+2026-09-17 02:44:14,180 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/security/hr_employee_form_101_security.xml 
+2026-09-17 02:44:14,203 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/security/ir.model.access.csv 
+2026-09-17 02:44:14,420 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/data/hr_work_entry_type_data.xml 
+2026-09-17 02:44:14,430 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/views/hr_employee_form_101_activation_wizard_views.xml 
+2026-09-17 02:44:14,451 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/views/hr_employee_form_101_views.xml 
+2026-09-17 02:44:14,588 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/report/hr_employee_form_101_report.xml 
+2026-09-17 02:44:14,611 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/views/hr_employee_views.xml 
+2026-09-17 02:44:14,671 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/views/resource_calendar_views.xml 
+2026-09-17 02:44:14,721 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/views/res_config_settings_views.xml 
+2026-09-17 02:44:14,822 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll/views/hr_work_entry_views.xml 
+2026-09-17 02:44:14,884 42216 INFO multidoorlock-local odoo.addons.base.models.ir_module: module l10n_il_hr_payroll: no translation for language he_IL 
+2026-09-17 02:44:14,909 42216 INFO multidoorlock-local odoo.modules.loading: Module l10n_il_hr_payroll loaded in 1.31s, 596 queries (+596 other) 
+2026-09-17 02:44:14,970 42216 INFO multidoorlock-local odoo.modules.loading: Loading module l10n_il_hr_payroll_account (141/141) 
+2026-09-17 02:44:15,183 42216 INFO multidoorlock-local odoo.registry: module l10n_il_hr_payroll_account: creating or updating database tables 
+2026-09-17 02:44:20,368 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/security/ir.model.access.csv 
+2026-09-17 02:44:20,401 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/data/hr_payslip_input_type_data.xml 
+2026-09-17 02:44:20,415 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/data/hr_payroll_structure_data.xml 
+2026-09-17 02:44:20,497 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/data/hr_salary_rule_data.xml 
+2026-09-17 02:44:20,854 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/data/hr_payroll_sync_data.xml 
+2026-09-17 02:44:21,146 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473388] 
+2026-09-17 02:44:21,152 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6781] 
+2026-09-17 02:44:21,202 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473389] 
+2026-09-17 02:44:21,203 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6782] 
+2026-09-17 02:44:21,253 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473390] 
+2026-09-17 02:44:21,256 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6783] 
+2026-09-17 02:44:21,302 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473391] 
+2026-09-17 02:44:21,303 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6784] 
+2026-09-17 02:44:21,353 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473392] 
+2026-09-17 02:44:21,353 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6785] 
+2026-09-17 02:44:21,402 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473393] 
+2026-09-17 02:44:21,403 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6786] 
+2026-09-17 02:44:21,448 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473394] 
+2026-09-17 02:44:21,449 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6787] 
+2026-09-17 02:44:21,494 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473395] 
+2026-09-17 02:44:21,494 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6788] 
+2026-09-17 02:44:21,541 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473396] 
+2026-09-17 02:44:21,541 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6789] 
+2026-09-17 02:44:21,585 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473397] 
+2026-09-17 02:44:21,586 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6790] 
+2026-09-17 02:44:21,629 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473398] 
+2026-09-17 02:44:21,629 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6791] 
+2026-09-17 02:44:21,677 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.model.data records with IDs: [473399] 
+2026-09-17 02:44:21,678 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted hr.salary.rule records with IDs: [6792] 
+2026-09-17 02:44:22,153 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/hr_employee_views.xml 
+2026-09-17 02:44:22,497 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/hr_salary_attachment_views.xml 
+2026-09-17 02:44:22,656 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.actions.act_window.view records with IDs: [1052, 1053] 
+2026-09-17 02:44:22,663 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/hr_payslip_input_type_views.xml 
+2026-09-17 02:44:22,686 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/res_config_settings_views.xml 
+2026-09-17 02:44:22,774 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/account_payment_views.xml 
+2026-09-17 02:44:23,732 42216 INFO multidoorlock-local odoo.models.unlink: User #1 deleted ir.actions.act_window.view records with IDs: [1054, 1055] 
+2026-09-17 02:44:23,734 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/account_partial_reconcile_views.xml 
+2026-09-17 02:44:23,749 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/wizard/payroll_reconciliation_wizard_views.xml 
+2026-09-17 02:44:23,773 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/hr_payslip_views.xml 
+2026-09-17 02:44:23,826 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/wizard/payslip_run_payment_wizard_views.xml 
+2026-09-17 02:44:23,838 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/wizard/payment_cycle_wizard_views.xml 
+2026-09-17 02:44:23,854 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/wizard/masav_export_wizard_views.xml 
+2026-09-17 02:44:23,866 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/payment_cycle_views.xml 
+2026-09-17 02:44:23,934 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/hr_payslip_run_views.xml 
+2026-09-17 02:44:23,969 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/payroll_batch_payment_selection_views.xml 
+2026-09-17 02:44:24,032 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/hr_attendance_overtime_rule_views.xml 
+2026-09-17 02:44:24,053 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/menus.xml 
+2026-09-17 02:44:24,074 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/views/employee_accounting_navigation.xml 
+2026-09-17 02:44:24,108 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/report/batch_employee_payments.xml 
+2026-09-17 02:44:24,146 42216 INFO multidoorlock-local odoo.modules.loading: loading l10n_il_hr_payroll_account/data/hr_hebrew_translations.xml 
+2026-09-17 02:44:25,023 42216 INFO multidoorlock-local odoo.addons.base.models.ir_module: module l10n_il_hr_payroll_account: no translation for language he_IL 
+2026-09-17 02:44:25,079 42216 INFO multidoorlock-local odoo.modules.loading: Module l10n_il_hr_payroll_account loaded in 10.11s, 6780 queries (+6780 other) 
+2026-09-17 02:44:25,079 42216 INFO multidoorlock-local odoo.modules.loading: 141 modules loaded in 13.19s, 7376 queries (+7376 extra) 
+2026-09-17 02:44:25,528 42216 INFO multidoorlock-local odoo.modules.loading: Model labels.label is declared but cannot be loaded! (Perhaps a module was partially removed or renamed) 
+2026-09-17 02:44:25,767 42216 INFO multidoorlock-local odoo.registry: verifying fields for every extended model 
+2026-09-17 02:44:26,680 42216 INFO multidoorlock-local odoo.modules.loading: Modules loaded. 
+2026-09-17 02:44:26,709 42216 INFO multidoorlock-local odoo.registry: Registry changed, signaling through the database 
+2026-09-17 02:44:26,710 42216 INFO multidoorlock-local odoo.registry: Registry loaded in 20.587s 
+2026-09-17 02:44:26,711 42216 INFO multidoorlock-local odoo.service.server: Starting post tests 
+2026-09-17 02:44:26,990 42216 INFO multidoorlock-local odoo.addons.l10n_il_hr_payroll.tests.test_employee_form_101: Starting TestEmployeeForm101.test_standard_sign_popup_is_used ... 
+2026-09-17 02:44:27,578 42216 INFO multidoorlock-local odoo.addons.base.models.ir_attachment: filestore gc 25 checked, 4 removed 
+2026-09-17 02:44:27,586 42216 INFO multidoorlock-local odoo.service.server: 1 post-tests in 0.88s, 647 queries 
+2026-09-17 02:44:27,587 42216 INFO multidoorlock-local odoo.tests.stats: l10n_il_hr_payroll: 3 tests 0.87s 647 queries 
+2026-09-17 02:44:27,587 42216 INFO multidoorlock-local odoo.tests.result: 0 failed, 0 error(s) of 1 tests when loading database 'multidoorlock-local' 
+2026-09-17 02:44:27,587 42216 INFO multidoorlock-local odoo.service.server: Initiating shutdown 
+2026-09-17 02:44:27,587 42216 INFO multidoorlock-local odoo.service.server: Hit CTRL-C again or send a second signal to force the shutdown. 
+2026-09-17 02:44:27,994 42216 INFO multidoorlock-local odoo.sql_db: ConnectionPool(read/write;used=0/count=0/max=64): Closed 1 connections  

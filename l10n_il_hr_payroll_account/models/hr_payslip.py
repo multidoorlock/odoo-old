@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 from odoo import Command, api, fields, models, _
@@ -31,7 +32,9 @@ class HrPayslip(models.Model):
     @api.depends('version_id', 'version_id.il_salary_structure_id')
     def _compute_struct_id(self):
         super()._compute_struct_id()
-        for slip in self.filtered(lambda item: item.version_id.il_salary_structure_id):
+        for slip in self.filtered(
+                lambda item: item.version_id.structure_type_id.country_id.code == 'IL'
+                and item.version_id.il_salary_structure_id):
             slip.struct_id = slip.version_id.il_salary_structure_id
 
     def _il_worker_profile(self):
@@ -1056,6 +1059,31 @@ class HrPayslip(models.Model):
         self.ensure_one()
         return self.date_from.replace(month=1, day=1)
 
+    def _il_active_form_101(self):
+        """Return the active Form 101 applicable to this payslip's tax year."""
+        self.ensure_one()
+        if not self.employee_id or not self.date_to:
+            return self.env['hr.employee.form.101']
+        return self.env['hr.employee.form.101'].search([
+            ('employee_id', '=', self.employee_id.id),
+            ('company_id', '=', self.company_id.id),
+            ('state', '=', 'active'),
+            ('tax_year', '=', str(self.date_to.year)),
+        ], limit=1)
+
+    def _il_cumulative_form_101_credit_points(self, form, months):
+        """Return point-months through the current payroll month.
+
+        Calculating each month separately is important for benefits whose
+        entitlement starts or ends during the tax year (new immigrants and
+        discharged service members).
+        """
+        self.ensure_one()
+        return sum(
+            form._il_payroll_credit_points(date(self.date_to.year, month, 1))
+            for month in range(1, months + 1)
+        )
+
     def _il_income_tax(self, current_base, rule_code):
         self.ensure_one()
         # Do not create a cumulative tax refund/charge on a zero-income slip.
@@ -1064,6 +1092,7 @@ class HrPayslip(models.Model):
         if current_base <= 0:
             return 0.0
         version = self.version_id
+        form_101 = self._il_active_form_101()
         year_start = self._il_tax_year_start()
         months = self.date_to.month
 
@@ -1077,7 +1106,11 @@ class HrPayslip(models.Model):
                  or version.il_tax_coordination_valid_until >= self.date_to))
 
         # מעסיק משני ללא תיאום מס בתוקף — ניכוי בשיעור המרבי, ללא זיכויים.
-        if not version.il_primary_employer and not coordination_valid:
+        primary_employer = (
+            form_101._il_is_primary_payroll_income()
+            if form_101 else version.il_primary_employer
+        )
+        if not primary_employer and not coordination_valid:
             return current_base * max_rate / 100.0
 
         cumulative_base = self._sum('IL_TAX_BASE', year_start, self.date_to) + current_base
@@ -1105,8 +1138,33 @@ class HrPayslip(models.Model):
             previous_limit = monthly_limit
 
         credit_value = self._rule_parameter('IL_TAX_CREDIT_POINT_VALUE')
-        credits_total = (version.il_tax_credit_points or 0.0) * credit_value * months
+        credit_point_months = (
+            self._il_cumulative_form_101_credit_points(form_101, months)
+            if form_101
+            else (version.il_tax_credit_points or 0.0) * months
+        )
+        credits_total = (
+            credit_point_months * credit_value
+            + (version.il_monthly_tax_credit_adjustment or 0.0) * months
+        )
         tax = max(tax - credits_total, 0.0)
+
+        # The source payslips apply the statutory 35% income-tax credit for
+        # the employee's qualifying pension contribution.  Calculate the
+        # current contribution directly because the income-tax rule runs
+        # before the visible pension-deduction rule.
+        pension_codes = ('IL_ISR_PENSION_EE', 'IL_PAL_PENSION_EE')
+        previous_pension = -sum(
+            self._sum(code, year_start, self.date_to) for code in pension_codes)
+        current_pension = self._il_employee_pension_contribution()
+        max_contribution_rate = self._rule_parameter(
+            'IL_PENSION_TAX_CREDIT_MAX_CONTRIBUTION_RATE')
+        eligible_pension = min(
+            max(previous_pension + current_pension, 0.0),
+            max(cumulative_base, 0.0) * max_contribution_rate / 100.0,
+        )
+        pension_credit_rate = self._rule_parameter('IL_PENSION_TAX_CREDIT_RATE')
+        tax = max(tax - eligible_pension * pension_credit_rate / 100.0, 0.0)
 
         surtax_threshold = self._rule_parameter('IL_TAX_SURTAX_THRESHOLD')
         surtax_rate = self._rule_parameter('IL_TAX_SURTAX_RATE')
@@ -1125,14 +1183,27 @@ class HrPayslip(models.Model):
     # ------------------------------------------------------------------
     def _il_ni_amount(self, base, prefix, reduced_rate_code, full_rate_code):
         self.ensure_one()
+        version = self.version_id
+        is_health = 'HEALTH' in reduced_rate_code
+        if prefix == 'ISR':
+            if is_health and version.il_health_insurance_exempt:
+                return 0.0
+            if not is_health and version.il_national_insurance_exempt:
+                return 0.0
         reduced_limit = self._rule_parameter('IL_%s_NI_REDUCED_LIMIT' % prefix)
         max_base = self._rule_parameter('IL_%s_NI_MAX_BASE' % prefix)
         capped = min(base, max_base)
-        reduced_portion = min(capped, reduced_limit)
+        reduced_portion = (
+            0.0 if prefix == 'ISR' and version.il_ni_full_rate_from_first_shekel
+            else min(capped, reduced_limit))
         full_portion = max(capped - reduced_limit, 0.0)
+        if prefix == 'ISR' and version.il_ni_full_rate_from_first_shekel:
+            full_portion = capped
         reduced_rate = self._rule_parameter(reduced_rate_code)
         full_rate = self._rule_parameter(full_rate_code)
-        return reduced_portion * reduced_rate / 100.0 + full_portion * full_rate / 100.0
+        return (
+            reduced_portion * reduced_rate / 100.0
+            + full_portion * full_rate / 100.0)
 
     # ------------------------------------------------------------------
     # פנסיה / פיצויים / קרן השתלמות
@@ -1154,6 +1225,25 @@ class HrPayslip(models.Model):
         if ceiling:
             return min(base, ceiling)
         return base
+
+    def _il_pension_base(self, base):
+        """Return the employee-specific, then statutory, pension base."""
+        self.ensure_one()
+        insured_wage = self.version_id.il_pension_insured_wage
+        if insured_wage:
+            base = min(base, insured_wage)
+        return self._il_capped_base(base, 'IL_PENSION_MANDATORY_CEILING')
+
+    def _il_employee_pension_contribution(self):
+        self.ensure_one()
+        version = self.version_id
+        if not self._il_pension_active():
+            return 0.0
+        # BASIC is the only automatic pensionable earning. Salary attachments
+        # opt in explicitly through their frozen applicability snapshot.
+        base = self._il_basic_amount() + self._il_inputs_base('il_pensionable')
+        return self._il_pension_base(max(base, 0.0)) * (
+            version.il_employee_pension_rate or 0.0) / 100.0
 
     def _il_deposit_active(self):
         """פיקדון עובד זר פעיל — מתאריך תחילת ההסדר, כאשר לא מופרשת פנסיה."""

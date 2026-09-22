@@ -65,6 +65,77 @@ IL_RULE_ACCOUNT_MAP = {
 }
 
 
+IL_STRUCTURE_XMLIDS = {
+    'IL_ISR_MONTHLY': 'hr_payroll_structure_il',
+    'IL_PAL_MONTHLY': 'hr_payroll_structure_il_pal_monthly',
+    'IL_ISR_DAILY': 'hr_payroll_structure_il_isr_daily',
+    'IL_PAL_DAILY': 'hr_payroll_structure_il_pal_daily',
+}
+
+
+IL_RULE_XMLIDS = {
+    'BASIC': 'hr_salary_rule_il_basic',
+    'IL_WAGE_ROUNDING': 'hr_salary_rule_il_wage_rounding',
+    'IL_OVERTIME': 'hr_salary_rule_il_overtime',
+    'IL_ADDITIONAL_DAY_GROSS': 'hr_salary_rule_il_additional_day_gross',
+    'IL_ADJUSTMENT_GROSS': 'hr_salary_rule_il_adjustment_gross',
+    'IL_ADJUSTMENT_NET_GROSSUP': 'hr_salary_rule_il_adjustment_net_grossup',
+    'GROSS': 'hr_salary_rule_il_gross',
+    'IL_TAX_BASE': 'hr_salary_rule_il_tax_base',
+    'IL_NI_BASE': 'hr_salary_rule_il_ni_base',
+    'IL_PENSION_BASE': 'hr_salary_rule_il_pension_base',
+    'IL_SEVERANCE_BASE': 'hr_salary_rule_il_severance_base',
+    'IL_STUDY_FUND_BASE': 'hr_salary_rule_il_study_fund_base',
+    'IL_PAL_EQUALIZATION_BASE': 'hr_salary_rule_il_pal_equalization_base',
+    'IL_ISR_INCOME_TAX': 'hr_salary_rule_il_isr_income_tax',
+    'IL_ISR_NI_EE': 'hr_salary_rule_il_isr_ni_ee',
+    'IL_ISR_HEALTH_EE': 'hr_salary_rule_il_isr_health_ee',
+    'IL_ISR_PENSION_EE': 'hr_salary_rule_il_isr_pension_ee',
+    'IL_ISR_STUDY_EE': 'hr_salary_rule_il_isr_study_ee',
+    'IL_ISR_NI_ER': 'hr_salary_rule_il_isr_ni_er',
+    'IL_ISR_PENSION_ER': 'hr_salary_rule_il_isr_pension_er',
+    'IL_ISR_SEVERANCE_ER': 'hr_salary_rule_il_isr_severance_er',
+    'IL_ISR_STUDY_ER': 'hr_salary_rule_il_isr_study_er',
+    'IL_PAL_INCOME_TAX': 'hr_salary_rule_il_pal_income_tax',
+    'IL_PAL_NI_EE': 'hr_salary_rule_il_pal_ni_ee',
+    'IL_PAL_HEALTH_STAMP': 'hr_salary_rule_il_pal_health_stamp',
+    'IL_PAL_ORGANIZATION_TAX': 'hr_salary_rule_il_pal_organization_tax',
+    'IL_PAL_PENSION_EE': 'hr_salary_rule_il_pal_pension_ee',
+    'IL_PAL_STUDY_EE': 'hr_salary_rule_il_pal_study_ee',
+    'IL_PAL_NI_ER': 'hr_salary_rule_il_pal_ni_er',
+    'IL_PAL_EQUALIZATION_ER': 'hr_salary_rule_il_pal_equalization_er',
+    'IL_PAL_PENSION_ER': 'hr_salary_rule_il_pal_pension_er',
+    'IL_PAL_SEVERANCE_ER': 'hr_salary_rule_il_pal_severance_er',
+    'IL_PAL_STUDY_ER': 'hr_salary_rule_il_pal_study_er',
+    'IL_FOR_INCOME_TAX': 'hr_salary_rule_il_for_income_tax',
+    'IL_FOR_NI_EE': 'hr_salary_rule_il_for_ni_ee',
+    'IL_FOR_PRIVATE_HEALTH_EE': 'hr_salary_rule_il_for_private_health_ee',
+    'IL_FOR_HOUSING_EE': 'hr_salary_rule_il_for_housing_ee',
+    'IL_FOR_HOUSING_EXPENSES_EE': 'hr_salary_rule_il_for_housing_expenses_ee',
+    'IL_FOR_PENSION_EE': 'hr_salary_rule_il_for_pension_ee',
+    'IL_FOR_STUDY_EE': 'hr_salary_rule_il_for_study_ee',
+    'IL_FOR_NI_ER': 'hr_salary_rule_il_for_ni_er',
+    'IL_FOR_PENSION_ER': 'hr_salary_rule_il_for_pension_er',
+    'IL_FOR_SEVERANCE_ER': 'hr_salary_rule_il_for_severance_er',
+    'IL_FOR_DEPOSIT_ER': 'hr_salary_rule_il_for_deposit_er',
+    'IL_FOR_STUDY_ER': 'hr_salary_rule_il_for_study_er',
+    'IL_PAYSLIP_ROUNDING': 'hr_salary_rule_il_payslip_rounding',
+    'NET': 'hr_salary_rule_il_net',
+    'IL_PAYMENTS': 'hr_salary_rule_il_payments',
+    'IL_NET_TO_PAY': 'hr_salary_rule_il_net_to_pay',
+    'IL_EMPLOYER_COST': 'hr_salary_rule_il_employer_cost',
+}
+
+
+IL_RETIRED_RULE_CODES = {
+    'IL_WAGE_ROUNDING',
+    'IL_PAYSLIP_ROUNDING',
+    'IL_PAYMENTS',
+    'IL_NET_TO_PAY',
+    *[code for code in IL_RULE_XMLIDS if code.startswith('IL_FOR_')],
+}
+
+
 class HrPayrollStructure(models.Model):
     _inherit = 'hr.payroll.structure'
 
@@ -87,6 +158,66 @@ class HrPayrollStructure(models.Model):
             structure.company_id = (
                 structure.journal_id.company_id or structure.env.company
             )
+
+    @api.model
+    def _il_bind_existing_structure_xmlids(self):
+        """Adopt existing Israeli payroll records before XML data is loaded.
+
+        A database may already contain the structures and rules created by an
+        earlier/manual setup while their module XML IDs are missing.  Binding
+        the stable codes first lets the regular ``noupdate=0`` XML records
+        update those rows in place instead of creating a second payroll setup.
+        """
+        module = 'l10n_il_hr_payroll_account'
+        IrModelData = self.env['ir.model.data'].sudo()
+
+        def bind(xml_name, record):
+            if not record or IrModelData.search_count([
+                ('module', '=', module), ('name', '=', xml_name),
+            ]):
+                return
+            IrModelData._update_xmlids([{
+                'xml_id': f'{module}.{xml_name}',
+                'record': record,
+                'noupdate': False,
+            }])
+
+        structures = self.with_context(active_test=False).search([
+            ('code', 'in', tuple(IL_STRUCTURE_XMLIDS)),
+        ])
+        selected = {}
+        for code, xml_name in IL_STRUCTURE_XMLIDS.items():
+            matches = structures.filtered(lambda item: item.code == code)
+            active = matches.filtered('active')
+            record = (active or matches).sorted('id')[:1]
+            if record:
+                selected[code] = record
+                bind(xml_name, record)
+
+        monthly = selected.get('IL_ISR_MONTHLY') or selected.get('IL_PAL_MONTHLY')
+        daily = selected.get('IL_ISR_DAILY') or selected.get('IL_PAL_DAILY')
+        if monthly:
+            bind('hr_payroll_structure_type_il', monthly.type_id)
+        if daily:
+            bind('hr_payroll_structure_type_il_daily', daily.type_id)
+
+        country = self.env.ref('base.il')
+        Category = self.env['hr.salary.rule.category'].with_context(active_test=False)
+        bind('hr_salary_rule_category_il_adj', Category.search([
+            ('code', '=', 'IL_ADJ'), ('country_id', '=', country.id),
+        ], limit=1))
+        bind('hr_salary_rule_category_il_base', Category.search([
+            ('code', '=', 'IL_BASE'), ('country_id', '=', country.id),
+        ], limit=1))
+
+        template = selected.get('IL_ISR_MONTHLY')
+        if template:
+            rules = template.with_context(active_test=False).rule_ids
+            for code, xml_name in IL_RULE_XMLIDS.items():
+                matches = rules.filtered(lambda item: item.code == code)
+                active = matches.filtered('active')
+                bind(xml_name, (active or matches).sorted('id')[:1])
+        return True
 
     @api.model
     def _il_ensure_payroll_accounting_configuration(self, overwrite=False):
@@ -175,21 +306,15 @@ class HrPayrollStructure(models.Model):
 
     @api.model
     def _il_sync_structures_and_rules(self):
-        # Payments and Net to Pay are live reconciliation-backed payslip
-        # summary values, not salary rules. Retire every legacy copy before
-        # synchronising the four Israeli structures.
-        self.env['hr.salary.rule'].with_context(active_test=False).search([
-            ('code', 'in', ('IL_PAYMENTS', 'IL_NET_TO_PAY')),
-        ]).write({
-            'active': False,
-            'appears_on_payslip': False,
-        })
         refs = {
             'isr_monthly': self.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_il'),
             'pal_monthly': self.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_monthly'),
             'isr_daily': self.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_il_isr_daily'),
             'pal_daily': self.env.ref('l10n_il_hr_payroll_account.hr_payroll_structure_il_pal_daily'),
         }
+        canonical_structures = self.browse(
+            [structure.id for structure in refs.values()])
+        canonical_structures.write({'active': True})
         country = self.env.ref('base.il')
         obsolete_structures = self.with_context(active_test=False).search([
             ('country_id', '=', country.id),
@@ -201,17 +326,41 @@ class HrPayrollStructure(models.Model):
             else:
                 structure.unlink()
         template = refs['isr_monthly']
-        rules = template.rule_ids
-        common = rules.filtered(lambda r: not r.code.startswith(('IL_ISR_', 'IL_PAL_', 'IL_FOR_')))
-        groups = {
-            'pal_monthly': common | rules.filtered(lambda r: r.code.startswith('IL_PAL_')),
-            'isr_daily': common | rules.filtered(lambda r: r.code.startswith('IL_ISR_')),
-            'pal_daily': common | rules.filtered(lambda r: r.code.startswith('IL_PAL_')),
-        }
+
+        def retire(rule):
+            """Never delete a salary rule referenced by historical payslip lines."""
+            if self.env['hr.payslip.line'].search_count([('salary_rule_id', '=', rule.id)]):
+                rule.write({
+                    'active': False,
+                    'appears_on_payslip': False,
+                })
+            else:
+                rule.unlink()
+
+        desired_codes = set(IL_RULE_XMLIDS) - IL_RETIRED_RULE_CODES
+        canonical_rules = self.env['hr.salary.rule']
+        for code in desired_codes:
+            rule = self.env.ref(
+                f'l10n_il_hr_payroll_account.{IL_RULE_XMLIDS[code]}')
+            rule.write({'struct_id': template.id, 'active': True})
+            canonical_rules |= rule
+
+        # The module definitions are the complete source of truth. Remove
+        # every other rule from the template, including old module versions,
+        # manual additions and native Odoo defaults. A rule referenced by a
+        # historical payslip is archived instead of deleted.
+        template_rules = template.with_context(active_test=False).rule_ids
+        for obsolete in template_rules - canonical_rules:
+            retire(obsolete)
+
+        # Every Israeli structure receives the exact same active rule set.
+        # Population conditions decide which deductions apply; monthly/daily
+        # structures now differ only in how BASIC is sourced from work days.
+        rules = canonical_rules.sorted(lambda rule: (rule.sequence, rule.id))
         values_by_key = {}
-        for key, selected in groups.items():
+        for key in ('pal_monthly', 'isr_daily', 'pal_daily'):
             values_by_key[key] = []
-            for rule in selected:
+            for rule in rules:
                 values = rule.copy_data(default={
                     'struct_id': False,
                     # copy_data adds "(copy)" by default. These are the same
@@ -222,24 +371,17 @@ class HrPayrollStructure(models.Model):
                 values_by_key[key].append((rule.code, values))
         inputs = template.input_line_type_ids
 
-        def retire(rule):
-            """Never delete a salary rule referenced by historical payslip lines."""
-            if self.env['hr.payslip.line'].search_count([('salary_rule_id', '=', rule.id)]):
-                rule.active = False
-            else:
-                rule.unlink()
-
-        # Keep XML-owned common/Israeli template rules stable across upgrades,
-        # while excluding rules belonging to other employee populations.
+        # Keep XML-owned template rules stable across upgrades while retiring
+        # the unsupported legacy population.
         for rule in template.with_context(active_test=False).rule_ids.filtered(
-                lambda item: item.code.startswith(('IL_PAL_', 'IL_FOR_'))):
+                lambda item: item.active and item.code.startswith('IL_FOR_')):
             retire(rule)
         for key, structure in refs.items():
             if key == 'isr_monthly':
                 structure.input_line_type_ids = inputs
                 continue
             existing_rules = structure.with_context(active_test=False).rule_ids
-            desired_codes = {code for code, values in values_by_key[key]}
+            structure_codes = {code for code, values in values_by_key[key]}
             for code, values in values_by_key[key]:
                 matches = existing_rules.filtered(lambda item: item.code == code)
                 values.update({'struct_id': structure.id, 'active': True})
@@ -249,7 +391,13 @@ class HrPayrollStructure(models.Model):
                         retire(duplicate)
                 else:
                     self.env['hr.salary.rule'].create(values)
-            for rule in existing_rules.filtered(lambda item: item.active and item.code not in desired_codes):
+            refreshed = structure.with_context(active_test=False).rule_ids
+            for code in structure_codes:
+                matches = refreshed.filtered(lambda item: item.code == code)
+                for duplicate in matches[1:]:
+                    retire(duplicate)
+            for rule in refreshed.filtered(
+                    lambda item: item.code not in structure_codes):
                 retire(rule)
             structure.input_line_type_ids = inputs
         return True

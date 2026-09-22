@@ -3,6 +3,13 @@ from . import res_config_settings
 from . import resource_calendar
 from . import resource_calendar_attendance
 from . import hr_version
+from . import hr_employee_form_101
+from . import sign_item
+from . import hr_employee_form_101_activation_wizard
+from . import sign_request
+from . import hr_employee_section_14
+from . import hr_employee_onboarding
+from . import sign_request_section_14
 from . import hr_version_work_entry
 from . import hr_attendance
 from . import hr_work_entry
