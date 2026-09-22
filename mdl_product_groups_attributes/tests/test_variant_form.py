@@ -15,6 +15,7 @@ class TestVariantForm(TransactionCase):
             cls.env.ref("product.group_product_variant")
             | cls.env.ref("product.group_product_pricelist")
             | cls.env.ref("purchase.group_purchase_manager")
+            | cls.env.ref("uom.group_uom")
         )
         attribute = cls.env["product.attribute"].create({
             "name": "Variant form size", "create_variant": "always",
