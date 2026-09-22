@@ -150,6 +150,7 @@ class ProductProduct(models.Model):
 
     @api.depends(
         "mdl_generated_name", "name",
+        "product_tmpl_id.mdl_group_default_name",
         "product_tmpl_id.mdl_catalog_managed",
     )
     @api.depends_context("lang")
@@ -161,7 +162,9 @@ class ProductProduct(models.Model):
             _sku, automatic_name, _missing = product.product_tmpl_id._mdl_render_catalog_values(
                 product.product_template_attribute_value_ids
             )
-            product.mdl_automatic_name = automatic_name or product.mdl_generated_name or product.name
+            # An empty configured name is intentional. The template title and
+            # a previously stored generated name are not alternative sources.
+            product.mdl_automatic_name = automatic_name or ""
 
     @api.depends("mdl_name_override", "mdl_automatic_name", "product_tmpl_id.mdl_catalog_managed")
     @api.depends_context("lang")
