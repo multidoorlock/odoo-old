@@ -8,19 +8,14 @@
             <form string="Name and SKU Overrides" create="0" delete="0">
                 <field name="mdl_catalog_managed" invisible="1"/>
                 <field name="mdl_model_as_attribute" invisible="1"/>
-                <field name="mdl_native_name_override" invisible="1"/>
                 <group>
                     <label for="name" string="Template Name"/>
                     <div class="o_row">
                         <field name="name" nolabel="1"/>
-                        <button name="action_mdl_reset_base_name" type="object"
-                                icon="fa-undo" title="Reset to the automatic name"
-                                class="btn-link p-0"
-                                invisible="not (mdl_native_name_override or mdl_group_name_override or (not mdl_model_as_attribute and mdl_model_name_override))"/>
                     </div>
                 </group>
-                <div class="alert alert-info" role="alert" invisible="not mdl_native_name_override">
-                    The custom template name replaces the group and model text in variant names. Use Undo to return to automatic naming.
+                <div class="alert alert-info" role="alert">
+                    The template title is for display only. Automatic product names use Product Group Name followed by the configured attribute text, in each language.
                 </div>
                 <div class="text-muted mb-3">
                     Leave an override blank to use its source value. Enter — to omit that component. Attribute values are added after the shared name and SKU.
@@ -28,7 +23,6 @@
                 <group string="Product Group">
                     <group>
                         <field name="mdl_group_default_name" string="Product Group Name"/>
-                        <field name="mdl_group_name_override" string="Custom Group Text"/>
                     </group>
                     <group>
                         <field name="mdl_group_default_sku" string="Product Group SKU"/>
@@ -36,10 +30,6 @@
                     </group>
                 </group>
                 <group string="Model" invisible="mdl_model_as_attribute">
-                    <group>
-                        <field name="mdl_model_default_name"/>
-                        <field name="mdl_model_name_override" string="Custom Model Text"/>
-                    </group>
                     <group>
                         <field name="mdl_model_sku_component"/>
                         <field name="mdl_model_sku_override" string="Custom Model SKU" class="o_mdl_sku_field"/>
@@ -64,11 +54,8 @@
             <xpath expr="//div[hasclass('oe_title')]//field[@name='name']" position="replace">
                 <div class="o_mdl_variant_name d-flex align-items-baseline gap-2">
                     <field name="name" class="text-break flex-grow-1" widget="text"
-                           options="{'line_breaks': False}"/>
-                    <button name="action_mdl_reset_base_name" type="object"
-                            icon="fa-undo" title="Reset to the automatic name"
-                            class="btn-link p-0"
-                            invisible="not mdl_catalog_managed or not (mdl_native_name_override or mdl_group_name_override or (not mdl_model_as_attribute and mdl_model_name_override))"/>
+                           options="{'line_breaks': False}"
+                           help="Display title of the product group. Automatic product names use Product Group Name below."/>
                 </div>
             </xpath>
             <xpath expr="//group[hasclass('o_mdl_catalog_setup')]/field[@name='mdl_group_default_sku']" position="after">
