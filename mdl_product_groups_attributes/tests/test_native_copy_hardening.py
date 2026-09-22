@@ -206,42 +206,44 @@ class TestNativeCopyHardening(TransactionCase):
             original_codes,
         )
 
-    def test_native_name_drives_variants_reset_and_copy(self):
-        legacy_template = self._managed_template()
-        legacy_template.name = "שם מותאם לפני המרה"
-        self.assertEqual(
-            legacy_template.mdl_effective_base_name,
-            "שם מותאם לפני המרה",
-        )
-        legacy_template.action_mdl_reset_base_name()
-        self.assertEqual(legacy_template.name, "דלת כנף")
-        self.assertFalse(legacy_template.mdl_native_name_override)
-        self.assertFalse(legacy_template.mdl_native_name_source)
-
+    def test_display_title_is_independent_from_variant_source_and_copy(self):
         template = self._managed_template()
-        template._mdl_convert_models_to_attributes()
+        original = {
+            product.id: (product.default_code, product.mdl_generated_name)
+            for product in template.product_variant_ids
+        }
+        source_name = template.mdl_group_default_name
 
         template.name = "שם Odoo מותאם"
-        self.assertEqual(template.mdl_native_name_override, "שם Odoo מותאם")
-        self.assertEqual(template.mdl_effective_base_name, "שם Odoo מותאם")
-        self.assertTrue(
-            all(
-                name.startswith("שם Odoo מותאם")
-                for name in template.product_variant_ids.mapped(
-                    "mdl_generated_name"
-                )
-            )
+        self.assertEqual(template.name, "שם Odoo מותאם")
+        self.assertEqual(template.mdl_effective_base_name, source_name)
+        self.assertFalse(template.mdl_native_name_override)
+        self.assertEqual(
+            {
+                product.id: (product.default_code, product.mdl_generated_name)
+                for product in template.product_variant_ids
+            },
+            original,
         )
 
         copied = template.copy()
-        self.assertEqual(copied.name, "שם Odoo מותאם (copy)")
-        self.assertEqual(copied.mdl_native_name_override, copied.name)
-        self.assertEqual(copied.mdl_effective_base_name, copied.name)
+        copied_title = "שם Odoo מותאם (copy)"
+        self.assertEqual(copied.name, copied_title)
+        self.assertEqual(copied.mdl_group_default_name, source_name)
+        self.assertEqual(copied.mdl_effective_base_name, source_name)
+        self.assertFalse(copied.mdl_native_name_override)
+        self.assertTrue(copied.mdl_copy_requires_new_sku)
+        self.assertTrue(all(not p.default_code for p in copied.product_variant_ids))
+        self.assertEqual(
+            set(copied.product_variant_ids.mapped("mdl_generated_name")),
+            {name for code, name in original.values()},
+        )
+        copied_ids = copied.product_variant_ids.ids
 
         copied.mdl_effective_base_name = "בסיס ערוך בעותק"
-        self.assertEqual(copied.mdl_native_name_override, "בסיס ערוך בעותק")
-        self.assertEqual(copied.name, "בסיס ערוך בעותק")
-        self.assertEqual(copied.mdl_effective_base_name, "בסיס ערוך בעותק")
+        self.assertEqual(copied.mdl_group_default_name, "בסיס ערוך בעותק")
+        self.assertEqual(copied.name, copied_title)
+        self.assertEqual(copied.product_variant_ids.ids, copied_ids)
         self.assertTrue(
             all(
                 name.startswith("בסיס ערוך בעותק")
@@ -250,32 +252,33 @@ class TestNativeCopyHardening(TransactionCase):
                 )
             )
         )
+        self.assertEqual(template.mdl_group_default_name, source_name)
 
         copied.mdl_effective_base_name = False
-        self.assertEqual(copied.mdl_native_name_override, "—")
+        self.assertFalse(copied.mdl_group_default_name)
         self.assertFalse(copied.mdl_effective_base_name)
-        self.assertNotEqual(copied.name, "—")
         copied.action_mdl_reset_base_name()
-        self.assertFalse(copied.mdl_native_name_override)
-        self.assertEqual(copied.name, "דלת (copy) כנף")
+        self.assertFalse(copied.mdl_effective_base_name)
+        self.assertEqual(copied.name, copied_title)
+        self.assertTrue(copied.mdl_copy_requires_new_sku)
+        self.assertTrue(all(not p.default_code for p in copied.product_variant_ids))
 
         explicitly_named = template.copy({"name": "שם העתק מפורש"})
         self.assertEqual(explicitly_named.name, "שם העתק מפורש")
-        self.assertEqual(
-            explicitly_named.mdl_effective_base_name,
-            "שם העתק מפורש",
-        )
+        self.assertEqual(explicitly_named.mdl_group_default_name, source_name)
+        self.assertEqual(explicitly_named.mdl_effective_base_name, source_name)
 
         template.action_mdl_reset_base_name()
-        self.assertFalse(template.mdl_native_name_override)
-        self.assertEqual(template.name, "דלת כנף")
-        self.assertEqual(template.mdl_effective_base_name, "דלת")
-
-        template.name = "התאמה נוספת"
         template.action_mdl_reset_base_values()
-        self.assertFalse(template.mdl_native_name_override)
-        self.assertEqual(template.name, "דלת כנף")
-        self.assertEqual(template.mdl_effective_base_name, "דלת")
+        self.assertEqual(template.name, "שם Odoo מותאם")
+        self.assertEqual(template.mdl_group_default_name, source_name)
+        self.assertEqual(
+            {
+                product.id: (product.default_code, product.mdl_generated_name)
+                for product in template.product_variant_ids
+            },
+            original,
+        )
 
     def test_copy_preserves_exact_legacy_blocked_combination(self):
         template = self._managed_template()
