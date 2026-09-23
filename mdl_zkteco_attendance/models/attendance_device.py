@@ -14,6 +14,7 @@ class AttendanceDevice(models.Model):
 
     _LANGUAGE_TO_DEVICE = {"he_IL": "72", "ar_001": "66", "en_US": "69"}
     _DEVICE_TO_LANGUAGE = {value: key for key, value in _LANGUAGE_TO_DEVICE.items()}
+    _REQUEST_TOUCH_INTERVAL = timedelta(seconds=30)
 
     name = fields.Char(string="שם", required=True)
     manufacturer = fields.Selection(
@@ -132,18 +133,53 @@ class AttendanceDevice(models.Model):
                 raise ValidationError(_("Cooldown ההחתמות לא יכול להיות שלילי."))
 
     @api.model
+    def _try_request_touch_lock(self, manufacturer, identifier):
+        """Reserve this request's non-critical device heartbeat update.
+
+        Clock terminals routinely open several HTTP requests at once.  The
+        first request updates ``last_seen_at``/``last_ip``; concurrent requests
+        skip only that telemetry write and continue processing normally.
+        """
+        lock_name = f"mdl.attendance.device.last_seen:{manufacturer}:{identifier}"
+        self.env.cr.execute(
+            "SELECT pg_try_advisory_xact_lock(hashtext(%s), hashtext(%s))",
+            ("mdl.attendance.device.last_seen", lock_name),
+        )
+        return bool(self.env.cr.fetchone()[0])
+
+    def _touch_from_request(self, remote_ip=None, now=None):
+        self.ensure_one()
+        now = now or fields.Datetime.now()
+        remote_ip = remote_ip or False
+        recent = bool(
+            self.last_seen_at
+            and self.last_seen_at >= now - self._REQUEST_TOUCH_INTERVAL
+        )
+        if recent and self.last_ip == remote_ip:
+            return False
+        self.sudo().write({"last_seen_at": now, "last_ip": remote_ip})
+        return True
+
+    @api.model
     def get_or_create_from_request(self, manufacturer, device_identifier, remote_ip=None):
         identifier = (device_identifier or "").strip()
         if not identifier:
             return self.browse()
+        update_telemetry = self._try_request_touch_lock(manufacturer, identifier)
         device = self.sudo().search([
             ("manufacturer", "=", manufacturer),
             ("device_identifier", "=", identifier),
         ], limit=1)
-        vals = {"last_seen_at": fields.Datetime.now(), "last_ip": remote_ip or False}
         if device:
-            device.write(vals)
+            if update_telemetry:
+                device._touch_from_request(remote_ip)
             return device
+        # Another request may currently be creating this terminal.  It owns
+        # the advisory lock and will persist the initial telemetry; avoid a
+        # competing INSERT and let the terminal's next poll resolve it.
+        if not update_telemetry:
+            return self.browse()
+        vals = {"last_seen_at": fields.Datetime.now(), "last_ip": remote_ip or False}
         vals.update({
             "name": f"{dict(self._fields['manufacturer'].selection).get(manufacturer, manufacturer)} {identifier}",
             "manufacturer": manufacturer,

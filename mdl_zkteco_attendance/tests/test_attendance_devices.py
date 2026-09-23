@@ -1,5 +1,6 @@
 import base64
 from datetime import timedelta
+from unittest.mock import patch
 
 from odoo import fields
 from odoo.exceptions import ValidationError
@@ -73,6 +74,44 @@ class TestAttendanceDevices(TransactionCase):
         return self.env["mdl.attendance.device.event"]._timeline_reconcile_employee_ids(
             [self.employee.id],
         )
+
+    def test_request_heartbeat_is_throttled_without_hiding_the_device(self):
+        now = fields.Datetime.now()
+        self.device.write({"last_seen_at": now, "last_ip": "192.0.2.10"})
+
+        touched = self.device._touch_from_request(
+            "192.0.2.10", now + timedelta(seconds=10),
+        )
+
+        self.assertFalse(touched)
+        self.assertEqual(self.device.last_seen_at, now)
+        self.assertEqual(self.device.last_ip, "192.0.2.10")
+
+        touched = self.device._touch_from_request(
+            "192.0.2.10", now + timedelta(seconds=31),
+        )
+        self.assertTrue(touched)
+        self.assertEqual(self.device.last_seen_at, now + timedelta(seconds=31))
+
+    def test_busy_request_heartbeat_skips_only_telemetry_update(self):
+        previous_seen = fields.Datetime.now() - timedelta(minutes=5)
+        self.device.write({"last_seen_at": previous_seen, "last_ip": "192.0.2.10"})
+        Device = self.env["mdl.attendance.device"]
+
+        with patch.object(type(Device), "_try_request_touch_lock", return_value=False):
+            found = Device.get_or_create_from_request(
+                "zkteco", self.device.device_identifier, "192.0.2.11",
+            )
+
+        self.assertEqual(found, self.device)
+        self.assertEqual(found.last_seen_at, previous_seen)
+        self.assertEqual(found.last_ip, "192.0.2.10")
+        log = self._log()
+        found._adapter().process_payload(
+            log, "ATTLOG", b"", "74\t2026-09-23 08:00:00\t255\t1\t0",
+        )
+        self.assertEqual(log.event_ids.processing_state, "processed")
+        self.assertTrue(log.event_ids.attendance_id)
 
     def test_employee_archive_only_restores_cards_archived_by_employee(self):
         manual_card = self.env["mdl.attendance.device.employee"].with_context(
