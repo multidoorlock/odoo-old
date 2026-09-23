@@ -90,7 +90,7 @@
                 <filter name="punch_in" string="כניסות" domain="[('punch_state', '=', 'in')]"/>
                 <filter name="punch_out" string="יציאות" domain="[('punch_state', '=', 'out')]"/>
                 <filter name="only_conflicts" string="קונפליקטים בלבד"
-                        domain="[('processing_state', 'in', ['new', 'not_applied', 'waiting_employee_link', 'error'])]"/>
+                        domain="[('mdl_is_conflict', '=', True)]"/>
                 <filter name="with_data" string="כולל נתונים"
                         domain="[('event_datetime', '!=', False)]"/>
                 <group>

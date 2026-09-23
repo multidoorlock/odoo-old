@@ -2,8 +2,6 @@ from collections import defaultdict
 from datetime import timedelta
 import uuid
 
-import pytz
-
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.fields import Domain
@@ -79,24 +77,17 @@ class AttendanceConflictTimeline(models.Model):
         )
 
     @api.model
-    def _timeline_expected_end(self, attendance):
-        """Return (scheduled end, scheduled end with grace) as naive UTC datetimes."""
-        employee = attendance.employee_id
-        tz_name = employee.tz or employee.resource_calendar_id.tz or "UTC"
-        employee_tz = pytz.timezone(tz_name)
-        check_in_local = pytz.UTC.localize(attendance.check_in).astimezone(employee_tz)
-        day_start = check_in_local.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        intervals = employee._get_expected_attendances(day_start, day_end)
-        interval_ends = [stop for _start, stop, _meta in intervals]
-        if interval_ends:
-            scheduled_local = max(interval_ends)
-        else:
-            hours = employee.resource_calendar_id.hours_per_day or 8.0
-            scheduled_local = check_in_local + timedelta(hours=hours)
-        grace_hours = employee.company_id.auto_check_out_tolerance or 0.0
-        scheduled_utc = scheduled_local.astimezone(pytz.UTC).replace(tzinfo=None)
-        return scheduled_utc, scheduled_utc + timedelta(hours=grace_hours)
+    def _timeline_open_in_overdue(self, check_in, employee, now=None):
+        """An IN without an OUT is late only after a full daily quota elapses.
+
+        Fixed start/end intervals, neighbouring punches and auto-checkout grace
+        do not define this threshold; the employee's daily hours do.
+        """
+        if not check_in or not employee:
+            return False
+        calendar = employee.resource_calendar_id or employee.company_id.resource_calendar_id
+        daily_hours = calendar.hours_per_day if calendar else 8.0
+        return (now or fields.Datetime.now()) > check_in + timedelta(hours=daily_hours or 8.0)
 
     @api.model
     def _timeline_event_reason(self, event, state):
@@ -677,6 +668,7 @@ class AttendanceConflictTimeline(models.Model):
         reason_by_state = {
             "1": _("נוכחות תקינה הקיימת ב-Odoo"),
             "1.5": _("נוכחות פתוחה הקיימת ב-Odoo"),
+            "2": _("חסרה יציאה: הנוכחות הפתוחה עברה את מכסת השעות היומית"),
             "6": _("נוכחות פתוחה עם אירוע יציאה שמוכן לעדכון"),
             "7": _("לא ניתן לעדכן כרגע את הנוכחות"),
         }
@@ -713,6 +705,8 @@ class AttendanceConflictTimeline(models.Model):
                         return True
                     if operator == "in" and isinstance(selected, (list, tuple)):
                         return bool(selected) and set(selected).issubset(self._TREATMENT_STATES)
+                if len(value) == 3 and value[0] == "mdl_is_conflict":
+                    return value[1] == "=" and value[2] is True
                 return any(domain_mentions_conflict(item) for item in value)
             return False
 
@@ -768,9 +762,10 @@ class AttendanceConflictTimeline(models.Model):
         # rebuild saved attendances or payroll work entries.
         if domain_requests_hidden(active_domain):
             return self._timeline_hidden_search_result(candidates, start, end)
+        now = fields.Datetime.now()
         conflicts = candidates.filtered(
             lambda event: not event.conflict_dismissed
-            and (event.processing_state != "processed" or not event.attendance_id)
+            and event._event_is_attendance_conflict(now)
         )
         event_employee_ids = list(dict.fromkeys(
             self._timeline_event_employee(event).id for event in conflicts
@@ -895,14 +890,20 @@ class AttendanceConflictTimeline(models.Model):
                 in_source = source_event(attendance, "in", attendance.check_in)
                 if in_source.conflict_dismissed:
                     continue
+                overdue = self._timeline_open_in_overdue(
+                    attendance.check_in, employee, now,
+                )
                 items.append(self._timeline_attendance_item(
-                    attendance, "in", attendance.check_in, "1.5",
+                    attendance, "in", attendance.check_in, "2" if overdue else "1.5",
                     event=in_source,
                 ))
                 if in_source:
                     item_id_by_event[in_source.id] = f"attendance:{attendance.id}:in"
 
-            for event in employee_events.filtered(lambda candidate: candidate.id in conflict_ids):
+            for event in employee_events.filtered(
+                lambda candidate: candidate.id in conflict_ids
+                and not (candidate.processing_state == "processed" and candidate.attendance_id)
+            ):
                 effective = event.manual_punch_state or event.punch_state
                 blocked_reason = event.conflict_action_error or False
                 state = "7" if blocked_reason else ("2" if effective == "in" else "3")

@@ -65,6 +65,10 @@ class AttendanceDeviceEvent(models.Model):
     conflict_action_error = fields.Text(readonly=True, copy=False)
     conflict_dismissed = fields.Boolean(default=False, readonly=True, index=True, copy=False)
     conflict_reason = fields.Char(compute="_compute_conflict_reason", string="סיבת הקונפליקט")
+    mdl_is_conflict = fields.Boolean(
+        compute="_compute_mdl_is_conflict", search="_search_mdl_is_conflict",
+        string="קונפליקט נוכחות",
+    )
     original_event_datetime = fields.Datetime(readonly=True, copy=False)
     original_employee_id = fields.Many2one(
         "hr.employee", readonly=True, copy=False, ondelete="set null", check_company=True,
@@ -77,6 +81,59 @@ class AttendanceDeviceEvent(models.Model):
     timeline_is_edited = fields.Boolean(
         compute="_compute_timeline_is_edited", string="נערך ידנית",
     )
+
+    def _event_is_attendance_conflict(self, now):
+        self.ensure_one()
+        if self.processing_state == "ignored":
+            return False
+        kind = self.manual_punch_state or self.punch_state
+        if self.processing_state == "processed" and self.attendance_id:
+            return bool(
+                kind == "in" and not self.attendance_id.check_out
+                and not self.odoo_generated
+                and self._timeline_open_in_overdue(
+                    self.attendance_id.check_in, self.attendance_id.employee_id, now,
+                )
+            )
+        if kind == "in" and self.employee_id and not self.conflict_action_failed:
+            return self._timeline_open_in_overdue(self.event_datetime, self.employee_id, now)
+        return self.processing_state in ("new", "not_applied", "waiting_employee_link", "error")
+
+    @api.depends(
+        "processing_state", "manual_punch_state", "punch_state", "event_datetime",
+        "employee_id.resource_calendar_id.hours_per_day", "attendance_id.check_in",
+        "attendance_id.check_out", "conflict_action_failed", "conflict_dismissed",
+    )
+    def _compute_mdl_is_conflict(self):
+        now = fields.Datetime.now()
+        for event in self:
+            event.mdl_is_conflict = event._event_is_attendance_conflict(now)
+
+    @api.model
+    def _search_mdl_is_conflict(self, operator, value):
+        if operator in ("in", "not in"):
+            values = set(value)
+            if values == {True, False}:
+                return [] if operator == "in" else [("id", "=", 0)]
+            if not values:
+                return [("id", "=", 0)] if operator == "in" else []
+            positive = (operator == "in") == (True in values)
+        elif operator in ("=", "!=") and isinstance(value, bool):
+            positive = (operator == "=") == value
+        else:
+            raise ValueError(f"mdl_is_conflict search: unsupported {operator!r} {value!r}")
+        candidates = self.sudo().search([
+            "|",
+            ("processing_state", "in", ["new", "not_applied", "waiting_employee_link", "error"]),
+            "&",
+            ("processing_state", "=", "processed"),
+            ("attendance_id.check_out", "=", False),
+        ])
+        now = fields.Datetime.now()
+        matching_ids = candidates.filtered(
+            lambda event: event._event_is_attendance_conflict(now)
+        ).ids
+        return [("id", "in" if positive else "not in", matching_ids)]
 
     def init(self):
         """Use the values present at installation time as the legacy baseline."""
@@ -375,13 +432,19 @@ class AttendanceDeviceEvent(models.Model):
             )
         return result
 
-    @api.depends("processing_state", "processing_message", "effective_punch_state", "conflict_action_error")
+    @api.depends(
+        "processing_state", "processing_message", "effective_punch_state", "conflict_action_error",
+        "attendance_id.check_in", "attendance_id.check_out",
+        "employee_id.resource_calendar_id.hours_per_day",
+    )
     def _compute_conflict_reason(self):
         for event in self:
             message = event.conflict_action_error or event.processing_message or ""
             normalized = message.lower()
             if event.conflict_action_error:
                 reason = event.conflict_action_error
+            elif event.processing_state == "processed" and event._event_is_attendance_conflict(fields.Datetime.now()):
+                reason = "חסרה יציאה: הנוכחות הפתוחה עברה את מכסת השעות היומית"
             elif event.processing_state == "waiting_employee_link" or "not linked to an employee" in normalized:
                 reason = "כרטיס השעון אינו מקושר לעובד"
             elif "already has an open attendance" in normalized or "חסרה יציאה" in message:
