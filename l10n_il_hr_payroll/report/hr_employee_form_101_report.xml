@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_employee_form_101" model="report.paperformat">
+        <field name="name">טופס 101 - A4 ללא שוליים</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_employee_form_101" model="ir.actions.report">
+        <field name="name">טופס 101</field>
+        <field name="model">hr.employee.form.101</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">l10n_il_hr_payroll.report_employee_form_101</field>
+        <field name="report_file">l10n_il_hr_payroll.report_employee_form_101</field>
+        <field name="binding_model_id" ref="model_hr_employee_form_101"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_employee_form_101"/>
+        <field name="print_report_name">'טופס 101 - %s - %s' % (object.employee_id.name, object.tax_year)</field>
+    </record>
+
+    <template id="report_employee_form_101">
+        <t t-call="web.html_container">
+            <style>
+                @page { size: A4 portrait; margin: 0; }
+                body { margin: 0; padding: 0; }
+                .f101-page { position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; font-family: Arial, sans-serif; direction: rtl; }
+                .f101-page:last-child { page-break-after: auto; }
+                .f101-bg { position: absolute; top: 0; left: 0; width: 210mm; height: 297mm; z-index: 0; }
+                .f101-v { position: absolute; z-index: 1; height: 4.5mm; overflow: hidden; font-size: 7pt; line-height: 4.5mm; white-space: nowrap; text-align: center; text-overflow: ellipsis; }
+                .f101-small { font-size: 6.5pt; }
+                .f101-year { height: 6mm; overflow: visible; background: #fff; font-size: 12pt; line-height: 6mm; letter-spacing: 4px; }
+                .f101-check { position: absolute; z-index: 2; font-size: 11pt; font-weight: bold; line-height: 1; }
+                .f101-sign { position: absolute; z-index: 2; object-fit: contain; }
+            </style>
+            <t t-foreach="docs" t-as="o">
+                <div class="page f101-page">
+                    <img class="f101-bg" src="/l10n_il_hr_payroll/static/src/img/form101_page_1.png"/>
+
+                    <span class="f101-v f101-year" style="top:29.9mm; left:76.5mm; width:36.5mm;" t-esc="o.tax_year or ''"/>
+
+                    <span class="f101-v" style="top:57.8mm; left:146mm; width:39mm;" t-esc="o.employer_name or ''"/>
+                    <span class="f101-v" style="top:57.8mm; left:75mm; width:69mm;" t-esc="o.employer_address or ''"/>
+                    <span class="f101-v" style="top:57.8mm; left:46mm; width:27mm;" t-esc="o.employer_phone or ''"/>
+                    <span class="f101-v" style="top:57.8mm; left:10mm; width:34mm;" t-esc="o.employer_withholding_file or ''"/>
+
+                    <span class="f101-v" style="top:76.0mm; left:155mm; width:31mm;" t-esc="o.identification_id or ''"/>
+                    <span class="f101-v" style="top:76.0mm; left:111mm; width:42mm;" t-esc="o.last_name or ''"/>
+                    <span class="f101-v" style="top:76.0mm; left:76mm; width:33mm;" t-esc="o.first_name or ''"/>
+                    <span class="f101-v" style="top:76.0mm; left:44mm; width:30mm;" t-field="o.birthday"/>
+                    <span class="f101-v" style="top:76.0mm; left:11mm; width:31mm;" t-field="o.immigration_date"/>
+                    <span class="f101-v" style="top:86.4mm; left:151mm; width:35mm;" t-esc="o.passport_id or ''"/>
+                    <span class="f101-v" style="top:86.4mm; left:76mm; width:73mm;" t-esc="'%s %s %s' % (o.private_street or '', o.private_house_number or '', o.private_city or '')"/>
+                    <span class="f101-v" style="top:97.8mm; left:149mm; width:37mm;" t-esc="o.private_email or ''"/>
+                    <span class="f101-v" style="top:108.2mm; left:119mm; width:34mm;" t-esc="o.mobile_phone or ''"/>
+                    <span class="f101-v" style="top:108.2mm; left:74mm; width:42mm;" t-esc="o.private_phone or ''"/>
+
+                    <span t-if="o.sex == 'male'" class="f101-check" style="top:96.5mm; right:13.8mm;">✓</span>
+                    <span t-if="o.sex == 'female'" class="f101-check" style="top:104.0mm; right:13.8mm;">✓</span>
+                    <span t-if="o.marital == 'single'" class="f101-check" style="top:96.5mm; right:37.5mm;">✓</span>
+                    <span t-if="o.marital == 'married'" class="f101-check" style="top:96.5mm; right:59.5mm;">✓</span>
+                    <span t-if="o.marital == 'divorced'" class="f101-check" style="top:96.5mm; right:81.5mm;">✓</span>
+                    <span t-if="o.marital == 'widower'" class="f101-check" style="top:104.0mm; right:59.5mm;">✓</span>
+                    <span t-if="o.marital == 'separated'" class="f101-check" style="top:104.0mm; right:81.5mm;">✓</span>
+                    <span t-if="o.is_israeli_resident == 'yes'" class="f101-check" style="top:96.5mm; right:103.5mm;">✓</span>
+                    <span t-if="o.is_israeli_resident == 'no'" class="f101-check" style="top:104.0mm; right:103.5mm;">✓</span>
+                    <span t-if="o.kibbutz_status != 'no'" class="f101-check" style="top:96.5mm; right:126.5mm;">✓</span>
+                    <span t-if="o.health_fund_member == 'yes'" class="f101-check" style="top:104.0mm; right:161mm;">✓</span>
+                    <span t-if="o.health_fund_member == 'yes'" class="f101-v" style="top:105.2mm; left:11mm; width:27mm;" t-esc="o.health_fund_name or ''"/>
+
+                    <t t-foreach="o.child_ids[:10]" t-as="child">
+                        <t t-set="cy" t-value="129.5 + child_index * 9.25"/>
+                        <span class="f101-v" t-att-style="'top:%smm; left:151mm; width:30mm;' % cy" t-esc="child.name or ''"/>
+                        <span class="f101-v" t-att-style="'top:%smm; left:121mm; width:28mm;' % cy" t-esc="child.identification_id or ''"/>
+                        <span class="f101-v" t-att-style="'top:%smm; left:88mm; width:30mm;' % cy" t-field="child.birthday"/>
+                        <span t-if="child.in_custody" class="f101-check" t-att-style="'top:%smm; right:188mm;' % (cy - 1.2)">✓</span>
+                        <span t-if="child.receives_child_allowance" class="f101-check" t-att-style="'top:%smm; right:198mm;' % (cy - 1.2)">✓</span>
+                    </t>
+
+                    <span class="f101-v" style="top:136.5mm; left:12mm; width:31mm;" t-field="o.employment_start_date"/>
+                    <span t-if="o.employer_income_main_type == 'monthly'" class="f101-check" style="top:124.6mm; right:123.5mm;">✓</span>
+                    <span t-if="o.employer_income_main_type == 'additional'" class="f101-check" style="top:132.2mm; right:123.5mm;">✓</span>
+                    <span t-if="o.employer_income_main_type == 'partial'" class="f101-check" style="top:139.8mm; right:123.5mm;">✓</span>
+                    <span t-if="o.employer_income_main_type == 'daily'" class="f101-check" style="top:147.3mm; right:123.5mm;">✓</span>
+                    <span t-if="o.employer_income_pension" class="f101-check" style="top:154.8mm; right:123.5mm;">✓</span>
+                    <span t-if="o.employer_income_scholarship" class="f101-check" style="top:162.3mm; right:123.5mm;">✓</span>
+
+                    <span t-if="o.has_other_income == 'no'" class="f101-check" style="top:169.5mm; right:123.5mm;">✓</span>
+                    <span t-if="o.has_other_income == 'yes'" class="f101-check" style="top:181.5mm; right:123.5mm;">✓</span>
+                    <span t-if="o.other_income_monthly" class="f101-check" style="top:190.5mm; right:129mm;">✓</span>
+                    <span t-if="o.other_income_additional" class="f101-check" style="top:198.0mm; right:129mm;">✓</span>
+                    <span t-if="o.other_income_partial" class="f101-check" style="top:205.5mm; right:129mm;">✓</span>
+                    <span t-if="o.other_income_daily" class="f101-check" style="top:213.0mm; right:129mm;">✓</span>
+                    <span t-if="o.other_income_pension" class="f101-check" style="top:220.5mm; right:129mm;">✓</span>
+                    <span t-if="o.other_income_scholarship" class="f101-check" style="top:228.0mm; right:129mm;">✓</span>
+
+                    <span class="f101-v" style="top:250.7mm; left:154mm; width:31mm;" t-esc="o.spouse_identification_id or ''"/>
+                    <span class="f101-v" style="top:250.7mm; left:111mm; width:41mm;" t-esc="o.spouse_last_name or ''"/>
+                    <span class="f101-v" style="top:250.7mm; left:76mm; width:33mm;" t-esc="o.spouse_first_name or ''"/>
+                    <span class="f101-v" style="top:250.7mm; left:44mm; width:30mm;" t-field="o.spouse_birthdate"/>
+                    <span class="f101-v" style="top:250.7mm; left:11mm; width:31mm;" t-field="o.spouse_immigration_date"/>
+                    <span class="f101-v" style="top:260.7mm; left:151mm; width:35mm;" t-esc="o.spouse_passport_id or ''"/>
+                    <span t-if="o.spouse_has_income == 'no'" class="f101-check" style="top:260.0mm; right:76mm;">✓</span>
+                    <span t-if="o.spouse_income_work" class="f101-check" style="top:260.0mm; right:130mm;">✓</span>
+                    <span t-if="o.spouse_income_other" class="f101-check" style="top:260.0mm; right:165mm;">✓</span>
+                </div>
+
+                <div class="page f101-page">
+                    <img class="f101-bg" src="/l10n_il_hr_payroll/static/src/img/form101_page_2.png"/>
+                    <span class="f101-v" style="top:4.7mm; left:138mm; width:40mm;" t-esc="o.identification_id or o.passport_id or ''"/>
+
+                    <span t-if="o.relief_resident" class="f101-check" style="top:13.2mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_disabled_blind" class="f101-check" style="top:19.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_disabled_benefit" class="f101-check" style="top:25.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_eligible_settlement" class="f101-check" style="top:31.0mm; right:184mm;">✓</span>
+                    <span class="f101-v" style="top:35.0mm; left:71mm; width:35mm;" t-esc="o.eligible_settlement_name or ''"/>
+                    <span class="f101-v" style="top:35.0mm; left:112mm; width:29mm;" t-field="o.eligible_settlement_from"/>
+                    <span t-if="o.relief_new_immigrant" class="f101-check" style="top:44.0mm; right:184mm;">✓</span>
+                    <span class="f101-v" style="top:45.0mm; left:114mm; width:29mm;" t-field="o.new_immigrant_from"/>
+                    <span class="f101-v" style="top:51.0mm; left:89mm; width:29mm;" t-field="o.no_income_until_date"/>
+                    <span t-if="o.relief_spouse_no_income" class="f101-check" style="top:57.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_single_parent_family" class="f101-check" style="top:64.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_children_in_custody" class="f101-check" style="top:70.0mm; right:184mm;">✓</span>
+                    <span class="f101-v" style="top:76.0mm; left:27mm; width:12mm;" t-esc="o.custody_children_born or ''"/>
+                    <span class="f101-v" style="top:76.0mm; left:75mm; width:12mm;" t-esc="o.custody_children_age_1_2 or ''"/>
+                    <span class="f101-v" style="top:76.0mm; left:124mm; width:12mm;" t-esc="o.custody_children_age_3 or ''"/>
+                    <span class="f101-v" style="top:82.0mm; left:27mm; width:12mm;" t-esc="o.custody_children_age_4_5 or ''"/>
+                    <span class="f101-v" style="top:82.0mm; left:75mm; width:12mm;" t-esc="o.custody_children_age_6_17 or ''"/>
+                    <span class="f101-v" style="top:82.0mm; left:124mm; width:12mm;" t-esc="o.custody_children_age_18 or ''"/>
+                    <span t-if="o.relief_other_children" class="f101-check" style="top:88.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_single_parent" class="f101-check" style="top:99.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_support_non_custody" class="f101-check" style="top:105.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_disabled_children" class="f101-check" style="top:112.0mm; right:184mm;">✓</span>
+                    <span class="f101-v" style="top:113.0mm; left:139mm; width:12mm;" t-esc="o.disabled_children_count or ''"/>
+                    <span t-if="o.relief_alimony_former_spouse" class="f101-check" style="top:121.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_age_16_18" class="f101-check" style="top:127.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_discharged_service" class="f101-check" style="top:133.0mm; right:184mm;">✓</span>
+                    <span class="f101-v" style="top:135.0mm; left:75mm; width:29mm;" t-field="o.service_start_date"/>
+                    <span class="f101-v" style="top:135.0mm; left:22mm; width:29mm;" t-field="o.service_end_date"/>
+                    <span t-if="o.relief_studies" class="f101-check" style="top:139.0mm; right:184mm;">✓</span>
+                    <span t-if="o.relief_reserve_combat" class="f101-check" style="top:145.0mm; right:184mm;">✓</span>
+                    <span class="f101-v" style="top:146.0mm; left:104mm; width:12mm;" t-esc="o.reserve_combat_days or ''"/>
+
+                    <span t-if="o.tax_coordination_reason == 'no_income'" class="f101-check" style="top:154.0mm; right:184mm;">✓</span>
+                    <span t-if="o.tax_coordination_reason == 'additional_income'" class="f101-check" style="top:160.0mm; right:184mm;">✓</span>
+                    <span t-if="o.tax_coordination_reason == 'tax_officer'" class="f101-check" style="top:214.0mm; right:184mm;">✓</span>
+                    <t t-foreach="o.other_employer_ids[:3]" t-as="employer">
+                        <t t-set="ey" t-value="170.0 + employer_index * 7.0"/>
+                        <span class="f101-v f101-small" t-att-style="'top:%smm; left:145mm; width:37mm;' % ey" t-esc="employer.name or ''"/>
+                        <span class="f101-v f101-small" t-att-style="'top:%smm; left:112mm; width:31mm;' % ey" t-esc="employer.address or ''"/>
+                        <span class="f101-v f101-small" t-att-style="'top:%smm; left:82mm; width:28mm;' % ey" t-esc="employer.withholding_file or ''"/>
+                        <span class="f101-v f101-small" t-att-style="'top:%smm; left:57mm; width:23mm;' % ey" t-esc="dict(employer._fields['income_type'].selection).get(employer.income_type, '')"/>
+                        <span class="f101-v f101-small" t-att-style="'top:%smm; left:31mm; width:24mm;' % ey" t-esc="employer.monthly_income or ''"/>
+                        <span class="f101-v f101-small" t-att-style="'top:%smm; left:8mm; width:21mm;' % ey" t-esc="employer.tax_withheld or ''"/>
+                    </t>
+
+                    <span class="f101-v" style="top:229.0mm; left:88mm; width:29mm;" t-field="o.declaration_date"/>
+                    <img t-if="o.employee_signature" class="f101-sign" style="top:225.0mm; left:18mm; width:48mm; height:10mm;"
+                         t-att-src="image_data_uri(o.employee_signature)"/>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

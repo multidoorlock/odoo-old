@@ -1,5 +1,6 @@
 import base64
 from datetime import timedelta
+from unittest.mock import patch
 
 from odoo import fields
 from odoo.exceptions import ValidationError
@@ -73,6 +74,44 @@ class TestAttendanceDevices(TransactionCase):
         return self.env["mdl.attendance.device.event"]._timeline_reconcile_employee_ids(
             [self.employee.id],
         )
+
+    def test_request_heartbeat_is_throttled_without_hiding_the_device(self):
+        now = fields.Datetime.now()
+        self.device.write({"last_seen_at": now, "last_ip": "192.0.2.10"})
+
+        touched = self.device._touch_from_request(
+            "192.0.2.10", now + timedelta(seconds=10),
+        )
+
+        self.assertFalse(touched)
+        self.assertEqual(self.device.last_seen_at, now)
+        self.assertEqual(self.device.last_ip, "192.0.2.10")
+
+        touched = self.device._touch_from_request(
+            "192.0.2.10", now + timedelta(seconds=31),
+        )
+        self.assertTrue(touched)
+        self.assertEqual(self.device.last_seen_at, now + timedelta(seconds=31))
+
+    def test_busy_request_heartbeat_skips_only_telemetry_update(self):
+        previous_seen = fields.Datetime.now() - timedelta(minutes=5)
+        self.device.write({"last_seen_at": previous_seen, "last_ip": "192.0.2.10"})
+        Device = self.env["mdl.attendance.device"]
+
+        with patch.object(type(Device), "_try_request_touch_lock", return_value=False):
+            found = Device.get_or_create_from_request(
+                "zkteco", self.device.device_identifier, "192.0.2.11",
+            )
+
+        self.assertEqual(found, self.device)
+        self.assertEqual(found.last_seen_at, previous_seen)
+        self.assertEqual(found.last_ip, "192.0.2.10")
+        log = self._log()
+        found._adapter().process_payload(
+            log, "ATTLOG", b"", "74\t2026-09-23 08:00:00\t255\t1\t0",
+        )
+        self.assertEqual(log.event_ids.processing_state, "processed")
+        self.assertTrue(log.event_ids.attendance_id)
 
     def test_employee_archive_only_restores_cards_archived_by_employee(self):
         manual_card = self.env["mdl.attendance.device.employee"].with_context(
@@ -1004,18 +1043,21 @@ class TestAttendanceDevices(TransactionCase):
         data = self.env["mdl.attendance.device.event"].get_conflict_timeline(
             fields.Datetime.to_string(now - timedelta(days=1)),
             fields.Datetime.to_string(now + timedelta(days=1)),
+            [("event_datetime", "!=", False)],
         )
         row = next(row for row in data["rows"] if row["employee_id"] == self.employee.id)
         open_item = next(item for item in row["items"] if item["id"] == f"attendance:{open_attendance.id}:in")
         self.assertEqual(open_item["state"], "1.5")
 
-    def test_conflict_timeline_overdue_open_attendance_stays_green(self):
+    def test_conflict_timeline_overdue_open_attendance_is_conflict(self):
         now = fields.Datetime.now()
         open_attendance = self.env["hr.attendance"].create({
             "employee_id": self.employee.id,
             "check_in": now - timedelta(days=3),
         })
-        conflict = self._pending_event(now - timedelta(minutes=1), "in", "overdue-open-context")
+        conflict = self._pending_event(
+            open_attendance.check_in + timedelta(minutes=1), "in", "overdue-open-context",
+        )
         conflict.write({"processing_message": "Employee already has an open attendance"})
         data = self.env["mdl.attendance.device.event"].get_conflict_timeline(
             fields.Datetime.to_string(now - timedelta(days=4)),
@@ -1026,7 +1068,7 @@ class TestAttendanceDevices(TransactionCase):
             item for item in row["items"]
             if item["id"] == f"attendance:{open_attendance.id}:in"
         )
-        self.assertEqual(open_item["state"], "1.5")
+        self.assertEqual(open_item["state"], "2")
         self.assertFalse(any(item.get("placeholder") for item in row["items"]))
         self.assertFalse(any(
             connection["id"] == f"attendance:{open_attendance.id}"
@@ -1036,6 +1078,53 @@ class TestAttendanceDevices(TransactionCase):
             [action["key"] for action in open_item["actions"]],
             ["open_attendance", "flip_event", "dismiss_event"],
         )
+
+    def test_single_processed_in_uses_daily_hours_not_schedule(self):
+        hours = self.employee.resource_calendar_id.hours_per_day or 8.0
+        now = fields.Datetime.now()
+        Event = self.env["mdl.attendance.device.event"]
+        self.assertFalse(Event._timeline_open_in_overdue(
+            now, self.employee, now + timedelta(hours=hours),
+        ))
+        self.assertTrue(Event._timeline_open_in_overdue(
+            now, self.employee, now + timedelta(hours=hours, seconds=1),
+        ))
+        check_in = now - timedelta(hours=hours, minutes=-5)
+        event = self._pending_event(check_in, "in", "single-within-daily-hours")
+        event.action_process()
+        self.assertEqual(event.processing_state, "processed")
+        self.assertFalse(event.attendance_id.check_out)
+        later_in = self._pending_event(check_in + timedelta(minutes=1), "in", "second-within-daily-hours")
+        later_in.action_process()
+        self.assertEqual(later_in.processing_state, "not_applied")
+        conflicts = self.env["mdl.attendance.device.event"].search([
+            ("id", "in", (event | later_in).ids), ("mdl_is_conflict", "=", True),
+        ])
+        self.assertFalse(conflicts)
+        data = self.env["mdl.attendance.device.event"].get_conflict_timeline(
+            fields.Datetime.to_string(check_in - timedelta(hours=1)),
+            fields.Datetime.to_string(now + timedelta(hours=1)),
+        )
+        self.assertNotIn(self.employee.id, [row["employee_id"] for row in data["rows"]])
+
+    def test_single_processed_in_becomes_conflict_after_daily_hours(self):
+        hours = self.employee.resource_calendar_id.hours_per_day or 8.0
+        now = fields.Datetime.now()
+        check_in = now - timedelta(hours=hours, minutes=5)
+        event = self._pending_event(check_in, "in", "single-over-daily-hours")
+        event.action_process()
+        self.assertEqual(event.processing_state, "processed")
+        self.assertIn(event, self.env["mdl.attendance.device.event"].search([
+            ("id", "=", event.id), ("mdl_is_conflict", "=", True),
+        ]))
+        data = self.env["mdl.attendance.device.event"].get_conflict_timeline(
+            fields.Datetime.to_string(check_in - timedelta(hours=1)),
+            fields.Datetime.to_string(now + timedelta(hours=1)),
+        )
+        row = next(row for row in data["rows"] if row["employee_id"] == self.employee.id)
+        item = next(item for item in row["items"] if item["id"] == f"attendance:{event.attendance_id.id}:in")
+        self.assertEqual(item["state"], "2")
+        self.assertIn("מכסת השעות היומית", item["reason"])
 
     def test_conflict_timeline_excludes_open_attendance_without_raw_events(self):
         now = fields.Datetime.now()

@@ -23,6 +23,8 @@ class HrRuleParameter(models.Model):
             'IL_TAX_BRACKET_6_LIMIT': 60130, 'IL_TAX_BRACKET_6_RATE': 47,
             'IL_TAX_BRACKET_7_RATE': 47,
             'IL_TAX_CREDIT_POINT_VALUE': 242,
+            'IL_PENSION_TAX_CREDIT_RATE': 35,
+            'IL_PENSION_TAX_CREDIT_MAX_CONTRIBUTION_RATE': 7,
             'IL_TAX_MAX_WITHHOLDING_RATE': 47,
             'IL_TAX_SURTAX_THRESHOLD': 60130, 'IL_TAX_SURTAX_RATE': 3,
             'IL_PENSION_MANDATORY_CEILING': 0,
@@ -34,8 +36,8 @@ class HrRuleParameter(models.Model):
             # Palestinian payroll values remain explicit parameters and can be
             # versioned independently when PIBA publishes a newer table.
             'IL_PAL_NI_REDUCED_LIMIT': 7703, 'IL_PAL_NI_MAX_BASE': 51910,
-            'IL_PAL_NI_EE_REDUCED_RATE': 1.04, 'IL_PAL_NI_EE_FULL_RATE': 7.0,
-            'IL_PAL_NI_ER_REDUCED_RATE': 4.51, 'IL_PAL_NI_ER_FULL_RATE': 7.6,
+            'IL_PAL_NI_EE_REDUCED_RATE': 0.07, 'IL_PAL_NI_EE_FULL_RATE': 0.61,
+            'IL_PAL_NI_ER_REDUCED_RATE': 0.71, 'IL_PAL_NI_ER_FULL_RATE': 2.49,
             'IL_PAL_HEALTH_STAMP_AMOUNT': 0,
             'IL_PAL_ORGANIZATION_TAX_RATE': 0.75,
             'IL_PAL_ORGANIZATION_TAX_CEILING': 22637,

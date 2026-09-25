@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_employee_section_14_activation_wizard_form" model="ir.ui.view">
+        <field name="name">hr.employee.section.14.activation.wizard.form</field>
+        <field name="model">hr.employee.section.14.activation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="החלפת סעיף 14 פעיל">
+                <field name="section_14_id" invisible="1"/>
+                <field name="active_section_14_id" invisible="1"/>
+                <div class="alert alert-warning" role="alert">
+                    לעובד כבר קיים סעיף 14 פעיל. ההפעלה תחליף אותו ותחזיר את הרשומה הקודמת לטיוטה. להמשיך?
+                </div>
+                <footer>
+                    <button name="action_confirm" type="object" string="החלף והפעל" class="btn-primary"/>
+                    <button string="ביטול" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

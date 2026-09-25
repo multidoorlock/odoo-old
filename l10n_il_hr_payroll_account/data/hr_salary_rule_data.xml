@@ -124,7 +124,7 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="appears_on_payslip">False</field>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + payslip._il_inputs_base('il_pensionable')</field>
+            <field name="amount_python_compute">result = payslip._il_pension_base(categories['BASIC'] + payslip._il_inputs_base('il_pensionable'))</field>
         </record>
 
         <record id="hr_salary_rule_il_severance_base" model="hr.salary.rule">
@@ -136,7 +136,7 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="appears_on_payslip">False</field>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = categories['BASIC'] + categories['ALW'] + payslip._il_inputs_base('il_severance_applicable')</field>
+            <field name="amount_python_compute">result = payslip._il_pension_base(categories['BASIC'] + payslip._il_inputs_base('il_severance_applicable'))</field>
         </record>
 
         <record id="hr_salary_rule_il_study_fund_base" model="hr.salary.rule">
@@ -213,7 +213,7 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="condition_select">python</field>
             <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = -payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employee_pension_rate / 100.0</field>
+            <field name="amount_python_compute">result = -payslip._il_employee_pension_contribution()</field>
         </record>
 
         <record id="hr_salary_rule_il_isr_study_ee" model="hr.salary.rule">
@@ -249,7 +249,7 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="condition_select">python</field>
             <field name="condition_python">result = payslip._il_worker_profile() == 'israeli' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employer_pension_rate / 100.0</field>
+            <field name="amount_python_compute">result = IL_PENSION_BASE * version.il_employer_pension_rate / 100.0</field>
         </record>
 
         <record id="hr_salary_rule_il_isr_severance_er" model="hr.salary.rule">
@@ -337,7 +337,7 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="condition_select">python</field>
             <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = -payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employee_pension_rate / 100.0</field>
+            <field name="amount_python_compute">result = -payslip._il_employee_pension_contribution()</field>
         </record>
 
         <record id="hr_salary_rule_il_pal_study_ee" model="hr.salary.rule">
@@ -385,7 +385,7 @@ result_name = payslip._il_basic_line_name()</field>
             <field name="condition_select">python</field>
             <field name="condition_python">result = payslip._il_worker_profile() == 'palestinian' and version.il_pension_enabled and payslip._il_pension_active()</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = payslip._il_capped_base(IL_PENSION_BASE, 'IL_PENSION_MANDATORY_CEILING') * version.il_employer_pension_rate / 100.0</field>
+            <field name="amount_python_compute">result = IL_PENSION_BASE * version.il_employer_pension_rate / 100.0</field>
         </record>
 
         <record id="hr_salary_rule_il_pal_severance_er" model="hr.salary.rule">

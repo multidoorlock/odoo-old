@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_employee_section_14_list" model="ir.ui.view">
+        <field name="name">hr.employee.section.14.list</field>
+        <field name="model">hr.employee.section.14</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="employee_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="state" widget="badge"/>
+                <field name="employer_signature_date"/>
+                <field name="employee_signature_date"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hr_employee_section_14_form" model="ir.ui.view">
+        <field name="name">hr.employee.section.14.form</field>
+        <field name="model">hr.employee.section.14</field>
+        <field name="arch" type="xml">
+            <form string="סעיף 14">
+                <header>
+                    <button name="action_send_for_signature" type="object" string="שלח לחתימה"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_activate" type="object" string="הפעל"
+                            class="btn-primary" invisible="state != 'signed'"/>
+                    <button name="action_reset_to_draft" type="object" string="החזר לטיוטה"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,sent,signed,active"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_sign_request" type="object" class="oe_stat_button"
+                                icon="fa-pencil-square-o" invisible="not sign_request_id">
+                            <div class="o_stat_info"><span class="o_stat_text">בקשת חתימה</span></div>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="פעיל" bg_color="text-bg-success" invisible="state != 'active'"/>
+                    <h1><field name="display_name" readonly="1"/></h1>
+                    <group readonly="state != 'draft'">
+                        <group string="העובד">
+                            <field name="employee_id" options="{'no_create': True}"/>
+                            <field name="employee_name"/>
+                            <field name="employee_identification"/>
+                        </group>
+                        <group string="המעסיק">
+                            <field name="company_id" readonly="1"/>
+                            <field name="employer_name"/>
+                            <field name="employer_registration"/>
+                        </group>
+                    </group>
+                    <group string="חתימות">
+                        <group>
+                            <field name="employer_signature" widget="image" readonly="1"/>
+                            <field name="employer_signature_date" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="employee_signature" widget="image" readonly="1"/>
+                            <field name="employee_signature_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="מסמך חתום">
+                        <field name="form_filename" invisible="1"/>
+                        <field name="form_file" filename="form_filename" readonly="1"/>
+                        <field name="sign_template_id" readonly="1" groups="base.group_system"/>
+                        <field name="sign_request_id" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hr_employee_section_14" model="ir.actions.act_window">
+        <field name="name">סעיף 14</field>
+        <field name="res_model">hr.employee.section.14</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_sign_send_request_section_14" model="ir.ui.view">
+        <field name="name">sign.send.request.section.14</field>
+        <field name="model">sign.send.request</field>
+        <field name="inherit_id" ref="sign.sign_send_request_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='reference_doc']" position="after">
+                <field name="section_14_id" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_hr_employee_section_14_button" model="ir.ui.view">
+        <field name="name">hr.employee.section.14.button</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_section_14" type="object" class="oe_stat_button"
+                        icon="fa-file-text-o" groups="hr.group_hr_user">
+                    <field name="section_14_count" widget="statinfo" string="סעיף 14"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <menuitem id="menu_hr_employee_section_14" name="סעיף 14"
+              parent="hr_payroll.menu_hr_payroll_employees"
+              action="action_hr_employee_section_14" sequence="21"
+              groups="hr.group_hr_user"/>
+</odoo>

@@ -49,6 +49,7 @@ class HrSalaryAttachment(models.Model):
     il_effect_type = fields.Selection([
         ('gross', 'ברוטו'),
         ('net', 'נטו'),
+        ('taxable_benefit', 'שווי חייב (לא משולם)'),
     ], string='סוג השפעה על התשלום', required=True, tracking=True,
        compute='_compute_il_effect_type', store=True, readonly=False, precompute=True)
 

@@ -71,6 +71,16 @@
             <field name="code">IL_TAX_CREDIT_POINT_VALUE</field>
             <field name="country_id" ref="base.il"/>
         </record>
+        <record id="rule_parameter_il_pension_tax_credit_rate" model="hr.rule.parameter">
+            <field name="name">זיכוי מס בגין הפרשת עובד לפנסיה — שיעור</field>
+            <field name="code">IL_PENSION_TAX_CREDIT_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
+        <record id="rule_parameter_il_pension_tax_credit_max_contribution_rate" model="hr.rule.parameter">
+            <field name="name">זיכוי מס פנסיוני — שיעור הפקדה מזכה מרבי</field>
+            <field name="code">IL_PENSION_TAX_CREDIT_MAX_CONTRIBUTION_RATE</field>
+            <field name="country_id" ref="base.il"/>
+        </record>
         <record id="rule_parameter_il_tax_max_withholding_rate" model="hr.rule.parameter">
             <field name="name">מס הכנסה — שיעור ניכוי מרבי</field>
             <field name="code">IL_TAX_MAX_WITHHOLDING_RATE</field>

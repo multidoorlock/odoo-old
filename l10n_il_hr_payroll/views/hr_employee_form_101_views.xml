@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_employee_form_101_list" model="ir.ui.view">
+        <field name="name">hr.employee.form.101.list</field>
+        <field name="model">hr.employee.form.101</field>
+        <field name="arch" type="xml">
+            <list string="טפסי 101" default_order="tax_year desc, id desc"
+                  decoration-success="state == 'active'"
+                  decoration-info="state == 'signed'"
+                  decoration-warning="state == 'sent'">
+                <field name="employee_id"/>
+                <field name="tax_year"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-info="state == 'signed'"
+                       decoration-warning="state == 'sent'"
+                       decoration-muted="state == 'draft'"/>
+                <field name="declaration_date"/>
+                <field name="employee_version_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hr_employee_form_101_search" model="ir.ui.view">
+        <field name="name">hr.employee.form.101.search</field>
+        <field name="model">hr.employee.form.101</field>
+        <field name="arch" type="xml">
+            <search string="חיפוש טפסי 101">
+                <field name="employee_id"/>
+                <field name="tax_year"/>
+                <filter name="active_forms" string="פעילים" domain="[('state', '=', 'active')]"/>
+                <filter name="draft_forms" string="טיוטות" domain="[('state', '=', 'draft')]"/>
+                <filter name="sent_forms" string="נשלחו" domain="[('state', '=', 'sent')]"/>
+                <filter name="signed_forms" string="נחתמו" domain="[('state', '=', 'signed')]"/>
+                <separator/>
+                <filter name="group_employee" string="קיבוץ לפי עובד" domain="[]"
+                        context="{'group_by': 'employee_id'}"/>
+                <filter name="group_tax_year" string="קיבוץ לפי שנת מס" domain="[]"
+                        context="{'group_by': 'tax_year'}"/>
+                <filter name="group_state" string="קיבוץ לפי סטטוס" domain="[]"
+                        context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_hr_employee_form_101_form" model="ir.ui.view">
+        <field name="name">hr.employee.form.101.form</field>
+        <field name="model">hr.employee.form.101</field>
+        <field name="arch" type="xml">
+            <form string="טופס 101">
+                <header>
+                    <button name="action_send_for_signature" type="object" string="שלח לחתימה"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_activate" type="object" string="הפעל"
+                            class="btn-primary" invisible="state != 'signed'"/>
+                    <button name="action_reset_to_draft" type="object" string="החזר לטיוטה"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,sent,signed,active"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_sign_request" type="object"
+                                class="oe_stat_button" icon="fa-pencil-square-o"
+                                invisible="not sign_request_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">בקשת חתימה</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="employee_id"/>
+                        <h1><field name="employee_id" options="{'no_create': True}"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="tax_year" readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="sign_template_id" readonly="state != 'draft'"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </group>
+                        <group>
+                            <field name="employee_version_id" readonly="1" invisible="not employee_version_id"/>
+                            <field name="declaration_date" readonly="state != 'draft'"/>
+                            <field name="sign_request_id" readonly="1" invisible="not sign_request_id"/>
+                            <field name="form_file" filename="form_filename" readonly="1"/>
+                            <field name="form_filename" invisible="1"/>
+                            <field name="employee_signature" widget="image" readonly="1"
+                                   invisible="not employee_signature"/>
+                            <field name="employee_signature_date" readonly="1"
+                                   invisible="not employee_signature_date"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="המעסיק" name="employer">
+                            <group readonly="state != 'draft'">
+                                <group>
+                                    <field name="employer_name"/>
+                                    <field name="employer_address"/>
+                                </group>
+                                <group>
+                                    <field name="employer_phone"/>
+                                    <field name="employer_withholding_file"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="העובד" name="employee">
+                            <group readonly="state != 'draft'">
+                                <group string="זיהוי">
+                                    <field name="has_israeli_id" widget="radio" options="{'horizontal': true}"/>
+                                    <field name="identification_id" invisible="has_israeli_id != 'yes'"
+                                           required="has_israeli_id == 'yes'"/>
+                                    <field name="passport_id" invisible="has_israeli_id != 'no'"
+                                           required="has_israeli_id == 'no'"/>
+                                    <field name="passport_country_id" invisible="has_israeli_id != 'no'"
+                                           required="has_israeli_id == 'no'"/>
+                                    <field name="identity_card_file"
+                                           invisible="has_israeli_id != 'yes'"
+                                           required="has_israeli_id == 'yes'"/>
+                                    <field name="passport_file"
+                                           invisible="has_israeli_id != 'no'"
+                                           required="has_israeli_id == 'no'"/>
+                                    <field name="residence_permit_file"
+                                           invisible="has_israeli_id != 'no'"
+                                           required="has_israeli_id == 'no'"/>
+                                    <field name="first_name"/>
+                                    <field name="last_name"/>
+                                    <field name="birthday"/>
+                                    <field name="immigration_date" invisible="has_israeli_id != 'yes'"/>
+                                    <field name="sex" widget="radio" options="{'horizontal': true}"/>
+                                    <field name="marital"/>
+                                </group>
+                                <group string="כתובת ויצירת קשר">
+                                    <field name="private_street"/>
+                                    <field name="private_house_number"/>
+                                    <field name="private_city"/>
+                                    <field name="private_zip"/>
+                                    <field name="private_country_id"/>
+                                    <field name="private_phone"/>
+                                    <field name="mobile_phone"/>
+                                    <field name="private_email" widget="email"/>
+                                </group>
+                                <group string="מעמד">
+                                    <field name="is_israeli_resident" widget="radio"
+                                           options="{'horizontal': true}"/>
+                                    <field name="kibbutz_status"/>
+                                    <field name="health_fund_member"/>
+                                    <field name="health_fund_name"
+                                           invisible="health_fund_member != 'yes'"
+                                           required="health_fund_member == 'yes'"/>
+                                    <field name="separated_tax_officer_certificate"
+                                           invisible="marital != 'separated'"
+                                           required="marital == 'separated'"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="ילדים" name="children" invisible="has_israeli_id != 'yes'">
+                            <field name="child_ids" readonly="state != 'draft'">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="identification_id"/>
+                                    <field name="birthday"/>
+                                    <field name="in_custody"/>
+                                    <field name="receives_child_allowance"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="הכנסה ממעסיק זה" name="employer_income">
+                            <group readonly="state != 'draft'">
+                                <group>
+                                    <field name="employer_income_main_type"/>
+                                    <field name="employment_start_date"/>
+                                </group>
+                                <group string="סוגים נוספים">
+                                    <field name="employer_income_pension"/>
+                                    <field name="employer_income_scholarship"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="הכנסות אחרות" name="other_income">
+                            <group readonly="state != 'draft'">
+                                <field name="has_other_income" widget="radio"/>
+                                <group invisible="has_other_income != 'yes'">
+                                    <group string="סוגי הכנסה">
+                                        <field name="other_income_monthly"/>
+                                        <field name="other_income_additional"/>
+                                        <field name="other_income_partial"/>
+                                        <field name="other_income_daily"/>
+                                        <field name="other_income_pension"/>
+                                        <field name="other_income_scholarship"/>
+                                        <field name="other_income_other_details"/>
+                                    </group>
+                                    <group string="זיכויים והפרשות">
+                                        <field name="credit_points_here"/>
+                                        <field name="no_study_fund_elsewhere"/>
+                                        <field name="no_pension_elsewhere"/>
+                                    </group>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="בן/בת זוג" name="spouse" invisible="marital != 'married'">
+                            <group readonly="state != 'draft'">
+                                <group string="פרטים אישיים">
+                                    <field name="spouse_has_israeli_id" widget="radio"
+                                           options="{'horizontal': true}"/>
+                                    <field name="spouse_identification_id"
+                                           invisible="spouse_has_israeli_id != 'yes'"
+                                           required="marital == 'married' and spouse_has_israeli_id == 'yes'"/>
+                                    <field name="spouse_passport_id"
+                                           invisible="spouse_has_israeli_id != 'no'"
+                                           required="marital == 'married' and spouse_has_israeli_id == 'no'"/>
+                                    <field name="spouse_passport_country_id"
+                                           invisible="spouse_has_israeli_id != 'no'"
+                                           required="marital == 'married' and spouse_has_israeli_id == 'no'"/>
+                                    <field name="spouse_first_name" required="marital == 'married'"/>
+                                    <field name="spouse_last_name" required="marital == 'married'"/>
+                                    <field name="spouse_birthdate" required="marital == 'married'"/>
+                                    <field name="spouse_immigration_date"
+                                           invisible="spouse_has_israeli_id != 'yes'"/>
+                                </group>
+                                <group string="הכנסה">
+                                    <field name="spouse_has_income" required="marital == 'married'"/>
+                                    <field name="spouse_income_work" invisible="spouse_has_income != 'yes'"/>
+                                    <field name="spouse_income_other" invisible="spouse_has_income != 'yes'"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="פטור וזיכוי" name="reliefs" invisible="has_israeli_id != 'yes'">
+                            <group readonly="state != 'draft'">
+                                <group>
+                                    <field name="relief_resident" readonly="is_israeli_resident == 'yes'"/>
+                                    <field name="relief_disabled_blind"/>
+                                    <field name="disabled_blind_certificate"
+                                           invisible="not relief_disabled_blind"
+                                           required="relief_disabled_blind"/>
+                                    <field name="relief_disabled_benefit" invisible="not relief_disabled_blind"/>
+                                    <field name="disabled_benefit_certificate"
+                                           invisible="not relief_disabled_benefit"
+                                           required="relief_disabled_benefit"/>
+                                    <field name="relief_eligible_settlement"/>
+                                    <field name="eligible_settlement_name" invisible="not relief_eligible_settlement"/>
+                                    <field name="eligible_settlement_from" invisible="not relief_eligible_settlement"/>
+                                    <field name="eligible_settlement_certificate"
+                                           invisible="not relief_eligible_settlement"
+                                           required="relief_eligible_settlement"/>
+                                    <field name="relief_new_immigrant"/>
+                                    <field name="new_immigrant_from" invisible="not relief_new_immigrant"/>
+                                    <field name="no_income_until_date" invisible="not relief_new_immigrant"/>
+                                    <field name="new_immigrant_certificate"
+                                           invisible="not relief_new_immigrant"
+                                           required="relief_new_immigrant"/>
+                                    <field name="returning_resident_certificate"
+                                           invisible="not relief_new_immigrant"/>
+                                    <field name="relief_spouse_no_income"/>
+                                    <field name="spouse_disability_certificate"
+                                           invisible="not relief_spouse_no_income"/>
+                                    <field name="relief_single_parent_family"/>
+                                </group>
+                                <group>
+                                    <field name="relief_children_in_custody"/>
+                                    <group invisible="not relief_children_in_custody" string="גילאי ילדים שבחזקתי">
+                                        <field name="custody_children_born"/>
+                                        <field name="custody_children_age_1_2"/>
+                                        <field name="custody_children_age_3"/>
+                                        <field name="custody_children_age_4_5"/>
+                                        <field name="custody_children_age_6_17"/>
+                                        <field name="custody_children_age_18"/>
+                                    </group>
+                                    <field name="relief_other_children"/>
+                                    <group invisible="not relief_other_children" string="גילאי ילדים אחרים">
+                                        <field name="other_children_born"/>
+                                        <field name="other_children_age_1_2"/>
+                                        <field name="other_children_age_3"/>
+                                        <field name="other_children_age_4_5"/>
+                                        <field name="other_children_age_6_17"/>
+                                    </group>
+                                    <field name="relief_single_parent"/>
+                                    <field name="relief_support_non_custody"/>
+                                    <field name="child_support_judgment"
+                                           invisible="not relief_support_non_custody"
+                                           required="relief_support_non_custody"/>
+                                    <field name="relief_disabled_children"/>
+                                    <field name="disabled_children_count" invisible="not relief_disabled_children"/>
+                                    <field name="disabled_child_benefit_certificate"
+                                           invisible="not relief_disabled_children"
+                                           required="relief_disabled_children"/>
+                                    <field name="relief_alimony_former_spouse"/>
+                                    <field name="former_spouse_alimony_judgment"
+                                           invisible="not relief_alimony_former_spouse"
+                                           required="relief_alimony_former_spouse"/>
+                                    <field name="relief_age_16_18"/>
+                                    <field name="relief_discharged_service"/>
+                                    <field name="service_start_date" invisible="not relief_discharged_service"/>
+                                    <field name="service_end_date" invisible="not relief_discharged_service"/>
+                                    <field name="discharge_certificate"
+                                           invisible="not relief_discharged_service"
+                                           required="relief_discharged_service"/>
+                                    <field name="relief_studies"/>
+                                    <field name="studies_form_119" invisible="not relief_studies"
+                                           required="relief_studies"/>
+                                    <field name="relief_reserve_combat"/>
+                                    <field name="reserve_combat_days" invisible="not relief_reserve_combat"/>
+                                    <field name="reserve_combat_certificate"
+                                           invisible="not relief_reserve_combat"
+                                           required="relief_reserve_combat"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="תיאום מס" name="tax_coordination">
+                            <group readonly="state != 'draft'">
+                                <field name="tax_coordination_requested"/>
+                                <field name="tax_coordination_reason" widget="radio"
+                                       invisible="not tax_coordination_requested"
+                                       required="tax_coordination_requested"/>
+                                <field name="no_previous_income_certificate"
+                                       invisible="tax_coordination_reason != 'no_income'"/>
+                                <field name="tax_officer_coordination_certificate"
+                                       invisible="tax_coordination_reason != 'tax_officer'"/>
+                            </group>
+                            <field name="other_employer_ids"
+                                   invisible="tax_coordination_reason != 'additional_income'"
+                                   readonly="state != 'draft'">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="address"/>
+                                    <field name="withholding_file"/>
+                                    <field name="income_type"/>
+                                    <field name="monthly_income"/>
+                                    <field name="tax_withheld"/>
+                                    <field name="payslip_file"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="הצהרה ומסמכים" name="declaration">
+                            <group readonly="state != 'draft'">
+                                <group>
+                                    <field name="declaration_confirmed"/>
+                                    <field name="declaration_date"/>
+                                </group>
+                                <group>
+                                    <field name="attachment_ids" widget="many2many_binary"/>
+                                </group>
+                                <field name="notes" colspan="2"/>
+                                <separator string="החתימה מתבצעת באמצעות Odoo Sign" colspan="2"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hr_employee_form_101" model="ir.actions.act_window">
+        <field name="name">טפסי 101</field>
+        <field name="res_model">hr.employee.form.101</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_hr_employee_form_101_search"/>
+        <field name="context">{'search_default_group_employee': 1}</field>
+    </record>
+
+    <record id="view_hr_employee_form_101_button" model="ir.ui.view">
+        <field name="name">hr.employee.form.101.button</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_form_101" type="object" class="oe_stat_button"
+                        icon="fa-file-text-o" groups="hr_payroll.group_hr_payroll_user">
+                    <field name="form_101_count" widget="statinfo" string="טפסי 101"/>
+                </button>
+                <button name="action_send_form_101_for_completion" type="object"
+                        class="oe_stat_button" icon="fa-paper-plane"
+                        groups="hr_payroll.group_hr_payroll_user">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">שליחת מילוי טופס</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_hr_employee_form_101_sign_employee_wizard_form" model="ir.ui.view">
+        <field name="name">hr.employee.form.101.sign.employee.wizard.form</field>
+        <field name="model">hr.employee.form.101.sign.employee.wizard</field>
+        <field name="arch" type="xml">
+            <form string="בחירת עובד/ת לטופס 101">
+                <p>איש הקשר שנבחר מקושר למספר עובדים. יש לבחור עבור מי ייווצר טופס 101.</p>
+                <group>
+                    <field name="send_request_id" invisible="1"/>
+                    <field name="candidate_employee_ids" invisible="1"/>
+                    <field name="continuation" invisible="1"/>
+                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="בחר והמשך"
+                            class="btn-primary"/>
+                    <button string="ביטול" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_hr_employee_form_101" name="טפסי 101"
+              parent="hr_payroll.menu_hr_payroll_employees" action="action_hr_employee_form_101"
+              sequence="20" groups="hr_payroll.group_hr_payroll_user"/>
+</odoo>

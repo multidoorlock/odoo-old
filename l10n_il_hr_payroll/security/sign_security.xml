@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_payroll.group_hr_payroll_user" model="res.groups">
+        <field name="implied_ids" eval="[Command.link(ref('sign.group_sign_user'))]"/>
+    </record>
+</odoo>

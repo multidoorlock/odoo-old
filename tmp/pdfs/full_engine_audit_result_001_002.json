@@ -1,0 +1,146 @@
+{
+  "summary": {
+    "total": 1,
+    "gross_exact": 1,
+    "net_exact": 0,
+    "net_within_0_10": 1,
+    "net_within_1": 1,
+    "net_within_10": 1
+  },
+  "by_layout": {
+    "multi": {
+      "total": 1,
+      "gross_exact": 1,
+      "net_exact": 0,
+      "net_within_0_10": 1,
+      "net_within_1": 1,
+      "net_within_10": 1
+    },
+    "autonomy": {
+      "total": 0,
+      "gross_exact": 0,
+      "net_exact": 0,
+      "net_within_0_10": 0,
+      "net_within_1": 0,
+      "net_within_10": 0
+    }
+  },
+  "by_file": {
+    "multi_2026_06": {
+      "total": 1,
+      "gross_exact": 1,
+      "net_exact": 0,
+      "net_within_0_10": 1,
+      "net_within_1": 1,
+      "net_within_10": 1
+    }
+  },
+  "largest_net_errors": [
+    {
+      "file": "multi_2026_06",
+      "page": 13,
+      "layout": "multi",
+      "employee_name": "קוצר אוהד יצחק",
+      "identification_id": "325019487",
+      "gross": 9992,
+      "net": 8460,
+      "to_pay": 8460,
+      "payments": 0.0,
+      "components": {
+        "income_tax": 385,
+        "national_insurance": 240,
+        "health_insurance": 367,
+        "pension": 540
+      },
+      "credit_points": 2.25,
+      "current_tax_base": 9992,
+      "ytd_tax_base": 33789.49,
+      "ytd_components": {
+        "income_tax": 1242.25,
+        "national_insurance": 699,
+        "health_insurance": 1204,
+        "pension": 540
+      },
+      "profile": {
+        "il_ni_full_rate_from_first_shekel": false,
+        "il_national_insurance_exempt": false,
+        "il_health_insurance_exempt": false
+      },
+      "gross_actual": 9992.0,
+      "gross_error": 0.0,
+      "net_actual": 8460.01,
+      "net_error": 0.01,
+      "net_exact": false,
+      "lines": {
+        "BASIC": 9992.0,
+        "GROSS": 9992.0,
+        "IL_TAX_BASE": 9992.0,
+        "IL_NI_BASE": 9992.0,
+        "IL_PENSION_BASE": 9000.0,
+        "IL_SEVERANCE_BASE": 9000.0,
+        "IL_STUDY_FUND_BASE": 9992.0,
+        "IL_ISR_INCOME_TAX": -384.5,
+        "IL_ISR_NI_EE": -240.34,
+        "IL_ISR_HEALTH_EE": -367.15,
+        "IL_ISR_PENSION_EE": -540.0,
+        "IL_ISR_NI_ER": 521.37,
+        "NET": 8460.01,
+        "IL_EMPLOYER_COST": 10513.37
+      }
+    }
+  ],
+  "results": [
+    {
+      "file": "multi_2026_06",
+      "page": 13,
+      "layout": "multi",
+      "employee_name": "קוצר אוהד יצחק",
+      "identification_id": "325019487",
+      "gross": 9992,
+      "net": 8460,
+      "to_pay": 8460,
+      "payments": 0.0,
+      "components": {
+        "income_tax": 385,
+        "national_insurance": 240,
+        "health_insurance": 367,
+        "pension": 540
+      },
+      "credit_points": 2.25,
+      "current_tax_base": 9992,
+      "ytd_tax_base": 33789.49,
+      "ytd_components": {
+        "income_tax": 1242.25,
+        "national_insurance": 699,
+        "health_insurance": 1204,
+        "pension": 540
+      },
+      "profile": {
+        "il_ni_full_rate_from_first_shekel": false,
+        "il_national_insurance_exempt": false,
+        "il_health_insurance_exempt": false
+      },
+      "gross_actual": 9992.0,
+      "gross_error": 0.0,
+      "net_actual": 8460.01,
+      "net_error": 0.01,
+      "net_exact": false,
+      "lines": {
+        "BASIC": 9992.0,
+        "GROSS": 9992.0,
+        "IL_TAX_BASE": 9992.0,
+        "IL_NI_BASE": 9992.0,
+        "IL_PENSION_BASE": 9000.0,
+        "IL_SEVERANCE_BASE": 9000.0,
+        "IL_STUDY_FUND_BASE": 9992.0,
+        "IL_ISR_INCOME_TAX": -384.5,
+        "IL_ISR_NI_EE": -240.34,
+        "IL_ISR_HEALTH_EE": -367.15,
+        "IL_ISR_PENSION_EE": -540.0,
+        "IL_ISR_NI_ER": 521.37,
+        "NET": 8460.01,
+        "IL_EMPLOYER_COST": 10513.37
+      }
+    }
+  ]
+}
