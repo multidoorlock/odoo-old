@@ -36,6 +36,7 @@ class TestPayslipPaymentList(TransactionCase):
 
     _payment = payment_fixtures.TestEmployeePaymentReconciliation._payment
     _payslip_with_posted_net = payment_fixtures.TestEmployeePaymentReconciliation._payslip_with_posted_net
+    _set_hard_lock_date = payment_fixtures.TestEmployeePaymentReconciliation._set_hard_lock_date
 
     def _linked(self):
         payment = self._payment(1000.0)
@@ -275,7 +276,7 @@ class TestPayslipPaymentList(TransactionCase):
             wizard.write({'source_payslip_id': self._payslip_with_posted_net(500.0).id})
         wizard.line_ids.amount = 500.0
         partial = payment._il_payslip_link_partials()
-        self.company.write({'hard_lock_date': date(2026, 8, 1)})
+        self._set_hard_lock_date(date(2026, 8, 1))
         with self.assertRaises(UserError):
             wizard.action_apply()
         self.assertEqual(payment._il_payslip_link_partials(), partial)

@@ -26,7 +26,8 @@ class TestHRNavigationUIUX(TransactionCase):
             no_reset_password=True, mail_create_nolog=True))
         cls.company = cls.env['res.company'].browse(company.id)
         cls.payable = cls.company.il_employee_payment_debit_account_id
-        assert cls.payable, 'Configure the STAGING employee payroll account first'
+        if not cls.payable:
+            raise SkipTest('This STAGING UI simulation requires a configured payroll account.')
         cls.journal = cls.env['account.journal'].search([
             ('company_id', '=', cls.company.id), ('type', '=', 'bank')], limit=1)
         cls.general_journal = cls.env['account.journal'].search([

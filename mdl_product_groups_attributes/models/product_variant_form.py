@@ -1,4 +1,4 @@
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 
 
 class ProductProduct(models.Model):
@@ -55,6 +55,26 @@ class ProductProduct(models.Model):
             "target": "current",
             "context": {"form_view_ref": "product.product_template_only_form_view"},
         }
+
+    def write(self, vals):
+        if "mdl_variant_pricelist_item_ids" in vals and len(self) == 1:
+            # Native display_applied_on onchanges can turn an inline variant
+            # row back into a template rule before the x2many is saved.  This
+            # relation is variant-only, so enforce its scope at the ORM edge.
+            commands = []
+            for command in vals["mdl_variant_pricelist_item_ids"]:
+                if command[0] != Command.CREATE:
+                    commands.append(command)
+                    continue
+                item_vals = dict(command[2])
+                item_vals.update({
+                    "product_id": self.id,
+                    "product_tmpl_id": self.product_tmpl_id.id,
+                    "applied_on": "0_product_variant",
+                })
+                commands.append(Command.create(item_vals))
+            vals = dict(vals, mdl_variant_pricelist_item_ids=commands)
+        return super().write(vals)
 
     @api.model
     def _get_view(self, view_id=None, view_type="form", **options):

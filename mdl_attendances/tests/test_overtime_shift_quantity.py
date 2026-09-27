@@ -94,6 +94,14 @@ class TestOvertimeShiftQuantity(TransactionCase):
                 attendances._update_overtime()
                 self._assert_hours(attendances, 11, 2)
 
+    def test_attendance_only_domain_is_not_used_for_overtime_lines(self):
+        attendance = self._attendances([(7, 18)])
+        attendance._update_overtime([
+            ('employee_id', '=', attendance.employee_id.id),
+            ('check_in', '<=', attendance.check_out),
+        ])
+        self._assert_hours(attendance, 11, 2)
+
     def test_deleting_last_attendance_clears_its_overtime(self):
         attendance = self._attendances([(7, 18)])
         overtime_lines = attendance.linked_overtime_ids

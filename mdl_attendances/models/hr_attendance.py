@@ -68,11 +68,20 @@ class HrAttendance(models.Model):
         # which is not a field on overtime lines, so derive a shared domain
         # from the affected attendances while retaining the original domain
         # (needed when the last attendance of a day was deleted).
+        line_model = self.env['hr.attendance.overtime.line']
+        # An outer attendance override may pass the expanded domain back into
+        # this method.  Never reuse attendance-only fields (notably check_in)
+        # against hr.attendance.overtime.line.
+        base_line_domain = Domain(base_domain)
+        if any(
+                condition.field_expr.split('.', 1)[0] not in line_model._fields
+                and condition.field_expr != 'id'
+                for condition in base_line_domain.iter_conditions()):
+            base_line_domain = Domain.FALSE
         overtime_domain = Domain.OR([
-            base_domain,
+            base_line_domain,
             affected_attendances._get_overtimes_to_update_domain(),
         ])
-        line_model = self.env['hr.attendance.overtime.line']
         previous = line_model.search(overtime_domain)
         restore_default = set()
         for key, lines in previous.grouped(lambda line: (line.employee_id.id, line.date)).items():
