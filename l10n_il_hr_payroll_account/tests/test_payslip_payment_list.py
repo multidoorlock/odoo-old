@@ -1,13 +1,14 @@
 from datetime import date
 
 from odoo.exceptions import UserError, ValidationError
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from . import test_payment_reconciliation as payment_fixtures
+from .common import HebrewTransactionCase
 
 
 @tagged('post_install', '-at_install', 'l10n_il_hr_payroll_account_payslip_payment_list')
-class TestPayslipPaymentList(TransactionCase):
+class TestPayslipPaymentList(HebrewTransactionCase):
 
     @classmethod
     def setUpClass(cls):

@@ -117,7 +117,12 @@ class HrSalaryAttachment(models.Model):
         # מהשדה על hr.payslip.input.type (לא מה-Snapshot) — שדה רגיל, זמין
         # תמיד גם בשלב precompute, ללא תלות בסדר חישוב.
         for attachment in self:
-            if attachment.payslip_ids:
+            # Keep an already snapshotted value immutable after the
+            # adjustment was used.  During an upgrade, however, legacy used
+            # adjustments have no value for this newly added required field;
+            # those records must be initialized so PostgreSQL can enforce
+            # the NOT NULL constraint.
+            if attachment.payslip_ids and attachment.il_effect_type:
                 continue
             if attachment.other_input_type_id.il_net_adjustment_treatment == 'direct_net':
                 attachment.il_effect_type = 'net'

@@ -4,12 +4,14 @@ from types import SimpleNamespace
 from lxml import etree
 
 from odoo import Command
-from odoo.tests.common import TransactionCase, new_test_user, tagged
+from odoo.tests.common import new_test_user, tagged
 from odoo.tools.safe_eval import safe_eval
+
+from .common import HebrewTransactionCase
 
 
 @tagged('post_install', '-at_install', 'l10n_il_employee_payment_navigation')
-class TestEmployeePaymentNavigation(TransactionCase):
+class TestEmployeePaymentNavigation(HebrewTransactionCase):
 
     @classmethod
     def setUpClass(cls):

@@ -298,6 +298,37 @@ class TestWagePrecision(TransactionCase):
         self.assertAlmostEqual(by_code['IL_TAX_BASE'], 5785.53, places=2)
         self.assertAlmostEqual(by_code['IL_NI_BASE'], 5785.53, places=2)
 
+    def test_upgrade_initializes_effect_type_on_used_legacy_attachment(self):
+        input_type = self.env.ref(
+            'l10n_il_hr_payroll_account.input_type_il_adj_bonus')
+        attachment = self.env['hr.salary.attachment'].create({
+            'employee_ids': [self.employee.id],
+            'description': 'Legacy used adjustment',
+            'other_input_type_id': input_type.id,
+            'duration_type': 'unlimited',
+            'date_start': date(2026, 1, 1),
+            'monthly_amount': 100.0,
+        })
+        attachment.payslip_ids = self.payslip
+        self.env.cr.execute(
+            'ALTER TABLE hr_salary_attachment '
+            'ALTER COLUMN il_effect_type DROP NOT NULL'
+        )
+        self.env.cr.execute(
+            'UPDATE hr_salary_attachment SET il_effect_type = NULL WHERE id = %s',
+            [attachment.id],
+        )
+        attachment.invalidate_recordset(['il_effect_type'])
+
+        attachment._compute_il_effect_type()
+        attachment.flush_recordset(['il_effect_type'])
+        self.env.cr.execute(
+            'ALTER TABLE hr_salary_attachment '
+            'ALTER COLUMN il_effect_type SET NOT NULL'
+        )
+
+        self.assertEqual(attachment.il_effect_type, 'gross')
+
     def test_employee_insured_wage_caps_pension_and_severance_base(self):
         self.version.write({
             'il_pension_enabled': True,

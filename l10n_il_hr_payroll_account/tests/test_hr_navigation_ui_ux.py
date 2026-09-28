@@ -4,12 +4,14 @@ from unittest import SkipTest
 from lxml import etree
 
 from odoo import Command
-from odoo.tests.common import TransactionCase, new_test_user, tagged
+from odoo.tests.common import new_test_user, tagged
 from odoo.tools.safe_eval import safe_eval
+
+from .common import HebrewTransactionCase
 
 
 @tagged('post_install', '-at_install', 'il_payroll_navigation_rpc_simulation')
-class TestHRNavigationUIUX(TransactionCase):
+class TestHRNavigationUIUX(HebrewTransactionCase):
     """Simulate native web-client RPC/view contracts on rollback-only fixtures.
 
     These are server-side navigation simulations, not browser rendering tests.

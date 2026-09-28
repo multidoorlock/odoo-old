@@ -5,14 +5,15 @@ from lxml import etree
 
 from odoo import Command
 from odoo.exceptions import UserError, ValidationError
-from odoo.tests.common import TransactionCase, new_test_user, tagged
+from odoo.tests.common import new_test_user, tagged
 
 from . import test_payment_reconciliation as payment_fixtures
 from . import test_reconciliation_editor as reconciliation_fixtures
+from .common import HebrewTransactionCase
 
 
 @tagged('post_install', '-at_install', 'il_payroll_frontend_simulation', 'il_payroll_ui_simulation')
-class TestPayslipPaymentUI(TransactionCase):
+class TestPayslipPaymentUI(HebrewTransactionCase):
     """Code simulation of native web-client RPC contracts and workflows.
 
     Calls the same web_read, onchange, web_save, list and export methods used

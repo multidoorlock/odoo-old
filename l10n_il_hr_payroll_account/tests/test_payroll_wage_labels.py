@@ -2,11 +2,13 @@ from datetime import date
 
 from lxml import etree
 
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import tagged
+
+from .common import HebrewTransactionCase
 
 
 @tagged('post_install', '-at_install', 'l10n_il_hr_payroll_account_wage_labels')
-class TestPayrollWageLabels(TransactionCase):
+class TestPayrollWageLabels(HebrewTransactionCase):
 
     def _import(self):
         return self.env['ir.module.module']._il_import_hr_hebrew_ui_translations()
