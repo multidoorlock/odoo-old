@@ -13,9 +13,8 @@ class AttendanceProcessor:
     def __init__(self, env):
         self.env = env
 
-    @staticmethod
-    def _invalid_company_binding_message():
-        return _(
+    def _invalid_company_binding_message(self):
+        return self.env._(
             "כרטיס השעון מקושר לעובד מחברה אחרת. "
             "יש לקשר את הכרטיס לעובד מאותה חברה של השעון."
         )
