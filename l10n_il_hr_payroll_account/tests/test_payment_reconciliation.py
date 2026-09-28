@@ -122,6 +122,14 @@ class TestEmployeePaymentReconciliation(TransactionCase):
             payment.with_context(**context).action_post()
         return payment
 
+    def _set_hard_lock_date(self, lock_date):
+        """Seed the lock fixture without validating unrelated demo entries."""
+        self.env.cr.execute(
+            "UPDATE res_company SET hard_lock_date = %s WHERE id = %s",
+            [lock_date, self.company.id],
+        )
+        self.company.invalidate_recordset(['hard_lock_date'])
+
     def test_employee_payment_is_saved_as_draft_with_native_confirm_button(self):
         payment = self._payment(1200.0, post=False)
         self.assertEqual(payment.state, 'draft')

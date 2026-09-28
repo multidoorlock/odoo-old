@@ -2,11 +2,12 @@ import json
 import re
 from copy import deepcopy
 
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import tagged
 from odoo.tools import file_open
 from odoo.tools.translate import code_translations, translation_file_reader
 
 from ..models.hr_hebrew_translations import IrHttp, _hebrew_ui_data
+from .common import HebrewTransactionCase
 
 HR_VIEW_CONTRIBUTORS = {
     'documents_hr', 'mdl_attendances', 'mdl_zkteco_attendance', 'resource',
@@ -14,13 +15,20 @@ HR_VIEW_CONTRIBUTORS = {
 }
 
 @tagged('post_install', '-at_install')
-class TestHebrewHrUiTranslations(TransactionCase):
+class TestHebrewHrUiTranslations(HebrewTransactionCase):
+
+    def _sick_leave_type(self):
+        leave_type = self.env.ref(
+            'hr_holidays.leave_type_sick_time_off', raise_if_not_found=False)
+        if not leave_type:
+            self.skipTest('The optional Time Off module is not installed.')
+        return leave_type.with_context(lang='en_US')
 
     def _import(self):
         return self.env['ir.module.module']._il_import_hr_hebrew_ui_translations()
 
     def test_database_translation_preserves_english_and_other_languages(self):
-        leave_type = self.env.ref('hr_holidays.leave_type_sick_time_off').with_context(lang='en_US')
+        leave_type = self._sick_leave_type()
         english = leave_type.name
         leave_type.update_field_translations('name', {'he_IL': english})
         before = leave_type._fields['name']._get_stored_translations(leave_type).copy()
@@ -32,14 +40,14 @@ class TestHebrewHrUiTranslations(TransactionCase):
                          {k: v for k, v in after.items() if k != 'he_IL'})
 
     def test_upgrade_preserves_custom_hebrew_and_is_idempotent(self):
-        leave_type = self.env.ref('hr_holidays.leave_type_sick_time_off').with_context(lang='en_US')
+        leave_type = self._sick_leave_type()
         leave_type.update_field_translations('name', {'he_IL': 'נוסח עברי מותאם לבדיקה'})
         self._import()
         self.assertEqual(leave_type.with_context(lang='he_IL').name, 'נוסח עברי מותאם לבדיקה')
         self.assertEqual(self._import(), {'model_terms': 0, 'model_values': 0, 'named_values': 0})
 
     def test_changed_english_source_is_not_given_an_outdated_translation(self):
-        leave_type = self.env.ref('hr_holidays.leave_type_sick_time_off').with_context(lang='en_US')
+        leave_type = self._sick_leave_type()
         leave_type.update_field_translations('name', {
             'en_US': 'New time off meaning', 'he_IL': 'New time off meaning',
         })

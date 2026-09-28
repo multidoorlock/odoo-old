@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <function model="hr.employee.form.101" name="_ensure_form_101_assets"/>
+    <function model="hr.employee.form.101" name="_upgrade_form_101_sign_template_layout"/>
     <function model="hr.employee.section.14" name="_ensure_section_14_assets"/>
 </odoo>

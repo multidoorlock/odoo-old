@@ -38,6 +38,7 @@ class TestPayrollLinkCoalescing(TransactionCase):
 
     _payment = payment_fixtures.TestEmployeePaymentReconciliation._payment
     _payslip_with_posted_net = payment_fixtures.TestEmployeePaymentReconciliation._payslip_with_posted_net
+    _set_hard_lock_date = payment_fixtures.TestEmployeePaymentReconciliation._set_hard_lock_date
     _settle = editor_fixtures.TestPayrollReconciliationEditor._settle
     _editor = editor_fixtures.TestPayrollReconciliationEditor._editor
     _add = editor_fixtures.TestPayrollReconciliationEditor._add
@@ -151,7 +152,7 @@ class TestPayrollLinkCoalescing(TransactionCase):
     def test_guarded_repair_obeys_native_period_lock(self):
         payment, slip, other, bank = self._duplicate_fixture()
         old_pair = self._linked_rows(payment, slip).reconcile_id
-        self.company.write({'hard_lock_date': date(2026, 8, 1)})
+        self._set_hard_lock_date(date(2026, 8, 1))
         with self.assertRaises(UserError), self.cr.savepoint():
             self._editor(slip=slip)._il_rebuild_duplicate_link(payment)
         self.assertEqual(self._linked_rows(payment, slip).reconcile_id, old_pair)

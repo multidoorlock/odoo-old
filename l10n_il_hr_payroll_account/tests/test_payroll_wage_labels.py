@@ -2,11 +2,13 @@ from datetime import date
 
 from lxml import etree
 
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import tagged
+
+from .common import HebrewTransactionCase
 
 
 @tagged('post_install', '-at_install', 'l10n_il_hr_payroll_account_wage_labels')
-class TestPayrollWageLabels(TransactionCase):
+class TestPayrollWageLabels(HebrewTransactionCase):
 
     def _import(self):
         return self.env['ir.module.module']._il_import_hr_hebrew_ui_translations()
@@ -39,11 +41,18 @@ class TestPayrollWageLabels(TransactionCase):
         for name, label in [('gross_wage', 'שכר ברוטו'), ('net_wage', 'שכר נטו'),
                             ('il_net_amount_to_pay', 'שכר נטו לתשלום')]:
             self.assertIn(label, arch.xpath("//field[@name='%s']/@string" % name))
+        effect_type_models = {'hr.payslip.input', 'hr.salary.attachment'}
         for model, field in [('hr.payslip.input', 'il_effect_type'),
                              ('hr.salary.attachment', 'il_effect_type'),
                              ('hr.employee', 'mdl_wage_rate_type'),
                              ('hr.version', 'mdl_wage_rate_type')]:
-            selection = self.env[model].with_context(lang='he_IL').fields_get([field])[field]['selection']
+            selection = dict(self.env[model].with_context(lang='he_IL').fields_get(
+                [field])[field]['selection'])
+            if model in effect_type_models:
+                self.assertEqual(
+                    selection.pop('taxable_benefit'),
+                    '\u05e9\u05d5\u05d5\u05d9 \u05d7\u05d9\u05d9\u05d1 (\u05dc\u05d0 \u05de\u05e9\u05d5\u05dc\u05dd)',
+                )
             self.assertEqual(dict(selection), {'gross': 'שכר ברוטו', 'net': 'שכר נטו'})
         for model in ['hr.payslip.input', 'hr.salary.attachment', 'hr.payslip.input.type']:
             selection = self.env[model].with_context(lang='he_IL').fields_get(

@@ -803,7 +803,7 @@ class ZKTecoAdapter(AttendanceDeviceAdapter):
             "raw_punch_state": raw_punch, "punch_state": punch_state,
             "event_fingerprint": fingerprint, "raw_line": line,
             "processing_state": "waiting_employee_link" if invalid_binding else "new",
-            "processing_message": AttendanceProcessor._invalid_company_binding_message()
+            "processing_message": AttendanceProcessor(self.env)._invalid_company_binding_message()
             if invalid_binding else False,
         })
 
