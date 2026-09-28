@@ -63,17 +63,12 @@ class HrAttendance(models.Model):
         base_domain = attendance_domain or self._get_overtimes_to_update_domain()
         expanded_domain = self._mdl_whole_shift_attendance_domain(base_domain)
         affected_attendances = (self.exists() | self.search(expanded_domain)).filtered('check_out')
-        # Odoo 19 uses the same employee/date domain for attendance and
-        # overtime lines.  The whole-shift domain also contains check_in,
-        # which is not a field on overtime lines, so derive a shared domain
-        # from the affected attendances while retaining the original domain
-        # (needed when the last attendance of a day was deleted).
-        overtime_domain = Domain.OR([
-            base_domain,
-            affected_attendances._get_overtimes_to_update_domain(),
-        ])
         line_model = self.env['hr.attendance.overtime.line']
-        previous = line_model.search(overtime_domain)
+        # Link existing rows through their documented employee/time_start
+        # identity.  Odoo 19 revisions disagree on whether the native update
+        # domain targets attendances (check_in) or is shared with overtime
+        # lines (date), so never search overtime lines with that domain here.
+        previous = affected_attendances._linked_overtimes()
         restore_default = set()
         for key, lines in previous.grouped(lambda line: (line.employee_id.id, line.date)).items():
             if (lines.company_id.attendance_overtime_validation != 'by_manager'
@@ -81,12 +76,29 @@ class HrAttendance(models.Model):
                     and all(line.status == 'approved' and not line._mdl_has_manual_duration_override()
                             for line in lines)):
                 restore_default.add(key)
-        result = super()._update_overtime(attendance_domain=overtime_domain)
+        if hasattr(self, '_get_overtime_domain_from_attendance_domain'):
+            # Newer Odoo revisions accept an attendance domain and translate
+            # it internally before querying overtime lines.
+            native_domain = expanded_domain
+        else:
+            # Older revisions query both models with one employee/date domain.
+            # Keep only components that are valid on overtime lines.
+            native_domains = []
+            for candidate in (
+                    Domain(base_domain),
+                    affected_attendances._get_overtimes_to_update_domain()):
+                if all(
+                        condition.field_expr.split('.', 1)[0] in line_model._fields
+                        or condition.field_expr == 'id'
+                        for condition in candidate.iter_conditions()):
+                    native_domains.append(candidate)
+            native_domain = Domain.OR(native_domains) if native_domains else Domain.FALSE
+        result = super()._update_overtime(attendance_domain=native_domain)
         if restore_default:
             # Native regeneration sees rounded manual_duration != raw duration
             # as a human edit. Restore only the automatic company's default;
             # manager decisions and genuine manual changes keep native behavior.
-            line_model.search(overtime_domain).filtered(
+            affected_attendances._linked_overtimes().filtered(
                 lambda line: (line.employee_id.id, line.date) in restore_default
                 and line.company_id.attendance_overtime_validation != 'by_manager'
                 and line.mdl_auto_approval_hours > 0

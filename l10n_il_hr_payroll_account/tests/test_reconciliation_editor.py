@@ -40,6 +40,7 @@ class TestPayrollReconciliationEditor(TransactionCase):
 
     _payment = payment_fixtures.TestEmployeePaymentReconciliation._payment
     _payslip_with_posted_net = payment_fixtures.TestEmployeePaymentReconciliation._payslip_with_posted_net
+    _set_hard_lock_date = payment_fixtures.TestEmployeePaymentReconciliation._set_hard_lock_date
 
     def _editor(self, payment=None, slip=None, add_only=False):
         return self.env['il.payroll.reconciliation.wizard'].create({
@@ -326,7 +327,7 @@ class TestPayrollReconciliationEditor(TransactionCase):
         slip = self._payslip_with_posted_net(1000)
         wizard = self._editor(payment=payment)
         self._add(wizard, payment, slip, 1000)
-        self.company.write({'hard_lock_date': date(2026, 8, 1)})
+        self._set_hard_lock_date(date(2026, 8, 1))
         with self.assertRaises(UserError):
             wizard.action_apply()
         self.assertFalse(payment.il_split_line_ids.reconcile_id)
@@ -338,7 +339,7 @@ class TestPayrollReconciliationEditor(TransactionCase):
         partial = slip._il_reconciliations()
         editor = self._editor(slip=slip)
         editor.line_ids.amount = 500
-        self.company.write({'hard_lock_date': date(2026, 8, 1)})
+        self._set_hard_lock_date(date(2026, 8, 1))
         with self.assertRaises(UserError):
             editor.action_apply()
         with self.assertRaises(UserError):

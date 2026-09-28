@@ -1,3 +1,0 @@
-2026-09-16 16:33:39,045 41372 WARNING ? odoo.tools.config: missing --http-interface/http_interface, using 0.0.0.0 by default, will change to 127.0.0.1 in 20.0 
-2026-09-16 16:33:45,119 41372 WARNING multidoorlock-local odoo.fields: Translated stored related field (hr.employee.name) will not be computed correctly in all languages 
-2026-09-16 16:33:45,201 41372 WARNING multidoorlock-local odoo.fields: Translated stored related field (hr.employee.name) will not be computed correctly in all languages 

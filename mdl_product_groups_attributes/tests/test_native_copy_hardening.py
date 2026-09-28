@@ -9,6 +9,7 @@ class TestNativeCopyHardening(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.env = cls.env(context={**cls.env.context, "lang": "en_US"})
         cls.category = cls.env["product.category"].create(
             {"name": "דלת", "mdl_sku_component": "10"}
         )

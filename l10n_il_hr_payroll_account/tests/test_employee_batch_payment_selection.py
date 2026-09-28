@@ -2,13 +2,14 @@ from datetime import date
 
 from odoo import Command
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tests.common import TransactionCase, new_test_user, tagged
+from odoo.tests.common import new_test_user, tagged
 
 from . import test_payment_reconciliation as payment_fixtures
+from .common import HebrewTransactionCase
 
 
 @tagged('post_install', '-at_install', 'il_employee_batch_payment_selection')
-class TestEmployeeBatchPaymentSelection(TransactionCase):
+class TestEmployeeBatchPaymentSelection(HebrewTransactionCase):
 
     @classmethod
     def setUpClass(cls):

@@ -328,12 +328,14 @@ class TestClockIngestionRegressions(TransactionCase):
                          {"processed", "ignored"})
         self.assertEqual(log.processing_state, "processed")
 
+    @mute_logger("odoo.addons.mdl_zkteco_attendance.services.adapters.zkteco")
     def test_date_only_payload_is_rejected_instead_of_defaulting_to_midnight(self):
         log = self._ingest("701\t2026-09-03\t255\t15\t0")
         self.assertEqual(log.event_ids.processing_state, "error")
         self.assertFalse(log.event_ids.event_datetime)
         self.assertFalse(log.event_ids.attendance_id)
 
+    @mute_logger("odoo.addons.mdl_zkteco_attendance.services.adapters.zkteco")
     def test_bad_line_does_not_discard_valid_sibling_punches(self):
         log = self._ingest(
             "701\t2026-09-03 08:00:00\t255\t1\t0\n"
@@ -346,7 +348,10 @@ class TestClockIngestionRegressions(TransactionCase):
         self.assertEqual(len(valid.attendance_id), 1)
         self.assertEqual(log.processing_state, "error")
 
-    @mute_logger("odoo.sql_db")
+    @mute_logger(
+        "odoo.sql_db",
+        "odoo.addons.mdl_zkteco_attendance.services.adapters.zkteco",
+    )
     def test_database_error_on_one_line_rolls_back_only_that_line(self):
         adapter_type = type(self.device._adapter())
         original_create = adapter_type._create_attlog_event

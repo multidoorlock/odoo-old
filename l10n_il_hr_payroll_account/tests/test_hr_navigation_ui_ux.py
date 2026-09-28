@@ -4,12 +4,14 @@ from unittest import SkipTest
 from lxml import etree
 
 from odoo import Command
-from odoo.tests.common import TransactionCase, new_test_user, tagged
+from odoo.tests.common import new_test_user, tagged
 from odoo.tools.safe_eval import safe_eval
+
+from .common import HebrewTransactionCase
 
 
 @tagged('post_install', '-at_install', 'il_payroll_navigation_rpc_simulation')
-class TestHRNavigationUIUX(TransactionCase):
+class TestHRNavigationUIUX(HebrewTransactionCase):
     """Simulate native web-client RPC/view contracts on rollback-only fixtures.
 
     These are server-side navigation simulations, not browser rendering tests.
@@ -26,7 +28,8 @@ class TestHRNavigationUIUX(TransactionCase):
             no_reset_password=True, mail_create_nolog=True))
         cls.company = cls.env['res.company'].browse(company.id)
         cls.payable = cls.company.il_employee_payment_debit_account_id
-        assert cls.payable, 'Configure the STAGING employee payroll account first'
+        if not cls.payable:
+            raise SkipTest('This STAGING UI simulation requires a configured payroll account.')
         cls.journal = cls.env['account.journal'].search([
             ('company_id', '=', cls.company.id), ('type', '=', 'bank')], limit=1)
         cls.general_journal = cls.env['account.journal'].search([
