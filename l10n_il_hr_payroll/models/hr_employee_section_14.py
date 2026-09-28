@@ -280,6 +280,14 @@ class HrEmployeeSection14(models.Model):
         })
         self._set_xmlid('sign_template_section_14', template)
         self._configure_section_14_template(template)
+        other_templates = self.env['sign.template'].sudo().with_context(
+            active_test=False,
+        ).search([
+            ('model_id', '=', self.env['ir.model']._get(self._name).id),
+            ('id', '!=', template.id),
+        ])
+        if other_templates:
+            other_templates.write({'active': False})
         self.search([('sign_request_id', '=', False)]).write({
             'sign_template_id': template.id,
         })
