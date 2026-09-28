@@ -18,7 +18,10 @@ import { registry } from "@web/core/registry";
 import { diffColumn } from "@web_gantt/gantt_helpers";
 import { AttendanceGanttModel } from "@hr_attendance_gantt/attendance_gantt/attendance_gantt_model";
 import { AttendanceGanttRenderer } from "@hr_attendance_gantt/attendance_gantt/attendance_gantt_renderer";
-import { attendanceGanttView } from "@hr_attendance_gantt/attendance_gantt/attendance_gantt_view";
+import {
+    attendanceGanttView,
+    HrAttendanceGanttController,
+} from "@hr_attendance_gantt/attendance_gantt/attendance_gantt_view";
 
 const TILE_METRICS_BY_SCALE = {
     day: { width: 46, height: 32, top: 2, compact: false },
@@ -276,6 +279,28 @@ export class AttendanceConflictGanttModel extends AttendanceGanttModel {
             }
             this.data.count = this.data.rows.length;
         }
+    }
+}
+
+export class AttendanceConflictGanttController extends HrAttendanceGanttController {
+    async create(context = {}) {
+        // Use the exact same server action as the timeline context menu.  The
+        // native Gantt ``on_create`` action only forwards generic date keys,
+        // while the manual attendance wizard expects its employee, punch and
+        // event defaults to be normalized by ``timeline_manual_event_action``.
+        const action = await this.orm.call(
+            "mdl.attendance.device.event",
+            "timeline_manual_event_action",
+            [
+                context.default_employee_id || context.employee_id || false,
+                context.default_punch_state || context.punch_state || "in",
+                context.default_event_datetime || context.event_datetime || false,
+                context.default_attendance_id || context.attendance_id || false,
+            ]
+        );
+        return this.actionService.doAction(action, {
+            onClose: () => this.model.fetchData(),
+        });
     }
 }
 
@@ -1369,6 +1394,7 @@ export class AttendanceConflictGanttRenderer extends AttendanceGanttRenderer {
 
 export const attendanceConflictGanttView = {
     ...attendanceGanttView,
+    Controller: AttendanceConflictGanttController,
     Model: AttendanceConflictGanttModel,
     Renderer: AttendanceConflictGanttRenderer,
 };
